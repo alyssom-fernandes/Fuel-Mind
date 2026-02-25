@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Entradas de Combustível</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- BIBLIOTECAS EXTERNAS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <h1>Controle de Entradas</h1>
+        <button class="btn-tema" onclick="toggleModoEscuro()" title="Alternar modo escuro/claro">
+            <span id="iconeTema">🌙</span>
+        </button>
+    </div>
+</header>
+
+<nav>
+    <button class="btn-nav-destaque" onclick="mostrarTela('dashboard'); carregarDashboard()">Dashboard</button>
+    <button onclick="mostrarTela('motoristas')">Motoristas</button>
+    <button onclick="mostrarTela('veiculos')">Veículos</button>
+    <button onclick="mostrarTela('empresas')">Empresas</button>
+    <button onclick="mostrarTela('combustiveis')">Combustíveis</button>
+    <button class="btn-nav-destaque" onclick="mostrarTela('lancamentos')">Lançamentos</button>
+    <button onclick="mostrarTela('relatorios'); carregarRelatorio()">Relatórios</button>
+    <button onclick="mostrarTela('historico')">Histórico</button>
+    <button class="btn-nav-estoque" onclick="mostrarTela('estoque')">Estoque</button>
+    <button class="btn-nav-fretes" onclick="mostrarTela('fretes')">Fretes</button>
+    <button class="btn-nav-destaque" onclick="mostrarTela('analitico'); carregarAnalitico()">Analítico</button>
+    <button class="btn-nav-sistema" onclick="mostrarTela('sistema')">Sistema</button>
+</nav>
+
+<!-- ===================== DASHBOARD ===================== -->
+<div id="dashboard" class="tela">
+    <h2>Dashboard — Visão Geral</h2>
+    <div id="kpiDashboard" class="kpi-container"></div>
+    <h3>Alertas Rápidos</h3>
+    <div id="alertasDashboard" class="alertas-container"></div>
+    <h3>Últimas Entradas</h3>
+    <div class="tabela-container">
+        <table>
+            <thead><tr>
+                <th>Data Nota</th><th>Data Desc.</th><th>Nota</th><th>Base</th>
+                <th>Empresa</th><th>Motorista</th><th>Placa</th><th>Total (R$)</th>
+                <th class="no-print">Ações</th>
+            </tr></thead>
+            <tbody id="ultimasEntradasBody"></tbody>
+        </table>
+    </div>
+    <div id="painelDetalhesDashboard" class="painel-detalhes" style="display:none">
+        <h3>Detalhes da Entrada</h3>
+        <div id="conteudoDetalhesDashboard"></div>
+        <button class="btn-secundario" onclick="fecharDetalhes('dashboard')">Fechar</button>
+    </div>
+</div>
+
+<!-- ===================== MOTORISTAS ===================== -->
+<div id="motoristas" class="tela">
+    <h2>Cadastro de Motoristas</h2>
+    <div class="form-linha">
+        <input id="nomeMotorista" placeholder="Nome do motorista">
+        <button class="btn-primario" onclick="salvarMotorista()">Adicionar</button>
+    </div>
+    <div class="filtro-lista">
+        <label>
+            <input type="checkbox" id="mostrarInativos" onchange="atualizarListas()">
+            Mostrar inativos
+        </label>
+    </div>
+    <ul id="listaMotoristas"></ul>
+</div>
+
+<!-- ===================== VEÍCULOS ===================== -->
+<div id="veiculos" class="tela">
+    <h2>Cadastro de Veículos</h2>
+    <div class="form-linha">
+        <input id="placaVeiculo" placeholder="Placa (ex: ABC-1234)">
+        <button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button>
+    </div>
+    <div class="filtro-lista">
+        <label>
+            <input type="checkbox" id="mostrarInativosVeiculos" onchange="atualizarListas()">
+            Mostrar inativos
+        </label>
+    </div>
+    <ul id="listaVeiculos"></ul>
+</div>
+
+<!-- ===================== EMPRESAS ===================== -->
+<div id="empresas" class="tela">
+    <h2>Cadastro de Empresas</h2>
+    <div class="form-linha">
+        <input id="nomeEmpresa" placeholder="Nome da empresa">
+        <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
+    </div>
+    <div class="filtro-lista">
+        <label>
+            <input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()">
+            Mostrar inativos
+        </label>
+    </div>
+    <ul id="listaEmpresas"></ul>
+</div>
+
+<!-- ===================== COMBUSTÍVEIS ===================== -->
+<div id="combustiveis" class="tela">
+    <h2>Cadastro de Combustíveis</h2>
+    <div class="form-linha">
+        <input id="nomeCombustivel" placeholder="Tipo (ex: S10)">
+        <input id="perdaCombustivel" type="number" placeholder="% perda tolerada (ex: 0.3)"
+               min="0" max="10" step="0.01" style="max-width:220px">
+        <button class="btn-primario" onclick="salvarCombustivel()">Adicionar</button>
+    </div>
+    <p class="dica">A % de perda tolerada é usada para calcular automaticamente a perda esperada nos lançamentos.</p>
+    <div class="filtro-lista">
+        <label>
+            <input type="checkbox" id="mostrarInativos_combustiveis" onchange="atualizarListas()">
+            Mostrar inativos
+        </label>
+    </div>
+    <ul id="listaCombustiveis"></ul>
+</div>
+
+<!-- ===================== LANÇAMENTOS ===================== -->
+<div id="lancamentos" class="tela">
+    <h2 id="tituloLancamento">Lançamento de Entrada</h2>
+    <div id="bannerEdicao" class="banner-edicao"></div>
+
+    <!-- Banner de resultado da importação XML -->
+    <div id="bannerXML" class="banner-xml" style="display:none"></div>
+
+    <!-- Importação XML NF-e -->
+    <div class="importar-xml-bloco">
+        <label class="importar-xml-label">Importar XML da NF-e <span class="tag-opcional">opcional</span></label>
+        <p class="dica" style="margin-bottom:6px">Selecione o arquivo .xml da nota fiscal para pré-preencher o formulário automaticamente. Você poderá conferir e ajustar os dados antes de salvar.</p>
+        <input type="file" id="xmlNFe" accept=".xml" onchange="importarXMLNFe(this)">
+    </div>
+    <div class="form-grid">
+        <div class="campo">
+            <label>Data da Nota Fiscal</label>
+            <input type="date" id="dataNota" oninput="marcarFormularioSujo()">
+        </div>
+        <div class="campo">
+            <label>Data da Descarga</label>
+            <input type="date" id="dataDescarga" oninput="marcarFormularioSujo()">
+        </div>
+        <div class="campo">
+            <label>Número da Nota</label>
+            <input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()">
+        </div>
+        <div class="campo">
+            <label>Base</label>
+            <input id="baseEntrada" placeholder="Ex: Replan, Revap..." oninput="marcarFormularioSujo()">
+        </div>
+        <div class="campo">
+            <label>Empresa / Fornecedor</label>
+            <select id="empresaSelect" onchange="marcarFormularioSujo()"></select>
+        </div>
+        <div class="campo">
+            <label>Motorista</label>
+            <select id="motoristaSelect" onchange="marcarFormularioSujo()"></select>
+        </div>
+        <div class="campo">
+            <label>Placa do Veículo</label>
+            <select id="placaSelect" onchange="marcarFormularioSujo()"></select>
+        </div>
+        <div class="campo">
+            <label>Observações</label>
+            <textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea>
+        </div>
+        <div class="campo">
+            <label>Nota Fiscal (opcional)</label>
+            <input type="file" id="notaFiscalFile" accept="image/*,application/pdf">
+        </div>
+    </div>
+
+    <h3>Combustíveis desta Nota</h3>
+    <div id="combustiveisNota"></div>
+    <button class="btn-secundario" onclick="adicionarCombustivelNota()">+ Adicionar Combustível</button>
+
+    <!-- Totalizador em tempo real — Melhoria 4 -->
+    <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
+
+    <div class="acoes-lancamento">
+        <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar()">Salvar Entrada</button>
+        <button class="btn-cancelar" onclick="limparFormulario()">✖ Cancelar</button>
+    </div>
+</div>
+
+<!-- ===================== ESTOQUE ===================== -->
+<div id="estoque" class="tela">
+    <h2>Medições de Estoque</h2>
+    <p class="dica">
+        As <strong>entradas</strong> são puxadas automaticamente dos lançamentos.
+        Preencha as <strong>saídas</strong> (vendas) e as <strong>leituras do Veeder-Root</strong> diariamente.
+    </p>
+
+    <!-- Abas por combustível -->
+    <div class="analitico-abas" id="estoqueAbas"></div>
+
+    <!-- Conteúdo dinâmico da aba ativa -->
+    <div id="estoqueConteudo"></div>
+</div>
+
+<!-- ===================== FRETES ===================== -->
+<div id="fretes" class="tela">
+    <h2>Resumo de Fretes</h2>
+    <p class="dica">
+        Os dados são calculados automaticamente a partir dos lançamentos do mês selecionado.
+        Configure as taxas de frete por combustível abaixo antes de gerar o resumo.
+    </p>
+
+    <!-- Configuração das taxas -->
+    <div class="sistema-secao" style="margin-bottom:20px">
+        <h3>Taxas de Frete por Combustível (R$/litro)</h3>
+        <p class="dica" style="margin-top:4px">Defina o valor pago por litro transportado para cada tipo de combustível. As taxas são salvas automaticamente.</p>
+        <div id="fretesTodasTaxas" class="frete-taxas-grid"></div>
+    </div>
+
+    <!-- Seletor de mês + resumo -->
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+        <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
+        <input type="month" id="fretesSelectMes"
+               onchange="calcularEExibirFretes()"
+               style="max-width:180px">
+        <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
+    </div>
+
+    <div id="fretesResumoMes" class="resumo" style="margin-bottom:16px"></div>
+
+    <!-- Barra de exportação -->
+    <div class="barra-exportacao" id="fretesBarraExportacao">
+        <span class="exportacao-titulo">Exportar:</span>
+        <button class="btn-export btn-xlsx"  onclick="exportarFretesExcel()">Excel</button>
+        <button class="btn-export btn-pdf"   onclick="exportarFretesPDF()">PDF</button>
+        <button class="btn-export btn-print" onclick="imprimirFretes()">Imprimir</button>
+    </div>
+
+    <!-- Abas -->
+    <div class="analitico-abas" id="fretesAbas" style="margin-top:16px">
+        <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por Placa</button>
+        <button class="aba-btn" onclick="trocarAbaFretes('motoristas', this)">Por Motorista</button>
+        <button class="aba-btn" onclick="trocarAbaFretes('empresas', this)">Por Empresa</button>
+    </div>
+
+    <!-- Aba Por Placa -->
+    <div id="frete-aba-placas" class="aba-conteudo">
+        <h3>Resumo por Placa</h3>
+        <p class="dica">Total de litros transportados e frete calculado por veículo no mês.</p>
+        <div class="tabela-container">
+            <table>
+                <thead><tr>
+                    <th>Placa</th>
+                    <th>Viagens</th>
+                    <th>Litros (L)</th>
+                    <th>Taxa (R$/L)</th>
+                    <th>Frete (R$)</th>
+                </tr></thead>
+                <tbody id="tabelaFretePlacas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Aba Por Motorista -->
+    <div id="frete-aba-motoristas" class="aba-conteudo" style="display:none">
+        <h3>Resumo por Motorista</h3>
+        <p class="dica">Total de litros transportados e frete calculado por motorista no mês.</p>
+        <div class="tabela-container">
+            <table>
+                <thead><tr>
+                    <th>Motorista</th>
+                    <th>Viagens</th>
+                    <th>Litros (L)</th>
+                    <th>Taxa (R$/L)</th>
+                    <th>Frete (R$)</th>
+                </tr></thead>
+                <tbody id="tabelaFreteMotoristas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Aba Por Empresa -->
+    <div id="frete-aba-empresas" class="aba-conteudo" style="display:none">
+        <h3>Resumo por Empresa</h3>
+        <p class="dica">Total de litros transportados e frete calculado por empresa/fornecedor no mês.</p>
+        <div class="tabela-container">
+            <table>
+                <thead><tr>
+                    <th>Empresa</th>
+                    <th>Viagens</th>
+                    <th>Litros (L)</th>
+                    <th>Taxa (R$/L)</th>
+                    <th>Frete (R$)</th>
+                </tr></thead>
+                <tbody id="tabelaFreteEmpresas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<div id="relatorios" class="tela">
+    <h2>Relatório de Entradas</h2>
+
+    <div class="filtros">
+        <div class="campo">
+            <label>Data inicial</label>
+            <input type="date" id="filtroDataInicio">
+        </div>
+        <div class="campo">
+            <label>Data final</label>
+            <input type="date" id="filtroDataFim">
+        </div>
+        <div class="campo">
+            <label>Empresa</label>
+            <select id="filtroEmpresa"><option value="">Todas</option></select>
+        </div>
+        <div class="campo">
+            <label>Motorista</label>
+            <select id="filtroMotorista"><option value="">Todos</option></select>
+        </div>
+        <div class="campo">
+            <label>Placa</label>
+            <select id="filtroPlaca"><option value="">Todas</option></select>
+        </div>
+        <div class="campo">
+            <label>Combustível</label>
+            <select id="filtroCombustivel"><option value="">Todos</option></select>
+        </div>
+        <div class="campo">
+            <label>Nota Fiscal</label>
+            <input id="filtroNota" placeholder="Número da nota">
+        </div>
+        <div class="campo">
+            <label>Base</label>
+            <input id="filtroBase" placeholder="Base">
+        </div>
+        <div class="campo">
+            <label>Busca rápida</label>
+            <input id="filtroBusca" placeholder="Palavra-chave (ex: observação)" oninput="carregarRelatorio()">
+        </div>
+    </div>
+
+    <div class="filtros-acoes">
+        <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
+        <button class="btn-secundario" onclick="limparFiltros()">Limpar Filtros</button>
+        <span class="filtros-rapidos-sep">Período rápido:</span>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','hoje')">Hoje</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes')">Este mês</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes_anterior')">Mês anterior</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','ano')">Este ano</button>
+    </div>
+
+    <div id="resumoRelatorio" class="resumo"></div>
+
+    <div id="barraExportacaoRelatorio" class="barra-exportacao" style="display:none">
+        <span class="exportacao-titulo">Exportar:</span>
+        <button class="btn-export btn-xlsx"  onclick="exportarExcel('relatorio')">Excel</button>
+        <button class="btn-export btn-pdf"   onclick="exportarPDF('relatorio')">PDF</button>
+        <button class="btn-export btn-print" onclick="imprimirRelatorio()">Imprimir</button>
+        <button class="btn-export btn-wpp"   onclick="compartilharWhatsApp('relatorio')">WhatsApp</button>
+        <button class="btn-export btn-email" onclick="compartilharEmail('relatorio')">E-mail</button>
+    </div>
+
+    <div class="tabela-container">
+        <table id="tabelaRelatorioEl">
+            <thead>
+                <tr>
+                    <th>Data Nota</th>
+                    <th>Data Descarga</th>
+                    <th>Nota</th>
+                    <th>Base</th>
+                    <th>Empresa</th>
+                    <th>Motorista</th>
+                    <th>Placa</th>
+                    <th>Total (R$)</th>
+                    <th class="no-print">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaRelatorio"></tbody>
+        </table>
+    </div>
+
+    <div id="painelDetalhes" class="painel-detalhes" style="display:none">
+        <h3>Detalhes da Entrada</h3>
+        <div id="conteudoDetalhes"></div>
+        <button class="btn-secundario" onclick="fecharDetalhes('relatorio')">Fechar</button>
+    </div>
+</div>
+
+<!-- ===================== HISTÓRICO ===================== -->
+<div id="historico" class="tela">
+    <h2>Histórico por Motorista / Veículo</h2>
+
+    <div class="filtros">
+        <div class="campo">
+            <label>Motorista</label>
+            <select id="historicoMotorista"><option value="">Todos</option></select>
+        </div>
+        <div class="campo">
+            <label>Placa</label>
+            <select id="historicoPlaca"><option value="">Todas</option></select>
+        </div>
+        <div class="campo">
+            <label>Data inicial</label>
+            <input type="date" id="historicoDataInicio">
+        </div>
+        <div class="campo">
+            <label>Data final</label>
+            <input type="date" id="historicoDataFim">
+        </div>
+        <div class="campo">
+            <label>Busca rápida</label>
+            <input id="historicoBusca" placeholder="Palavra-chave (ex: observação)" oninput="carregarHistorico()">
+        </div>
+    </div>
+
+    <div class="filtros-acoes">
+        <button class="btn-primario" onclick="carregarHistorico()">Filtrar</button>
+        <button class="btn-secundario" onclick="limparFiltros('historico')">Limpar Filtros</button>
+        <span class="filtros-rapidos-sep">Período rápido:</span>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('historico','mes')">Este mês</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('historico','mes_anterior')">Mês anterior</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('historico','ano')">Este ano</button>
+    </div>
+
+    <div id="resumoHistorico" class="resumo"></div>
+
+    <div id="barraExportacaoHistorico" class="barra-exportacao" style="display:none">
+        <span class="exportacao-titulo">Exportar:</span>
+        <button class="btn-export btn-xlsx"  onclick="exportarExcel('historico')">Excel</button>
+        <button class="btn-export btn-pdf"   onclick="exportarPDF('historico')">PDF</button>
+        <button class="btn-export btn-print" onclick="imprimirRelatorio('historico')">Imprimir</button>
+        <button class="btn-export btn-wpp"   onclick="compartilharWhatsApp('historico')">WhatsApp</button>
+        <button class="btn-export btn-email" onclick="compartilharEmail('historico')">E-mail</button>
+    </div>
+
+    <div class="tabela-container">
+        <table id="tabelaHistoricoEl">
+            <thead>
+                <tr>
+                    <th>Data Nota</th>
+                    <th>Data Descarga</th>
+                    <th>Nota</th>
+                    <th>Base</th>
+                    <th>Empresa</th>
+                    <th>Motorista</th>
+                    <th>Placa</th>
+                    <th>Total (R$)</th>
+                    <th class="no-print">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaHistorico"></tbody>
+        </table>
+    </div>
+
+    <div id="painelDetalhesHistorico" class="painel-detalhes" style="display:none">
+        <h3>Detalhes da Entrada</h3>
+        <div id="conteudoDetalhesHistorico"></div>
+        <button class="btn-secundario" onclick="fecharDetalhes('historico')">Fechar</button>
+    </div>
+</div>
+
+<!-- ===================== ANALÍTICO ===================== -->
+<div id="analitico" class="tela">
+    <h2>Relatórios Analíticos</h2>
+
+    <div class="analitico-filtros">
+        <div class="campo">
+            <label>Período inicial</label>
+            <input type="date" id="analiticoInicio">
+        </div>
+        <div class="campo">
+            <label>Período final</label>
+            <input type="date" id="analiticoFim">
+        </div>
+        <div class="campo">
+            <label>Combustível</label>
+            <select id="analiticoCombustivel"><option value="">Todos</option></select>
+        </div>
+        <div class="campo" style="justify-content:flex-end; padding-top:18px">
+            <button class="btn-primario" onclick="carregarAnalitico()">Atualizar</button>
+        </div>
+    </div>
+    <!-- Filtros rápidos do analítico -->
+    <div class="filtros-rapidos-linha">
+        <span class="filtros-rapidos-sep">Período rápido:</span>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes')">Este mês</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes_anterior')">Mês anterior</button>
+        <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','ano')">Este ano</button>
+    </div>
+
+    <div id="kpiContainer" class="kpi-container"></div>
+
+    <div class="analitico-abas">
+        <button class="aba-btn ativa" onclick="trocarAba('mensal', this)">Mensal</button>
+        <button class="aba-btn" onclick="trocarAba('motoristas', this)">Por Motorista</button>
+        <button class="aba-btn" onclick="trocarAba('veiculos', this)">Por Veículo</button>
+        <button class="aba-btn" onclick="trocarAba('combustivel', this)">Por Combustível</button>
+        <button class="aba-btn" onclick="trocarAba('comparativo', this)">Comparativo</button>
+    </div>
+
+    <div id="aba-mensal" class="aba-conteudo">
+        <h3>Resumo Mensal</h3>
+        <p class="dica">Total gasto e litros carregados por mês no período selecionado.</p>
+        <div class="grafico-wrapper">
+            <canvas id="graficoMensal" height="280"></canvas>
+        </div>
+        <div class="tabela-container" style="margin-top:16px">
+            <table>
+                <thead><tr>
+                    <th>Mês / Ano</th>
+                    <th>Nº Notas</th>
+                    <th>Total Litros (L)</th>
+                    <th>Total Gasto (R$)</th>
+                    <th>Custo Médio / L</th>
+                    <th>Variação</th>
+                </tr></thead>
+                <tbody id="tabelaMensal"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="aba-motoristas" class="aba-conteudo" style="display:none">
+        <h3>Resumo por Motorista</h3>
+        <p class="dica">Comparativo de volume e custo por motorista.</p>
+        <div class="grafico-wrapper">
+            <canvas id="graficoMotoristas" height="280"></canvas>
+        </div>
+        <div class="tabela-container" style="margin-top:16px">
+            <table>
+                <thead><tr>
+                    <th>Motorista</th>
+                    <th>Nº Viagens</th>
+                    <th>Total Litros (L)</th>
+                    <th>Total Gasto (R$)</th>
+                    <th>Custo Médio / L</th>
+                    <th>% do Total</th>
+                </tr></thead>
+                <tbody id="tabelaMotoristas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="aba-veiculos" class="aba-conteudo" style="display:none">
+        <h3>Resumo por Veículo</h3>
+        <p class="dica">Comparativo de volume e custo por placa.</p>
+        <div class="grafico-wrapper">
+            <canvas id="graficoVeiculos" height="280"></canvas>
+        </div>
+        <div class="tabela-container" style="margin-top:16px">
+            <table>
+                <thead><tr>
+                    <th>Placa</th>
+                    <th>Nº Viagens</th>
+                    <th>Total Litros (L)</th>
+                    <th>Total Gasto (R$)</th>
+                    <th>Custo Médio / L</th>
+                    <th>% do Total</th>
+                </tr></thead>
+                <tbody id="tabelaVeiculos"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="aba-combustivel" class="aba-conteudo" style="display:none">
+        <h3>Resumo por Tipo de Combustível</h3>
+        <p class="dica">Volume, custo e preço médio por tipo de combustível.</p>
+        <div class="grafico-wrapper">
+            <canvas id="graficoCombustivel" height="280"></canvas>
+        </div>
+        <div class="tabela-container" style="margin-top:16px">
+            <table>
+                <thead><tr>
+                    <th>Combustível</th>
+                    <th>Nº Notas</th>
+                    <th>Total Litros (L)</th>
+                    <th>Total Gasto (R$)</th>
+                    <th>Preço Médio / L</th>
+                    <th>Mín / Máx (R$/L)</th>
+                </tr></thead>
+                <tbody id="tabelaCombustivel"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="aba-comparativo" class="aba-conteudo" style="display:none">
+        <h3>Comparativo Mês a Mês</h3>
+        <p class="dica">Evolução do custo médio por litro ao longo dos meses.</p>
+        <div class="grafico-wrapper">
+            <canvas id="graficoComparativo" height="300"></canvas>
+        </div>
+        <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
+        <div class="tabela-container" style="margin-top:16px">
+            <table>
+                <thead><tr>
+                    <th>Mês</th>
+                    <th>Custo Médio / L</th>
+                    <th>vs. mês anterior</th>
+                    <th>Total Litros</th>
+                    <th>Total Gasto</th>
+                </tr></thead>
+                <tbody id="tabelaComparativo"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SISTEMA ===================== -->
+<div id="sistema" class="tela">
+    <h2>Sistema — Backup & Manutenção</h2>
+
+    <div class="sistema-secao">
+        <h3>Backup dos Dados</h3>
+        <p class="dica">
+            O sistema armazena os dados no <strong>localStorage</strong> do seu navegador.
+            Faça backups regularmente para não perder dados se limpar o navegador.
+        </p>
+        <div class="sistema-acoes">
+            <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
+            <div class="campo" style="max-width:360px; margin-top:12px">
+                <label>Restaurar a partir de backup (.json)</label>
+                <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Backups automáticos — Melhoria 3 -->
+    <div class="sistema-secao">
+        <h3>Backups Automáticos</h3>
+        <p class="dica">O sistema salva automaticamente uma cópia dos seus dados a cada 3 dias. Os últimos 3 backups automáticos são mantidos.</p>
+        <div id="listaBackupsAuto"></div>
+        <button class="btn-secundario" style="margin-top:8px" onclick="renderBackupsAuto()">Atualizar lista</button>
+    </div>
+
+    <div class="sistema-secao">
+        <h3>Informações do Sistema</h3>
+        <div id="infoSistema" class="info-sistema"></div>
+        <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
+    </div>
+
+    <div class="sistema-secao zona-perigo">
+        <h3 class="dica" style="color: var(--danger)">
+            <strong>Atenção!</strong> As ações abaixo são irreversíveis. Faça um backup antes de continuar.
+        </h3>
+        <div class="sistema-acoes">
+            <button class="btn-reset" onclick="resetSeguro()">Apagar Todos os Dados</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== ÁREA DE IMPRESSÃO ===================== -->
+<div id="areaImpressao" class="area-impressao">
+    <div class="impressao-cabecalho">
+        <h1>Controle de Entradas de Combustível</h1>
+        <p id="impressaoTitulo"></p>
+        <p id="impressaoData"></p>
+    </div>
+    <div id="impressaoConteudo"></div>
+</div>
+
+<!-- ===================== MODAL DE EDIÇÃO ===================== -->
+<div id="modalOverlay" class="modal-overlay" style="display:none" onclick="fecharModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3 id="modalTitulo">Editar</h3>
+        <div class="campo">
+            <label id="modalLabel">Nome</label>
+            <input id="modalInput" placeholder="">
+        </div>
+        <div class="campo" id="modalCampoPerdaWrapper" style="display:none">
+            <label>% Perda Tolerada</label>
+            <input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">
+        </div>
+        <div class="modal-acoes">
+            <button class="btn-primario" onclick="confirmarEdicao()">Salvar</button>
+            <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="app.js"></script>
+<script src="cadastros.js"></script>
+<script src="lancamentos.js"></script>
+<script src="relatorios.js"></script>
+<script src="analitico.js"></script>
+<script src="dashboard.js"></script>
+<script src="estoque.js"></script>
+<script src="fretes.js"></script>
+<script src="sistema.js"></script>
+
+</body>
+</html>
