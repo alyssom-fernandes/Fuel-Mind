@@ -256,7 +256,6 @@ function setEmpresaFiltro(nome) {
             case "analitico":   if (typeof carregarAnalitico === 'function') carregarAnalitico(); break;
             case "fretes":      carregarFretes();    break;
             case "historico":   carregarHistorico(); break;
-            case "estoque":     carregarEstoque();   break;
         }
     }
 }
@@ -378,12 +377,8 @@ const DB_PADRAO = {
     empresas:      [],
     combustiveis:  [],
     lancamentos:   [],
-    medicoes:      {},
-    estoqueInicial:{},
-    estoqueEmpresas:{},
     taxasFrete:    {},
     bases:         [],
-    tanques:       [],
     configRelatorio: {
         titulo: "Controle de Entradas de Combustível",
         mostrarBase: true,
@@ -436,7 +431,7 @@ function _hashStr(str) {
  * agenda um save debounced para o Firestore.
  *
  * O debounce de 600ms agrupa chamadas em rápida sucessão — por exemplo,
- * edições consecutivas no estoque — em um único `setDoc`, evitando
+ * edições consecutivas em cadastros — em um único `setDoc`, evitando
  * writes excessivos no Firestore.
  *
  * Se o Firebase não estiver disponível, marca `_pendentesSincronizacao`
@@ -638,7 +633,6 @@ function _ligarListenerTempoReal() {
             if (id === "dashboard")  carregarDashboard();
             if (id === "relatorios") carregarRelatorio();
             if (id === "analitico")  { if (typeof carregarAnalitico === 'function') carregarAnalitico(); }
-            if (id === "estoque")    carregarEstoque();
             if (id === "fretes")     carregarFretes();
             if (["motoristas","veiculos","empresas","combustiveis","cadastros"].includes(id)) atualizarListas();
         }
@@ -665,10 +659,9 @@ function _ligarListenerTempoReal() {
  *
  * Regras de mesclagem por tipo de campo:
  * - Arrays (`motoristas`, `veiculos`, `empresas`, `combustiveis`, `lancamentos`,
- *   `bases`, `tanques`): substituídos integralmente se `dados` tiver array
+ *   `bases`): substituídos integralmente se `dados` tiver array
  *   válido; senão mantém array vazio do padrão.
- * - Objetos (`medicoes`, `estoqueInicial`, `taxasFrete`, `estoqueEmpresas`):
- *   copiados em profundidade se presentes; senão mantém `{}`.
+ * - Objetos (`taxasFrete`): copiados em profundidade se presentes; senão mantém `{}`.
  * - `configRelatorio`: merge superficial (`Object.assign`) com o padrão,
  *   preservando configurações parcialmente salvas.
  *
@@ -685,11 +678,11 @@ function _mesclarComPadrao(dados) {
     const resultado = JSON.parse(JSON.stringify(DB_PADRAO));
     if (!dados || typeof dados !== 'object') return resultado;
 
-    ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases','tanques'].forEach(campo => {
+    ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases'].forEach(campo => {
         if (Array.isArray(dados[campo])) resultado[campo] = dados[campo];
     });
 
-    ['medicoes','estoqueInicial','taxasFrete','estoqueEmpresas'].forEach(campo => {
+    ['taxasFrete'].forEach(campo => {
         if (dados[campo] && typeof dados[campo] === 'object') {
             resultado[campo] = JSON.parse(JSON.stringify(dados[campo]));
         }
@@ -698,9 +691,6 @@ function _mesclarComPadrao(dados) {
     if (dados.configRelatorio && typeof dados.configRelatorio === 'object') {
         resultado.configRelatorio = Object.assign({}, DB_PADRAO.configRelatorio, dados.configRelatorio);
     }
-
-    // Preserva flags de migração para que scripts de migração one-time não reexecutem
-    if (dados._estoqueV2Migrado === true) resultado._estoqueV2Migrado = true;
 
     return resultado;
 }
@@ -803,12 +793,6 @@ function toggleModoEscuro() {
         ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     localStorage.setItem("tema", novo);
-    requestAnimationFrame(() => {
-        if (typeof estoqueAbaAtiva !== "undefined" && estoqueAbaAtiva &&
-            document.getElementById("estoque")?.style.display !== "none") {
-            estoqueRenderGrafico(estoqueAbaAtiva);
-        }
-    });
 }
 
 function _hexParaRGB(hex) {
@@ -915,7 +899,7 @@ async function confirmarSaidaFormulario() {
  * - Atualiza o highlight da sidebar removendo `.ativa` de todos os
  *   `sidebar-item` e adicionando em `nav-{id}`.
  * - Chama a função de inicialização correspondente à tela (ex:
- *   `carregarDashboard`, `carregarEstoque`, `carregarAnalitico`).
+ *   `carregarDashboard`, `carregarAnalitico`).
  *
  * @param {string} id - ID do elemento HTML da tela destino
  * @returns {Promise<void>}
@@ -936,7 +920,6 @@ async function mostrarTela(id) {
     if (id === "usuarios")     { if (typeof carregarUsuarios === 'function') carregarUsuarios(); }
     if (id === "dashboard")    carregarDashboard();
     if (id === "relatorios")   carregarRelatorio();
-    if (id === "estoque")      carregarEstoque();
     if (id === "fretes")       carregarFretes();
     if (id === "conferencia")  { if (typeof iniciarConferencia === 'function') iniciarConferencia(); }
     if (id === "lancamentos") {

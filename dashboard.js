@@ -7,7 +7,6 @@
   - Alertas clicáveis com opção de ignorar
   - Notificações push para alertas críticos
   - Gráfico de pizza (distribuição de gastos por combustível)
-  - Alerta de capacidade de tanque ultrapassada (confirmável)
 =================================================*/
 
 let dashAbaAtiva = null;
@@ -195,22 +194,6 @@ function carregarDashboard() {
         }).join('');
 }
 
-// ─── Alertas de capacidade ignorados (separado dos alertas normais) ──────────
-// Usa chave diferente para não conflitar com alertasIgnorados() existente
-function _capIgnoradosKey() { return '_capAlertasIgnorados'; }
-
-function _capIgnorados() {
-    try {
-        return JSON.parse(localStorage.getItem(_capIgnoradosKey()) || '{}');
-    } catch { return {}; }
-}
-
-function _ignorarCapAlerta(chave) {
-    const map = _capIgnorados();
-    map[chave] = true;
-    localStorage.setItem(_capIgnoradosKey(), JSON.stringify(map));
-}
-
 function _renderAlertas(lancamentosMes) {
     const cfg       = configAlertas();
     const ignorados = alertasIgnorados();
@@ -310,76 +293,8 @@ function _renderAlertas(lancamentosMes) {
         }
     });
 
-    // ── ALERTAS DE CAPACIDADE DE TANQUE ──────────────────────────────────────
-    // Verifica se o estoque calculado de qualquer dia recente ultrapassa a
-    // capacidade total dos tanques. Usa localStorage com chave própria para
-    // que o usuário possa confirmar/sumir sem afetar os outros alertas.
-    if (typeof capacidadeTotalCombustivel === 'function' && db.estoqueEmpresas) {
-        const capIgnorados = _capIgnorados();
-        const empresa = empresaFiltroGlobal;
-        if (empresa) {
-            const combustiveis = db.combustiveis.filter(c => c.ativo !== false);
-            combustiveis.forEach(c => {
-                const combData = db.estoqueEmpresas?.[empresa]?.[c.nome];
-                if (!combData) return;
-                const perdaPct = c.perda ?? 0;
-                // Itera todas as datas registradas, ordena para calcular progressivamente
-                const datas = Object.keys(combData)
-                    .filter(d => !d.startsWith('_'))
-                    .sort();
-                if (datas.length === 0) return;
-
-                // Para não recalcular tudo do zero, pega a primeira data e acumula
-                const dataInicio = datas[0];
-                let prev = (typeof calcularEstoqueAteData === 'function')
-                    ? calcularEstoqueAteData(empresa, c.nome, dataInicio, perdaPct)
-                    : 0;
-
-                datas.forEach(data => {
-                    const entrada = (typeof calcularEntradaDia === 'function')
-                        ? calcularEntradaDia(empresa, c.nome, data)
-                        : 0;
-                    const med = combData[data] || {};
-                    const saida = med.saida ?? 0;
-                    const evapPctDia = med.evapPct ?? null;
-                    const evapPct = evapPctDia !== null ? evapPctDia : perdaPct;
-                    const evap = prev > 0 ? prev * (evapPct / 100) : 0;
-                    const calc = prev + entrada - saida - evap;
-                    prev = calc;
-
-                    const capacidade = capacidadeTotalCombustivel(c.nome, data);
-                    if (capacidade > 0 && calc > capacidade) {
-                        // Chave única por empresa+comb+data — soma excedente
-                        const chave = `cap|${empresa}|${c.nome}|${data}`;
-                        if (!capIgnorados[chave]) {
-                            const excedente = calc - capacidade;
-                            alertas.push({
-                                tipo: 'capacidade',
-                                chave,
-                                icone: '',
-                                cor: 'laranja',
-                                titulo: `Capacidade ultrapassada — ${c.nome}`,
-                                msg: `Em <strong>${formatarData(data)}</strong>: estoque calculado ` +
-                                     `<strong>${fmtL3(calc)}</strong> supera a capacidade dos tanques ` +
-                                     `<strong>${fmtL3(capacidade)}</strong> ` +
-                                     `(+${fmtL3(excedente)}). ` +
-                                     `Pode ser descarga parcial registrada neste dia.`,
-                                _empresa: empresa,
-                                _comb: c.nome,
-                                _data: data,
-                                confirmarLabel: 'Ciente — é descarga parcial',
-                                _capAlerta: true
-                            });
-                        }
-                    }
-                });
-            });
-        }
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
     alertas.forEach(a => {
-        if (!a._capAlerta && !ignorados[a.chave]) {
+        if (!ignorados[a.chave]) {
             dispararNotificacao(
                 `Fuel Mind: ${a.titulo}`,
                 a.notificacao,
@@ -396,25 +311,19 @@ function _renderAlertas(lancamentosMes) {
     }
 
     el.innerHTML = alertas.map(a => {
-        const { icone, cor, titulo, msg, chave, id, confirmarLabel, _capAlerta, _empresa, _comb, _data } = a;
-        const onclickCorpo = _capAlerta
-            ? `irParaEstoqueDia('${(_empresa||'').replace(/'/g,"\\'")}','${(_comb||'').replace(/'/g,"\\'")}','${_data||''}')`
-            : `editarLancamento('${id}')`;
-        const tituloLink = _capAlerta ? 'Clique para ver no estoque' : 'Clique para editar o lançamento';
+        const { icone, cor, titulo, msg, chave, id, confirmarLabel } = a;
         return `
         <div class="alerta-card alerta-card--${cor} alerta-clicavel">
             <div class="alerta-corpo"
-                 onclick="${onclickCorpo}"
-                 title="${tituloLink}"
+                 onclick="editarLancamento('${id}')"
+                 title="Clique para editar o lançamento"
                  style="cursor:pointer">
                 ${icone} <strong class="alerta-titulo">${titulo}</strong> —
                 <span class="alerta-msg">${msg}</span>
                 <span class="alerta-link">Ver →</span>
             </div>
             <button class="alerta-ignorar"
-                    onclick="${_capAlerta
-                        ? `_ignorarCapAlerta('${chave}'); carregarDashboard();`
-                        : `ignorarAlerta('${chave}'); carregarDashboard();`}"
+                    onclick="ignorarAlerta('${chave}'); carregarDashboard();"
                     title="Marcar como verificado e não exibir mais">
                 ✓ ${confirmarLabel || 'Confirmar'}
             </button>

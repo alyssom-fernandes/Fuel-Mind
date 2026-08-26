@@ -13,7 +13,6 @@ const TITULOS_TELAS = {
     relatorios:   "Relatórios",
     historico:    "Histórico",
     analitico:    "Analítico",
-    estoque:      "Estoque",
     fretes:       "Fretes",
     importacao:   "Importar Planilha",
     cadastros:    "Cadastros",
@@ -116,7 +115,7 @@ window._uiNavHook = function(telaId) {
 
 /* ========== ABAS DOS CADASTROS UNIFICADOS ========== */
 function trocarAbaCadastro(aba, btnEl) {
-    ["motoristas","veiculos","empresas","combustiveis","bases","tanques","conjuntos"].forEach(a => {
+    ["motoristas","veiculos","empresas","combustiveis","bases","conjuntos"].forEach(a => {
         const el = document.getElementById("cad-" + a);
         if (el) el.style.display = "none";
     });
@@ -135,11 +134,6 @@ function trocarAbaCadastro(aba, btnEl) {
                 b.classList.add("ativa");
             }
         });
-    }
-
-    if (aba === "tanques" && typeof renderFormNovoTanque === "function") {
-        renderFormNovoTanque();
-        renderListaTanques();
     }
 
     atualizarListas();
@@ -234,57 +228,6 @@ function irParaLancamento(id) {
     if (typeof editarLancamento === 'function') {
         editarLancamento(id);
     }
-}
-
-/* ========== NAVEGAÇÃO DIRETA AO DIA NO ESTOQUE ========== */
-/**
- * Navega para a tela de Estoque, troca para o combustível correto e
- * faz scroll até o dia especificado.
- *
- * Se a empresa do registro for diferente da empresa ativa na sessão,
- * troca a empresa antes de navegar.
- *
- * @param {string} empresa - Nome da empresa
- * @param {string} comb    - Nome do combustível (aba do estoque)
- * @param {string} data    - Data no formato `"YYYY-MM-DD"`
- */
-function irParaEstoqueDia(empresa, comb, data) {
-    if (!data) return;
-    if (empresa && empresa !== empresaFiltroGlobal) {
-        if (typeof setEmpresaFiltro === 'function') setEmpresaFiltro(empresa);
-    }
-    mostrarTela('estoque');
-    setTimeout(() => {
-        if (typeof trocarAbaEstoque === 'function') {
-            trocarAbaEstoque(comb);
-            document.querySelectorAll('#estoqueAbas .aba-btn').forEach(btn => {
-                btn.classList.toggle('ativa', btn.textContent.trim().startsWith(comb));
-            });
-        }
-        const dtAlvo = new Date(data + 'T00:00:00');
-        const dtInicio = new Date(dtAlvo); dtInicio.setDate(dtInicio.getDate() - 7);
-        const dtFim    = new Date(dtAlvo); dtFim.setDate(dtFim.getDate() + 3);
-        const iI = document.getElementById('estoqueDataInicio');
-        const iF = document.getElementById('estoqueDataFim');
-        if (iI) iI.value = dtInicio.toISOString().slice(0, 10);
-        if (iF) iF.value = dtFim.toISOString().slice(0, 10);
-        if (typeof aplicarFiltrosEstoque === 'function') aplicarFiltrosEstoque();
-        setTimeout(() => {
-            const linhas = document.querySelectorAll('#tabelaEstoque tbody tr');
-            const dataFormatada = typeof formatarData === 'function' ? formatarData(data) : data;
-            let linhaAlvo = null;
-            linhas.forEach(tr => {
-                const tdData = tr.querySelector('td:first-child');
-                if (tdData && tdData.textContent.includes(dataFormatada)) linhaAlvo = tr;
-            });
-            if (linhaAlvo) {
-                linhaAlvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                linhaAlvo.style.transition = 'outline 0.2s';
-                linhaAlvo.style.outline = '2px solid #fb923c';
-                setTimeout(() => { linhaAlvo.style.outline = ''; }, 2500);
-            }
-        }, 200);
-    }, 350);
 }
 
 /* ========== BUSCA GLOBAL ========== */

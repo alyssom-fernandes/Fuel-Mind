@@ -88,8 +88,7 @@ async function resetSeguro() {
     }
     db = {
         motoristas: [], veiculos: [], empresas: [], combustiveis: [],
-        lancamentos: [], bases: [], medicoes: {}, estoqueInicial: {},
-        estoqueEmpresas: {}, taxasFrete: {}, configRelatorio: db.configRelatorio
+        lancamentos: [], bases: [], taxasFrete: {}, configRelatorio: db.configRelatorio
     };
     salvarDB(); atualizarListas(); atualizarInfoSistema();
     if (window._firestore && typeof _ligarListenerTempoReal === 'function') _ligarListenerTempoReal();
@@ -562,7 +561,7 @@ async function _migrarLogoLegada(base64, empresa) {
 */
 
 /* ========================================
-   CONFERÊNCIA — AUTOSYSTEM + VEEDER ROOT
+   CONFERÊNCIA — AUTOSYSTEM
 ======================================== */
 let _confAbaAtiva = 'autosystem';
 
@@ -613,7 +612,7 @@ function autosystemLerArquivo(input) {
 }
 
 function _autosystemDetectarEProcessar() {
-    let idxData = 0, idxEntrada = 3, idxSaidaBombas = 7;
+    let idxData = 0, idxEntrada = 3;
     let cabIdx = -1;
     for (let i = 0; i < Math.min(_autoLinhas.length, 15); i++) {
         const row = _autoLinhas[i];
@@ -621,9 +620,8 @@ function _autosystemDetectarEProcessar() {
         if (txt.some(c => c.includes('entrada')) && txt.some(c => c.includes('data'))) {
             cabIdx = i;
             txt.forEach((c, idx) => {
-                if (c === 'data')                            idxData        = idx;
-                if (c === 'entrada')                         idxEntrada     = idx;
-                if (c.includes('bomba') || c === 'bombas')  idxSaidaBombas = idx;
+                if (c === 'data')    idxData    = idx;
+                if (c === 'entrada') idxEntrada = idx;
             });
             break;
         }
@@ -649,7 +647,7 @@ function _autosystemDetectarEProcessar() {
         const ano = y.length === 2 ? '20'+y : y;
         const data = `${ano}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
         const _n = (v) => parseFloat(String(v||'').replace(/\s/g,'').replace(',','.')) || 0;
-        linhasDados.push({ data, entrada: _n(row[idxEntrada]), saidaBombas: _n(row[idxSaidaBombas]) });
+        linhasDados.push({ data, entrada: _n(row[idxEntrada]) });
     });
 
     if (!linhasDados.length) { mostrarToast('Nenhuma linha de dados encontrada no arquivo.', 'aviso'); return; }
@@ -720,7 +718,6 @@ function _autosystemAtualizarTabela() {
         });
 
     let totalAutoEntradas = 0, totalSistemaEntradas = 0, diasComDivergencia = 0;
-    let totalAutoSaidas = 0, totalSistemaSaidas = 0;
     const linhasEntrada = _autoLinhasDados.map(d => {
         const sistemaVal = entradasSistema[d.data] || 0;
         const diff       = sistemaVal - d.entrada;
@@ -728,15 +725,11 @@ function _autosystemAtualizarTabela() {
         if (temDiv) diasComDivergencia++;
         totalAutoEntradas    += d.entrada;
         totalSistemaEntradas += sistemaVal;
-        totalAutoSaidas      += d.saidaBombas || 0;
-        totalSistemaSaidas   += db.estoqueEmpresas?.[empresa]?.[comb]?.[d.data]?.saida || 0;
         return { ...d, sistemaVal, diff, temDiv };
     });
-    const diffTotal      = totalSistemaEntradas - totalAutoEntradas;
-    const diffTotalSaida = totalSistemaSaidas - totalAutoSaidas;
+    const diffTotal = totalSistemaEntradas - totalAutoEntradas;
 
     const resumo = `
-        <div style="margin-bottom:8px;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Entradas</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
             <div class="info-card"><div class="info-card-valor">${fmtL3(totalAutoEntradas)}</div><div class="info-card-label">Entradas AutoSystem</div></div>
             <div class="info-card"><div class="info-card-valor">${fmtL3(totalSistemaEntradas)}</div><div class="info-card-label">Entradas Sistema</div></div>
@@ -750,129 +743,39 @@ function _autosystemAtualizarTabela() {
                     ${diasComDivergencia}
                 </div><div class="info-card-label">Dias com divergência</div>
             </div>
-        </div>
-        <div style="margin-bottom:8px;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Saídas de Bombas</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
-            <div class="info-card"><div class="info-card-valor">${fmtL3(totalAutoSaidas)}</div><div class="info-card-label">Saídas AutoSystem</div></div>
-            <div class="info-card"><div class="info-card-valor">${fmtL3(totalSistemaSaidas)}</div><div class="info-card-label">Saídas Sistema</div></div>
-            <div class="info-card" style="border-left:3px solid ${Math.abs(diffTotalSaida)>1?'var(--danger)':'var(--success)'}">
-                <div class="info-card-valor" style="color:${Math.abs(diffTotalSaida)>1?'var(--danger)':'var(--success)'}">
-                    ${diffTotalSaida>0?'+':''}${fmtL3(diffTotalSaida)}
-                </div><div class="info-card-label">Diferença Saídas</div>
-            </div>
         </div>`;
 
     container.innerHTML = `
         ${resumo}
-        <div class="analitico-abas" style="margin-bottom:16px">
-            <button class="aba-btn ativa" id="_btnAutoEntradas" onclick="_autoMudarAba('entradas')">Entradas</button>
-            <button class="aba-btn" id="_btnAutoSaidas" onclick="_autoMudarAba('saidas')">Saídas de Bombas</button>
-        </div>
-        <div id="_autoAbaEntradas">
-            <p class="dica" style="margin-bottom:10px">
-                Comparação entre as entradas registradas no AutoSystem e os lançamentos do sistema.
-                ${Math.abs(diffTotal)>1
-                    ? `<strong style="color:var(--danger)">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
-                    : `<strong style="color:var(--success)">Total do período confere.</strong>`}
-            </p>
-            <div class="tabela-container"><table>
-                <thead><tr><th>Data</th><th>Entrada AutoSystem (L)</th><th>Entrada Sistema (L)</th><th>Diferença (L)</th></tr></thead>
-                <tbody>
-                    ${linhasEntrada.map(l => `
-                    <tr style="${l.temDiv?'background:rgba(239,68,68,0.06)':l.entrada===0&&l.sistemaVal===0?'opacity:0.5':''}">
-                        <td><strong>${formatarData(l.data)}</strong></td>
-                        <td>${l.entrada>0?fmtL3(l.entrada):'—'}</td>
-                        <td>${l.sistemaVal>0?fmtL3(l.sistemaVal):'—'}</td>
-                        <td>${l.temDiv
-                            ? `<span style="color:${l.diff>0?'var(--success)':'var(--danger)'}">${l.diff>0?'+':''}${fmtL3(l.diff)}</span>`
-                            : (l.entrada>0||l.sistemaVal>0)?'<span style="color:var(--success)">OK</span>':'—'
-                        }</td>
-                    </tr>`).join('')}
-                    <tr style="font-weight:700;border-top:2px solid var(--border)">
-                        <td>TOTAL</td><td>${fmtL3(totalAutoEntradas)}</td><td>${fmtL3(totalSistemaEntradas)}</td>
-                        <td style="color:${Math.abs(diffTotal)>1?'var(--danger)':'var(--success)'}">${diffTotal>0?'+':''}${fmtL3(diffTotal)}</td>
-                    </tr>
-                </tbody>
-            </table></div>
-        </div>
-        <div id="_autoAbaSaidas" style="display:none">
-            <p class="dica" style="margin-bottom:10px">Saídas de bombas registradas no AutoSystem por dia.</p>
-            <div class="tabela-container"><table>
-                <thead><tr><th>Data</th><th>Saída Bombas AutoSystem (L)</th><th>Saída no Estoque do Sistema (L)</th><th>Ação</th></tr></thead>
-                <tbody>
-                    ${_autoLinhasDados.map(l => {
-                        const saidaSistema = db.estoqueEmpresas?.[empresa]?.[comb]?.[l.data]?.saida || 0;
-                        const temSaida = saidaSistema > 0;
-                        return `<tr>
-                            <td><strong>${formatarData(l.data)}</strong></td>
-                            <td>${fmtL3(l.saidaBombas)}</td>
-                            <td>${temSaida?fmtL3(saidaSistema):'<span style="color:var(--text-muted)">Não lançada</span>'}</td>
-                            <td>${!temSaida&&l.saidaBombas>0
-                                ?`<button class="btn-primario" style="font-size:0.75rem;padding:4px 10px" onclick="_autoLancarSaida('${empresa}','${comb}','${l.data}',${l.saidaBombas})">↓ Usar este valor</button>`
-                                :temSaida?'<span style="color:var(--success);font-size:0.8rem">Lançada</span>':'—'
-                            }</td>
-                        </tr>`;
-                    }).join('')}
-                    <tr style="font-weight:700;border-top:2px solid var(--border)">
-                        <td>TOTAL</td>
-                        <td>${fmtL3(totalAutoSaidas)}</td>
-                        <td>${fmtL3(totalSistemaSaidas)}</td>
-                        <td style="color:${Math.abs(diffTotalSaida)>1?'var(--danger)':'var(--success)'}">
-                            ${diffTotalSaida>0?'+':''}${fmtL3(diffTotalSaida)}
-                            ${Math.abs(diffTotalSaida)<=1?'<span style="font-size:0.8rem"> OK</span>':''}
-                        </td>
-                    </tr>
-                </tbody>
-            </table></div>
-            <div style="margin-top:14px">
-                <button class="btn-primario" onclick="_autoLancarTodasSaidas('${empresa}','${comb}')">↓ Lançar todas as saídas não preenchidas</button>
-                <span class="dica" style="margin-left:10px;font-size:0.8rem">Só preenche dias sem saída e com mês aberto.</span>
-            </div>
-        </div>
+        <p class="dica" style="margin-bottom:10px">
+            Comparação entre as entradas registradas no AutoSystem e os lançamentos do sistema.
+            ${Math.abs(diffTotal)>1
+                ? `<strong style="color:var(--danger)">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
+                : `<strong style="color:var(--success)">Total do período confere.</strong>`}
+        </p>
+        <div class="tabela-container"><table>
+            <thead><tr><th>Data</th><th>Entrada AutoSystem (L)</th><th>Entrada Sistema (L)</th><th>Diferença (L)</th></tr></thead>
+            <tbody>
+                ${linhasEntrada.map(l => `
+                <tr style="${l.temDiv?'background:rgba(239,68,68,0.06)':l.entrada===0&&l.sistemaVal===0?'opacity:0.5':''}">
+                    <td><strong>${formatarData(l.data)}</strong></td>
+                    <td>${l.entrada>0?fmtL3(l.entrada):'—'}</td>
+                    <td>${l.sistemaVal>0?fmtL3(l.sistemaVal):'—'}</td>
+                    <td>${l.temDiv
+                        ? `<span style="color:${l.diff>0?'var(--success)':'var(--danger)'}">${l.diff>0?'+':''}${fmtL3(l.diff)}</span>`
+                        : (l.entrada>0||l.sistemaVal>0)?'<span style="color:var(--success)">OK</span>':'—'
+                    }</td>
+                </tr>`).join('')}
+                <tr style="font-weight:700;border-top:2px solid var(--border)">
+                    <td>TOTAL</td><td>${fmtL3(totalAutoEntradas)}</td><td>${fmtL3(totalSistemaEntradas)}</td>
+                    <td style="color:${Math.abs(diffTotal)>1?'var(--danger)':'var(--success)'}">${diffTotal>0?'+':''}${fmtL3(diffTotal)}</td>
+                </tr>
+            </tbody>
+        </table></div>
         <div class="barra-exportacao" style="margin-top:16px">
             <span class="exportacao-titulo">Exportar:</span>
             <button class="btn-export btn-xlsx" onclick="_autoExportarExcel('${comb}')">Excel</button>
         </div>`;
-
-    window._autoMudarAba = (aba) => {
-        document.getElementById('_autoAbaEntradas').style.display = aba==='entradas'?'block':'none';
-        document.getElementById('_autoAbaSaidas').style.display   = aba==='saidas'?'block':'none';
-        document.getElementById('_btnAutoEntradas').classList.toggle('ativa', aba==='entradas');
-        document.getElementById('_btnAutoSaidas').classList.toggle('ativa', aba==='saidas');
-    };
-}
-
-function _autoLancarSaida(empresa, comb, data, valor) {
-    if (typeof mesFechado === 'function' && mesFechado(empresa, comb, data.slice(0,7))) {
-        mostrarToast(`Mês ${data.slice(0,7)} fechado — não é possível lançar.`, 'aviso'); return;
-    }
-    if (!db.estoqueEmpresas) db.estoqueEmpresas = {};
-    if (!db.estoqueEmpresas[empresa]) db.estoqueEmpresas[empresa] = {};
-    if (!db.estoqueEmpresas[empresa][comb]) db.estoqueEmpresas[empresa][comb] = {};
-    if (!db.estoqueEmpresas[empresa][comb][data]) db.estoqueEmpresas[empresa][comb][data] = {};
-    db.estoqueEmpresas[empresa][comb][data].saida = valor;
-    salvarDB(); _autosystemAtualizarTabela();
-    mostrarToast(`Saída de ${fmtL3(valor)} L lançada para ${formatarData(data)}.`, 'sucesso');
-}
-
-async function _autoLancarTodasSaidas(empresa, comb) {
-    if (!await fmConfirm({ titulo: `Lançar saídas Autosystem — ${comb}?`, msg: `Empresa: ${empresa}\n\nSó serão preenchidos dias sem saída e com mês aberto.`, confirmTxt: "Lançar", tipo: "aviso" })) return;
-    let count = 0;
-    _autoLinhasDados.forEach(l => {
-        if (l.saidaBombas <= 0) return;
-        if (typeof mesFechado === 'function' && mesFechado(empresa, comb, l.data.slice(0,7))) return;
-        const atual = db.estoqueEmpresas?.[empresa]?.[comb]?.[l.data]?.saida || 0;
-        if (atual > 0) return;
-        if (!db.estoqueEmpresas) db.estoqueEmpresas = {};
-        if (!db.estoqueEmpresas[empresa]) db.estoqueEmpresas[empresa] = {};
-        if (!db.estoqueEmpresas[empresa][comb]) db.estoqueEmpresas[empresa][comb] = {};
-        if (!db.estoqueEmpresas[empresa][comb][l.data]) db.estoqueEmpresas[empresa][comb][l.data] = {};
-        db.estoqueEmpresas[empresa][comb][l.data].saida = l.saidaBombas;
-        count++;
-    });
-    if (count === 0) { mostrarToast('Nenhuma saída nova para lançar.', 'info'); return; }
-    salvarDB(); _autosystemAtualizarTabela();
-    mostrarToast(`${count} saída(s) lançada(s) no estoque.`, 'sucesso');
 }
 
 function _autoExportarExcel(comb) {
@@ -887,399 +790,12 @@ function _autoExportarExcel(comb) {
         });
     const wb = XLSX.utils.book_new();
     const rows = [
-        ['Data','Entrada AutoSystem (L)','Entrada Sistema (L)','Diferença (L)','Saída Bombas (L)'],
-        ..._autoLinhasDados.map(l => { const s=entradasSistema[l.data]||0; return [l.data,l.entrada,s,s-l.entrada,l.saidaBombas]; })
+        ['Data','Entrada AutoSystem (L)','Entrada Sistema (L)','Diferença (L)'],
+        ..._autoLinhasDados.map(l => { const s=entradasSistema[l.data]||0; return [l.data,l.entrada,s,s-l.entrada]; })
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'AutoSystem');
     XLSX.writeFile(wb, `conferencia-autosystem-${new Date().toISOString().slice(0,10)}.xlsx`);
     mostrarToast('Excel exportado!', 'sucesso');
-}
-
-/* ── VEEDER ROOT ── */
-let _veederDados = {}; // { "Diesel S-10": [ { data, volume, tanque } ] }
-
-function veederLerArquivo(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['xlsx','xls','csv','txt'].includes(ext)) {
-        mostrarToast('Selecione um arquivo .xlsx, .xls, .csv ou .txt', 'aviso', 4000);
-        input.value = ''; return;
-    }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            if (['csv','txt'].includes(ext)) {
-                const linhas = e.target.result.split(/\r?\n/).map(l => l.split(/\t|;/));
-                _veederProcessar(linhas);
-            } else {
-                const wb = XLSX.read(e.target.result, { type: 'binary', raw: true });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
-                _veederProcessar(linhas);
-            }
-            mostrarToast(`"${file.name}" lido com sucesso`, 'sucesso');
-        } catch(err) {
-            mostrarToast('Erro ao ler o arquivo: ' + err.message, 'erro', 5000);
-        }
-        input.value = '';
-    };
-    if (['csv','txt'].includes(ext)) reader.readAsText(file, 'UTF-8');
-    else reader.readAsBinaryString(file);
-}
-
-function _veederNormalizarComb(raw) {
-    const n = String(raw).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-    if (n.includes('s 10') || n.includes('s-10') || n.includes('s10'))
-        return db.combustiveis.find(c => /s.?10/i.test(c.nome))?.nome || 'Diesel S-10';
-    if (n.includes('s 500') || n.includes('s-500') || n.includes('s500'))
-        return db.combustiveis.find(c => /s.?500/i.test(c.nome))?.nome || 'Diesel S-500';
-    if (n.includes('diesel'))
-        return db.combustiveis.find(c => c.nome.toLowerCase().includes('diesel'))?.nome || 'Diesel';
-    if (n.includes('gasolina') && (n.includes('v') || n.includes('premium') || n.includes('aditi')))
-        return db.combustiveis.find(c => /v.?power|vpower|premium|aditi/i.test(c.nome))?.nome || 'Gasolina VP';
-    if (n.includes('gasolina') && (n.includes('com') || n.includes('reg')))
-        return db.combustiveis.find(c => /comum|regular/i.test(c.nome))?.nome || 'Gasolina Comum';
-    if (n.includes('gasolina'))
-        return db.combustiveis.find(c => c.nome.toLowerCase().includes('gasolina'))?.nome || 'Gasolina';
-    if (n.includes('etanol') || n.includes('alcool') || n.includes('álcool'))
-        return db.combustiveis.find(c => /etanol|alcool/i.test(c.nome))?.nome || 'Etanol';
-    const match = db.combustiveis.find(c => {
-        const cn = c.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        return n.split(' ').some(p => p.length > 2 && cn.includes(p));
-    });
-    return match?.nome || String(raw).trim();
-}
-
-/**
- * Processa linhas do arquivo Veeder-Root.
- * Formato esperado:
- *   "Tank N: NOME DO COMBUSTÍVEL"  →  cabeçalho de tanque
- *   linha de cabeçalho de colunas  →  ignorada (contém "Data", "Volume", "Nivel", "Temp"…)
- *   linhas de dados: col0=data, col1=volume
- */
-function _veederLimpar() {
-    _veederDados = {};
-    const res = document.getElementById('_confVeederResultado');
-    if (res) res.innerHTML = '';
-    mostrarToast('Leituras Veeder-Root limpas.', 'info');
-}
-
-function _veederProcessar(linhas) {
-    // NÃO zera _veederDados — acumula dados de múltiplos arquivos (tanque a tanque)
-    let tanqueAtual   = '';
-    let combAtual     = '';
-    let aguardandoCab = false;
-
-    const _serialParaISO = (v) => {
-        const n = typeof v === 'number' ? v : parseFloat(v);
-        if (!isNaN(n) && n > 40000 && n < 50000) {
-            const d = new Date(Math.round((n - 25569) * 86400000));
-            return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
-        }
-        return null;
-    };
-
-    const _parseData = (v) => {
-        if (v === null || v === undefined || v === '') return null;
-        const iso = _serialParaISO(v);
-        if (iso) return iso;
-        const s = String(v).trim();
-        const mISO = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (mISO) return `${mISO[1]}-${mISO[2]}-${mISO[3]}`;
-        const mBR = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-        if (mBR) {
-            const y = mBR[3].length === 2 ? '20' + mBR[3] : mBR[3];
-            return `${y}-${mBR[2].padStart(2,'0')}-${mBR[1].padStart(2,'0')}`;
-        }
-        return null;
-    };
-
-    for (const row of linhas) {
-        const cel0 = String(row[0] || '').trim();
-        if (!cel0) continue;
-
-        // Detecta "Tank N: NOME DO COMBUSTÍVEL"
-        const mTank = cel0.match(/^tank\s*(\d+)\s*:\s*(.+)/i);
-        if (mTank) {
-            tanqueAtual   = `Tank ${mTank[1]}`;
-            combAtual     = _veederNormalizarComb(mTank[2]);
-            aguardandoCab = true;
-            if (!_veederDados[combAtual]) _veederDados[combAtual] = [];
-            continue;
-        }
-
-        // Pula linha de cabeçalho de colunas (logo após o Tank)
-        if (aguardandoCab) {
-            const txt = cel0.toLowerCase();
-            if (txt.includes('data') || txt.includes('volume') || txt.includes('nivel') ||
-                txt.includes('nível') || txt.includes('temp')) {
-                aguardandoCab = false;
-                continue;
-            }
-        }
-
-        if (!combAtual) continue;
-
-        const data = _parseData(row[0]);
-        if (!data) continue;
-
-        const volume = parseFloat(String(row[1] || '').replace(/\s/g,'').replace(',','.'));
-        if (isNaN(volume) || volume <= 0) continue;
-
-        _veederDados[combAtual].push({ data, volume, tanque: tanqueAtual });
-    }
-
-    // Deduplica por tanque+data (mantém último)
-    Object.keys(_veederDados).forEach(comb => {
-        const visto = new Map();
-        _veederDados[comb].forEach(d => visto.set(`${d.tanque}|${d.data}`, d));
-        _veederDados[comb] = Array.from(visto.values())
-            .sort((a, b) => b.data.localeCompare(a.data) || a.tanque.localeCompare(b.tanque));
-    });
-
-    const total = Object.values(_veederDados).reduce((s, v) => s + v.length, 0);
-    if (!total) {
-        mostrarToast('Nenhuma leitura encontrada. Verifique o formato do arquivo.', 'aviso');
-        return;
-    }
-    _veederRenderizarResultado();
-}
-
-function _veederRenderizarResultado() {
-    const container = document.getElementById('_confVeederResultado');
-    if (!container) return;
-    const combsVeeder = Object.keys(_veederDados).filter(c => _veederDados[c].length > 0);
-    if (!combsVeeder.length) {
-        container.innerHTML = '<p class="dica">Nenhum dado encontrado no arquivo.</p>';
-        return;
-    }
-    const abas = combsVeeder.map((comb, i) => {
-        const combEsc = comb.replace(/'/g, "\\'");
-        return `<button class="aba-btn ${i===0?'ativa':''}" id="_vdrBtn-${i}" onclick="_vdrMudarAba(${i},'${combEsc}')">${comb}</button>`;
-    }).join('');
-    container.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-            <div class="analitico-abas" style="margin-bottom:0">${abas}</div>
-            <button class="btn-secundario" style="font-size:0.78rem;padding:4px 10px;color:var(--danger);border-color:var(--danger)"
-                onclick="_veederLimpar()">✕ Limpar leituras</button>
-        </div>
-        <div id="_vdrConteudo"></div>`;
-    window._vdrMudarAba = (idx, comb) => {
-        document.querySelectorAll('[id^="_vdrBtn-"]').forEach((b, i) => b.classList.toggle('ativa', i === idx));
-        _veederRenderizarComb(comb);
-    };
-    _veederRenderizarComb(combsVeeder[0]);
-}
-
-function _veederRenderizarComb(comb) {
-    const container = document.getElementById('_vdrConteudo');
-    if (!container) return;
-    const empresa  = empresaFiltroGlobal || '';
-    const leituras = _veederDados[comb] || [];
-
-    // Tanques presentes neste combustível, ordenados
-    const tanques = [...new Set(leituras.map(l => l.tanque))].sort();
-
-    // Total por data = soma de todos os tanques
-    const totalPorData = {};
-    leituras.forEach(l => { totalPorData[l.data] = (totalPorData[l.data] || 0) + l.volume; });
-
-    // Datas únicas ordenadas descendente
-    const datas = [...new Set(leituras.map(l => l.data))].sort((a, b) => b.localeCompare(a));
-
-    const combEsc = comb.replace(/'/g, "\'");
-
-    const semPreenchimento = datas.filter(data => {
-        if (typeof mesFechado === 'function' && mesFechado(empresa, comb, data.slice(0, 7))) return false;
-        const v = db.estoqueEmpresas?.[empresa]?.[comb]?.[data]?.veeder;
-        if (v === null || v === undefined) return true;          // nunca preenchido
-        return Math.abs(v - totalPorData[data]) > 0.001;         // preenchido mas diverge do Veeder
-    }).length;
-
-    // Totais gerais do período para o rodapé
-    const totalGeralVeeder  = Object.values(totalPorData).reduce((s, v) => s + v, 0);
-    const totalDiasPreench  = datas.filter(data => db.estoqueEmpresas?.[empresa]?.[comb]?.[data]?.veeder != null).length;
-    const totalGeralEstoque = datas.reduce((s, data) => {
-        const v = db.estoqueEmpresas?.[empresa]?.[comb]?.[data]?.veeder;
-        return s + (v != null ? v : 0);
-    }, 0);
-    const totalGeralDiff    = totalDiasPreench > 0 ? totalGeralVeeder - totalGeralEstoque : null;
-
-    // Totais por tanque para rodapé
-    const totalPorTanque = Object.fromEntries(tanques.map(t => [t, 0]));
-    leituras.forEach(l => { totalPorTanque[l.tanque] = (totalPorTanque[l.tanque] || 0) + l.volume; });
-
-    const thTanques = tanques.map(t => `<th>${t}</th>`).join('');
-
-    const linhasHTML = datas.map(data => {
-        const veederTotal   = totalPorData[data];
-        const veederEstoque = db.estoqueEmpresas?.[empresa]?.[comb]?.[data]?.veeder;
-        const jaPreenchido  = veederEstoque !== null && veederEstoque !== undefined;
-        const fechado       = typeof mesFechado === 'function' && mesFechado(empresa, comb, data.slice(0, 7));
-        const diff          = jaPreenchido ? veederTotal - veederEstoque : null;
-
-        const tdTanques = tanques.map(tanque => {
-            const reg = leituras.find(l => l.data === data && l.tanque === tanque);
-            return `<td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">${reg ? fmtL3(reg.volume) : '—'}</td>`;
-        }).join('');
-
-        // Tooltip customizado por tanque
-        const tipId = `_vdrTip${data.replace(/-/g,'')}`;
-        const tipLinhas = tanques.map(t => {
-            const r = leituras.find(l => l.data === data && l.tanque === t);
-            return `<div style="display:flex;justify-content:space-between;gap:14px">
-                <span style="opacity:0.7">${t}</span>
-                <span style="font-family:'JetBrains Mono',monospace;font-weight:600">${r ? fmtL3(r.volume) : '—'}</span>
-            </div>`;
-        }).join('');
-
-        const tooltipHtml = tanques.length > 1 ? `<span style="position:relative;display:inline-block;vertical-align:middle">
-            <span style="cursor:help;margin-left:5px;font-size:0.72rem;color:var(--primary);opacity:0.7"
-                onmouseenter="document.getElementById('${tipId}').style.display='block'"
-                onmouseleave="document.getElementById('${tipId}').style.display='none'">ⓘ</span>
-            <div id="${tipId}" style="display:none;position:absolute;top:calc(100% + 6px);left:0;
-                background:var(--surface-raised);border:1px solid var(--border);
-                border-radius:8px;padding:10px 14px;font-size:0.78rem;white-space:nowrap;z-index:600;
-                box-shadow:0 6px 20px rgba(0,0,0,0.3);min-width:170px;pointer-events:none">
-                <div style="font-weight:700;margin-bottom:8px;font-size:0.8rem">Leitura por tanque</div>
-                ${tipLinhas}
-            </div>
-        </span>` : '';
-
-        // Estado do dia: sem valor | igual ao Veeder | diverge
-        const diverge = jaPreenchido && Math.abs(veederTotal - veederEstoque) > 0.001;
-        const igual   = jaPreenchido && !diverge;
-
-        // Coluna "Veeder no Estoque": valor + indicador de estado
-        const celulaEstoque = !jaPreenchido
-            ? '<span style="color:var(--text-muted)">—</span>'
-            : igual
-                ? `<span style="font-family:'JetBrains Mono',monospace">${fmtL3(veederEstoque)} <span style="color:var(--success);font-size:0.75rem" title="Idêntico ao Veeder">✓</span></span>`
-                : `<span style="font-family:'JetBrains Mono',monospace;color:var(--warning)">${fmtL3(veederEstoque)}</span>`;
-
-        // Coluna "Ação"
-        let btnAcao = '—';
-        if (!fechado) {
-            if (!jaPreenchido) {
-                btnAcao = `<button class="btn-secundario" style="font-size:0.73rem;padding:3px 8px"
-                    onclick="_veederPreencherUm('${empresa}','${combEsc}','${data}',${veederTotal},${JSON.stringify(Object.fromEntries(tanques.map(t => [t, leituras.find(l=>l.data===data&&l.tanque===t)?.volume||0])))})">↓ Usar total</button>`;
-            } else if (diverge) {
-                btnAcao = `<button class="btn-secundario" style="font-size:0.73rem;padding:3px 8px;border-color:var(--warning);color:var(--warning)"
-                    onclick="_veederPreencherUm('${empresa}','${combEsc}','${data}',${veederTotal},${JSON.stringify(Object.fromEntries(tanques.map(t => [t, leituras.find(l=>l.data===data&&l.tanque===t)?.volume||0])))})">↺ Atualizar</button>`;
-            }
-            // igual: sem botão — já está correto
-        }
-
-        return `<tr style="${fechado ? 'opacity:0.6' : ''}">
-            <td><strong>${formatarData(data)}</strong>${fechado ? '' : ''}</td>
-            ${tdTanques}
-            <td style="font-weight:600;font-family:'JetBrains Mono',monospace;white-space:nowrap">
-                ${fmtL3(veederTotal)}${tooltipHtml}
-            </td>
-            <td>${celulaEstoque}</td>
-            <td>${diff !== null
-                ? `<span style="color:${Math.abs(diff) > 50 ? 'var(--danger)' : 'var(--success)'}">${diff > 0 ? '+' : ''}${fmtL3(diff)}</span>`
-                : (!fechado ? '<span style="color:var(--warning);font-size:0.78rem">Pendente</span>' : '—')
-            }</td>
-            <td>${btnAcao}</td>
-        </tr>`;
-    }).join('');
-
-    // Rodapé totais por tanque
-    const tfootTanques = tanques.map(t =>
-        `<td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;font-weight:700">${fmtL3(totalPorTanque[t])}</td>`
-    ).join('');
-
-    const tfootDiff = totalGeralDiff !== null
-        ? `<span style="color:${Math.abs(totalGeralDiff) > 100 ? 'var(--danger)' : 'var(--success)'}">${totalGeralDiff > 0 ? '+' : ''}${fmtL3(totalGeralDiff)}</span>`
-        : '<span style="color:var(--text-muted)">—</span>';
-
-    const tfootEstoque = totalDiasPreench > 0
-        ? `<span style="font-family:'JetBrains Mono',monospace">${fmtL3(totalGeralEstoque)}</span>`
-        : '<span style="color:var(--text-muted)">—</span>';
-
-    container.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px">
-            <div class="info-card"><div class="info-card-valor">${datas.length}</div><div class="info-card-label">Dias com leitura</div></div>
-            <div class="info-card"><div class="info-card-valor">${tanques.length}</div><div class="info-card-label">Tanques</div></div>
-            <div class="info-card" style="border-left:3px solid ${semPreenchimento > 0 ? 'var(--warning)' : 'var(--success)'}">
-                <div class="info-card-valor" style="color:${semPreenchimento > 0 ? 'var(--warning)' : 'var(--success)'}">${semPreenchimento}</div>
-                <div class="info-card-label">Dias pendentes</div>
-            </div>
-            <div class="info-card" style="border-left:3px solid var(--primary)">
-                <div class="info-card-valor" style="font-size:1rem">${fmtL3(totalGeralVeeder)}</div>
-                <div class="info-card-label">Total do período (L)</div>
-            </div>
-        </div>
-        <p class="dica" style="margin-bottom:12px">
-            Cada coluna mostra o volume por tanque. <strong>Total (L)</strong> = soma de todos os tanques na data — é esse valor que vai para o estoque.
-        </p>
-        <div style="margin-bottom:12px">
-            ${semPreenchimento > 0
-                ? `<button class="btn-primario" onclick="_veederPreencherTodos('${empresa}','${combEsc}')">↓ Aplicar Veeder nos pendentes (${semPreenchimento})</button>`
-                : '<span style="color:var(--success);font-size:0.85rem">Estoque alinhado com Veeder-Root</span>'}
-        </div>
-        <div class="tabela-container"><table>
-            <thead><tr>
-                <th>Data</th>
-                ${thTanques}
-                <th>Total (L)</th>
-                <th>Veeder no Estoque (L)</th>
-                <th>Diferença</th>
-                <th>Ação</th>
-            </tr></thead>
-            <tbody>${linhasHTML}</tbody>
-            <tfoot><tr style="background:var(--surface-raised);font-weight:700;border-top:2px solid var(--border)">
-                <td style="font-size:0.8rem;color:var(--text-muted)">TOTAL</td>
-                ${tfootTanques}
-                <td style="font-family:'JetBrains Mono',monospace">${fmtL3(totalGeralVeeder)}</td>
-                <td>${tfootEstoque}</td>
-                <td>${tfootDiff}</td>
-                <td></td>
-            </tr></tfoot>
-        </table></div>`;
-}
-
-function _veederPreencherUm(empresa, comb, data, volume, tanques) {
-    if (typeof mesFechado === 'function' && mesFechado(empresa, comb, data.slice(0, 7))) {
-        mostrarToast(`Mês ${data.slice(0, 7)} está fechado.`, 'aviso'); return;
-    }
-    if (!db.estoqueEmpresas) db.estoqueEmpresas = {};
-    if (!db.estoqueEmpresas[empresa]) db.estoqueEmpresas[empresa] = {};
-    if (!db.estoqueEmpresas[empresa][comb]) db.estoqueEmpresas[empresa][comb] = {};
-    if (!db.estoqueEmpresas[empresa][comb][data]) db.estoqueEmpresas[empresa][comb][data] = {};
-    db.estoqueEmpresas[empresa][comb][data].veeder = volume;
-    if (tanques && Object.keys(tanques).length) {
-        db.estoqueEmpresas[empresa][comb][data].veederTanques = tanques;
-    }
-    salvarDB();
-    _veederRenderizarComb(comb);
-    mostrarToast(`Veeder-Root ${fmtL3(volume)} L preenchido para ${formatarData(data)}.`, 'sucesso');
-}
-
-async function _veederPreencherTodos(empresa, comb) {
-    const leituras = _veederDados[comb] || [];
-    const totalPorData = {};
-    leituras.forEach(l => { totalPorData[l.data] = (totalPorData[l.data] || 0) + l.volume; });
-    const semPreench = Object.keys(totalPorData).filter(data => {
-        if (typeof mesFechado === 'function' && mesFechado(empresa, comb, data.slice(0, 7))) return false;
-        const atual = db.estoqueEmpresas?.[empresa]?.[comb]?.[data]?.veeder;
-        if (atual === null || atual === undefined) return true;   // sem valor
-        return Math.abs(atual - totalPorData[data]) > 0.001;      // diverge do Veeder
-    });
-    if (!semPreench.length) { mostrarToast('Estoque já está alinhado com o Veeder-Root.', 'sucesso'); return; }
-    const vazios    = semPreench.filter(data => db.estoqueEmpresas?.[empresa]?.[comb]?.[data]?.veeder == null).length;
-    const divergentes = semPreench.length - vazios;
-    const detalhe = [vazios ? `${vazios} sem valor` : '', divergentes ? `${divergentes} com divergência` : ''].filter(Boolean).join(', ');
-    if (!await fmConfirm({ titulo: `Aplicar Veeder-Root — ${comb}?`, msg: `${semPreench.length} dia(s) pendentes (${detalhe}).\nEmpresa: ${empresa}\n\nDias com mês fechado são ignorados.`, confirmTxt: 'Aplicar', tipo: 'aviso' })) return;
-    semPreench.forEach(data => {
-        const tanquesData = Object.fromEntries(
-            leituras.filter(l => l.data === data).map(l => [l.tanque, l.volume])
-        );
-        _veederPreencherUm(empresa, comb, data, totalPorData[data], tanquesData);
-    });
-    mostrarToast(`${semPreench.length} leitura(s) Veeder-Root preenchida(s) no estoque.`, 'sucesso');
 }
 
 function _conferenciaImprimir() { window.print(); }

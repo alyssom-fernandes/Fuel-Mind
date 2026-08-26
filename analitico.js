@@ -5,7 +5,7 @@
 =================================================*/
 
 // Instâncias globais dos gráficos
-let chartMensal, chartMotoristas, chartVeiculos, chartCombustivel, chartComparativo, chartPizzaComb, chartPizzaMotor, chartEvolucaoPrecos, chartEstoque;
+let chartMensal, chartMotoristas, chartVeiculos, chartCombustivel, chartComparativo, chartPizzaComb, chartPizzaMotor, chartEvolucaoPrecos;
 
 // Cache dos dados calculados
 let _dadosAnaliticoAtual = null;
@@ -101,7 +101,6 @@ function carregarAnalitico() {
     renderAbaComparativo(dados);
     renderAbaDistribuicao(dados);
     renderAbaEvolucaoPrecos(dados);
-    renderAbaEstoque();
 }
 
 function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
@@ -694,185 +693,6 @@ function badgeVariacao(atual, anterior) {
     return `<span class="badge-var baixa">▼ ${diff.toFixed(1)}%</span>`;
 }
 
-
-/* ─── ABA ESTOQUE ─────────────────────────────── */
-function renderAbaEstoque() {
-    const container = document.getElementById('aba-estoque');
-    if (!container) return;
-
-    const inicio = document.getElementById('analiticoInicio')?.value || '';
-    const fim    = document.getElementById('analiticoFim')?.value    || '';
-    const filtroEmpresa = empresaFiltroGlobal || null;
-
-    if (!db.estoqueEmpresas || !db.combustiveis) {
-        container.innerHTML = '<p class="grafico-vazio">Sem dados de estoque.</p>';
-        return;
-    }
-
-    const empresas = filtroEmpresa
-        ? [filtroEmpresa]
-        : [...new Set(db.lancamentos.map(l => l.empresa).filter(Boolean))];
-
-    const combustiveis = db.combustiveis.filter(c => c.ativo !== false).map(c => c.nome);
-
-    // Acumular saídas, evaporação e Veeder por combustível no período
-    const resumo = {}; // { comb: { saida, evap, veederDias, calcDias, divergencia } }
-
-    combustiveis.forEach(comb => {
-        resumo[comb] = { saida: 0, evap: 0, veederEntradas: 0, veederDias: 0, semVeeder: 0 };
-    });
-
-    // Gerar dias do período
-    const dias = [];
-    if (inicio && fim) {
-        const cur = new Date(inicio + 'T00:00:00');
-        const end = new Date(fim + 'T00:00:00');
-        while (cur <= end) { dias.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
-    }
-
-    if (dias.length === 0) {
-        container.innerHTML = '<p class="grafico-vazio">Defina um período nos filtros acima.</p>';
-        return;
-    }
-
-    // Acumular por empresa e combustível
-    empresas.forEach(empresa => {
-        const medEmp = db.estoqueEmpresas?.[empresa] || {};
-        combustiveis.forEach(comb => {
-            const medComb = medEmp[comb] || {};
-            const perdaPct = db.combustiveis.find(c => c.nome === comb)?.perda ?? 0;
-
-            dias.forEach(data => {
-                const med = medComb[data] || {};
-                // Saída
-                resumo[comb].saida += med.saida ?? 0;
-                // Evaporação: usa evapLitros se disponível, senão calcula pelo pct
-                if (med.evapLitros != null) {
-                    resumo[comb].evap += med.evapLitros;
-                } else {
-                    const pct = med.evapPct != null ? med.evapPct : perdaPct;
-                    // Estimativa: usa estoque calculado até esse dia seria complexo aqui,
-                    // então aproximamos: entrada do dia * pct / 100
-                    const entradaDia = (db.lancamentos || [])
-                        .filter(l => l.empresa === empresa && (l.dataDescarga || l.dataNota) === data)
-                        .flatMap(l => l.itens.filter(i => i.tipo === comb))
-                        .reduce((s,i) => s + ((i.qtdDescargada && i.qtdDescargada > 0) ? i.qtdDescargada : (i.qtd || 0)), 0);
-                    if (entradaDia > 0) resumo[comb].evap += entradaDia * pct / 100;
-                }
-                // Veeder
-                if (med.veeder != null) {
-                    resumo[comb].veederEntradas += med.veeder;
-                    resumo[comb].veederDias++;
-                } else {
-                    resumo[comb].semVeeder++;
-                }
-            });
-        });
-    });
-
-    // Entradas totais por combustível no período
-    const entradas = {};
-    combustiveis.forEach(comb => {
-        entradas[comb] = (db.lancamentos || [])
-            .filter(l => {
-                if (filtroEmpresa && l.empresa !== filtroEmpresa) return false;
-                const d = l.dataDescarga || l.dataNota;
-                if (inicio && d < inicio) return false;
-                if (fim    && d > fim)    return false;
-                return true;
-            })
-            .flatMap(l => l.itens.filter(i => i.tipo === comb))
-            .reduce((s,i) => s + ((i.qtdDescargada && i.qtdDescargada > 0) ? i.qtdDescargada : (i.qtd || 0)), 0);
-    });
-
-    // Montar tabela resumo
-    const linhas = combustiveis.map(comb => {
-        const r = resumo[comb];
-        const entrada = entradas[comb] || 0;
-        const saldo = entrada - r.saida - r.evap;
-        return { comb, entrada, saida: r.saida, evap: r.evap, saldo,
-                 veederDias: r.veederDias, semVeeder: r.semVeeder };
-    }).filter(r => r.entrada > 0 || r.saida > 0);
-
-    if (linhas.length === 0) {
-        container.innerHTML = '<p class="grafico-vazio">Sem movimentação no período.</p>';
-        return;
-    }
-
-    const colors = getChartColors();
-
-    const tabelaHTML = `
-    <div class="tabela-container" style="margin-bottom:24px;">
-        <table>
-            <thead><tr>
-                <th>Combustível</th>
-                <th style="text-align:right">Entradas (L)</th>
-                <th style="text-align:right">Vendas (L)</th>
-                <th style="text-align:right">Evaporação (L)</th>
-                <th style="text-align:right">Saldo Calc. (L)</th>
-                <th style="text-align:right">Dias c/ Veeder</th>
-            </tr></thead>
-            <tbody>
-                ${linhas.map(r => `<tr>
-                    <td><strong>${r.comb}</strong></td>
-                    <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(r.entrada)}</td>
-                    <td style="text-align:right;font-family:'JetBrains Mono',monospace">${r.saida > 0 ? fmtL3(r.saida) : '—'}</td>
-                    <td style="text-align:right;font-family:'JetBrains Mono',monospace">${r.evap > 0 ? fmtL3(r.evap) : '—'}</td>
-                    <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${fmtL3(r.saldo)}</td>
-                    <td style="text-align:right;color:${r.semVeeder > 0 ? 'var(--warning)' : 'var(--success)'}">
-                        ${r.veederDias}${r.semVeeder > 0 ? ` <span style="font-size:0.75rem">(${r.semVeeder} s/ leitura)</span>` : ' ✓'}
-                    </td>
-                </tr>`).join('')}
-            </tbody>
-            <tfoot><tr style="font-weight:700;border-top:2px solid var(--border)">
-                <td>TOTAL</td>
-                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.entrada,0))}</td>
-                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.saida,0))}</td>
-                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.evap,0))}</td>
-                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.saldo,0))}</td>
-                <td></td>
-            </tr></tfoot>
-        </table>
-    </div>`;
-
-    // Gráfico de barras: entradas, vendas, evaporação por combustível
-    const graficoHTML = `<div class="grafico-wrapper" style="height:300px;margin-bottom:24px;">
-        <canvas id="graficoEstoque"></canvas>
-    </div>`;
-
-    container.innerHTML = tabelaHTML + graficoHTML;
-
-    // Renderizar gráfico
-    requestAnimationFrame(() => {
-        const canvas = document.getElementById('graficoEstoque');
-        if (!canvas) return;
-        if (chartEstoque) chartEstoque.destroy();
-        const ctx = canvas.getContext('2d');
-        chartEstoque = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: linhas.map(r => r.comb),
-                datasets: [
-                    { label: 'Entradas', data: linhas.map(r => r.entrada), backgroundColor: 'rgba(99,102,241,0.7)' },
-                    { label: 'Vendas',   data: linhas.map(r => r.saida),   backgroundColor: 'rgba(34,197,94,0.7)' },
-                    { label: 'Evap.',    data: linhas.map(r => r.evap),    backgroundColor: 'rgba(251,146,60,0.7)' },
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtL3(ctx.raw)} L` } }
-                },
-                scales: {
-                    y: { ticks: { callback: v => fmtL(v), color: colors.text }, grid: { color: colors.grid } },
-                    x: { ticks: { color: colors.text } }
-                }
-            }
-        });
-    });
-}
-
 function trocarAba(nomeAba, botao) {
     document.querySelectorAll(".aba-conteudo").forEach(a => a.style.display = "none");
     document.querySelectorAll(".aba-btn").forEach(b => b.classList.remove("ativa"));
@@ -888,7 +708,6 @@ function trocarAba(nomeAba, botao) {
             if (nomeAba === "comparativo") renderAbaComparativo(_dadosAnaliticoAtual);
             if (nomeAba === "distribuicao") renderAbaDistribuicao(_dadosAnaliticoAtual);
             if (nomeAba === "evolucaoPrecos") renderAbaEvolucaoPrecos(_dadosAnaliticoAtual);
-            if (nomeAba === "estoque") renderAbaEstoque();
         });
     }
 }

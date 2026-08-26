@@ -743,20 +743,7 @@ ul li.inativo { opacity: 0.45; }
 /* ══ ANALÍTICO FILTROS ═══════════════════════ */
 .analitico-filtros { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; padding: 18px; background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); }
 
-/* ══ ESTOQUE ═════════════════════════════════ */
-.estoque-abertura { background: var(--surface); border: 1px solid var(--border-light); border-left: 4px solid var(--info); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 8px; font-size: 0.875rem; color: var(--text-muted); }
-.estoque-abertura label { font-weight: 700; color: var(--text); }
 .input-tabela { width: 110px !important; padding: 6px 8px !important; font-size: 0.8rem !important; border-radius: var(--radius-sm) !important; text-align: right; font-family: 'JetBrains Mono', monospace !important; }
-.linha-pendente { background: rgba(245,158,11,0.06) !important; }
-.badge-dif-ok     { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; background: var(--success-light); color: var(--success); font-family: 'JetBrains Mono', monospace; }
-.badge-dif-alerta { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; background: var(--danger-light); color: var(--danger); font-family: 'JetBrains Mono', monospace; animation: piscar 1.6s ease-in-out infinite; }
-.badge-pendente   { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; background: var(--warning-light); color: var(--warning); }
-@keyframes piscar { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-.estoque-grafico-bloco { margin-top: 20px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
-.estoque-grafico-header { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px 12px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
-.estoque-grafico-titulo { font-size: 0.8rem; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.08em; }
-.estoque-grafico-sub { font-size: 0.72rem; color: var(--text-light); }
-.estoque-grafico-bloco .grafico-wrapper { border: none; border-radius: 0; padding: 16px 18px 12px; box-shadow: none; }
 
 /* ══ FRETES ══════════════════════════════════ */
 .frete-taxas-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
@@ -1291,66 +1278,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 .linha-inativo td { opacity:0.55; }
 
-/* =====================================================
-   TANQUES
-   ===================================================== */
-.tanque-card {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--radius); margin-bottom:16px; overflow:hidden; transition:box-shadow 0.2s;
-}
-.tanque-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); }
-.tanque-card.inativo { opacity:0.55; }
-.tanque-card-header {
-    display:flex; align-items:center; justify-content:space-between;
-    flex-wrap:wrap; gap:8px; padding:14px 16px;
-    background:var(--surface-alt); border-bottom:1px solid var(--border);
-}
-.tanque-card-titulo { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:1rem; }
-.tanque-card-acoes { display:flex; gap:6px; flex-wrap:wrap; }
-.tanque-compartimentos { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
-.tanque-compartimento {
-    border:1px solid var(--border-light); border-radius:var(--radius-sm);
-    padding:10px 12px; background:var(--surface-raised);
-}
-.tanque-comp-header { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
-.tanque-comp-acoes { margin-left:auto; display:flex; gap:6px; }
-.badge-capacidade {
-    font-size:0.75rem; background:rgba(59,130,246,0.12); color:#3b82f6;
-    border-radius:20px; padding:2px 8px; font-weight:600;
-}
-.badge-capacidade-total { font-size:0.78rem; color:var(--text-muted); }
-.badge-comb-atual {
-    font-size:0.75rem; background:rgba(16,185,129,0.12); color:#10b981;
-    border-radius:20px; padding:2px 8px; font-weight:600;
-}
-.badge-comb-atual.sem-comb { background:rgba(245,158,11,0.12); color:#f59e0b; }
-/* badge-filtro usa --primary-subtle para seguir a cor primária */
-.badge-filtro {
-    font-size:0.72rem;
-    background: var(--primary-subtle);
-    color:var(--primary); border-radius:20px; padding:2px 8px;
-}
-.tanque-hist-list { list-style:none; padding:0; margin:4px 0 0; display:flex; flex-wrap:wrap; gap:4px; }
-.tanque-hist-item {
-    display:flex; align-items:center; gap:4px; font-size:0.75rem;
-    background:var(--surface-alt); border:1px solid var(--border-light);
-    border-radius:20px; padding:2px 8px;
-}
-.tanque-hist-data { color:var(--text-muted); }
-.tanque-hist-comb { font-weight:600; }
-.tanque-logs { padding:8px 16px; border-top:1px solid var(--border-light); font-size:0.78rem; color:var(--text-muted); }
-.tanque-logs summary { cursor:pointer; padding:4px 0; }
-.tanque-logs ul { list-style:none; padding:6px 0 0; margin:0; }
-.tanque-logs li { padding:2px 0; }
-.tanque-logs li::before { content:"• "; }
-.form-novo-tanque {
-    background:var(--surface-alt); border:1px solid var(--border);
-    border-radius:var(--radius); padding:16px; margin-bottom:8px;
-}
-.form-novo-tanque h3 { margin:0 0 14px; font-size:0.95rem; }
-/* borda esquerda do formulário de compartimento usa --primary */
-.tanque-comp-form { border-left:3px solid var(--primary); padding-left:12px; margin-top:12px; }
-
 /* ══════════════════════════════════════════════
    CABEÇALHOS ORDENÁVEIS (relatorios.js)
 ══════════════════════════════════════════════ */
@@ -1489,19 +1416,11 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 /* ══════════════════════════════════════════════
    RESPONSIVIDADE MOBILE — COMPLEMENTAR
-   Cobre tabelas de estoque, fretes, usuários
+   Cobre tabelas de fretes, usuários
    e melhorias gerais não cobertas anteriormente
 ══════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-
-    /* ── Tabela de estoque: ocultar colunas menos críticas ── */
-    #tabelaEstoque thead th:nth-child(4),  /* Evap % */
-    #tabelaEstoque tbody td:nth-child(4),
-    #tabelaEstoque thead th:nth-child(5),  /* Evaporação L */
-    #tabelaEstoque tbody td:nth-child(5) {
-        display: none;
-    }
 
     /* ── Tabela de usuários: ocultar último acesso ── */
     #usuariosConteudo table thead th:nth-child(4),
@@ -1516,17 +1435,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     .fretes-tabela tbody td:nth-child(4) {
         display: none;
     }
-
-    /* ── Abas de combustível no estoque: scroll horizontal ── */
-    #estoqueAbas {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        gap: 6px;
-        padding-bottom: 4px;
-    }
-    #estoqueAbas .aba-btn { flex-shrink: 0; }
 
     /* ── Analítico: filtros em coluna ── */
     .analitico-filtros {
@@ -1562,11 +1470,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
         gap: 6px;
     }
 
-    /* ── Banner de capacidade de tanques: wrap ── */
-    #estoqueConteudoAba [style*="display:flex"] {
-        flex-wrap: wrap;
-    }
-
     /* ── Paginação: botões menores ── */
     .pag-btn {
         padding: 4px 8px;
@@ -1588,12 +1491,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 @media (max-width: 480px) {
-    /* ── Tabela de estoque: ocultar mais colunas ── */
-    #tabelaEstoque thead th:nth-child(2),  /* Entrada */
-    #tabelaEstoque tbody td:nth-child(2) {
-        display: none;
-    }
-
     /* ── Analítico: filtros em coluna única ── */
     .analitico-filtros { grid-template-columns: 1fr; }
 

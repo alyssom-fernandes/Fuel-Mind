@@ -1,6 +1,6 @@
 # ⛽ Fuel Mind — Fuel Management System
 
-> **Full-featured fuel management platform** built with vanilla JS + Firebase, designed for fuel distributors, transport companies, and fuel stations. Real-time, multi-company, with analytics, stock control, and freight calculation.
+> **Fuel entry & freight management platform** built with vanilla JS + Firebase, designed for fuel distributors and transport companies. Real-time, multi-company, with analytics and freight calculation.
 
 ---
 
@@ -29,15 +29,8 @@
 - Price evolution chart by fuel type
 - Smart alerts (high price, suspicious volume, suspicious date) with one-click dismiss
 
-### 🛢️ Stock Control
-- Per-company, per-fuel, per-day tracking
-- Calculated stock (entries – sales – evaporation)
-- Evaporation in % or liters per day
-- Veeder-Root readings with per-tank tooltip
-- Month closing (read-only lock) + audit log
-- AutoSystem report import (entries + pump sales comparison)
-- Veeder-Root import (multi-tank, auto-fill)
-- Tank capacity banner with over-capacity alert
+### 🔎 Conference
+- AutoSystem report import — compares entries against system entries to flag divergences
 
 ### 🚛 Freight
 - Per-fuel rate configuration (R$/L)
@@ -46,15 +39,13 @@
 - Excel, PDF, CSV, print export
 
 ### 🔧 Registrations
-- Drivers, vehicles, companies (with municipality), fuel types (with loss %), bases, tanks, vehicle sets
+- Drivers, vehicles, companies (with municipality), fuel types (with loss %), bases, vehicle sets
 - Inactive/reactivate with cascade propagation to entries
-- Tanks with compartments, per-compartment fuel history, filter capacity
 
 ### 👥 Users & Permissions
 - Firebase Auth (email/password or @username)
 - Roles: Supremo (full access) · Admin · User
 - Per-company access control
-- Audit trail per user on stock edits
 
 ### ⚙️ System
 - Manual and automatic backup (every 3 days, last 3 kept)
@@ -172,10 +163,8 @@ fuel-mind/
 ├── relatorios.js       # Reports table, filters, pagination, exports
 ├── analitico.js        # Analytics tabs + Chart.js graphs
 ├── dashboard.js        # Dashboard KPIs, alerts, per-fuel breakdown
-├── estoque.js          # Stock control table, evaporation, Veeder-Root, audit
 ├── fretes.js           # Freight calculation and export
-├── tanques.js          # Tank CRUD with compartments and fuel history
-├── sistema.js          # Backup, import, PDF config, AutoSystem/Veeder conf.
+├── sistema.js          # Backup, import, PDF config, AutoSystem conference
 ├── importacao.js       # Spreadsheet import with multi-format detection
 ├── usuarios.js         # User management and permissions
 └── firebase.json       # Firebase Hosting config

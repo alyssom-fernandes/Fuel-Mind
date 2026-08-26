@@ -1,6 +1,6 @@
 # ⛽ Fuel Mind — Sistema de Gestão de Combustíveis
 
-> **Plataforma completa de gestão de combustíveis** construída com JS puro + Firebase, projetada para distribuidoras, transportadoras e postos de combustível. Tempo real, multi-empresa, com analítico, controle de estoque e cálculo de fretes.
+> **Plataforma de lançamento de notas e gestão de fretes** construída com JS puro + Firebase, projetada para distribuidoras e transportadoras. Tempo real, multi-empresa, com analítico e cálculo de fretes.
 
 ---
 
@@ -29,15 +29,8 @@
 - Gráfico de evolução de preços por combustível
 - Alertas inteligentes (preço alto, volume suspeito, data suspeita) com descarte em um clique
 
-### 🛢️ Controle de Estoque
-- Controle por empresa, combustível e dia
-- Estoque calculado (entradas – vendas – evaporação)
-- Evaporação em % ou litros por dia
-- Leituras Veeder-Root com tooltip por tanque
-- Fechamento de mês (bloqueio de edição) + log de auditoria
-- Importação de relatório AutoSystem (comparação entradas + saídas de bombas)
-- Importação Veeder-Root (multi-tanque, preenchimento automático)
-- Banner de capacidade dos tanques com alerta de estouro
+### 🔎 Conferência
+- Importação de relatório AutoSystem — compara entradas do relatório com os lançamentos do sistema e aponta divergências
 
 ### 🚛 Fretes
 - Taxa por combustível configurável (R$/L)
@@ -46,15 +39,13 @@
 - Exportação Excel, PDF, CSV, impressão
 
 ### 🔧 Cadastros
-- Motoristas, veículos, empresas (com município), combustíveis (com % de perda), bases, tanques, conjuntos de veículos
+- Motoristas, veículos, empresas (com município), combustíveis (com % de perda), bases, conjuntos de veículos
 - Inativar/reativar com propagação em cascata para lançamentos
-- Tanques com compartimentos, histórico de combustível por compartimento, capacidade de filtro
 
 ### 👥 Usuários e Permissões
 - Firebase Auth (e-mail/senha ou @usuario)
 - Perfis: Supremo (acesso total) · Admin · Usuário
 - Controle de acesso por empresa
-- Log de auditoria por usuário nas edições de estoque
 
 ### ⚙️ Sistema
 - Backup manual e automático (a cada 3 dias, guarda os 3 últimos)
@@ -172,10 +163,8 @@ fuel-mind/
 ├── relatorios.js       # Tabela de relatórios, filtros, paginação, exportações
 ├── analitico.js        # Abas analítico + gráficos Chart.js
 ├── dashboard.js        # KPIs do dashboard, alertas, detalhamento por combustível
-├── estoque.js          # Tabela de estoque, evaporação, Veeder-Root, auditoria
 ├── fretes.js           # Cálculo e exportação de fretes
-├── tanques.js          # CRUD de tanques com compartimentos e histórico de combustível
-├── sistema.js          # Backup, importação, config PDF, conferência AutoSystem/Veeder
+├── sistema.js          # Backup, importação, config PDF, conferência AutoSystem
 ├── importacao.js       # Importação de planilhas com detecção de múltiplos formatos
 ├── usuarios.js         # Gerenciamento de usuários e permissões
 └── firebase.json       # Configuração do Firebase Hosting

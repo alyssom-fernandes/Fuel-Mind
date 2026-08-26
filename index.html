@@ -83,10 +83,6 @@
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
       <div class="sidebar-section-label">Operacional</div>
-      <button class="sidebar-item" id="nav-estoque" onclick="mostrarTela('estoque')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
-        <span class="sidebar-item-label">Estoque</span>
-      </button>
       <button class="sidebar-item" id="nav-fretes" onclick="mostrarTela('fretes')">
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
         <span class="sidebar-item-label">Fretes</span>
@@ -217,14 +213,6 @@
     <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar()">Salvar Entrada</button>
     <button class="btn-cancelar" onclick="limparFormulario()">Cancelar</button>
   </div>
-</div>
-
-<!-- ESTOQUE -->
-<div id="estoque" class="tela">
-  <h2 id="tituloEstoque" style="display:block;">Controle de Estoque</h2>
-  <div id="estoqueFiltrosContainer"></div>
-  <div class="analitico-abas" id="estoqueAbas" style="margin-top:16px"></div>
-  <div id="estoqueConteudoAba"></div>
 </div>
 
 <!-- FRETES -->
@@ -362,7 +350,6 @@
       <button class="aba-btn" onclick="trocarAba('comparativo', this)">Comparativo</button>
       <button class="aba-btn" onclick="trocarAba('distribuicao', this)">Distribuição</button>
       <button class="aba-btn" onclick="trocarAba('evolucaoPrecos', this)">Evolução Preços</button>
-      <button class="aba-btn" onclick="trocarAba('estoque', this)">Estoque</button>
     </div>
     <div id="aba-mensal" class="aba-conteudo">
       <h3>Resumo Mensal</h3>
@@ -407,30 +394,18 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
     </div>
-    <div id="aba-estoque" class="aba-conteudo" style="display:none">
-      <h3>Resumo de Estoque</h3>
-      <p class="dica">Entradas, vendas, evaporação e saldo calculado no período selecionado.</p>
-    </div>
 </div>
 
 <!-- CONFERÊNCIAS -->
 <div id="conferencia" class="tela">
   <h2 id="tituloConferencia" style="display:block;">Conferências</h2>
-  <div class="analitico-abas" style="margin-bottom:20px">
-    <button class="aba-btn _conf-sub-btn ativa" data-aba="autosystem" onclick="_confMudarSubAba('autosystem')">
-      AutoSystem
-    </button>
-    <button class="aba-btn _conf-sub-btn" data-aba="veeder" onclick="_confMudarSubAba('veeder')">
-      Veeder Root
-    </button>
-  </div>
   <div id="_confSub-autosystem" class="_conf-sub-conteudo">
     <div class="sistema-secao">
       <h3>Conferência — Relatório AutoSystem</h3>
       <p class="dica">
         Importe o relatório de <strong>Medição de Tanque por Período</strong> do AutoSystem
         (.xlsx, .xls ou .csv). O sistema compara as <strong>entradas</strong> com os lançamentos
-        do sistema e disponibiliza as <strong>saídas de bombas</strong> para lançar no estoque.
+        do sistema.
       </p>
       <div style="margin-top:16px">
         <label>Selecionar relatório AutoSystem</label>
@@ -439,23 +414,6 @@
         <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv</p>
       </div>
       <div id="_confAutoResultado" style="margin-top:20px"></div>
-    </div>
-  </div>
-  <div id="_confSub-veeder" class="_conf-sub-conteudo" style="display:none">
-    <div class="sistema-secao">
-      <h3>Veeder Root — Importar Leituras</h3>
-      <p class="dica">
-        Importe o relatório do Veeder Root (.xlsx, .xls, .csv ou .txt).
-        O sistema preenche automaticamente a coluna <strong>Veeder-Root</strong> no estoque
-        para cada dia e combustível encontrado no arquivo.
-      </p>
-      <div style="margin-top:16px">
-        <label>Selecionar relatório Veeder Root</label>
-        <input type="file" accept=".xlsx,.xls,.csv,.txt" style="margin-top:6px;display:block"
-               onchange="veederLerArquivo(this)">
-        <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv, .txt</p>
-      </div>
-      <div id="_confVeederResultado" style="margin-top:20px"></div>
     </div>
   </div>
 </div>
@@ -690,9 +648,6 @@
     <button class="aba-btn" onclick="trocarAbaCadastro('motoristas', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Motoristas
     </button>
-    <button class="aba-btn" onclick="trocarAbaCadastro('tanques', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Tanques
-    </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('veiculos', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Veículos
     </button>
@@ -740,16 +695,6 @@
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosBases" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaBases"></ul>
   </div>
-  <div id="cad-tanques" class="aba-conteudo" style="display:none">
-    <h3>Tanques de Combustível</h3>
-    <p class="dica">Cadastre os tanques com compartimentos e histórico de combustível.</p>
-    <div id="formNovoTanqueContainer"></div>
-    <hr style="margin:20px 0;border:none;border-top:1px solid var(--border);">
-    <div class="filtro-lista" style="margin-bottom:12px;">
-      <label><input type="checkbox" id="mostrarInativosTanques" onchange="renderListaTanques()"> Mostrar inativos</label>
-    </div>
-    <div id="listaTanquesContainer"></div>
-  </div>
   <div id="cad-conjuntos" class="aba-conteudo" style="display:none">
     <h3>Conjuntos de Veículos</h3>
     <p class="dica">Agrupe placas que formam um conjunto (cavalo + caçambas). O sistema calcula fretes e viagens por conjunto além de individualmente por placa.</p>
@@ -773,9 +718,6 @@
 
 <!-- MODAL USUÁRIOS -->
 <div id="usuarioModalOverlay" class="modal-overlay" style="display:none;"></div>
-
-<!-- MODAL TANQUES -->
-<div id="tanqueModalOverlay" class="modal-overlay" style="display:none;"></div>
 
 <!-- MODAL ATALHOS DE TECLADO -->
 <!-- Conteúdo gerado dinamicamente por ui.js:abrirAtalhos() na primeira abertura -->
@@ -868,11 +810,9 @@
 <script src="relatorios.js"></script>
 <script src="analitico.js"></script>
 <script src="dashboard.js"></script>
-<script src="estoque.js"></script>
 <script src="fretes.js"></script>
 <script src="sistema.js"></script>
 <script src="importacao.js"></script>
-<script src="tanques.js"></script>
 <script src="usuarios.js"></script>
 <script src="ui.js"></script>
 <script>

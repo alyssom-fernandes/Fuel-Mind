@@ -1,67 +1,12 @@
 /*=================================================
   LANÇAMENTOS.JS – com autocomplete, múltiplos anexos,
-  spinner, validação de duplicidade de nota,
-  bloqueio de competência fechada (v3.3)
+  spinner, validação de duplicidade de nota
   e conversão automática de placa para Mercosul
   FIX: manter filtros do relatório após salvar edição
 =================================================*/
 
 let lancamentoEditandoId = null;
 let isClonando = false;
-
-/*=================================================
-  VERIFICAÇÃO DE MÊS FECHADO
-=================================================*/
-/**
- * Verifica se algum dos meses envolvidos no lançamento está fechado.
- * Considera tanto o mês da data da nota quanto o mês da data de descarga.
- *
- * @param {string} empresa      - Nome da empresa
- * @param {string} dataNota     - `"YYYY-MM-DD"` ou string vazia
- * @param {string} dataDescarga - `"YYYY-MM-DD"` ou string vazia
- * @returns {{ fechado: boolean, bloqueio?: { mes, comb } }}
- *   `fechado: true` se qualquer combustível do mês estiver fechado.
- *   `bloqueio` contém o primeiro mês/combustível bloqueado encontrado.
- */
-function _mesFechadoParaLancamento(empresa, dataNota, dataDescarga) {
-    if (!empresa || !dataNota) return null;
-    if (typeof mesFechado !== 'function') return null;
-
-    const meses = new Set();
-    meses.add(dataNota.slice(0, 7));
-    if (dataDescarga) meses.add(dataDescarga.slice(0, 7));
-
-    for (const mes of meses) {
-        const combsEmpresa = Object.keys(db.estoqueEmpresas?.[empresa] || {});
-        for (const comb of combsEmpresa) {
-            if (mesFechado(empresa, comb, mes)) {
-                return { mes, comb };
-            }
-        }
-    }
-    return null;
-}
-
-/**
- * Verifica se o lançamento está bloqueado por mês fechado e exibe toast se sim.
- * Wrapper de `_mesFechadoParaLancamento` para uso direto em `salvarOuAtualizar`.
- *
- * @param {string} empresa      - Nome da empresa
- * @param {string} dataNota     - `"YYYY-MM-DD"`
- * @param {string} dataDescarga - `"YYYY-MM-DD"` ou string vazia
- * @returns {boolean} `true` se bloqueado (salvar deve ser abortado)
- */
-function _bloquearPorMesFechado(empresa, dataNota, dataDescarga) {
-    const bloqueio = _mesFechadoParaLancamento(empresa, dataNota, dataDescarga);
-    if (!bloqueio) return false;
-
-    mostrarToast(
-        `Mês ${bloqueio.mes} fechado em "${bloqueio.comb}" para "${empresa}". ` +
-        `Reabra em Estoque → barra de meses → Reabrir.`,
-        'erro', 6000
-    );
-    return true;
-}
 
 /*=================================================
   IMPORTAÇÃO DE XML DA NF-e
@@ -359,11 +304,10 @@ function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = nul
  * 1. Lê e normaliza todos os campos do formulário
  * 2. Converte placa para formato Mercosul se necessário
  * 3. Valida datas (futuras, descarga anterior à nota)
- * 4. Verifica se o mês está fechado (`_bloquearPorMesFechado`)
- * 5. Verifica duplicidade de nota
- * 6. Valida preço médio por combustível (alerta se > 10% da média)
- * 7. Se houver anexos, faz upload para Firebase Storage antes de salvar
- * 8. Chama `salvarLancamentoFinal` com todos os dados validados
+ * 4. Verifica duplicidade de nota
+ * 5. Valida preço médio por combustível (alerta se > 10% da média)
+ * 6. Se houver anexos, faz upload para Firebase Storage antes de salvar
+ * 7. Chama `salvarLancamentoFinal` com todos os dados validados
  *
  * @returns {Promise<void>}
  */
@@ -413,10 +357,6 @@ async function salvarOuAtualizar() {
     if (!empresa)   { esconderSpinner(btn); mostrarToast("Digite ou selecione a empresa.", "aviso"); return; }
     if (!motorista) { esconderSpinner(btn); mostrarToast("Digite ou selecione o motorista.", "aviso"); return; }
     if (!placa)     { esconderSpinner(btn); mostrarToast("Digite ou selecione a placa.", "aviso"); return; }
-
-    if (_bloquearPorMesFechado(empresa, dataNota, dataDescarga)) {
-        esconderSpinner(btn); return;
-    }
 
     if (verificarDuplicidadeNota(numeroNota, empresa, dataNota, lancamentoEditandoId)) {
         if (!await fmConfirm({ titulo: "Nota possivelmente duplicada", msg: `Já existe um lançamento com a nota ${numeroNota} de ${empresa} na data ${formatarData(dataNota)}.\n\nDeseja salvar mesmo assim?`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" }))
@@ -573,16 +513,6 @@ function editarLancamento(id) {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) { console.warn('[editarLancamento] não encontrou id:', id); return; }
 
-    const bloqueio = _mesFechadoParaLancamento(l.empresa, l.dataNota, l.dataDescarga);
-    if (bloqueio) {
-        mostrarToast(
-            `Mês ${bloqueio.mes} fechado em "${bloqueio.comb}" para "${l.empresa}". ` +
-            `Reabra em Estoque → barra de meses → Reabrir.`,
-            'erro', 6000
-        );
-        return;
-    }
-
     lancamentoEditandoId = id;
     isClonando = false;
     mostrarTela("lancamentos");
@@ -701,16 +631,6 @@ function limparFormulario() {
 async function excluirLancamento(id, contexto = 'relatorio') {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) return;
-
-    const bloqueio = _mesFechadoParaLancamento(l.empresa, l.dataNota, l.dataDescarga);
-    if (bloqueio) {
-        mostrarToast(
-            `Mês ${bloqueio.mes} fechado em "${bloqueio.comb}" para "${l.empresa}". ` +
-            `Reabra em Estoque → barra de meses → Reabrir.`,
-            'erro', 6000
-        );
-        return;
-    }
 
     const descricao = [
         l.numeroNota ? `Nota ${l.numeroNota}` : null,

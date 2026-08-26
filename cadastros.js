@@ -254,15 +254,6 @@ function confirmarEdicao() {
                 });
             }
         });
-        if (lista === "combustiveis" && db.medicoes[nomeAntigo]) {
-            db.medicoes[nomeNovo] = db.medicoes[nomeAntigo];
-            delete db.medicoes[nomeAntigo];
-            propagados++;
-        }
-        if (lista === "combustiveis" && db.estoqueInicial[nomeAntigo] !== undefined) {
-            db.estoqueInicial[nomeNovo] = db.estoqueInicial[nomeAntigo];
-            delete db.estoqueInicial[nomeAntigo];
-        }
     }
 
     salvarDB();
