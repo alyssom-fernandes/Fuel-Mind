@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuel Mind — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & TOKENS ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #080808;
+  --surface:   #111111;
+  --surface2:  #181818;
+  --border:    #222222;
+  --text:      #f0f0f0;
+  --muted:     #888888;
+  --primary:   #c0392b;
+  --primary2:  #e74c3c;
+  --accent:    #f39c12;
+  --green:     #10b981;
+  --blue:      #3b82f6;
+  --purple:    #a78bfa;
+  --radius:    10px;
+  --glow:      rgba(192,57,43,0.35);
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: 0.4;
+}
+
+/* ── HEADER ── */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 48px; height: 64px;
+  background: rgba(8,8,8,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800;
+  color: var(--text); text-decoration: none; letter-spacing: -0.02em;
+}
+.logo-mark {
+  width: 36px; height: 36px;
+  background: var(--primary);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px var(--glow);
+}
+.logo-mark svg { width: 18px; height: 18px; color: #fff; }
+nav { display: flex; align-items: center; gap: 32px; }
+nav a {
+  font-size: 0.85rem; font-weight: 500; color: var(--muted);
+  text-decoration: none; transition: color 0.2s; letter-spacing: 0.01em;
+}
+nav a:hover { color: var(--text); }
+.btn-github {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 18px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text); text-decoration: none;
+  font-size: 0.83rem; font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-github:hover { border-color: var(--primary); color: var(--primary); }
+.btn-github svg { width: 16px; height: 16px; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 100px 24px 80px;
+  position: relative; overflow: hidden;
+  text-align: center;
+}
+.hero-bg {
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(192,57,43,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 20% 80%, rgba(243,156,18,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at 80% 60%, rgba(59,130,246,0.05) 0%, transparent 50%);
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(192,57,43,0.12);
+  border: 1px solid rgba(192,57,43,0.3);
+  border-radius: 20px;
+  font-size: 0.75rem; font-weight: 700; color: var(--primary2);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  margin-bottom: 28px;
+  animation: fadeUp 0.6s ease both;
+}
+.hero-eyebrow::before { content: '●'; font-size: 0.5rem; }
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  margin-bottom: 28px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+h1 em {
+  font-style: normal;
+  color: var(--primary2);
+  position: relative;
+}
+h1 em::after {
+  content: '';
+  position: absolute; bottom: -4px; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  border-radius: 3px;
+}
+.hero-sub {
+  max-width: 560px;
+  font-size: 1.1rem; color: var(--muted); font-weight: 400;
+  margin-bottom: 44px; line-height: 1.7;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+.hero-ctas {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+.cta-primary {
+  padding: 14px 32px;
+  background: var(--primary);
+  color: #fff; text-decoration: none;
+  border-radius: 10px; font-weight: 700; font-size: 0.95rem;
+  box-shadow: 0 4px 30px var(--glow);
+  transition: all 0.2s; letter-spacing: 0.01em;
+}
+.cta-primary:hover { background: var(--primary2); transform: translateY(-2px); box-shadow: 0 8px 40px var(--glow); }
+.cta-secondary {
+  padding: 13px 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text); text-decoration: none;
+  border-radius: 10px; font-weight: 600; font-size: 0.95rem;
+  transition: all 0.2s;
+}
+.cta-secondary:hover { border-color: var(--muted); }
+
+/* ── STATS STRIP ── */
+.stats {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin-top: 80px; border-top: 1px solid var(--border);
+  padding-top: 40px;
+  animation: fadeUp 0.6s 0.4s ease both;
+  flex-wrap: wrap;
+}
+.stat {
+  text-align: center; padding: 0 40px;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+.stat-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 2.4rem; font-weight: 800;
+  color: var(--text); letter-spacing: -0.04em; line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-val span { color: var(--primary2); }
+.stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ── SECTION COMMON ── */
+section { padding: 100px 0; position: relative; z-index: 1; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+.section-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--primary2);
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800; letter-spacing: -0.03em;
+  color: var(--text); margin-bottom: 16px; line-height: 1.1;
+}
+.section-desc { font-size: 1rem; color: var(--muted); max-width: 520px; line-height: 1.7; }
+
+/* ── DASHBOARD DEMO ── */
+.dash-section { background: var(--bg); }
+.dash-window {
+  margin-top: 60px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03);
+}
+.dash-titlebar {
+  background: var(--surface2);
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot.r { background: #ff5f57; }
+.dot.y { background: #febc2e; }
+.dot.g { background: #28c840; }
+.dash-titlebar-text { font-size: 0.78rem; color: var(--muted); margin-left: 8px; font-family: 'JetBrains Mono', monospace; }
+.dash-body { display: flex; min-height: 480px; }
+.dash-sidebar {
+  width: 200px; flex-shrink: 0;
+  background: #0a0a0a;
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+}
+.dash-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; font-size: 0.82rem;
+  color: var(--muted); cursor: default;
+  border-radius: 0; transition: all 0.12s;
+}
+.dash-nav-item.active {
+  color: var(--primary2);
+  background: rgba(192,57,43,0.1);
+  border-right: 2px solid var(--primary);
+}
+.dash-nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+.dash-main { flex: 1; padding: 24px; overflow: hidden; }
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.kpi {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px; position: relative; overflow: hidden;
+}
+.kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.kpi.k1::before { background: var(--primary); }
+.kpi.k2::before { background: var(--green); }
+.kpi.k3::before { background: var(--accent); }
+.kpi.k4::before { background: var(--blue); }
+.kpi-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+.kpi-val { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
+.kpi-delta { font-size: 0.68rem; font-weight: 700; margin-top: 6px; padding: 2px 7px; border-radius: 10px; display: inline-block; }
+.kpi-delta.up { background: rgba(239,68,68,0.12); color: #ef4444; }
+.kpi-delta.dn { background: rgba(16,185,129,0.12); color: var(--green); }
+.chart-area {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px; margin-bottom: 16px;
+}
+.chart-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 14px; }
+.bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 100px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.bar {
+  width: 100%; border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--primary2), var(--primary));
+  opacity: 0.85;
+  animation: growBar 1s ease both;
+  transform-origin: bottom;
+}
+@keyframes growBar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.bar-label { font-size: 0.58rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.mini-table { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.mt-head { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0; padding: 8px 14px; background: #0a0a0a; border-bottom: 1px solid var(--border); }
+.mt-head span { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+.mt-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0; padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: center; }
+.mt-row:last-child { border-bottom: none; }
+.mt-row span { font-size: 0.78rem; color: var(--text); }
+.mt-row .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+.badge-fuel {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 10px; font-size: 0.62rem; font-weight: 700;
+  background: rgba(192,57,43,0.12); color: var(--primary2);
+}
+.badge-fuel.s10 { background: rgba(59,130,246,0.12); color: var(--blue); }
+.badge-fuel.gas { background: rgba(243,156,18,0.12); color: var(--accent); }
+
+/* ── FEATURES GRID ── */
+.features { background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 50%, var(--bg) 100%); }
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+  margin-top: 60px;
+}
+.feat {
+  background: var(--surface);
+  padding: 32px 28px;
+  transition: background 0.2s;
+}
+.feat:hover { background: var(--surface2); }
+.feat-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+}
+.feat-icon svg { width: 20px; height: 20px; }
+.fi-red { background: rgba(192,57,43,0.15); color: var(--primary2); }
+.fi-green { background: rgba(16,185,129,0.12); color: var(--green); }
+.fi-blue { background: rgba(59,130,246,0.12); color: var(--blue); }
+.fi-yellow { background: rgba(243,156,18,0.12); color: var(--accent); }
+.fi-purple { background: rgba(167,139,250,0.12); color: var(--purple); }
+.fi-gray { background: rgba(136,136,136,0.1); color: var(--muted); }
+.feat-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+.feat-desc { font-size: 0.84rem; color: var(--muted); line-height: 1.6; }
+
+/* ── TECH STACK ── */
+.stack-section { background: var(--bg); }
+.stack-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 48px; }
+.stack-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.84rem; font-weight: 600; color: var(--text);
+  transition: border-color 0.2s;
+}
+.stack-chip:hover { border-color: var(--primary); }
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ── ALERTS DEMO ── */
+.alerts-section { background: var(--surface); }
+.alerts-demo { margin-top: 56px; display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
+.alert-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid;
+  animation: fadeUp 0.5s ease both;
+}
+.alert-card.orange { background: rgba(243,156,18,0.08); border-color: var(--accent); }
+.alert-card.red    { background: rgba(192,57,43,0.08);  border-color: var(--primary2); }
+.alert-card.blue   { background: rgba(59,130,246,0.08); border-color: var(--blue); }
+.alert-body { flex: 1; }
+.alert-title { font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.alert-msg   { font-size: 0.78rem; color: var(--muted); }
+.alert-action {
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  font-size: 0.72rem; font-weight: 600; color: var(--muted);
+  cursor: pointer; background: var(--surface2);
+  white-space: nowrap; transition: all 0.15s;
+  font-family: inherit;
+}
+.alert-action:hover { background: var(--green); color: #fff; border-color: var(--green); }
+
+/* ── STOCK TABLE DEMO ── */
+.stock-section { background: var(--bg); }
+.stock-demo {
+  margin-top: 56px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+}
+.stock-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.stock-tabs { display: flex; gap: 4px; }
+.stab {
+  padding: 6px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+  color: var(--muted); cursor: default;
+}
+.stab.active { background: rgba(192,57,43,0.15); color: var(--primary2); }
+.stock-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.stock-table th { padding: 10px 16px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); background: #0a0a0a; border-bottom: 1px solid var(--border); }
+.stock-table td { padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+.stock-table tr:last-child td { border-bottom: none; }
+.stock-table tr:hover td { background: rgba(255,255,255,0.02); }
+.veeder-ok   { color: var(--green); font-weight: 700; }
+.veeder-warn { color: var(--accent); font-weight: 700; }
+.veeder-pend { color: rgba(255,255,255,0.25); font-style: italic; }
+.diff-ok { background: rgba(16,185,129,0.1); color: var(--green); padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; }
+.diff-warn { background: rgba(239,68,68,0.12); color: #ef4444; padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; }
+.diff-pend { color: rgba(255,255,255,0.2); }
+
+/* ── CTA SECTION ── */
+.cta-section {
+  background: var(--bg);
+  text-align: center;
+  padding: 120px 24px;
+  position: relative; overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 100%, rgba(192,57,43,0.12) 0%, transparent 60%);
+}
+.cta-section .section-title { color: var(--text); }
+.cta-section .section-desc { margin: 0 auto 48px; color: var(--muted); }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 40px 0;
+  text-align: center;
+}
+.footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.footer-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1rem; color: var(--text); }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { font-size: 0.82rem; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--text); }
+.footer-copy { font-size: 0.78rem; color: var(--muted); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  header { padding: 0 24px; }
+  nav { display: none; }
+  h1 { font-size: clamp(2.4rem, 10vw, 4rem); }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .dash-sidebar { display: none; }
+  .features-grid { grid-template-columns: 1fr; }
+  .stat { padding: 20px; }
+  .container { padding: 0 20px; }
+}
+@media (max-width: 600px) {
+  .hero { padding: 90px 20px 60px; }
+  .hero-ctas { flex-direction: column; }
+  .stats { gap: 0; }
+  .stat { border-right: none; border-bottom: 1px solid var(--border); width: 50%; }
+  .kpi-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a href="#" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+      </svg>
+    </div>
+    Fuel Mind
+  </a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#stock">Stock</a>
+    <a href="#stack">Stack</a>
+    <a href="https://github.com" target="_blank">Docs</a>
+  </nav>
+  <a href="https://github.com" class="btn-github" target="_blank">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+    GitHub
+  </a>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-eyebrow">Open Source · Firebase · Vanilla JS</div>
+  <h1>Fuel management<br>done <em>right</em></h1>
+  <p class="hero-sub">
+    Real-time multi-company fuel tracking with analytics, stock control,
+    Veeder-Root integration, freight calculation, and PDF/Excel exports.
+    No build step required.
+  </p>
+  <div class="hero-ctas">
+    <a href="https://github.com" class="cta-primary" target="_blank">⭐ Star on GitHub</a>
+    <a href="#features" class="cta-secondary">See Features →</a>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val">0<span>kb</span></div>
+      <div class="stat-label">Build output</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">17<span>+</span></div>
+      <div class="stat-label">JS modules</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">∞</div>
+      <div class="stat-label">Companies</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">RT</div>
+      <div class="stat-label">Real-time sync</div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD DEMO -->
+<section class="dash-section">
+  <div class="container">
+    <p class="section-label reveal">Dashboard</p>
+    <h2 class="section-title reveal">Everything at a glance</h2>
+    <p class="section-desc reveal">KPIs, charts, alerts, and recent entries — all on one screen, filtered by company and date range.</p>
+
+    <div class="dash-window reveal">
+      <div class="dash-titlebar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <span class="dash-titlebar-text">Fuel Mind — Dashboard · Posto Rosário</span>
+      </div>
+      <div class="dash-body">
+        <div class="dash-sidebar">
+          <div class="dash-nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard
+          </div>
+          <div class="dash-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            Entries
+          </div>
+          <div class="dash-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Analytics
+          </div>
+          <div class="dash-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            Stock
+          </div>
+          <div class="dash-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/></svg>
+            Freight
+          </div>
+        </div>
+        <div class="dash-main">
+          <div class="kpi-row">
+            <div class="kpi k1">
+              <div class="kpi-label">Entries this month</div>
+              <div class="kpi-val">142</div>
+              <div class="kpi-delta up">▲ +12%</div>
+            </div>
+            <div class="kpi k2">
+              <div class="kpi-label">Total liters</div>
+              <div class="kpi-val">8.4M</div>
+              <div class="kpi-delta dn">▼ −3.2%</div>
+            </div>
+            <div class="kpi k3">
+              <div class="kpi-label">Total spent</div>
+              <div class="kpi-val">R$44M</div>
+              <div class="kpi-delta up">▲ +8.1%</div>
+            </div>
+            <div class="kpi k4">
+              <div class="kpi-label">Avg cost / L</div>
+              <div class="kpi-val">R$5.23</div>
+              <div class="kpi-delta dn">▼ −0.4%</div>
+            </div>
+          </div>
+          <div class="chart-area">
+            <div class="chart-title">Monthly volume (L) — last 7 months</div>
+            <div class="bar-chart">
+              <div class="bar-wrap"><div class="bar" style="height:55%;animation-delay:0.05s"></div><div class="bar-label">Jun</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:70%;animation-delay:0.1s"></div><div class="bar-label">Jul</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:62%;animation-delay:0.15s"></div><div class="bar-label">Aug</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:80%;animation-delay:0.2s"></div><div class="bar-label">Sep</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:73%;animation-delay:0.25s"></div><div class="bar-label">Oct</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:90%;animation-delay:0.3s"></div><div class="bar-label">Nov</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:100%;animation-delay:0.35s;opacity:1"></div><div class="bar-label">Dec</div></div>
+            </div>
+          </div>
+          <div class="mini-table">
+            <div class="mt-head"><span>Date · Note</span><span>Driver</span><span>Fuel</span><span>Total</span></div>
+            <div class="mt-row">
+              <span>18/12 · <span class="mono">1253151</span></span>
+              <span style="color:var(--muted)">Reginaldo</span>
+              <span><span class="badge-fuel s10">S-10</span></span>
+              <span class="mono" style="color:var(--green)">R$ 309.8k</span>
+            </div>
+            <div class="mt-row">
+              <span>18/12 · <span class="mono">1252985</span></span>
+              <span style="color:var(--muted)">Everaldo</span>
+              <span><span class="badge-fuel s10">S-10</span></span>
+              <span class="mono" style="color:var(--green)">R$ 314.0k</span>
+            </div>
+            <div class="mt-row">
+              <span>17/12 · <span class="mono">1252301</span></span>
+              <span style="color:var(--muted)">Ricardo</span>
+              <span><span class="badge-fuel gas">S-500</span></span>
+              <span class="mono" style="color:var(--green)">R$ 298.4k</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <p class="section-label reveal">Capabilities</p>
+    <h2 class="section-title reveal">Built for real operations</h2>
+    <p class="section-desc reveal">Every feature was designed for the daily reality of fuel distributors and transport companies.</p>
+
+    <div class="features-grid reveal">
+      <div class="feat">
+        <div class="feat-icon fi-red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="feat-title">NF-e XML Import</div>
+        <div class="feat-desc">Auto-fill the entry form by uploading an XML invoice. Driver, plate, base, fuel type, quantity, and unit price extracted automatically.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="feat-title">Full Analytics</div>
+        <div class="feat-desc">7 analytical tabs: monthly, per-driver, per-vehicle, per-fuel, comparative, distribution, and price evolution — all with Chart.js.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        </div>
+        <div class="feat-title">Stock Control</div>
+        <div class="feat-desc">Daily stock table per company and fuel. Entries, sales, evaporation (% or liters), Veeder-Root reading, month closing with audit log.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-yellow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div class="feat-title">Freight Calculation</div>
+        <div class="feat-desc">Configure R$/L rates per fuel. Automatic freight totals by plate, driver, company, and vehicle set — with historical composition support.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="feat-title">Rich PDF Exports</div>
+        <div class="feat-desc">Custom logo per company, accent colors, margins, fonts, per-month page breaks, and a footer. Managed managerial monthly report included.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-gray">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="feat-title">Multi-user Permissions</div>
+        <div class="feat-desc">Roles: Supremo, Admin, User. Per-company access. Login via e-mail or @username. Audit trail on all stock edits per user.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SMART ALERTS -->
+<section class="alerts-section">
+  <div class="container">
+    <p class="section-label reveal">Alerts</p>
+    <h2 class="section-title reveal">Smart alerts, zero noise</h2>
+    <p class="section-desc reveal">The dashboard surfaces anomalies automatically — high prices, suspicious volumes, and bad dates — with one-click dismiss.</p>
+
+    <div class="alerts-demo reveal">
+      <div class="alert-card orange">
+        <div class="alert-body">
+          <div class="alert-title">⚠ High price — Diesel S-10</div>
+          <div class="alert-msg">Note <strong>1253151</strong> (18/12): <strong>R$5.87/L</strong> — R$0.64 above 30-day average (avg: R$5.23/L)</div>
+        </div>
+        <button class="alert-action">✓ Confirm</button>
+      </div>
+      <div class="alert-card blue">
+        <div class="alert-body">
+          <div class="alert-title">📦 Volume above usual — S-500</div>
+          <div class="alert-msg">Note <strong>1252301</strong>: <strong>75,000 L</strong> — 67% above historical average (avg: 44,900 L/note)</div>
+        </div>
+        <button class="alert-action">✓ Confirm</button>
+      </div>
+      <div class="alert-card red">
+        <div class="alert-body">
+          <div class="alert-title">📅 Suspicious date — note 1250001</div>
+          <div class="alert-msg">Discharge on 25/12/2025 (future date) · 45 days between note and discharge</div>
+        </div>
+        <button class="alert-action">✓ Confirm date</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STOCK TABLE DEMO -->
+<section class="stock-section" id="stock">
+  <div class="container">
+    <p class="section-label reveal">Stock</p>
+    <h2 class="section-title reveal">Veeder-Root reconciliation</h2>
+    <p class="section-desc reveal">Import Veeder-Root readings and AutoSystem reports. The system cross-checks calculated stock vs. physical readings instantly.</p>
+
+    <div class="stock-demo reveal">
+      <div class="stock-header">
+        <div class="stock-tabs">
+          <div class="stab active">Diesel S-10</div>
+          <div class="stab">S-500</div>
+          <div class="stab">Etanol</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <span style="font-size:0.72rem;color:var(--muted);padding:5px 10px;border:1px solid var(--border);border-radius:6px;">Dec 2025</span>
+          <span style="font-size:0.72rem;color:var(--green);padding:5px 10px;border:1px solid rgba(16,185,129,0.3);border-radius:6px;background:rgba(16,185,129,0.08);">Capacity: 160,000 L</span>
+        </div>
+      </div>
+      <table class="stock-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Entry (L)</th>
+            <th>Sales (L)</th>
+            <th>Evap %</th>
+            <th>Calc. Stock</th>
+            <th>Veeder-Root</th>
+            <th>Diff</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>18/12</strong></td>
+            <td>60,000.000</td>
+            <td>42,318.000</td>
+            <td>0.03%</td>
+            <td><strong>141,237.430</strong></td>
+            <td class="veeder-ok">141,210.000 ✓</td>
+            <td><span class="diff-ok">+27 L</span></td>
+          </tr>
+          <tr>
+            <td><strong>17/12</strong></td>
+            <td>—</td>
+            <td>38,900.000</td>
+            <td>0.03%</td>
+            <td><strong>123,520.000</strong></td>
+            <td class="veeder-warn">121,950.000</td>
+            <td><span class="diff-warn">+1,570 L</span></td>
+          </tr>
+          <tr>
+            <td><strong>16/12</strong></td>
+            <td>60,000.000</td>
+            <td>41,200.000</td>
+            <td>0.03%</td>
+            <td><strong>162,460.300</strong></td>
+            <td class="veeder-ok">162,440.000 ✓</td>
+            <td><span class="diff-ok">+20 L</span></td>
+          </tr>
+          <tr>
+            <td><strong>15/12</strong></td>
+            <td>—</td>
+            <td>39,450.000</td>
+            <td>0.03%</td>
+            <td><strong>143,684.500</strong></td>
+            <td class="veeder-pend">Pending</td>
+            <td class="diff-pend">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section class="stack-section" id="stack">
+  <div class="container">
+    <p class="section-label reveal">Tech Stack</p>
+    <h2 class="section-title reveal">No build step. No framework.<br>Just open and run.</h2>
+    <p class="section-desc reveal">Every dependency is loaded from a CDN. Clone, configure Firebase, and deploy in minutes.</p>
+
+    <div class="stack-grid reveal">
+      <div class="stack-chip"><div class="chip-dot" style="background:#f7df1e"></div>Vanilla JavaScript ES6+</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#e34c26"></div>HTML5 + CSS3</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#ff6f00"></div>Firebase Firestore</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#ff6f00"></div>Firebase Auth</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#ff6f00"></div>Firebase Storage</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#ff6384"></div>Chart.js 4</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#ef4444"></div>jsPDF + AutoTable</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#10b981"></div>SheetJS (XLSX)</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#3b82f6"></div>Firebase Hosting</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container" style="position:relative;z-index:1">
+    <p class="section-label" style="text-align:center;margin-bottom:16px">Ready to ship</p>
+    <h2 class="section-title" style="text-align:center;margin-bottom:16px">Start tracking your fuel<br>in under 10 minutes</h2>
+    <p class="section-desc" style="text-align:center">
+      Clone the repo, point it at your Firebase project, create your first user,
+      and you have a full-featured fuel management system.
+    </p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
+      <a href="https://github.com" class="cta-primary" target="_blank">⭐ Star on GitHub</a>
+      <a href="https://github.com" class="cta-secondary" target="_blank">Read the docs →</a>
+    </div>
+    <div style="margin-top:48px;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap">
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Open Source (MIT)</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ No subscription</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Self-hosted on Firebase</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Real-time sync</span>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span class="footer-logo">⛽ Fuel Mind</span>
+      <div class="footer-links">
+        <a href="https://github.com" target="_blank">GitHub</a>
+        <a href="#features">Features</a>
+        <a href="#stack">Stack</a>
+        <a href="#stock">Stock</a>
+      </div>
+      <span class="footer-copy">MIT License · Built with Firebase + Chart.js</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Scroll reveal ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Alert dismiss ──
+document.querySelectorAll('.alert-action').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const card = btn.closest('.alert-card');
+    card.style.transition = 'opacity 0.3s, transform 0.3s, max-height 0.4s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(30px)';
+    setTimeout(() => {
+      card.style.maxHeight = '0';
+      card.style.overflow = 'hidden';
+      card.style.paddingTop = '0';
+      card.style.paddingBottom = '0';
+      card.style.marginBottom = '0';
+    }, 280);
+  });
+});
+
+// ── Bar chart stagger delay ──
+document.querySelectorAll('.bar').forEach((bar, i) => {
+  bar.style.animationDelay = (i * 0.08) + 's';
+});
+
+// ── Stock tab switch ──
+document.querySelectorAll('.stab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// ── Header scroll effect ──
+window.addEventListener('scroll', () => {
+  const header = document.querySelector('header');
+  if (window.scrollY > 40) {
+    header.style.borderBottomColor = 'rgba(34,34,34,0.8)';
+  } else {
+    header.style.borderBottomColor = '#222222';
+  }
+});
+
+// ── Animated counter on hero stats ──
+function animateCount(el, target, suffix, duration = 1200) {
+  const start = Date.now();
+  const step = () => {
+    const progress = Math.min((Date.now() - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const val = Math.round(eased * target);
+    el.innerHTML = val + '<span>' + suffix + '</span>';
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  step();
+}
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      statsObserver.disconnect();
+      const vals = [[0, 0, 'kb'], [17, '+'], [null], [null]];
+      const els = document.querySelectorAll('.stat-val');
+      animateCount(els[1], 17, '+', 800);
+    }
+  });
+}, { threshold: 0.5 });
+const statsEl = document.querySelector('.stats');
+if (statsEl) statsObserver.observe(statsEl);
+</script>
+</body>
+</html>

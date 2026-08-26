@@ -1,691 +1,867 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
+<html lang="pt-BR" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Entradas de Combustível</title>
+    <title>Fuel Mind — Gestão de Combustíveis</title>
     <link rel="stylesheet" href="style.css">
-
-    <!-- BIBLIOTECAS EXTERNAS -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="favicon.ico">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-
-<header>
-    <div class="header-content">
-        <h1>Controle de Entradas</h1>
-        <button class="btn-tema" onclick="toggleModoEscuro()" title="Alternar modo escuro/claro">
-            <span id="iconeTema">🌙</span>
-        </button>
+<!-- LOGIN -->
+<div id="loginOverlay" class="modal-overlay" style="display:flex; backdrop-filter:blur(8px);">
+    <div class="modal" style="max-width:380px; text-align:center; padding:32px 28px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:52px;height:52px;color:var(--primary);margin-bottom:12px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+        <h2 style="margin-bottom:4px; font-size:1.4rem;">Fuel Mind</h2>
+        <p style="color:var(--text-muted); margin-bottom:28px; font-size:0.82rem;">Sistema de Gestão de Combustível</p>
+        <div class="campo" style="text-align:left; margin-bottom:12px;">
+            <label style="font-size:0.78rem;">E-mail ou usuário</label>
+            <input type="text" id="loginEmail" placeholder="seu@email.com ou @usuario" autocomplete="username" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div class="campo" style="text-align:left; margin-bottom:20px;">
+            <label style="font-size:0.78rem;">Senha</label>
+            <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" style="width:100%;box-sizing:border-box;">
+        </div>
+        <button id="btnLogin" class="btn-primario" onclick="fazerLogin()" style="width:100%;padding:12px;font-size:1rem;">Entrar</button>
+        <p id="loginErro" style="color:var(--danger);font-size:0.82rem;margin-top:12px;display:none;"></p>
     </div>
+</div>
+
+<!-- SELEÇÃO DE EMPRESA PÓS-LOGIN -->
+<div id="selecaoEmpresaOverlay" class="modal-overlay" style="display:none; backdrop-filter:blur(8px);">
+    <div class="modal" style="max-width:380px; text-align:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--primary);margin-bottom:12px;"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0H5m-2 0h2M9 7h1m-1 4h1m4-4h1m-1 4h1M9 15h6v6H9z"/></svg>
+        <h3 style="margin-bottom:6px;">Olá, <span id="selecaoEmpresaNome">—</span>!</h3>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:24px;">Selecione a empresa que deseja acessar:</p>
+        <div id="selecaoEmpresaLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+        <button class="btn-secundario" onclick="fazerLogout()" style="width:100%;">Sair</button>
+    </div>
+</div>
+<div id="appContainer" style="display:none;">
+<div class="app-wrapper">
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-logo" onclick="mostrarTela('dashboard')" style="cursor:pointer">
+  <img src="logo-light.svg" alt="Fuel Mind" class="sidebar-logo-img logo-light">
+  <img src="logo-dark.svg" alt="Fuel Mind" class="sidebar-logo-img logo-dark">
+  <button class="btn-fechar-sidebar" onclick="fecharSidebar()" aria-label="Fechar menu" title="Fechar menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Principal</div>
+      <button class="sidebar-item" id="nav-dashboard" onclick="mostrarTela('dashboard')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        <span class="sidebar-item-label">Dashboard</span>
+      </button>
+      <button class="sidebar-item" id="nav-lancamentos" onclick="mostrarTela('lancamentos')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
+        <span class="sidebar-item-label">Lançamentos</span>
+      </button>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Relatórios</div>
+      <button class="sidebar-item" id="nav-relatorios" onclick="mostrarTela('relatorios')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
+        <span class="sidebar-item-label">Relatórios</span>
+      </button>
+      <button class="sidebar-item" id="nav-analitico" onclick="mostrarTela('analitico')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+        <span class="sidebar-item-label">Analítico</span>
+      </button>
+      <button class="sidebar-item" id="nav-conferencia" onclick="mostrarTela('conferencia')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="sidebar-item-label">Conferências</span>
+      </button>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Operacional</div>
+      <button class="sidebar-item" id="nav-estoque" onclick="mostrarTela('estoque')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+        <span class="sidebar-item-label">Estoque</span>
+      </button>
+      <button class="sidebar-item" id="nav-fretes" onclick="mostrarTela('fretes')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+        <span class="sidebar-item-label">Fretes</span>
+      </button>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Configurações</div>
+      <button class="sidebar-item" id="nav-cadastros" onclick="mostrarTela('cadastros')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="sidebar-item-label">Cadastros</span>
+      </button>
+      <button class="sidebar-item" id="nav-usuarios" onclick="mostrarTela('usuarios')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 11s.5 1 .5 2.5S16 17 16 17"/><path d="M18 12l1.5 1.5L22 11"/></svg></span>
+        <span class="sidebar-item-label">Usuários</span>
+      </button>
+      <button class="sidebar-item" id="nav-sistema" onclick="mostrarTela('sistema')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg></span>
+        <span class="sidebar-item-label">Sistema</span>
+      </button>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-info">Fuel Mind<br><span id="sidebar-data-footer"></span></div>
+  </div>
+</aside>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="fecharSidebar()"></div>
+<div class="main-area">
+<header class="app-header">
+  <button class="btn-hamburger" id="btnHamburger" onclick="toggleSidebar()" aria-label="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <h1 class="header-page-title" id="headerPageTitle">Dashboard</h1>
+  <div class="header-actions">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:0.8rem; color:var(--text-light);">Empresa:</span>
+      <div id="empresaAtivaHeader" class="empresa-ativa-badge" onclick="abrirTrocarEmpresa()" title="Clique para trocar de empresa">
+        <span id="empresaAtivaLabel">—</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;opacity:0.6"><polyline points="6,9 12,15 18,9"/></svg>
+      </div>
+    </div>
+    <button class="btn-busca-global" onclick="abrirBuscaGlobal()" title="Busca global (Ctrl+K)" id="btnBuscaGlobal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Busca global</span>
+      <kbd class="busca-kbd">Ctrl K</kbd>
+    </button>
+    <span class="header-datetime" id="headerDatetime"></span>
+    <div class="header-sep"></div>
+    <span id="headerNomeUsuario" style="font-size:0.82rem;color:var(--text-muted);"></span>
+    <!-- BOTÃO ATALHOS — abre modal de atalhos de teclado (ui.js:abrirAtalhos) -->
+    <button class="header-action-btn" onclick="abrirAtalhos()" title="Atalhos de teclado" aria-label="Atalhos de teclado" style="font-size:0.9rem;font-weight:700;padding:4px 9px;opacity:0.7;font-family:monospace;letter-spacing:-0.5px;">?</button>
+    <button class="header-action-btn" onclick="fazerLogout()" title="Sair" aria-label="Sair do sistema" style="font-size:0.75rem;padding:4px 8px;opacity:0.7;">Sair</button>
+    <button class="header-action-btn" onclick="toggleModoEscuro()" title="Alternar tema (Ctrl+T)" aria-label="Alternar tema claro/escuro" id="btnTema"><span id="iconeTema"></span></button>
+  </div>
 </header>
+<main class="content-area">
 
-<nav>
-    <button class="btn-nav-destaque" onclick="mostrarTela('dashboard'); carregarDashboard()">Dashboard</button>
-    <button onclick="mostrarTela('motoristas')">Motoristas</button>
-    <button onclick="mostrarTela('veiculos')">Veículos</button>
-    <button onclick="mostrarTela('empresas')">Empresas</button>
-    <button onclick="mostrarTela('combustiveis')">Combustíveis</button>
-    <button class="btn-nav-destaque" onclick="mostrarTela('lancamentos')">Lançamentos</button>
-    <button onclick="mostrarTela('relatorios'); carregarRelatorio()">Relatórios</button>
-    <button onclick="mostrarTela('historico')">Histórico</button>
-    <button class="btn-nav-estoque" onclick="mostrarTela('estoque')">Estoque</button>
-    <button class="btn-nav-fretes" onclick="mostrarTela('fretes')">Fretes</button>
-    <button class="btn-nav-destaque" onclick="mostrarTela('analitico'); carregarAnalitico()">Analítico</button>
-    <button class="btn-nav-sistema" onclick="mostrarTela('sistema')">Sistema</button>
-</nav>
-
-<!-- ===================== DASHBOARD ===================== -->
+<!-- DASHBOARD -->
 <div id="dashboard" class="tela">
-    <h2>Dashboard — Visão Geral</h2>
-    <div id="kpiDashboard" class="kpi-container"></div>
-    <h3>Alertas Rápidos</h3>
-    <div id="alertasDashboard" class="alertas-container"></div>
-    <h3>Últimas Entradas</h3>
+  <h2 id="tituloDashboard" style="display:block;">Visão Geral</h2>
+  <div id="kpiDashboard" class="kpi-container"></div>
+  <h3>Alertas Rápidos</h3>
+  <div id="alertasDashboard" class="alertas-container"></div>
+  <h3 style="margin-top:28px">Por Combustível — Mês Atual</h3>
+  <div id="dashCombustiveisContainer" class="dash-combs-wrapper"></div>
+  <h3 style="margin-top:28px">Comparativo Mês a Mês — Últimos 6 Meses</h3>
+  <div id="dashComparativoContainer"></div>
+  <h3 style="margin-top:28px">Últimas Entradas</h3>
+  <div class="tabela-container">
+    <table>
+      <thead><tr><th>Data Nota</th><th>Data Desc.</th><th>Nota</th><th>Base</th><th>Empresa</th><th>Motorista</th><th>Placa</th><th>Litros (L)</th><th>Total (R$)</th><th class="no-print">Ações</th></tr></thead>
+      <tbody id="ultimasEntradasBody"></tbody>
+    </table>
+  </div>
+  <div id="painelDetalhesDashboard" class="painel-detalhes" style="display:none">
+    <h3>Detalhes da Entrada</h3>
+    <div id="conteudoDetalhesDashboard"></div>
+    <button class="btn-secundario" onclick="fecharDetalhes('dashboard')">Fechar</button>
+  </div>
+</div>
+
+<!-- LANÇAMENTOS -->
+<div id="lancamentos" class="tela">
+  <h2 id="tituloLancamentos" style="display:block;">Lançamento de Entrada</h2>
+  <div id="bannerEdicao" class="banner-edicao"></div>
+  <div id="bannerXML" class="banner-xml" style="display:none"></div>
+  <div class="importar-xml-bloco">
+    <label class="importar-xml-label">Importar XML da NF-e <span class="tag-opcional">opcional</span></label>
+    <p class="dica">Selecione o arquivo .xml da nota fiscal para pré-preencher o formulário automaticamente.</p>
+    <input type="file" id="xmlNFe" accept=".xml" onchange="importarXMLNFe(this)">
+  </div>
+  <div class="form-grid">
+    <div class="campo"><label>Data da Nota Fiscal <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label><input type="date" id="dataNota" oninput="marcarFormularioSujo()"></div>
+    <div class="campo"><label>Data da Descarga</label><input type="date" id="dataDescarga" oninput="marcarFormularioSujo()"></div>
+    <div class="campo"><label>Número da Nota</label><input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()"></div>
+    <div class="campo">
+      <label>Base / Distribuidora</label>
+      <input id="baseEntradaInput" list="dlBases" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
+      <datalist id="dlBases"></datalist>
+      <input type="hidden" id="baseEntrada">
+    </div>
+    <div class="campo">
+      <label>Empresa <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
+      <input id="empresaInput" list="dlEmpresas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
+      <datalist id="dlEmpresas"></datalist>
+      <input type="hidden" id="empresaSelect">
+    </div>
+    <div class="campo">
+      <label>Motorista <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
+      <input id="motoristaInput" list="dlMotoristas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
+      <datalist id="dlMotoristas"></datalist>
+      <input type="hidden" id="motoristaSelect">
+    </div>
+    <div class="campo">
+      <label>Placa do Veículo <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
+      <input id="placaInput" list="dlPlacas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
+      <datalist id="dlPlacas"></datalist>
+      <input type="hidden" id="placaSelect">
+    </div>
+    <div class="campo"><label>Observações</label><textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea></div>
+    <div class="campo"><label>Nota Fiscal (opcional, múltiplos)</label><input type="file" id="notaFiscalFile" accept="image/*,application/pdf" multiple></div>
+  </div>
+  <h3>Combustíveis desta Nota</h3>
+  <div id="combustiveisNota"></div>
+  <button class="btn-secundario" onclick="adicionarCombustivelNota()">Adicionar Combustível</button>
+  <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
+  <div class="acoes-lancamento">
+    <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar()">Salvar Entrada</button>
+    <button class="btn-cancelar" onclick="limparFormulario()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ESTOQUE -->
+<div id="estoque" class="tela">
+  <h2 id="tituloEstoque" style="display:block;">Controle de Estoque</h2>
+  <div id="estoqueFiltrosContainer"></div>
+  <div class="analitico-abas" id="estoqueAbas" style="margin-top:16px"></div>
+  <div id="estoqueConteudoAba"></div>
+</div>
+
+<!-- FRETES -->
+<div id="fretes" class="tela">
+  <h2 id="tituloFretes" style="display:block;">Resumo de Fretes</h2>
+  <p class="dica">Dados calculados automaticamente a partir dos lançamentos do mês selecionado.</p>
+  <div class="sistema-secao" style="margin-bottom:20px">
+    <h3>Taxas de Frete por Combustível (R$/litro)</h3>
+    <p class="dica" style="margin-top:4px">Defina o valor pago por litro transportado para cada tipo de combustível.</p>
+    <div id="fretesTodasTaxas" class="frete-taxas-grid"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+    <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
+    <input type="month" id="fretesSelectMes" onchange="calcularEExibirFretes()" style="max-width:180px">
+    <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
+  </div>
+  <div id="fretesResumoMes" class="resumo" style="margin-bottom:16px"></div>
+  <div class="barra-exportacao" id="fretesBarraExportacao">
+    <span class="exportacao-titulo">Exportar:</span>
+    <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
+    <button class="btn-export btn-pdf" onclick="exportarFretesPDF()">PDF</button>
+    <button class="btn-export btn-csv" onclick="exportarFretesCSV()">CSV</button>
+    <button class="btn-export btn-print" onclick="imprimirFretes()">Imprimir</button>
+  </div>
+  <div class="analitico-abas" id="fretesAbas" style="margin-top:16px">
+    <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por Placa</button>
+    <button class="aba-btn" onclick="trocarAbaFretes('motoristas', this)">Por Motorista</button>
+    <button class="aba-btn" onclick="trocarAbaFretes('empresas', this)">Por Empresa</button>
+    <button class="aba-btn" onclick="trocarAbaFretes('conjuntos', this)">Por Conjunto</button>
+  </div>
+  <div id="frete-aba-placas" class="aba-conteudo">
+    <h3>Resumo por Placa</h3>
+    <div class="tabela-container"><table><thead><tr><th>Placa</th><th>Conjunto</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFretePlacas"></tbody></table></div>
+  </div>
+  <div id="frete-aba-motoristas" class="aba-conteudo" style="display:none">
+    <h3>Resumo por Motorista</h3>
+    <div class="tabela-container"><table><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
+  </div>
+  <div id="frete-aba-empresas" class="aba-conteudo" style="display:none">
+    <h3>Resumo por Empresa</h3>
+    <div class="tabela-container"><table><thead><tr><th>Empresa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteEmpresas"></tbody></table></div>
+  </div>
+  <div id="frete-aba-conjuntos" class="aba-conteudo" style="display:none">
+    <h3>Resumo por Conjunto</h3>
+    <p class="dica">Agrupa viagens e litros de todas as placas do conjunto, respeitando a composição vigente na data de cada lançamento.</p>
+    <div class="tabela-container"><table><thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteConjuntos"></tbody></table></div>
+  </div>
+</div>
+
+<!-- RELATÓRIOS -->
+<div id="relatorios" class="tela">
+  <h2 id="tituloRelatorios" style="display:block;">Relatórios</h2>
+  <div class="filtros">
+      <div class="campo"><label>Data início</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label>Data fim</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label>Motorista</label><select id="filtroMotorista"><option value="">Todos</option></select></div>
+      <div class="campo"><label>Placa</label><select id="filtroPlaca"><option value="">Todas</option></select></div>
+      <div class="campo"><label>Combustível</label><select id="filtroCombustivel"><option value="">Todos</option></select></div>
+      <div class="campo"><label>Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota"></div>
+      <div class="campo"><label>Base</label><input id="filtroBase" placeholder="Base"></div>
+      <div class="campo"><label>Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorio()"></div>
+    </div>
+    <div class="filtros-acoes">
+      <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
+      <button class="btn-secundario" onclick="limparFiltros()">Limpar</button>
+      <span class="filtros-rapidos-sep">Período rápido:</span>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','hoje')">Hoje</button>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes')">Este mês</button>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes_anterior')">Mês anterior</button>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','ano')">Este ano</button>
+    </div>
+    <div id="resumoRelatorio" class="resumo"></div>
+    <div id="barraExportacaoRelatorio" class="barra-exportacao" style="display:none">
+      <span class="exportacao-titulo">Exportar:</span>
+      <button class="btn-export btn-xlsx" onclick="exportarExcel('relatorio')">Excel</button>
+      <button class="btn-export btn-pdf" onclick="exportarPDF('relatorio')">PDF</button>
+      <button class="btn-export btn-csv" onclick="exportarCSV('relatorio')">CSV</button>
+      <button class="btn-export btn-print" onclick="imprimirRelatorio()">Imprimir</button>
+      <button class="btn-export btn-wpp" onclick="compartilharWhatsApp()">WhatsApp</button>
+      <button class="btn-export btn-email" onclick="compartilharEmail()">E-mail</button>
+      <span style="width:1px;background:var(--border);margin:0 4px;align-self:stretch"></span>
+      <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes')" title="Aplica filtro deste mês e exporta PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:4px;vertical-align:middle"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Este mês
+      </button>
+      <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes_anterior')" title="Aplica filtro do mês anterior e exporta PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:4px;vertical-align:middle"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Mês anterior
+      </button>
+    </div>
     <div class="tabela-container">
-        <table>
-            <thead><tr>
-                <th>Data Nota</th><th>Data Desc.</th><th>Nota</th><th>Base</th>
-                <th>Empresa</th><th>Motorista</th><th>Placa</th><th>Total (R$)</th>
-                <th class="no-print">Ações</th>
-            </tr></thead>
-            <tbody id="ultimasEntradasBody"></tbody>
-        </table>
+      <table id="tabelaRelatorioEl">
+        <thead><tr>
+          <th class="th-sortable" onclick="_ordenarPorColuna('dataNota')" title="Ordenar por data da nota">Data Nota <span id="sort-dataNota" class="th-sort-icon">↕</span></th>
+          <th class="th-sortable" onclick="_ordenarPorColuna('dataDesc')" title="Ordenar por data de descarga">Data Descarga <span id="sort-dataDesc" class="th-sort-icon ativo">↓</span></th>
+          <th>Nota</th><th>Base</th><th>Empresa</th><th>Motorista</th><th>Placa</th>
+          <th class="th-sortable" onclick="_ordenarPorColuna('litros')" title="Ordenar por litros">Litros (L) <span id="sort-litros" class="th-sort-icon">↕</span></th>
+          <th class="th-sortable" onclick="_ordenarPorColuna('total')" title="Ordenar por valor total">Total (R$) <span id="sort-total" class="th-sort-icon">↕</span></th>
+          <th class="no-print">Ações</th>
+        </tr></thead>
+        <tbody id="tabelaRelatorio"></tbody>
+      </table>
     </div>
-    <div id="painelDetalhesDashboard" class="painel-detalhes" style="display:none">
-        <h3>Detalhes da Entrada</h3>
-        <div id="conteudoDetalhesDashboard"></div>
-        <button class="btn-secundario" onclick="fecharDetalhes('dashboard')">Fechar</button>
+    <div id="painelDetalhesRelatorio" class="painel-detalhes" style="display:none">
+      <h3>Detalhes da Entrada</h3>
+      <div id="conteudoDetalhesRelatorio"></div>
+      <button class="btn-secundario" onclick="fecharDetalhes('relatorio')">Fechar</button>
     </div>
 </div>
 
-<!-- ===================== MOTORISTAS ===================== -->
-<div id="motoristas" class="tela">
-    <h2>Cadastro de Motoristas</h2>
-    <div class="form-linha">
-        <input id="nomeMotorista" placeholder="Nome do motorista">
-        <button class="btn-primario" onclick="salvarMotorista()">Adicionar</button>
+<!-- ANALÍTICO -->
+<div id="analitico" class="tela">
+  <h2 id="tituloAnalitico" style="display:block;">Analítico</h2>
+    <div class="analitico-filtros">
+      <div class="campo"><label>Período inicial</label><input type="date" id="analiticoInicio"></div>
+      <div class="campo"><label>Período final</label><input type="date" id="analiticoFim"></div>
+      <div class="campo"><label>Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
+      <div class="campo" style="justify-content:flex-end; padding-top:18px"><button class="btn-primario" onclick="carregarAnalitico()">Atualizar</button></div>
     </div>
-    <div class="filtro-lista">
-        <label>
-            <input type="checkbox" id="mostrarInativos" onchange="atualizarListas()">
-            Mostrar inativos
-        </label>
+    <div class="filtros-rapidos-linha">
+      <span class="filtros-rapidos-sep">Período rápido:</span>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes')">Este mês</button>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes_anterior')">Mês anterior</button>
+      <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','ano')">Este ano</button>
     </div>
+    <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center;">
+      <span style="font-size:0.85rem; color:var(--text-muted);">Visualizar por:</span>
+      <button class="btn-secundario" id="btnMetricaGasto" style="background:var(--primary); color:white;">Valor (R$)</button>
+      <button class="btn-secundario" id="btnMetricaLitros">Litros (L)</button>
+    </div>
+    <div id="kpiContainer" class="kpi-container"></div>
+    <div class="analitico-abas" id="analiticoAbas">
+      <button class="aba-btn ativa" onclick="trocarAba('mensal', this)">Mensal</button>
+      <button class="aba-btn" onclick="trocarAba('motoristas', this)">Por Motorista</button>
+      <button class="aba-btn" onclick="trocarAba('veiculos', this)">Por Veículo</button>
+      <button class="aba-btn" onclick="trocarAba('combustivel', this)">Por Combustível</button>
+      <button class="aba-btn" onclick="trocarAba('comparativo', this)">Comparativo</button>
+      <button class="aba-btn" onclick="trocarAba('distribuicao', this)">Distribuição</button>
+      <button class="aba-btn" onclick="trocarAba('evolucaoPrecos', this)">Evolução Preços</button>
+      <button class="aba-btn" onclick="trocarAba('estoque', this)">Estoque</button>
+    </div>
+    <div id="aba-mensal" class="aba-conteudo">
+      <h3>Resumo Mensal</h3>
+      <p class="dica">Total gasto e litros carregados por mês no período selecionado.</p>
+      <div class="grafico-wrapper"><canvas id="graficoMensal" height="280"></canvas></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês / Ano</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Custo Médio / L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
+    </div>
+    <div id="aba-motoristas" class="aba-conteudo" style="display:none">
+      <h3>Resumo por Motorista</h3>
+      <div class="grafico-wrapper"><canvas id="graficoMotoristas" height="280"></canvas></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Motorista</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Custo Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
+    </div>
+    <div id="aba-veiculos" class="aba-conteudo" style="display:none">
+      <h3>Resumo por Veículo</h3>
+      <div class="grafico-wrapper"><canvas id="graficoVeiculos" height="280"></canvas></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Placa</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Custo Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
+    </div>
+    <div id="aba-combustivel" class="aba-conteudo" style="display:none">
+      <h3>Resumo por Tipo de Combustível</h3>
+      <div class="grafico-wrapper"><canvas id="graficoCombustivel" height="280"></canvas></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Combustível</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Mín / Máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
+    </div>
+    <div id="aba-comparativo" class="aba-conteudo" style="display:none">
+      <h3>Comparativo Mês a Mês</h3>
+      <p class="dica">Evolução do custo médio por litro ao longo dos meses.</p>
+      <div class="grafico-wrapper"><canvas id="graficoComparativo" height="300"></canvas></div>
+      <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês</th><th>Custo Médio / L</th><th>vs. mês anterior</th><th>Total Litros</th><th>Total Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
+    </div>
+    <div id="aba-distribuicao" class="aba-conteudo" style="display:none">
+      <h3>Distribuição de Gastos</h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div><h4>Por Combustível</h4><div class="grafico-wrapper"><canvas id="graficoPizzaCombustivel" height="200"></canvas></div></div>
+        <div><h4>Por Motorista (top 5)</h4><div class="grafico-wrapper"><canvas id="graficoPizzaMotoristas" height="200"></canvas></div></div>
+      </div>
+    </div>
+    <div id="aba-evolucaoPrecos" class="aba-conteudo" style="display:none">
+      <h3>Evolução de Preços por Combustível</h3>
+      <p class="dica">Variação do preço médio por litro ao longo do período selecionado.</p>
+      <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
+      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      </button></div>
+    </div>
+    <div id="aba-estoque" class="aba-conteudo" style="display:none">
+      <h3>Resumo de Estoque</h3>
+      <p class="dica">Entradas, vendas, evaporação e saldo calculado no período selecionado.</p>
+    </div>
+</div>
+
+<!-- CONFERÊNCIAS -->
+<div id="conferencia" class="tela">
+  <h2 id="tituloConferencia" style="display:block;">Conferências</h2>
+  <div class="analitico-abas" style="margin-bottom:20px">
+    <button class="aba-btn _conf-sub-btn ativa" data-aba="autosystem" onclick="_confMudarSubAba('autosystem')">
+      AutoSystem
+    </button>
+    <button class="aba-btn _conf-sub-btn" data-aba="veeder" onclick="_confMudarSubAba('veeder')">
+      Veeder Root
+    </button>
+  </div>
+  <div id="_confSub-autosystem" class="_conf-sub-conteudo">
+    <div class="sistema-secao">
+      <h3>Conferência — Relatório AutoSystem</h3>
+      <p class="dica">
+        Importe o relatório de <strong>Medição de Tanque por Período</strong> do AutoSystem
+        (.xlsx, .xls ou .csv). O sistema compara as <strong>entradas</strong> com os lançamentos
+        do sistema e disponibiliza as <strong>saídas de bombas</strong> para lançar no estoque.
+      </p>
+      <div style="margin-top:16px">
+        <label>Selecionar relatório AutoSystem</label>
+        <input type="file" accept=".xlsx,.xls,.csv" style="margin-top:6px;display:block"
+               onchange="autosystemLerArquivo(this)">
+        <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv</p>
+      </div>
+      <div id="_confAutoResultado" style="margin-top:20px"></div>
+    </div>
+  </div>
+  <div id="_confSub-veeder" class="_conf-sub-conteudo" style="display:none">
+    <div class="sistema-secao">
+      <h3>Veeder Root — Importar Leituras</h3>
+      <p class="dica">
+        Importe o relatório do Veeder Root (.xlsx, .xls, .csv ou .txt).
+        O sistema preenche automaticamente a coluna <strong>Veeder-Root</strong> no estoque
+        para cada dia e combustível encontrado no arquivo.
+      </p>
+      <div style="margin-top:16px">
+        <label>Selecionar relatório Veeder Root</label>
+        <input type="file" accept=".xlsx,.xls,.csv,.txt" style="margin-top:6px;display:block"
+               onchange="veederLerArquivo(this)">
+        <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv, .txt</p>
+      </div>
+      <div id="_confVeederResultado" style="margin-top:20px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SISTEMA -->
+<div id="sistema" class="tela">
+  <h2 id="tituloSistema" style="display:block;">Sistema</h2>
+  <div class="analitico-abas" id="sistemaAbas">
+    <button class="aba-btn ativa" data-aba="backup" onclick="trocarAbaSistema('backup', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Backup
+    </button>
+    <button class="aba-btn" data-aba="importar" onclick="trocarAbaSistema('importar', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Importar Planilha
+    </button>
+    <button class="aba-btn" data-aba="conferencia" onclick="trocarAbaSistema('conferencia', this)" style="display:none">
+      Conferência
+    </button>
+    <button class="aba-btn" data-aba="config" onclick="trocarAbaSistema('config', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      Configurações
+    </button>
+  </div>
+  <div id="sistemaAba-backup" class="sistema-aba-conteudo">
+    <div class="sistema-secao">
+      <h3>Backup dos Dados</h3>
+      <p class="dica">O sistema armazena os dados no <strong>localStorage</strong> do seu navegador. Faça backups regularmente.</p>
+      <div class="sistema-acoes">
+        <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
+        <div class="campo" style="max-width:360px; margin-top:12px">
+          <label>Restaurar a partir de backup (.json)</label>
+          <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
+        </div>
+      </div>
+    </div>
+    <div class="sistema-secao">
+      <h3>Backups Automáticos</h3>
+      <p class="dica">O sistema salva automaticamente uma cópia dos seus dados a cada 3 dias. Os últimos 3 backups são mantidos.</p>
+      <div id="listaBackupsAuto"></div>
+      <button class="btn-secundario" style="margin-top:8px" onclick="renderBackupsAuto()">Atualizar lista</button>
+    </div>
+    <div class="sistema-secao">
+      <h3>Informações do Sistema</h3>
+      <div id="infoSistema" class="info-sistema"></div>
+      <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
+    </div>
+    <div class="sistema-secao zona-perigo">
+      <h3>Zona de Perigo</h3>
+      <p class="dica" style="color:var(--danger); margin-bottom:12px">As ações abaixo são irreversíveis. Faça um backup antes de continuar.</p>
+      <div class="sistema-acoes"><button class="btn-reset" onclick="resetSeguro()">Apagar Todos os Dados</button></div>
+    </div>
+  </div>
+  <div id="sistemaAba-importar" class="sistema-aba-conteudo" style="display:none">
+    <div class="sistema-secao" style="margin-bottom:20px">
+      <h3>Importar Histórico de Planilha</h3>
+      <p class="dica">Importe lançamentos históricos das suas planilhas Excel (.xlsx, .xls) ou CSV. Os dados existentes <strong>não serão apagados</strong> — apenas acrescentados.</p>
+    </div>
+    <div class="sistema-secao" style="margin-bottom:20px">
+      <h3>Antes de começar</h3>
+      <p class="dica" style="margin-bottom:10px">Sua planilha deve ter <strong>uma linha por combustível</strong>. Se uma nota tiver S10 e Gasolina, serão duas linhas com o mesmo número de nota — o sistema agrupa automaticamente.</p>
+      <button class="btn-secundario" onclick="baixarModeloPlanilha()">Baixar modelo de planilha</button>
+    </div>
+    <div class="sistema-secao" style="margin-bottom:20px">
+      <h3>Selecionar arquivo</h3>
+      <input type="file" id="importacaoArquivo" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" style="margin-top:6px">
+      <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv</p>
+    </div>
+    <div id="importacaoEtapas" style="display:none">
+      <div class="sistema-secao" style="margin-bottom:20px">
+        <h3>Pré-visualização do arquivo</h3>
+        <div id="importacaoPreview"></div>
+      </div>
+      <div class="sistema-secao" style="margin-bottom:20px">
+        <h3>Mapeamento de colunas</h3>
+        <div id="importacaoMapeamento"></div>
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap">
+        <button class="btn-primario" onclick="importacaoProcessar()">Validar e continuar</button>
+        <button class="btn-cancelar" onclick="importacaoCancelar()">Cancelar</button>
+      </div>
+    </div>
+    <div id="importacaoResultado" style="display:none"></div>
+  </div>
+  <div id="sistemaAba-conferencia" class="sistema-aba-conteudo" style="display:none">
+  </div>
+  <div id="sistemaAba-config" class="sistema-aba-conteudo" style="display:none">
+    <div class="sistema-secao">
+      <h3>Tema Personalizado</h3>
+      <p class="dica">Escolha a cor principal do sistema (afeta botões, abas ativas, etc.)</p>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input type="color" id="corPrimaria" value="#a02828" onchange="aplicarCorPersonalizada(this.value)">
+        <button class="btn-secundario" onclick="resetarCorPadrao()">Restaurar padrão</button>
+      </div>
+    </div>
+    <div class="sistema-secao">
+      <h3>Layout do Relatório PDF</h3>
+      <p class="dica">Personalize a aparência dos relatórios em PDF.</p>
+
+      <!-- Logo -->
+      <div class="campo" style="margin-bottom:16px;">
+        <label>Logo (cabeçalho do PDF)</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div id="pdfLogoPlaceholder"
+               style="width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;
+                      display:flex;align-items:center;justify-content:center;color:var(--text-muted);
+                      font-size:0.75rem;text-align:center;cursor:pointer;padding:4px;box-sizing:border-box;"
+               onclick="document.getElementById('pdfLogoInput').click()">
+            Clique para<br>adicionar logo
+          </div>
+          <img id="pdfLogoPreview" src="" alt="Logo"
+               style="display:none;max-height:80px;max-width:200px;border-radius:6px;border:1px solid var(--border)">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn-secundario" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
+            <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
+            <input id="pdfLogoInput" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
+          </div>
+          <span class="dica" style="font-size:0.75rem;margin:0">PNG ou JPG, máx. 500 KB.<br>Aparece no canto esquerdo do cabeçalho.</span>
+        </div>
+      </div>
+
+      <!-- Título, orientação e fonte -->
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="campo">
+          <label>Título do relatório</label>
+          <input type="text" id="pdfTitulo" value="Controle de Entradas de Combustível" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div class="campo">
+          <label>Orientação</label>
+          <select id="pdfOrientacao">
+            <option value="landscape" selected>Paisagem</option>
+            <option value="portrait">Retrato</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Fonte</label>
+          <select id="pdfFonte">
+            <option value="helvetica">Helvetica</option>
+            <option value="courier">Courier</option>
+            <option value="times">Times</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cor de destaque e margens -->
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:12px;align-items:end;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="campo">
+          <label>Cor de destaque</label>
+          <input type="color" id="pdfCorDestaque" value="#1a3a5c"
+                 style="height:38px;width:60px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
+        </div>
+        <div class="campo">
+          <label>Margem esq. (mm)</label>
+          <input type="number" id="pdfMargemEsq" value="14" min="5" max="40" step="1">
+        </div>
+        <div class="campo">
+          <label>Margem dir. (mm)</label>
+          <input type="number" id="pdfMargemDir" value="14" min="5" max="40" step="1">
+        </div>
+        <div class="campo">
+          <label>Margem topo (mm)</label>
+          <input type="number" id="pdfMargemTopo" value="14" min="5" max="40" step="1">
+        </div>
+        <div class="campo">
+          <label>Margem rodapé (mm)</label>
+          <input type="number" id="pdfMargemRodape" value="10" min="5" max="30" step="1">
+        </div>
+      </div>
+
+      <!-- Colunas visíveis e opções -->
+      <div class="campo" style="margin-bottom:16px;">
+        <label>Colunas e opções do PDF</label>
+        <div class="form-linha" style="gap:20px;flex-wrap:wrap;margin-top:6px;">
+          <label><input type="checkbox" id="pdfMostrarBase" checked> Mostrar coluna Base</label>
+          <label><input type="checkbox" id="pdfMostrarEmpresa" checked> Mostrar Empresa</label>
+          <label><input type="checkbox" id="pdfMostrarMotorista" checked> Mostrar Motorista</label>
+          <label><input type="checkbox" id="pdfMostrarPlaca" checked> Mostrar Placa</label>
+          <label><input type="checkbox" id="pdfQuebrarPorMes"> Quebrar página por mês</label>
+        </div>
+      </div>
+
+      <!-- Rodapé customizável -->
+      <div class="campo" style="margin-bottom:16px;">
+        <label>Texto do rodapé (opcional)</label>
+        <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial" style="max-width:420px;">
+      </div>
+
+      <button class="btn-secundario" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
+    </div>
+    <div class="sistema-card">
+      <h3>Configurações de Alertas</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Ajuste os critérios que acionam os alertas no dashboard.</p>
+      <div class="sistema-acoes"><button class="btn-primario" onclick="abrirConfigAlertas()">Ajustar Alertas</button></div>
+    </div>
+    <div class="sistema-card">
+      <h3>Correções em Massa</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Corrija campos em lote nos lançamentos.</p>
+      <div class="sistema-acoes" style="flex-wrap:wrap;gap:10px">
+        <button class="btn-secundario" onclick="corrigirCampoEmMassa('empresa')">Corrigir Empresa</button>
+        <button class="btn-secundario" onclick="corrigirCampoEmMassa('motorista')">Corrigir Motorista</button>
+        <button class="btn-secundario" onclick="corrigirCampoEmMassa('placa')">Corrigir Placa</button>
+        <button class="btn-secundario" onclick="corrigirCampoEmMassa('base')">Corrigir Base</button>
+        <button class="btn-secundario" onclick="corrigirCampoEmMassa('combustivel')">Corrigir Combustível</button>
+        <button class="btn-secundario" onclick="auditarDatas()">Verificar Datas Suspeitas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- USUÁRIOS E PERMISSÕES -->
+<div id="usuarios" class="tela">
+  <h2 id="tituloUsuarios" style="display:none;">Usuários e Permissões</h2>
+  <div id="usuariosConteudo"><p class="dica">Carregando...</p></div>
+</div>
+
+<!-- CADASTROS -->
+<div id="cadastros" class="tela">
+  <h2 id="tituloCadastros" style="display:block;">Cadastros</h2>
+  <div class="analitico-abas">
+    <button class="aba-btn ativa" onclick="trocarAbaCadastro('bases', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Bases
+    </button>
+    <button class="aba-btn" onclick="trocarAbaCadastro('combustiveis', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Combustíveis
+    </button>
+    <button class="aba-btn" onclick="trocarAbaCadastro('conjuntos', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Conjuntos
+    </button>
+    <button class="aba-btn" onclick="trocarAbaCadastro('empresas', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M12 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/></svg>Empresas
+    </button>
+    <button class="aba-btn" onclick="trocarAbaCadastro('motoristas', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Motoristas
+    </button>
+    <button class="aba-btn" onclick="trocarAbaCadastro('tanques', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Tanques
+    </button>
+    <button class="aba-btn" onclick="trocarAbaCadastro('veiculos', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Veículos
+    </button>
+  </div>
+  <div id="cad-motoristas" class="aba-conteudo">
+    <h3>Motoristas</h3>
+    <div class="form-linha"><input id="nomeMotorista" placeholder="Nome do motorista"><button class="btn-primario" onclick="salvarMotorista()">Adicionar</button></div>
+    <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativos" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaMotoristas"></ul>
-</div>
-
-<!-- ===================== VEÍCULOS ===================== -->
-<div id="veiculos" class="tela">
-    <h2>Cadastro de Veículos</h2>
-    <div class="form-linha">
-        <input id="placaVeiculo" placeholder="Placa (ex: ABC-1234)">
-        <button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button>
-    </div>
-    <div class="filtro-lista">
-        <label>
-            <input type="checkbox" id="mostrarInativosVeiculos" onchange="atualizarListas()">
-            Mostrar inativos
-        </label>
-    </div>
+  </div>
+  <div id="cad-veiculos" class="aba-conteudo" style="display:none">
+    <h3>Veículos</h3>
+    <div class="form-linha"><input id="placaVeiculo" placeholder="Placa (ex: ABC-1234)"><button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button></div>
+    <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosVeiculos" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaVeiculos"></ul>
-</div>
-
-<!-- ===================== EMPRESAS ===================== -->
-<div id="empresas" class="tela">
-    <h2>Cadastro de Empresas</h2>
-    <div class="form-linha">
-        <input id="nomeEmpresa" placeholder="Nome da empresa">
-        <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
+  </div>
+  <div id="cad-empresas" class="aba-conteudo" style="display:none">
+    <h3>Empresas</h3>
+    <div class="form-linha" style="flex-wrap:wrap">
+      <input id="nomeEmpresa" placeholder="Nome da empresa" style="flex:2">
+      <input id="municipioEmpresa" placeholder="Município/UF (ex: São Paulo, SP)" style="flex:1">
+      <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
-    <div class="filtro-lista">
-        <label>
-            <input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()">
-            Mostrar inativos
-        </label>
-    </div>
+    <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaEmpresas"></ul>
-</div>
-
-<!-- ===================== COMBUSTÍVEIS ===================== -->
-<div id="combustiveis" class="tela">
-    <h2>Cadastro de Combustíveis</h2>
+  </div>
+  <div id="cad-combustiveis" class="aba-conteudo" style="display:none">
+    <h3>Tipos de Combustível</h3>
     <div class="form-linha">
-        <input id="nomeCombustivel" placeholder="Tipo (ex: S10)">
-        <input id="perdaCombustivel" type="number" placeholder="% perda tolerada (ex: 0.3)"
-               min="0" max="10" step="0.01" style="max-width:220px">
-        <button class="btn-primario" onclick="salvarCombustivel()">Adicionar</button>
+      <input id="nomeCombustivel" placeholder="Tipo (ex: S10)">
+      <input id="perdaCombustivel" type="number" placeholder="% perda tolerada" min="0" max="10" step="0.01" style="max-width:200px">
+      <button class="btn-primario" onclick="salvarCombustivel()">Adicionar</button>
     </div>
     <p class="dica">A % de perda tolerada é usada para calcular automaticamente a perda esperada nos lançamentos.</p>
-    <div class="filtro-lista">
-        <label>
-            <input type="checkbox" id="mostrarInativos_combustiveis" onchange="atualizarListas()">
-            Mostrar inativos
-        </label>
-    </div>
+    <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativos_combustiveis" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaCombustiveis"></ul>
+  </div>
+  <div id="cad-bases" class="aba-conteudo" style="display:none">
+    <h3>Bases / Distribuidoras</h3>
+    <div class="form-linha">
+      <input id="nomeBase" placeholder="Nome da base (ex: REPLAN, REVAP...)">
+      <button class="btn-primario" onclick="salvarBase()">Adicionar</button>
+    </div>
+    <p class="dica">Cadastre aqui as distribuidoras e refinarias de origem dos combustíveis.</p>
+    <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosBases" onchange="atualizarListas()"> Mostrar inativos</label></div>
+    <ul id="listaBases"></ul>
+  </div>
+  <div id="cad-tanques" class="aba-conteudo" style="display:none">
+    <h3>Tanques de Combustível</h3>
+    <p class="dica">Cadastre os tanques com compartimentos e histórico de combustível.</p>
+    <div id="formNovoTanqueContainer"></div>
+    <hr style="margin:20px 0;border:none;border-top:1px solid var(--border);">
+    <div class="filtro-lista" style="margin-bottom:12px;">
+      <label><input type="checkbox" id="mostrarInativosTanques" onchange="renderListaTanques()"> Mostrar inativos</label>
+    </div>
+    <div id="listaTanquesContainer"></div>
+  </div>
+  <div id="cad-conjuntos" class="aba-conteudo" style="display:none">
+    <h3>Conjuntos de Veículos</h3>
+    <p class="dica">Agrupe placas que formam um conjunto (cavalo + caçambas). O sistema calcula fretes e viagens por conjunto além de individualmente por placa.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="btn-primario" onclick="abrirNovoConjunto()">Novo Conjunto</button>
+      <button class="btn-secundario" onclick="converterTodasPlacasMercosul()">Converter placas para Mercosul</button>
+    </div>
+    <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosConjuntos" onchange="renderizarConjuntos()"> Mostrar inativos</label></div>
+    <ul id="listaConjuntos" style="list-style:none;padding:0;margin-top:12px;"></ul>
+  </div>
 </div>
 
-<!-- ===================== LANÇAMENTOS ===================== -->
-<div id="lancamentos" class="tela">
-    <h2 id="tituloLancamento">Lançamento de Entrada</h2>
-    <div id="bannerEdicao" class="banner-edicao"></div>
-
-    <!-- Banner de resultado da importação XML -->
-    <div id="bannerXML" class="banner-xml" style="display:none"></div>
-
-    <!-- Importação XML NF-e -->
-    <div class="importar-xml-bloco">
-        <label class="importar-xml-label">Importar XML da NF-e <span class="tag-opcional">opcional</span></label>
-        <p class="dica" style="margin-bottom:6px">Selecione o arquivo .xml da nota fiscal para pré-preencher o formulário automaticamente. Você poderá conferir e ajustar os dados antes de salvar.</p>
-        <input type="file" id="xmlNFe" accept=".xml" onchange="importarXMLNFe(this)">
-    </div>
-    <div class="form-grid">
-        <div class="campo">
-            <label>Data da Nota Fiscal</label>
-            <input type="date" id="dataNota" oninput="marcarFormularioSujo()">
-        </div>
-        <div class="campo">
-            <label>Data da Descarga</label>
-            <input type="date" id="dataDescarga" oninput="marcarFormularioSujo()">
-        </div>
-        <div class="campo">
-            <label>Número da Nota</label>
-            <input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()">
-        </div>
-        <div class="campo">
-            <label>Base</label>
-            <input id="baseEntrada" placeholder="Ex: Replan, Revap..." oninput="marcarFormularioSujo()">
-        </div>
-        <div class="campo">
-            <label>Empresa / Fornecedor</label>
-            <select id="empresaSelect" onchange="marcarFormularioSujo()"></select>
-        </div>
-        <div class="campo">
-            <label>Motorista</label>
-            <select id="motoristaSelect" onchange="marcarFormularioSujo()"></select>
-        </div>
-        <div class="campo">
-            <label>Placa do Veículo</label>
-            <select id="placaSelect" onchange="marcarFormularioSujo()"></select>
-        </div>
-        <div class="campo">
-            <label>Observações</label>
-            <textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea>
-        </div>
-        <div class="campo">
-            <label>Nota Fiscal (opcional)</label>
-            <input type="file" id="notaFiscalFile" accept="image/*,application/pdf">
-        </div>
-    </div>
-
-    <h3>Combustíveis desta Nota</h3>
-    <div id="combustiveisNota"></div>
-    <button class="btn-secundario" onclick="adicionarCombustivelNota()">+ Adicionar Combustível</button>
-
-    <!-- Totalizador em tempo real — Melhoria 4 -->
-    <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
-
-    <div class="acoes-lancamento">
-        <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar()">Salvar Entrada</button>
-        <button class="btn-cancelar" onclick="limparFormulario()">✖ Cancelar</button>
-    </div>
+<!-- MODAL TROCA DE EMPRESA -->
+<div id="trocarEmpresaModal" class="modal-overlay" style="display:none; backdrop-filter:blur(4px);">
+  <div class="modal" style="max-width:340px; text-align:center;">
+    <h3 style="margin-bottom:18px;">Trocar de Empresa</h3>
+    <div id="trocarEmpresaLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+    <button class="btn-secundario" onclick="fecharTrocarEmpresa()">Cancelar</button>
+  </div>
 </div>
 
-<!-- ===================== ESTOQUE ===================== -->
-<div id="estoque" class="tela">
-    <h2>Medições de Estoque</h2>
-    <p class="dica">
-        As <strong>entradas</strong> são puxadas automaticamente dos lançamentos.
-        Preencha as <strong>saídas</strong> (vendas) e as <strong>leituras do Veeder-Root</strong> diariamente.
-    </p>
+<!-- MODAL USUÁRIOS -->
+<div id="usuarioModalOverlay" class="modal-overlay" style="display:none;"></div>
 
-    <!-- Abas por combustível -->
-    <div class="analitico-abas" id="estoqueAbas"></div>
+<!-- MODAL TANQUES -->
+<div id="tanqueModalOverlay" class="modal-overlay" style="display:none;"></div>
 
-    <!-- Conteúdo dinâmico da aba ativa -->
-    <div id="estoqueConteudo"></div>
+<!-- MODAL ATALHOS DE TECLADO -->
+<!-- Conteúdo gerado dinamicamente por ui.js:abrirAtalhos() na primeira abertura -->
+<div id="atalhosModal" class="modal-overlay" style="display:none;"></div>
+
+<!-- BUSCA GLOBAL -->
+<div id="buscaGlobalModal" class="modal-overlay" style="display:none;">
+  <div class="modal busca-global-modal" style="max-width:800px; width:90%;">
+    <div class="busca-global-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="busca-global-icone"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="buscaGlobalInput" placeholder="Buscar nota, motorista, empresa, placa..." class="busca-global-input" oninput="executarBuscaGlobal()" autocomplete="off">
+      <kbd class="busca-kbd busca-kbd-esc" onclick="fecharBuscaGlobal()">Esc</kbd>
+    </div>
+    <div id="buscaGlobalResultados" class="busca-global-resultados"></div>
+    <div class="busca-global-footer">
+      <span><kbd class="busca-kbd">↑</kbd><kbd class="busca-kbd">↓</kbd> navegar</span>
+      <span><kbd class="busca-kbd">Enter</kbd> abrir</span>
+      <span><kbd class="busca-kbd">Esc</kbd> fechar</span>
+    </div>
+  </div>
 </div>
 
-<!-- ===================== FRETES ===================== -->
-<div id="fretes" class="tela">
-    <h2>Resumo de Fretes</h2>
-    <p class="dica">
-        Os dados são calculados automaticamente a partir dos lançamentos do mês selecionado.
-        Configure as taxas de frete por combustível abaixo antes de gerar o resumo.
-    </p>
-
-    <!-- Configuração das taxas -->
-    <div class="sistema-secao" style="margin-bottom:20px">
-        <h3>Taxas de Frete por Combustível (R$/litro)</h3>
-        <p class="dica" style="margin-top:4px">Defina o valor pago por litro transportado para cada tipo de combustível. As taxas são salvas automaticamente.</p>
-        <div id="fretesTodasTaxas" class="frete-taxas-grid"></div>
-    </div>
-
-    <!-- Seletor de mês + resumo -->
-    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
-        <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
-        <input type="month" id="fretesSelectMes"
-               onchange="calcularEExibirFretes()"
-               style="max-width:180px">
-        <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
-    </div>
-
-    <div id="fretesResumoMes" class="resumo" style="margin-bottom:16px"></div>
-
-    <!-- Barra de exportação -->
-    <div class="barra-exportacao" id="fretesBarraExportacao">
-        <span class="exportacao-titulo">Exportar:</span>
-        <button class="btn-export btn-xlsx"  onclick="exportarFretesExcel()">Excel</button>
-        <button class="btn-export btn-pdf"   onclick="exportarFretesPDF()">PDF</button>
-        <button class="btn-export btn-print" onclick="imprimirFretes()">Imprimir</button>
-    </div>
-
-    <!-- Abas -->
-    <div class="analitico-abas" id="fretesAbas" style="margin-top:16px">
-        <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por Placa</button>
-        <button class="aba-btn" onclick="trocarAbaFretes('motoristas', this)">Por Motorista</button>
-        <button class="aba-btn" onclick="trocarAbaFretes('empresas', this)">Por Empresa</button>
-    </div>
-
-    <!-- Aba Por Placa -->
-    <div id="frete-aba-placas" class="aba-conteudo">
-        <h3>Resumo por Placa</h3>
-        <p class="dica">Total de litros transportados e frete calculado por veículo no mês.</p>
-        <div class="tabela-container">
-            <table>
-                <thead><tr>
-                    <th>Placa</th>
-                    <th>Viagens</th>
-                    <th>Litros (L)</th>
-                    <th>Taxa (R$/L)</th>
-                    <th>Frete (R$)</th>
-                </tr></thead>
-                <tbody id="tabelaFretePlacas"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Aba Por Motorista -->
-    <div id="frete-aba-motoristas" class="aba-conteudo" style="display:none">
-        <h3>Resumo por Motorista</h3>
-        <p class="dica">Total de litros transportados e frete calculado por motorista no mês.</p>
-        <div class="tabela-container">
-            <table>
-                <thead><tr>
-                    <th>Motorista</th>
-                    <th>Viagens</th>
-                    <th>Litros (L)</th>
-                    <th>Taxa (R$/L)</th>
-                    <th>Frete (R$)</th>
-                </tr></thead>
-                <tbody id="tabelaFreteMotoristas"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Aba Por Empresa -->
-    <div id="frete-aba-empresas" class="aba-conteudo" style="display:none">
-        <h3>Resumo por Empresa</h3>
-        <p class="dica">Total de litros transportados e frete calculado por empresa/fornecedor no mês.</p>
-        <div class="tabela-container">
-            <table>
-                <thead><tr>
-                    <th>Empresa</th>
-                    <th>Viagens</th>
-                    <th>Litros (L)</th>
-                    <th>Taxa (R$/L)</th>
-                    <th>Frete (R$)</th>
-                </tr></thead>
-                <tbody id="tabelaFreteEmpresas"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-
-<div id="relatorios" class="tela">
-    <h2>Relatório de Entradas</h2>
-
-    <div class="filtros">
-        <div class="campo">
-            <label>Data inicial</label>
-            <input type="date" id="filtroDataInicio">
-        </div>
-        <div class="campo">
-            <label>Data final</label>
-            <input type="date" id="filtroDataFim">
-        </div>
-        <div class="campo">
-            <label>Empresa</label>
-            <select id="filtroEmpresa"><option value="">Todas</option></select>
-        </div>
-        <div class="campo">
-            <label>Motorista</label>
-            <select id="filtroMotorista"><option value="">Todos</option></select>
-        </div>
-        <div class="campo">
-            <label>Placa</label>
-            <select id="filtroPlaca"><option value="">Todas</option></select>
-        </div>
-        <div class="campo">
-            <label>Combustível</label>
-            <select id="filtroCombustivel"><option value="">Todos</option></select>
-        </div>
-        <div class="campo">
-            <label>Nota Fiscal</label>
-            <input id="filtroNota" placeholder="Número da nota">
-        </div>
-        <div class="campo">
-            <label>Base</label>
-            <input id="filtroBase" placeholder="Base">
-        </div>
-        <div class="campo">
-            <label>Busca rápida</label>
-            <input id="filtroBusca" placeholder="Palavra-chave (ex: observação)" oninput="carregarRelatorio()">
-        </div>
-    </div>
-
-    <div class="filtros-acoes">
-        <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
-        <button class="btn-secundario" onclick="limparFiltros()">Limpar Filtros</button>
-        <span class="filtros-rapidos-sep">Período rápido:</span>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','hoje')">Hoje</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes')">Este mês</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes_anterior')">Mês anterior</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','ano')">Este ano</button>
-    </div>
-
-    <div id="resumoRelatorio" class="resumo"></div>
-
-    <div id="barraExportacaoRelatorio" class="barra-exportacao" style="display:none">
-        <span class="exportacao-titulo">Exportar:</span>
-        <button class="btn-export btn-xlsx"  onclick="exportarExcel('relatorio')">Excel</button>
-        <button class="btn-export btn-pdf"   onclick="exportarPDF('relatorio')">PDF</button>
-        <button class="btn-export btn-print" onclick="imprimirRelatorio()">Imprimir</button>
-        <button class="btn-export btn-wpp"   onclick="compartilharWhatsApp('relatorio')">WhatsApp</button>
-        <button class="btn-export btn-email" onclick="compartilharEmail('relatorio')">E-mail</button>
-    </div>
-
-    <div class="tabela-container">
-        <table id="tabelaRelatorioEl">
-            <thead>
-                <tr>
-                    <th>Data Nota</th>
-                    <th>Data Descarga</th>
-                    <th>Nota</th>
-                    <th>Base</th>
-                    <th>Empresa</th>
-                    <th>Motorista</th>
-                    <th>Placa</th>
-                    <th>Total (R$)</th>
-                    <th class="no-print">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaRelatorio"></tbody>
-        </table>
-    </div>
-
-    <div id="painelDetalhes" class="painel-detalhes" style="display:none">
-        <h3>Detalhes da Entrada</h3>
-        <div id="conteudoDetalhes"></div>
-        <button class="btn-secundario" onclick="fecharDetalhes('relatorio')">Fechar</button>
-    </div>
-</div>
-
-<!-- ===================== HISTÓRICO ===================== -->
-<div id="historico" class="tela">
-    <h2>Histórico por Motorista / Veículo</h2>
-
-    <div class="filtros">
-        <div class="campo">
-            <label>Motorista</label>
-            <select id="historicoMotorista"><option value="">Todos</option></select>
-        </div>
-        <div class="campo">
-            <label>Placa</label>
-            <select id="historicoPlaca"><option value="">Todas</option></select>
-        </div>
-        <div class="campo">
-            <label>Data inicial</label>
-            <input type="date" id="historicoDataInicio">
-        </div>
-        <div class="campo">
-            <label>Data final</label>
-            <input type="date" id="historicoDataFim">
-        </div>
-        <div class="campo">
-            <label>Busca rápida</label>
-            <input id="historicoBusca" placeholder="Palavra-chave (ex: observação)" oninput="carregarHistorico()">
-        </div>
-    </div>
-
-    <div class="filtros-acoes">
-        <button class="btn-primario" onclick="carregarHistorico()">Filtrar</button>
-        <button class="btn-secundario" onclick="limparFiltros('historico')">Limpar Filtros</button>
-        <span class="filtros-rapidos-sep">Período rápido:</span>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('historico','mes')">Este mês</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('historico','mes_anterior')">Mês anterior</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('historico','ano')">Este ano</button>
-    </div>
-
-    <div id="resumoHistorico" class="resumo"></div>
-
-    <div id="barraExportacaoHistorico" class="barra-exportacao" style="display:none">
-        <span class="exportacao-titulo">Exportar:</span>
-        <button class="btn-export btn-xlsx"  onclick="exportarExcel('historico')">Excel</button>
-        <button class="btn-export btn-pdf"   onclick="exportarPDF('historico')">PDF</button>
-        <button class="btn-export btn-print" onclick="imprimirRelatorio('historico')">Imprimir</button>
-        <button class="btn-export btn-wpp"   onclick="compartilharWhatsApp('historico')">WhatsApp</button>
-        <button class="btn-export btn-email" onclick="compartilharEmail('historico')">E-mail</button>
-    </div>
-
-    <div class="tabela-container">
-        <table id="tabelaHistoricoEl">
-            <thead>
-                <tr>
-                    <th>Data Nota</th>
-                    <th>Data Descarga</th>
-                    <th>Nota</th>
-                    <th>Base</th>
-                    <th>Empresa</th>
-                    <th>Motorista</th>
-                    <th>Placa</th>
-                    <th>Total (R$)</th>
-                    <th class="no-print">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaHistorico"></tbody>
-        </table>
-    </div>
-
-    <div id="painelDetalhesHistorico" class="painel-detalhes" style="display:none">
-        <h3>Detalhes da Entrada</h3>
-        <div id="conteudoDetalhesHistorico"></div>
-        <button class="btn-secundario" onclick="fecharDetalhes('historico')">Fechar</button>
-    </div>
-</div>
-
-<!-- ===================== ANALÍTICO ===================== -->
-<div id="analitico" class="tela">
-    <h2>Relatórios Analíticos</h2>
-
-    <div class="analitico-filtros">
-        <div class="campo">
-            <label>Período inicial</label>
-            <input type="date" id="analiticoInicio">
-        </div>
-        <div class="campo">
-            <label>Período final</label>
-            <input type="date" id="analiticoFim">
-        </div>
-        <div class="campo">
-            <label>Combustível</label>
-            <select id="analiticoCombustivel"><option value="">Todos</option></select>
-        </div>
-        <div class="campo" style="justify-content:flex-end; padding-top:18px">
-            <button class="btn-primario" onclick="carregarAnalitico()">Atualizar</button>
-        </div>
-    </div>
-    <!-- Filtros rápidos do analítico -->
-    <div class="filtros-rapidos-linha">
-        <span class="filtros-rapidos-sep">Período rápido:</span>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes')">Este mês</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes_anterior')">Mês anterior</button>
-        <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','ano')">Este ano</button>
-    </div>
-
-    <div id="kpiContainer" class="kpi-container"></div>
-
-    <div class="analitico-abas">
-        <button class="aba-btn ativa" onclick="trocarAba('mensal', this)">Mensal</button>
-        <button class="aba-btn" onclick="trocarAba('motoristas', this)">Por Motorista</button>
-        <button class="aba-btn" onclick="trocarAba('veiculos', this)">Por Veículo</button>
-        <button class="aba-btn" onclick="trocarAba('combustivel', this)">Por Combustível</button>
-        <button class="aba-btn" onclick="trocarAba('comparativo', this)">Comparativo</button>
-    </div>
-
-    <div id="aba-mensal" class="aba-conteudo">
-        <h3>Resumo Mensal</h3>
-        <p class="dica">Total gasto e litros carregados por mês no período selecionado.</p>
-        <div class="grafico-wrapper">
-            <canvas id="graficoMensal" height="280"></canvas>
-        </div>
-        <div class="tabela-container" style="margin-top:16px">
-            <table>
-                <thead><tr>
-                    <th>Mês / Ano</th>
-                    <th>Nº Notas</th>
-                    <th>Total Litros (L)</th>
-                    <th>Total Gasto (R$)</th>
-                    <th>Custo Médio / L</th>
-                    <th>Variação</th>
-                </tr></thead>
-                <tbody id="tabelaMensal"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="aba-motoristas" class="aba-conteudo" style="display:none">
-        <h3>Resumo por Motorista</h3>
-        <p class="dica">Comparativo de volume e custo por motorista.</p>
-        <div class="grafico-wrapper">
-            <canvas id="graficoMotoristas" height="280"></canvas>
-        </div>
-        <div class="tabela-container" style="margin-top:16px">
-            <table>
-                <thead><tr>
-                    <th>Motorista</th>
-                    <th>Nº Viagens</th>
-                    <th>Total Litros (L)</th>
-                    <th>Total Gasto (R$)</th>
-                    <th>Custo Médio / L</th>
-                    <th>% do Total</th>
-                </tr></thead>
-                <tbody id="tabelaMotoristas"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="aba-veiculos" class="aba-conteudo" style="display:none">
-        <h3>Resumo por Veículo</h3>
-        <p class="dica">Comparativo de volume e custo por placa.</p>
-        <div class="grafico-wrapper">
-            <canvas id="graficoVeiculos" height="280"></canvas>
-        </div>
-        <div class="tabela-container" style="margin-top:16px">
-            <table>
-                <thead><tr>
-                    <th>Placa</th>
-                    <th>Nº Viagens</th>
-                    <th>Total Litros (L)</th>
-                    <th>Total Gasto (R$)</th>
-                    <th>Custo Médio / L</th>
-                    <th>% do Total</th>
-                </tr></thead>
-                <tbody id="tabelaVeiculos"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="aba-combustivel" class="aba-conteudo" style="display:none">
-        <h3>Resumo por Tipo de Combustível</h3>
-        <p class="dica">Volume, custo e preço médio por tipo de combustível.</p>
-        <div class="grafico-wrapper">
-            <canvas id="graficoCombustivel" height="280"></canvas>
-        </div>
-        <div class="tabela-container" style="margin-top:16px">
-            <table>
-                <thead><tr>
-                    <th>Combustível</th>
-                    <th>Nº Notas</th>
-                    <th>Total Litros (L)</th>
-                    <th>Total Gasto (R$)</th>
-                    <th>Preço Médio / L</th>
-                    <th>Mín / Máx (R$/L)</th>
-                </tr></thead>
-                <tbody id="tabelaCombustivel"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="aba-comparativo" class="aba-conteudo" style="display:none">
-        <h3>Comparativo Mês a Mês</h3>
-        <p class="dica">Evolução do custo médio por litro ao longo dos meses.</p>
-        <div class="grafico-wrapper">
-            <canvas id="graficoComparativo" height="300"></canvas>
-        </div>
-        <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
-        <div class="tabela-container" style="margin-top:16px">
-            <table>
-                <thead><tr>
-                    <th>Mês</th>
-                    <th>Custo Médio / L</th>
-                    <th>vs. mês anterior</th>
-                    <th>Total Litros</th>
-                    <th>Total Gasto</th>
-                </tr></thead>
-                <tbody id="tabelaComparativo"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- ===================== SISTEMA ===================== -->
-<div id="sistema" class="tela">
-    <h2>Sistema — Backup & Manutenção</h2>
-
-    <div class="sistema-secao">
-        <h3>Backup dos Dados</h3>
-        <p class="dica">
-            O sistema armazena os dados no <strong>localStorage</strong> do seu navegador.
-            Faça backups regularmente para não perder dados se limpar o navegador.
-        </p>
-        <div class="sistema-acoes">
-            <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
-            <div class="campo" style="max-width:360px; margin-top:12px">
-                <label>Restaurar a partir de backup (.json)</label>
-                <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
-            </div>
-        </div>
-    </div>
-
-    <!-- Backups automáticos — Melhoria 3 -->
-    <div class="sistema-secao">
-        <h3>Backups Automáticos</h3>
-        <p class="dica">O sistema salva automaticamente uma cópia dos seus dados a cada 3 dias. Os últimos 3 backups automáticos são mantidos.</p>
-        <div id="listaBackupsAuto"></div>
-        <button class="btn-secundario" style="margin-top:8px" onclick="renderBackupsAuto()">Atualizar lista</button>
-    </div>
-
-    <div class="sistema-secao">
-        <h3>Informações do Sistema</h3>
-        <div id="infoSistema" class="info-sistema"></div>
-        <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
-    </div>
-
-    <div class="sistema-secao zona-perigo">
-        <h3 class="dica" style="color: var(--danger)">
-            <strong>Atenção!</strong> As ações abaixo são irreversíveis. Faça um backup antes de continuar.
-        </h3>
-        <div class="sistema-acoes">
-            <button class="btn-reset" onclick="resetSeguro()">Apagar Todos os Dados</button>
-        </div>
-    </div>
-</div>
-
-<!-- ===================== ÁREA DE IMPRESSÃO ===================== -->
+<!-- ÁREA DE IMPRESSÃO -->
 <div id="areaImpressao" class="area-impressao">
-    <div class="impressao-cabecalho">
-        <h1>Controle de Entradas de Combustível</h1>
-        <p id="impressaoTitulo"></p>
-        <p id="impressaoData"></p>
-    </div>
-    <div id="impressaoConteudo"></div>
+  <div class="impressao-cabecalho">
+    <h1>Controle de Entradas de Combustível</h1>
+    <p id="impressaoTitulo"></p>
+    <p id="impressaoData"></p>
+  </div>
+  <div id="impressaoConteudo"></div>
 </div>
 
-<!-- ===================== MODAL DE EDIÇÃO ===================== -->
+</main>
+</div>
+</div>
+</div>
+
+<!-- MODAL DE EDIÇÃO -->
 <div id="modalOverlay" class="modal-overlay" style="display:none" onclick="fecharModal()">
-    <div class="modal" onclick="event.stopPropagation()">
-        <h3 id="modalTitulo">Editar</h3>
-        <div class="campo">
-            <label id="modalLabel">Nome</label>
-            <input id="modalInput" placeholder="">
-        </div>
-        <div class="campo" id="modalCampoPerdaWrapper" style="display:none">
-            <label>% Perda Tolerada</label>
-            <input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">
-        </div>
-        <div class="modal-acoes">
-            <button class="btn-primario" onclick="confirmarEdicao()">Salvar</button>
-            <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
-        </div>
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modalTitulo">Editar</h3>
+    <div class="campo"><label id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
+    <div class="campo" id="modalCampoMunicipioWrapper" style="display:none; margin-top:12px;">
+      <label>Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
     </div>
+    <div class="campo" id="modalCampoPerdaWrapper" style="display:none; margin-top:12px;">
+      <label>% Perda Tolerada</label><input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">
+    </div>
+    <div id="modalLogs"></div>
+    <div class="modal-acoes">
+      <button class="btn-primario" onclick="confirmarEdicao()">Salvar</button>
+      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
 </div>
 
-<!-- ===================== SCRIPTS ===================== -->
+<!-- MODAL CONJUNTOS DE VEÍCULOS -->
+<div id="conjuntoFormOverlay" class="modal-overlay" style="display:none; backdrop-filter:blur(4px);" onclick="if(event.target===this)fecharFormConjunto()">
+  <div class="modal" style="max-width:520px; width:92%;" onclick="event.stopPropagation()">
+    <h3 id="conjuntoFormTitulo">Conjunto de Veículos</h3>
+    <div class="campo" style="margin-bottom:12px;">
+      <label>Nome do conjunto <span style="color:var(--text-muted);font-size:0.8rem;">(opcional)</span></label>
+      <input id="conjuntoNomeInput" type="text" placeholder="Ex: Conjunto Volvo 01">
+    </div>
+    <div class="campo" style="margin-bottom:8px;">
+      <label>Placas do conjunto</label>
+      <p class="dica" style="margin-bottom:8px;">Adicione todas as placas que fazem parte deste conjunto (mínimo 2).</p>
+      <div id="conjuntoPlacasList"></div>
+      <button class="btn-secundario" style="margin-top:8px;" onclick="adicionarPlacaConjunto()">+ Adicionar placa</button>
+    </div>
+    <div class="campo" style="margin-bottom:12px;" id="conjuntoVigenciaWrapper">
+      <label>Data de vigência da nova composição <span style="color:var(--danger);font-size:0.8rem;">(obrigatório ao alterar placas)</span></label>
+      <input id="conjuntoDataVigencia" type="date">
+      <p class="dica">Lançamentos anteriores a essa data continuarão vinculados à composição anterior.</p>
+    </div>
+    <div id="conjuntoHistorico" style="display:none; margin-bottom:12px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:0.8rem;"></div>
+    <div class="modal-acoes">
+      <button class="btn-primario" onclick="salvarConjunto()">Salvar</button>
+      <button class="btn-cancelar" onclick="fecharFormConjunto()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="firebase.js"></script>
+<script src="utils.js"></script>
 <script src="app.js"></script>
 <script src="cadastros.js"></script>
 <script src="lancamentos.js"></script>
@@ -695,6 +871,21 @@
 <script src="estoque.js"></script>
 <script src="fretes.js"></script>
 <script src="sistema.js"></script>
-
+<script src="importacao.js"></script>
+<script src="tanques.js"></script>
+<script src="usuarios.js"></script>
+<script src="ui.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        abrirBuscaGlobal();
+    }
+    if (e.key === 'Escape') {
+        const m = document.getElementById('buscaGlobalModal');
+        if (m && m.style.display !== 'none') fecharBuscaGlobal();
+    }
+});
+</script>
 </body>
 </html>

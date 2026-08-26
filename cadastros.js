@@ -1,20 +1,190 @@
 /*=================================================
-  MODAL DE EDIÇÃO
+  CADASTROS.JS – com logs, município, ícones, datalists,
+  validação de formato de placa, atualização do filtro global,
+  conversão Mercosul e conjuntos de veículos
+  FIX: IDs com aspas em todos os onclick inline
+  FIX: alert() de validação substituídos por mostrarToast
+  FIX v2: converterPlacaMercosul corrigida (último dígito não era cortado)
+  FIX v3: datalists dlEmpresas/dlMotoristas/dlPlacas/dlBases corrigidos
+          + validação blur nos campos de lançamento
+  FIX v4: toggleAtivo e excluirCadastro agora usam String(id) na busca,
+          corrigindo falha silenciosa quando IDs vinham do Firestore
 =================================================*/
+
+/*=================================================
+  CONVERSÃO DE PLACA — FORMATO MERCOSUL
+=================================================*/
+/**
+ * Converte uma placa do formato antigo (ABC-1234 ou ABC1234)
+ * para o formato Mercosul (ABC1D23).
+ * Retorna null se a placa já for Mercosul ou não reconhecida.
+ */
+window.converterPlacaMercosul = function(placa) {
+    if (!placa) return null;
+    const limpa = placa.replace(/[-\s]/g, "").toUpperCase();
+
+    // Já está no formato Mercosul (ABC1D23)
+    if (/^[A-Z]{3}\d[A-Z]\d{2}$/.test(limpa)) return null;
+
+    // Formato antigo: ABC1234
+    if (/^[A-Z]{3}\d{4}$/.test(limpa)) {
+        const MAP = { "0":"A","1":"B","2":"C","3":"D","4":"E","5":"F","6":"G","7":"H","8":"I","9":"J" };
+        const letras    = limpa.slice(0, 3);
+        const d1        = limpa[3];
+        const letraMerc = MAP[limpa[4]];
+        const resto     = limpa.slice(5);
+        return `${letras}${d1}${letraMerc}${resto}`;
+    }
+
+    return null;
+};
+
+/**
+ * Normaliza placa removendo hífen/espaço e uppercase.
+ * Tenta converter para Mercosul, senão retorna limpa.
+ */
+window.normalizarPlaca = function(placa) {
+    if (!placa) return placa;
+    const limpa = placa.replace(/[-\s]/g, "").toUpperCase();
+    return converterPlacaMercosul(limpa) || limpa;
+};
+
+/*=================================================
+  CONJUNTOS DE VEÍCULOS
+=================================================*/
+const CONJUNTOS_INICIAIS = [
+    ["RDF9F67","RDK5E85","RDK0G28"],
+    ["QTX8J26","ONX1J94","ONX2C24"],
+    ["SJX6H35","SKA4B87","SKA7H81"],
+    ["SJM5C49","RDR5I68","RDR2I76"],
+    ["QTX0H24","NWE8C87","NWE8D87"],
+    ["RPP9F60","OGO9C52","OGO9C82"],
+    ["QTX2F47","QTZ9F09","QTZ0C85"],
+    ["RPH8H71","PJV4E84","PJV0F20"],
+    ["RPS4E25","RDR5H38","RDR1H63"],
+    ["SJR2D37","SJR4G23","SJR9A84"],
+    ["SJR4F35","SJR7E95","SJR1E09"],
+    ["SJR5C80","SJT3A18","SJT9D31"],
+    ["SJR3C66","SJT3C48","SJT4J16"],
+    ["RPS9G84","SKB9E49","SKB3H46"],
+    ["SJX5E42","SKA3F54","SKA3H33"],
+    ["RPU6D11","PLH4A38","PLH5B73"],
+    ["SJX5E42","SKR8I44","SKR7H57"],
+    ["THG3H49","THG6I26","THG4B90"],
+    ["QTX1J32","OMP4G31","OMI0C31"],
+    ["PLJ0549","NTV9A58","NTV9A64"],
+    ["RDE5G40","RDE9G15","RDE2G60"],
+    ["RPI2B47","PLO4I24","PLO5J23"],
+    ["SJM5B04","SJL5A12","SJL3J68"],
+    ["RDE2A93","RDE9B12","RDE2A47"],
+    ["RDE9B17","RDE9C02","RDE1C54"],
+    ["RDF5D84","RDE4J97","RDE3C35"],
+    ["RDF7E97","RDE2D36","RDE5A11"],
+    ["RDF0G41","OMI0C61","OMI0C81"],
+    ["RDE7C80","RDC7H98","RDC4D65"],
+    ["SKK5J82","SJL2J96","SJL9H10"],
+    ["RPU5A11","RCP1I85","RCP1C59"],
+    ["QTX7H56","SKA8H11","SKA2A31"],
+    ["SJX4J75","SKK0D20","SKK7G07"],
+    ["OKU0A94","RPY3H95"],
+];
+
+function garantirConjuntos() {
+    if (!db.conjuntosVeiculos) {
+        db.conjuntosVeiculos = [];
+        CONJUNTOS_INICIAIS.forEach(placas => {
+            db.conjuntosVeiculos.push({
+                id: gerarId(),
+                nome: "",
+                composicaoAtual: placas.slice(),
+                historico: [{
+                    placas: placas.slice(),
+                    vigenciaDe: "2000-01-01",
+                    vigenciaAte: null
+                }],
+                ativo: true,
+                logs: [`Criado automaticamente em ${new Date().toLocaleString('pt-BR')}`]
+            });
+        });
+        salvarDB();
+    }
+}
+garantirConjuntos();
+
+/**
+ * Dado uma placa e uma data (YYYY-MM-DD), retorna o conjunto
+ * que continha essa placa naquela data (respeitando vigência).
+ */
+window.resolverConjuntoPorPlaca = function(placa, data) {
+    if (!placa || !db.conjuntosVeiculos) return null;
+    const placaNorm = normalizarPlaca(placa);
+    const dataRef = data || "9999-12-31";
+
+    for (const conj of db.conjuntosVeiculos) {
+        if (conj.ativo === false) continue;
+        const hist = [...(conj.historico || [])].reverse();
+        for (const h of hist) {
+            if (h.vigenciaDe > dataRef) continue;
+            if (h.vigenciaAte && h.vigenciaAte < dataRef) continue;
+            const placasNorm = (h.placas || []).map(p => normalizarPlaca(p));
+            if (placasNorm.includes(placaNorm)) return conj;
+        }
+    }
+    return null;
+};
+
+// ========== MODAL DE EDIÇÃO ==========
 let modalContexto = null;
 
-function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null) {
+function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '') {
     modalContexto = { lista, id };
     document.getElementById("modalTitulo").textContent = titulo;
     document.getElementById("modalLabel").textContent = label;
     document.getElementById("modalInput").value = valorAtual;
+
+    const wrapperMunicipio = document.getElementById("modalCampoMunicipioWrapper");
+    if (lista === "empresas") {
+        if (!wrapperMunicipio) {
+            const modal = document.querySelector("#modalOverlay .modal");
+            const div = document.createElement("div");
+            div.id = "modalCampoMunicipioWrapper";
+            div.className = "campo";
+            div.style.marginTop = "12px";
+            div.innerHTML = `
+                <label>Município/UF</label>
+                <input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
+            `;
+            const perdaWrapper = document.getElementById("modalCampoPerdaWrapper");
+            if (perdaWrapper) {
+                perdaWrapper.insertAdjacentElement('beforebegin', div);
+            } else {
+                document.querySelector(".modal-acoes").insertAdjacentElement('beforebegin', div);
+            }
+        }
+        document.getElementById("modalCampoMunicipioWrapper").style.display = "flex";
+        document.getElementById("modalInputMunicipio").value = municipioAtual;
+    } else {
+        if (wrapperMunicipio) wrapperMunicipio.style.display = "none";
+    }
 
     const wrapperPerda = document.getElementById("modalCampoPerdaWrapper");
     if (lista === "combustiveis") {
         wrapperPerda.style.display = "flex";
         document.getElementById("modalInputPerda").value = perdaAtual ?? 0;
     } else {
-        wrapperPerda.style.display = "none";
+        if (wrapperPerda) wrapperPerda.style.display = "none";
+    }
+
+    const item = db[lista].find(i => String(i.id) === String(id));
+    const logsDiv = document.getElementById("modalLogs");
+    if (logsDiv) {
+        logsDiv.innerHTML = item?.logs ?
+            `<div style="margin-top:12px; border-top:1px solid var(--border); padding-top:8px; font-size:0.75rem; color:var(--text-muted);">
+                <strong>Histórico:</strong>
+                <ul style="margin-top:4px; list-style:none; padding-left:0;">
+                    ${item.logs.map(log => `<li>• ${log}</li>`).join('')}
+                </ul>
+            </div>` : '';
     }
 
     document.getElementById("modalOverlay").style.display = "flex";
@@ -30,55 +200,205 @@ function confirmarEdicao() {
     if (!modalContexto) return;
     const { lista, id } = modalContexto;
     const novoValor = document.getElementById("modalInput").value.trim();
-    if (!novoValor) return alert("O campo não pode ficar vazio.");
-    const item = db[lista].find(i => i.id === id);
+    if (!novoValor) {
+        mostrarToast("O campo não pode ficar vazio.", "erro", 4000);
+        return;
+    }
+    const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
-    const duplicado = db[lista].some(i => i.id !== id && i.nome.toLowerCase() === novoValor.toLowerCase());
-    if (duplicado) return alert("Já existe um cadastro com esse nome.");
+    const duplicado = db[lista].some(i => String(i.id) !== String(id) && i.nome.toLowerCase() === novoValor.toLowerCase());
+    if (duplicado) {
+        mostrarToast("Já existe um cadastro com esse nome.", "erro", 4000);
+        return;
+    }
+
+    const nomeAntigo = item.nome;
+    if (nomeAntigo !== novoValor) {
+        if (!item.logs) item.logs = [];
+        item.logs.push(`Nome alterado de "${nomeAntigo}" para "${novoValor}" em ${new Date().toLocaleString('pt-BR')}`);
+    }
     item.nome = lista === "veiculos" ? novoValor.toUpperCase() : novoValor;
+
+    if (lista === "empresas") {
+        const munInput = document.getElementById("modalInputMunicipio");
+        if (munInput) {
+            const novoMun = munInput.value.trim();
+            if (item.municipio !== novoMun) {
+                if (!item.logs) item.logs = [];
+                item.logs.push(`Município alterado de "${item.municipio || 'vazio'}" para "${novoMun || 'vazio'}" em ${new Date().toLocaleString('pt-BR')}`);
+                item.municipio = novoMun;
+            }
+        }
+    }
+
     if (lista === "combustiveis") {
         const perdaInput = parseFloat(document.getElementById("modalInputPerda").value);
+        const perdaAntiga = item.perda;
+        if (perdaAntiga !== perdaInput) {
+            item.logs.push(`% perda alterada de ${perdaAntiga}% para ${perdaInput}% em ${new Date().toLocaleString('pt-BR')}`);
+        }
         item.perda = isNaN(perdaInput) ? 0 : perdaInput;
     }
+
+    const nomeNovo = item.nome;
+    let propagados = 0;
+    if (nomeAntigo !== nomeNovo) {
+        db.lancamentos.forEach(l => {
+            if (lista === "empresas"   && l.empresa   === nomeAntigo) { l.empresa   = nomeNovo; propagados++; }
+            if (lista === "motoristas" && l.motorista === nomeAntigo) { l.motorista = nomeNovo; propagados++; }
+            if (lista === "veiculos"   && l.placa     === nomeAntigo) { l.placa     = nomeNovo; propagados++; }
+            if (lista === "bases"      && l.base      === nomeAntigo) { l.base      = nomeNovo; propagados++; }
+            if (lista === "combustiveis") {
+                l.itens.forEach(i => {
+                    if (i.tipo === nomeAntigo) { i.tipo = nomeNovo; propagados++; }
+                });
+            }
+        });
+        if (lista === "combustiveis" && db.medicoes[nomeAntigo]) {
+            db.medicoes[nomeNovo] = db.medicoes[nomeAntigo];
+            delete db.medicoes[nomeAntigo];
+            propagados++;
+        }
+        if (lista === "combustiveis" && db.estoqueInicial[nomeAntigo] !== undefined) {
+            db.estoqueInicial[nomeNovo] = db.estoqueInicial[nomeAntigo];
+            delete db.estoqueInicial[nomeAntigo];
+        }
+    }
+
     salvarDB();
     fecharModal();
     atualizarListas();
+
+    if (propagados > 0) {
+        mostrarToast(`Renomeado e atualizado em ${propagados} lançamento(s).`, "sucesso", 5000);
+    }
 }
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") fecharModal(); });
 
-/*=================================================
-  MOTORISTAS
-=================================================*/
+// ========== MOTORISTAS ==========
 function salvarMotorista() {
     const input = document.getElementById("nomeMotorista");
     const nome = input.value.trim();
-    if (!nome) return alert("Digite o nome do motorista.");
-    if (db.motoristas.some(m => m.nome.toLowerCase() === nome.toLowerCase())) return alert("Esse motorista já está cadastrado.");
-    db.motoristas.push({ id: Date.now(), nome, ativo: true });
+    if (!nome) {
+        mostrarToast("Digite o nome do motorista.", "erro", 4000);
+        return;
+    }
+    if (db.motoristas.some(m => m.nome.toLowerCase() === nome.toLowerCase())) {
+        mostrarToast("Esse motorista já está cadastrado.", "erro", 4000);
+        return;
+    }
+    db.motoristas.push({
+        id: gerarId(),
+        nome,
+        ativo: true,
+        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+    });
     input.value = "";
-    salvarDB(); atualizarListas();
+    salvarDB();
+    atualizarListas();
+    setTimeout(() => {
+        const ul = document.getElementById("listaMotoristas");
+        if (ul && ul.lastElementChild) {
+            ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+    }, 100);
 }
 
-/*=================================================
-  VEÍCULOS
-=================================================*/
-function salvarVeiculo() {
+// ========== VEÍCULOS (com validação de placa) ==========
+function validarPlaca(placa) {
+    const regexAntiga   = /^[A-Z]{3}-\d{4}$/;
+    const regexAntiga2  = /^[A-Z]{3}\d{4}$/;
+    const regexMercosul = /^[A-Z]{3}\d[A-Z]\d{2}$/;
+    return regexAntiga.test(placa) || regexAntiga2.test(placa) || regexMercosul.test(placa);
+}
+
+async function salvarVeiculo() {
     const input = document.getElementById("placaVeiculo");
-    const placa = input.value.trim().toUpperCase();
-    if (!placa) return alert("Digite a placa do veículo.");
-    if (db.veiculos.some(v => v.nome === placa)) return alert("Essa placa já está cadastrada.");
-    db.veiculos.push({ id: Date.now(), nome: placa, ativo: true });
+    const placaRaw = input.value.trim().toUpperCase();
+    if (!placaRaw) {
+        mostrarToast("Digite a placa do veículo.", "erro", 4000);
+        return;
+    }
+
+    const placaConvertida = converterPlacaMercosul(placaRaw.replace(/[-\s]/g, ""));
+    const placa = placaConvertida || placaRaw.replace(/[-\s]/g, "");
+
+    if (!validarPlaca(placa)) {
+        if (!await fmConfirm({ titulo: "Placa com formato inválido", msg: `A placa "${placa}" não segue o padrão esperado (ABC1234 ou ABC1D23).\n\nDeseja salvar mesmo assim?`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" })) return;
+    }
+    if (db.veiculos.some(v => v.nome === placa)) {
+        mostrarToast("Essa placa já está cadastrada.", "erro", 4000);
+        return;
+    }
+    db.veiculos.push({
+        id: gerarId(),
+        nome: placa,
+        ativo: true,
+        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+    });
     input.value = "";
-    salvarDB(); atualizarListas();
+    salvarDB();
+    atualizarListas();
+    setTimeout(() => {
+        const ul = document.getElementById("listaVeiculos");
+        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
 }
 
-/*=================================================
-  EMPRESAS  — agora objeto { id, nome, ativo }
-=================================================*/
+/**
+ * Abre modal de confirmação listando todas as placas que serão
+ * convertidas para Mercosul e realiza a conversão após confirmação.
+ */
+async function converterTodasPlacasMercosul() {
+    const paraConverter = db.veiculos.map(v => {
+        const conv = converterPlacaMercosul(v.nome.replace(/[-\s]/g, ""));
+        return conv ? { veiculo: v, antiga: v.nome, nova: conv } : null;
+    }).filter(Boolean);
+
+    if (paraConverter.length === 0) {
+        mostrarToast("Todas as placas já estão no formato Mercosul.", "info");
+        return;
+    }
+
+    const lista = paraConverter.map(p => `  ${p.antiga}  →  ${p.nova}`).join("\n");
+    if (!await fmConfirm({ titulo: `Converter ${paraConverter.length} placa(s) para Mercosul?`, msg: `${lista}`, confirmTxt: "Converter", tipo: "aviso" })) return;
+
+    let propagados = 0;
+    paraConverter.forEach(({ veiculo, antiga, nova }) => {
+        if (!veiculo.logs) veiculo.logs = [];
+        veiculo.logs.push(`Placa convertida de "${antiga}" para "${nova}" (Mercosul) em ${new Date().toLocaleString('pt-BR')}`);
+        veiculo.nome = nova;
+
+        db.lancamentos.forEach(l => {
+            if (l.placa === antiga) { l.placa = nova; propagados++; }
+        });
+
+        if (db.conjuntosVeiculos) {
+            db.conjuntosVeiculos.forEach(conj => {
+                conj.composicaoAtual = conj.composicaoAtual.map(p => p === antiga ? nova : p);
+                conj.historico.forEach(h => {
+                    h.placas = h.placas.map(p => p === antiga ? nova : p);
+                });
+            });
+        }
+    });
+
+    salvarDB();
+    atualizarListas();
+    mostrarToast(`${paraConverter.length} placa(s) convertida(s) para Mercosul.${propagados > 0 ? ` ${propagados} lançamento(s) atualizado(s).` : ""}`, "sucesso", 6000);
+}
+
+// ========== EMPRESAS (com município) ==========
 function migrarEmpresas() {
     if (db.empresas.length > 0 && typeof db.empresas[0] === "string") {
-        db.empresas = db.empresas.map(nome => ({ id: Date.now() + Math.random(), nome, ativo: true }));
+        db.empresas = db.empresas.map(nome => ({
+            id: gerarId(),
+            nome,
+            municipio: '',
+            ativo: true,
+            logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+        }));
         salvarDB();
     }
 }
@@ -86,44 +406,116 @@ migrarEmpresas();
 
 function salvarEmpresa() {
     const input = document.getElementById("nomeEmpresa");
+    const inputMun = document.getElementById("municipioEmpresa");
     const nome = input.value.trim();
-    if (!nome) return alert("Digite o nome da empresa.");
-    if (db.empresas.some(e => e.nome.toLowerCase() === nome.toLowerCase())) return alert("Essa empresa já está cadastrada.");
-    db.empresas.push({ id: Date.now(), nome, ativo: true });
+    const municipio = inputMun ? inputMun.value.trim() : '';
+    if (!nome) {
+        mostrarToast("Digite o nome da empresa.", "erro", 4000);
+        return;
+    }
+    if (db.empresas.some(e => e.nome.toLowerCase() === nome.toLowerCase())) {
+        mostrarToast("Essa empresa já está cadastrada.", "erro", 4000);
+        return;
+    }
+    db.empresas.push({
+        id: gerarId(),
+        nome,
+        municipio,
+        ativo: true,
+        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+    });
     input.value = "";
-    salvarDB(); atualizarListas();
+    if (inputMun) inputMun.value = "";
+    salvarDB();
+    atualizarListas();
+    setTimeout(() => {
+        const ul = document.getElementById("listaEmpresas");
+        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
 }
 
-/*=================================================
-  COMBUSTÍVEIS
-=================================================*/
+// ========== COMBUSTÍVEIS ==========
 function salvarCombustivel() {
     const inputNome  = document.getElementById("nomeCombustivel");
     const inputPerda = document.getElementById("perdaCombustivel");
     const nome  = inputNome.value.trim();
     const perda = parseFloat(inputPerda.value) || 0;
-    if (!nome) return alert("Digite o tipo de combustível.");
-    if (db.combustiveis.some(c => c.nome.toLowerCase() === nome.toLowerCase())) return alert("Esse combustível já está cadastrado.");
-    db.combustiveis.push({ id: Date.now(), nome, perda, ativo: true });
+    if (!nome) {
+        mostrarToast("Digite o tipo de combustível.", "erro", 4000);
+        return;
+    }
+    if (db.combustiveis.some(c => c.nome.toLowerCase() === nome.toLowerCase())) {
+        mostrarToast("Esse combustível já está cadastrado.", "erro", 4000);
+        return;
+    }
+    db.combustiveis.push({
+        id: gerarId(),
+        nome,
+        perda,
+        ativo: true,
+        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+    });
     inputNome.value = ""; inputPerda.value = "";
-    salvarDB(); atualizarListas();
+    salvarDB();
+    atualizarListas();
+    setTimeout(() => {
+        const ul = document.getElementById("listaCombustiveis");
+        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
 }
 
-/*=================================================
-  INATIVAR / REATIVAR
-=================================================*/
-function toggleAtivo(lista, id) {
-    const item = db[lista].find(i => i.id === id);
+// ========== BASES ==========
+function garantirBases() {
+    if (!db.bases) {
+        db.bases = [];
+        salvarDB();
+    }
+}
+garantirBases();
+
+function salvarBase() {
+    garantirBases();
+    const input = document.getElementById("nomeBase");
+    const nome  = input.value.trim();
+    if (!nome) {
+        mostrarToast("Digite o nome da base.", "erro", 4000);
+        return;
+    }
+    if (db.bases.some(b => b.nome.toLowerCase() === nome.toLowerCase())) {
+        mostrarToast("Essa base já está cadastrada.", "erro", 4000);
+        return;
+    }
+    db.bases.push({
+        id: gerarId(),
+        nome,
+        ativo: true,
+        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+    });
+    input.value = "";
+    salvarDB();
+    atualizarListas();
+    setTimeout(() => {
+        const ul = document.getElementById("listaBases");
+        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
+}
+
+// ========== INATIVAR / REATIVAR ==========
+// FIX v4: String(i.id) === String(id) para garantir comparação correta
+//         independente de como o ID chegou do Firestore
+async function toggleAtivo(lista, id) {
+    const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
     const acao = item.ativo !== false ? "inativar" : "reativar";
-    if (!confirm(`Deseja ${acao} "${item.nome}"?`)) return;
+    if (!await fmConfirm({ titulo: `${acao.charAt(0).toUpperCase()+acao.slice(1)} "${item.nome}"?`, confirmTxt: acao.charAt(0).toUpperCase()+acao.slice(1), tipo: "aviso" })) return;
     item.ativo = item.ativo !== false ? false : true;
-    salvarDB(); atualizarListas();
+    if (!item.logs) item.logs = [];
+    item.logs.push(`${acao === 'inativar' ? 'Inativado' : 'Reativado'} em ${new Date().toLocaleString('pt-BR')}`);
+    salvarDB();
+    atualizarListas();
 }
 
-/*=================================================
-  VERIFICAÇÃO DE VÍNCULOS
-=================================================*/
+// ========== VERIFICAÇÃO DE VÍNCULOS ==========
 function temVinculoEmLancamentos(lista, item) {
     if (lista === "motoristas")   return db.lancamentos.some(l => l.motorista === item.nome);
     if (lista === "veiculos")     return db.lancamentos.some(l => l.placa === item.nome);
@@ -132,26 +524,226 @@ function temVinculoEmLancamentos(lista, item) {
     return false;
 }
 
-/*=================================================
-  EXCLUIR COM VERIFICAÇÃO DE VÍNCULOS
-=================================================*/
-function excluirCadastro(lista, id) {
-    const item = db[lista].find(i => i.id === id);
+// ========== EXCLUIR COM VERIFICAÇÃO ==========
+// FIX v4: String(i.id) === String(id) para garantir comparação correta
+//         independente de como o ID chegou do Firestore
+async function excluirCadastro(lista, id) {
+    const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
     if (temVinculoEmLancamentos(lista, item)) {
-        alert(`Não é possível excluir "${item.nome}" pois existem lançamentos vinculados.\n\nUse o botão "Inativar" para que ele deixe de aparecer em novos lançamentos.`);
+        mostrarToast(`Não é possível excluir "${item.nome}" — existem lançamentos vinculados. Use "Inativar".`, "erro", 5000);
         return;
     }
-    if (!confirm(`Excluir "${item.nome}" permanentemente?`)) return;
-    db[lista] = db[lista].filter(i => i.id !== id);
-    salvarDB(); atualizarListas();
+    if (!await fmConfirm({ titulo: `Excluir "${item.nome}"?`, msg: "Esta ação não pode ser desfeita.", confirmTxt: "Excluir", tipo: "perigo" })) return;
+    db[lista] = db[lista].filter(i => String(i.id) !== String(id));
+    salvarDB();
+    atualizarListas();
 }
 
 /*=================================================
-  ATUALIZA LISTAS E SELECTS
+  CONJUNTOS DE VEÍCULOS — CRUD
+=================================================*/
+
+let _conjuntoEditandoId = null;
+
+function renderizarConjuntos() {
+    const container = document.getElementById("listaConjuntos");
+    if (!container) return;
+
+    garantirConjuntos();
+    const lista = db.conjuntosVeiculos.filter(c => c.ativo !== false);
+    const listaComInativos = db.conjuntosVeiculos;
+    const showInat = document.getElementById("mostrarInativosConjuntos")?.checked;
+    const exibir = showInat ? listaComInativos : lista;
+
+    if (exibir.length === 0) {
+        container.innerHTML = `<p class="vazio" style="padding:12px;color:var(--text-muted);">Nenhum conjunto cadastrado.</p>`;
+        return;
+    }
+
+    container.innerHTML = exibir.map(c => {
+        const placasStr = c.composicaoAtual.join(", ");
+        const nomeExib = c.nome ? `<strong>${c.nome}</strong>` : `<em style="color:var(--text-muted);">(sem nome)</em>`;
+        const inativoTag = c.ativo === false ? ' <em class="tag-inativo">inativo</em>' : '';
+        return `
+        <li class="conjunto-item ${c.ativo === false ? 'inativo' : ''}">
+            <div class="conjunto-info">
+                <div class="conjunto-nome">${nomeExib}${inativoTag}</div>
+                <div class="conjunto-placas" style="font-size:0.82rem;color:var(--text-muted);margin-top:3px;">
+                     ${placasStr}
+                </div>
+            </div>
+            <div class="acoes-lista">
+                <button class="btn-editar" onclick="abrirEditarConjunto('${c.id}')">Editar</button>
+                <button class="btn-inativar" onclick="toggleAtivoConjunto('${c.id}')">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
+                <button class="btn-excluir" onclick="excluirConjunto('${c.id}')">Excluir</button>
+            </div>
+        </li>`;
+    }).join("");
+}
+
+async function toggleAtivoConjunto(id) {
+    const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(id));
+    if (!conj) return;
+    const acao = conj.ativo !== false ? "inativar" : "reativar";
+    if (!await fmConfirm({ titulo: `${acao.charAt(0).toUpperCase()+acao.slice(1)} conjunto?`, confirmTxt: acao.charAt(0).toUpperCase()+acao.slice(1), tipo: "aviso" })) return;
+    conj.ativo = conj.ativo !== false ? false : true;
+    if (!conj.logs) conj.logs = [];
+    conj.logs.push(`${conj.ativo ? 'Reativado' : 'Inativado'} em ${new Date().toLocaleString('pt-BR')}`);
+    salvarDB();
+    renderizarConjuntos();
+}
+
+async function excluirConjunto(id) {
+    if (!await fmConfirm({ titulo: "Excluir conjunto?", msg: "Esta ação não pode ser desfeita.", confirmTxt: "Excluir", tipo: "perigo" })) return;
+    db.conjuntosVeiculos = db.conjuntosVeiculos.filter(c => String(c.id) !== String(id));
+    salvarDB();
+    renderizarConjuntos();
+}
+
+function abrirEditarConjunto(id) {
+    _conjuntoEditandoId = id;
+    const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(id));
+    if (!conj) return;
+
+    document.getElementById("conjuntoNomeInput").value = conj.nome || "";
+    _renderizarPlacasConjunto(conj.composicaoAtual.slice());
+
+    const histDiv = document.getElementById("conjuntoHistorico");
+    if (histDiv && conj.historico && conj.historico.length > 0) {
+        histDiv.innerHTML = `
+            <p style="font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;">Histórico de composições:</p>
+            ${conj.historico.map((h, i) => {
+                const de = h.vigenciaDe || "—";
+                const ate = h.vigenciaAte || "atual";
+                return `<div style="font-size:0.78rem;color:var(--text-muted);padding:3px 0;">
+                    <strong>${i+1}.</strong> ${h.placas.join(", ")}
+                    <span style="margin-left:6px;opacity:0.7;">(${de} → ${ate})</span>
+                </div>`;
+            }).join("")}
+        `;
+        histDiv.style.display = "block";
+    }
+
+    document.getElementById("conjuntoFormOverlay").style.display = "flex";
+}
+
+function abrirNovoConjunto() {
+    _conjuntoEditandoId = null;
+    document.getElementById("conjuntoNomeInput").value = "";
+    _renderizarPlacasConjunto([""]);
+    const histDiv = document.getElementById("conjuntoHistorico");
+    if (histDiv) histDiv.style.display = "none";
+    document.getElementById("conjuntoFormOverlay").style.display = "flex";
+}
+
+function fecharFormConjunto() {
+    document.getElementById("conjuntoFormOverlay").style.display = "none";
+    _conjuntoEditandoId = null;
+}
+
+let _placasTemp = [];
+
+function _renderizarPlacasConjunto(placas) {
+    _placasTemp = placas.slice();
+    const container = document.getElementById("conjuntoPlacasList");
+    if (!container) return;
+    container.innerHTML = _placasTemp.map((p, i) => `
+        <div class="form-linha" style="gap:8px;margin-bottom:6px;" data-idx="${i}">
+            <input type="text" value="${p}" maxlength="8" placeholder="Ex: ABC1D23"
+                   style="text-transform:uppercase;flex:1;"
+                   oninput="this.value=this.value.toUpperCase().replace(/[-\\s]/g,''); _placasTemp[${i}]=this.value;">
+            <button class="btn-excluir" style="padding:4px 10px;" onclick="_removerPlacaConjunto(${i})">✕</button>
+        </div>
+    `).join("");
+}
+
+function _removerPlacaConjunto(idx) {
+    _placasTemp.splice(idx, 1);
+    _renderizarPlacasConjunto(_placasTemp);
+}
+
+function adicionarPlacaConjunto() {
+    _placasTemp.push("");
+    _renderizarPlacasConjunto(_placasTemp);
+}
+
+async function salvarConjunto() {
+    const nome = document.getElementById("conjuntoNomeInput").value.trim();
+    const dataVigencia = document.getElementById("conjuntoDataVigencia")?.value || null;
+
+    const inputs = document.querySelectorAll("#conjuntoPlacasList input[type=text]");
+    const placas = Array.from(inputs).map(i => i.value.trim().toUpperCase().replace(/[-\s]/g, "")).filter(Boolean);
+
+    if (placas.length < 2) {
+        mostrarToast("Um conjunto precisa ter pelo menos 2 placas.", "erro", 4000);
+        return;
+    }
+
+    const outrosConjuntos = db.conjuntosVeiculos.filter(c => String(c.id) !== String(_conjuntoEditandoId) && c.ativo !== false);
+    for (const p of placas) {
+        for (const outro of outrosConjuntos) {
+            if (outro.composicaoAtual.map(x => normalizarPlaca(x)).includes(normalizarPlaca(p))) {
+                if (!await fmConfirm({ titulo: `Placa ${p} já está em outro conjunto`, msg: `Pertence ao conjunto "${outro.nome || outro.id.slice(0,8)}".\n\nDeseja continuar mesmo assim?`, confirmTxt: "Continuar", tipo: "aviso" })) return;
+                break;
+            }
+        }
+    }
+
+    const agora = new Date().toLocaleString('pt-BR');
+
+    if (_conjuntoEditandoId) {
+        const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(_conjuntoEditandoId));
+        if (!conj) return;
+
+        const composicaoMudou = JSON.stringify(conj.composicaoAtual.sort()) !== JSON.stringify(placas.slice().sort());
+        if (composicaoMudou) {
+            if (!dataVigencia) {
+                mostrarToast("Ao alterar as placas de um conjunto, informe a data de vigência da nova composição.", "erro", 4000);
+                return;
+            }
+            if (conj.historico.length > 0) {
+                const ultimo = conj.historico[conj.historico.length - 1];
+                if (!ultimo.vigenciaAte) ultimo.vigenciaAte = dataVigencia;
+            }
+            conj.historico.push({
+                placas: placas.slice(),
+                vigenciaDe: dataVigencia,
+                vigenciaAte: null
+            });
+            if (!conj.logs) conj.logs = [];
+            conj.logs.push(`Composição alterada em ${agora} (vigência: ${dataVigencia})`);
+        }
+        conj.nome = nome;
+        conj.composicaoAtual = placas;
+        mostrarToast("Conjunto atualizado com sucesso!", "sucesso");
+    } else {
+        db.conjuntosVeiculos.push({
+            id: gerarId(),
+            nome,
+            composicaoAtual: placas,
+            historico: [{
+                placas: placas.slice(),
+                vigenciaDe: dataVigencia || new Date().toISOString().slice(0, 10),
+                vigenciaAte: null
+            }],
+            ativo: true,
+            logs: [`Criado em ${agora}`]
+        });
+        mostrarToast("Conjunto cadastrado com sucesso!", "sucesso");
+    }
+
+    salvarDB();
+    fecharFormConjunto();
+    renderizarConjuntos();
+}
+
+/*=================================================
+  ATUALIZAR LISTAS, SELECTS, DATALISTS E FILTRO GLOBAL
+  FIX v3: preenche corretamente dlEmpresas, dlMotoristas,
+          dlPlacas e dlBases (IDs usados no index.html)
 =================================================*/
 function atualizarListas() {
-
     // MOTORISTAS
     const ulM = document.getElementById("listaMotoristas");
     if (ulM) {
@@ -162,9 +754,9 @@ function atualizarListas() {
                 <li class="${m.ativo !== false ? "" : "inativo"}">
                     <span>${m.nome}${m.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   onclick="abrirModal('Editar Motorista','Nome','${m.nome.replace(/'/g,"\\'")}','motoristas',${m.id})">Editar</button>
-                        <button class="btn-inativar" onclick="toggleAtivo('motoristas',${m.id})">${m.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  onclick="excluirCadastro('motoristas',${m.id})">Excluir</button>
+                        <button class="btn-editar"   data-acao="editar"   data-lista="motoristas" data-id="${m.id}">Editar</button>
+                        <button class="btn-inativar" data-acao="toggle"   data-lista="motoristas" data-id="${m.id}">${m.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-excluir"  data-acao="excluir"  data-lista="motoristas" data-id="${m.id}">Excluir</button>
                     </div>
                 </li>`).join("");
     }
@@ -179,9 +771,9 @@ function atualizarListas() {
                 <li class="${v.ativo !== false ? "" : "inativo"}">
                     <span>${v.nome}${v.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   onclick="abrirModal('Editar Veículo','Placa','${v.nome.replace(/'/g,"\\'")}','veiculos',${v.id})">Editar</button>
-                        <button class="btn-inativar" onclick="toggleAtivo('veiculos',${v.id})">${v.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  onclick="excluirCadastro('veiculos',${v.id})">Excluir</button>
+                        <button class="btn-editar"   data-acao="editar"   data-lista="veiculos" data-id="${v.id}">Editar</button>
+                        <button class="btn-inativar" data-acao="toggle"   data-lista="veiculos" data-id="${v.id}">${v.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-excluir"  data-acao="excluir"  data-lista="veiculos" data-id="${v.id}">Excluir</button>
                     </div>
                 </li>`).join("");
     }
@@ -194,11 +786,14 @@ function atualizarListas() {
         ulE.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhum cadastro ainda.</li>`
             : lista.map(e => `
                 <li class="${e.ativo !== false ? "" : "inativo"}">
-                    <span>${e.nome}${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                    <span>
+                        ${e.nome} ${e.municipio ? `- ${e.municipio}` : ''}
+                        ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
+                    </span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   onclick="abrirModal('Editar Empresa','Nome','${e.nome.replace(/'/g,"\\'")}','empresas',${e.id})">Editar</button>
-                        <button class="btn-inativar" onclick="toggleAtivo('empresas',${e.id})">${e.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  onclick="excluirCadastro('empresas',${e.id})">Excluir</button>
+                        <button class="btn-editar"   data-acao="editar"   data-lista="empresas" data-id="${e.id}">Editar</button>
+                        <button class="btn-inativar" data-acao="toggle"   data-lista="empresas" data-id="${e.id}">${e.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-excluir"  data-acao="excluir"  data-lista="empresas" data-id="${e.id}">Excluir</button>
                     </div>
                 </li>`).join("");
     }
@@ -217,25 +812,220 @@ function atualizarListas() {
                         ${c.ativo !== false ? "" : '<em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   onclick="abrirModal('Editar Combustível','Nome','${c.nome.replace(/'/g,"\\'")}','combustiveis',${c.id},${c.perda})">Editar</button>
-                        <button class="btn-inativar" onclick="toggleAtivo('combustiveis',${c.id})">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  onclick="excluirCadastro('combustiveis',${c.id})">Excluir</button>
+                        <button class="btn-editar"   data-acao="editar"   data-lista="combustiveis" data-id="${c.id}">Editar</button>
+                        <button class="btn-inativar" data-acao="toggle"   data-lista="combustiveis" data-id="${c.id}">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-excluir"  data-acao="excluir"  data-lista="combustiveis" data-id="${c.id}">Excluir</button>
                     </div>
                 </li>`).join("");
     }
 
-    // SELECTS DE FORMULÁRIOS (apenas ativos)
-    const empresasAtivas     = db.empresas.filter(e => e.ativo !== false);
-    const motoristasAtivos   = db.motoristas.filter(m => m.ativo !== false);
-    const veiculosAtivos     = db.veiculos.filter(v => v.ativo !== false);
+    // BASES
+    const ulB = document.getElementById("listaBases");
+    if (ulB) {
+        const showInat = document.getElementById("mostrarInativosBases")?.checked;
+        const lista = showInat ? db.bases : db.bases.filter(b => b.ativo !== false);
+        ulB.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhuma base cadastrada ainda.</li>`
+            : lista.map(b => `
+                <li class="${b.ativo !== false ? "" : "inativo"}">
+                    <span>${b.nome}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                    <div class="acoes-lista">
+                        <button class="btn-editar"   data-acao="editar"   data-lista="bases" data-id="${b.id}">Editar</button>
+                        <button class="btn-inativar" data-acao="toggle"   data-lista="bases" data-id="${b.id}">${b.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-excluir"  data-acao="excluir"  data-lista="bases" data-id="${b.id}">Excluir</button>
+                    </div>
+                </li>`).join("");
+    }
 
-    preencherSelect("empresaSelect",   empresasAtivas.map(e => ({ valor: e.nome, texto: e.nome })), "Selecione a empresa");
-    preencherSelect("motoristaSelect", motoristasAtivos.map(m => ({ valor: m.nome, texto: m.nome })), "Selecione o motorista");
-    preencherSelect("placaSelect",     veiculosAtivos.map(v => ({ valor: v.nome, texto: v.nome })), "Selecione a placa");
+    // CONJUNTOS
+    renderizarConjuntos();
 
-    // Filtros de relatório (todos, com rótulo se inativo)
-    preencherSelect("filtroEmpresa",     db.empresas.map(e => ({ valor: e.nome, texto: e.nome + (e.ativo !== false ? "" : " (inativo)") })), "Todas");
+    // ── SELECTS OCULTOS (usados por lancamentos.js via .value) ──
+    const empresasAtivas   = db.empresas.filter(e => e.ativo !== false);
+    const motoristasAtivos = db.motoristas.filter(m => m.ativo !== false);
+    const veiculosAtivos   = db.veiculos.filter(v => v.ativo !== false);
+    const basesAtivas      = db.bases.filter(b => b.ativo !== false);
+
+    preencherSelect("empresaSelect",      empresasAtivas.map(e => ({ valor: e.nome, texto: e.nome + (e.municipio ? ` (${e.municipio})` : '') })), "Selecione a empresa");
+    preencherSelect("motoristaSelect",    motoristasAtivos.map(m => ({ valor: m.nome, texto: m.nome })), "Selecione o motorista");
+    preencherSelect("placaSelect",        veiculosAtivos.map(v => ({ valor: v.nome, texto: v.nome })), "Selecione a placa");
+    preencherSelect("baseEntradaSelect",  basesAtivas.map(b => ({ valor: b.nome, texto: b.nome })), "Selecione a base");
+
+    // ── DATALISTS DO FORMULÁRIO DE LANÇAMENTOS ──
+    // FIX v3: usam os IDs corretos dl* definidos no index.html
+    const dlEmpresas = document.getElementById("dlEmpresas");
+    if (dlEmpresas) {
+        dlEmpresas.innerHTML = empresasAtivas
+            .map(e => `<option value="${e.nome.replace(/"/g, '&quot;')}">${e.municipio ? e.nome + ' (' + e.municipio + ')' : ''}</option>`)
+            .join('');
+    }
+
+    const dlMotoristas = document.getElementById("dlMotoristas");
+    if (dlMotoristas) {
+        dlMotoristas.innerHTML = motoristasAtivos
+            .map(m => `<option value="${m.nome.replace(/"/g, '&quot;')}" label="${normalizarTexto(m.nome)}">`)
+            .join('');
+    }
+
+    const dlPlacas = document.getElementById("dlPlacas");
+    if (dlPlacas) {
+        dlPlacas.innerHTML = veiculosAtivos
+            .map(v => `<option value="${v.nome.replace(/"/g, '&quot;')}" label="${normalizarTexto(v.nome)}">`)
+            .join('');
+    }
+
+    const dlBases = document.getElementById("dlBases");
+    if (dlBases) {
+        dlBases.innerHTML = basesAtivas
+            .map(b => `<option value="${b.nome.replace(/"/g, '&quot;')}" label="${normalizarTexto(b.nome)}">`)
+            .join('');
+    }
+
+    // FILTROS DE RELATÓRIO
     preencherSelect("filtroMotorista",   db.motoristas.map(m => ({ valor: m.nome, texto: m.nome + (m.ativo !== false ? "" : " (inativo)") })), "Todos");
     preencherSelect("filtroPlaca",       db.veiculos.map(v => ({ valor: v.nome, texto: v.nome + (v.ativo !== false ? "" : " (inativo)") })), "Todas");
     preencherSelect("filtroCombustivel", db.combustiveis.map(c => ({ valor: c.nome, texto: c.nome + (c.ativo !== false ? "" : " (inativo)") })), "Todos");
+
+    if (typeof atualizarFiltroEmpresaGlobal === 'function') {
+        atualizarFiltroEmpresaGlobal();
+    }
+}
+
+/*=================================================
+  VALIDAÇÃO DE BLUR NOS CAMPOS DO FORMULÁRIO
+  Avisa quando o valor digitado não existe no cadastro.
+  Não bloqueia — apenas orienta o usuário.
+=================================================*/
+
+/**
+ * Verifica se o valor digitado existe (case-insensitive) na lista
+ * fornecida. Retorna o item encontrado ou null.
+ */
+function _buscarCadastro(lista, valor) {
+    if (!valor) return null;
+    const v = valor.trim().toLowerCase();
+    return lista.find(i => i.ativo !== false && i.nome.toLowerCase() === v) || null;
+}
+
+/**
+ * Registra os handlers de blur nos campos de lançamento.
+ * Chamado uma única vez após o DOM estar pronto.
+ */
+function _registrarValidacaoBlurLancamentos() {
+    // ── Empresa ──
+    const empresaInput = document.getElementById("empresaInput");
+    if (empresaInput) {
+        empresaInput.addEventListener("blur", function() {
+            const val = this.value.trim();
+            if (!val) return;
+            if (!_buscarCadastro(db.empresas, val)) {
+                mostrarToast(
+                    `Empresa "${val}" não encontrada no cadastro. Verifique ou cadastre em Cadastros → Empresas.`,
+                    "aviso", 5000
+                );
+            }
+        });
+    }
+
+    // ── Motorista ──
+    const motoristaInput = document.getElementById("motoristaInput");
+    if (motoristaInput) {
+        motoristaInput.addEventListener("blur", function() {
+            const val = this.value.trim();
+            if (!val) return;
+            if (!_buscarCadastro(db.motoristas, val)) {
+                mostrarToast(
+                    `Motorista "${val}" não encontrado no cadastro. Verifique ou cadastre em Cadastros → Motoristas.`,
+                    "aviso", 5000
+                );
+            }
+        });
+    }
+
+    // ── Placa ──
+    const placaInput = document.getElementById("placaInput");
+    if (placaInput) {
+        placaInput.addEventListener("blur", function() {
+            const val = this.value.trim().toUpperCase().replace(/[-\s]/g, "");
+            if (!val) return;
+            // Tenta normalizar para Mercosul antes de buscar
+            const placaNorm = normalizarPlaca(val);
+            const encontrou = db.veiculos.some(v =>
+                v.ativo !== false &&
+                normalizarPlaca(v.nome) === placaNorm
+            );
+            if (!encontrou) {
+                mostrarToast(
+                    `Placa "${val}" não encontrada no cadastro. Verifique ou cadastre em Cadastros → Veículos.`,
+                    "aviso", 5000
+                );
+            }
+        });
+    }
+
+    // ── Base ──
+    const baseInput = document.getElementById("baseEntradaInput");
+    if (baseInput) {
+        baseInput.addEventListener("blur", function() {
+            const val = this.value.trim();
+            if (!val) return;
+            if (!_buscarCadastro(db.bases, val)) {
+                mostrarToast(
+                    `Base "${val}" não encontrada no cadastro. Verifique ou cadastre em Cadastros → Bases.`,
+                    "aviso", 5000
+                );
+            }
+        });
+    }
+}
+
+// ========== EVENT DELEGATION — LISTAS DE CADASTRO ==========
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button[data-acao]');
+    if (!btn) return;
+
+    const acao  = btn.dataset.acao;
+    const lista = btn.dataset.lista;
+    const id    = btn.dataset.id;
+    if (!lista || !id) return;
+
+    const item = db[lista].find(i => String(i.id) === String(id));
+    if (!item) return;
+
+    if (acao === 'toggle') {
+        toggleAtivo(lista, id);
+    } else if (acao === 'excluir') {
+        excluirCadastro(lista, id);
+    } else if (acao === 'editar') {
+        if (lista === 'motoristas') abrirModal('Editar Motorista',  'Nome',  item.nome, lista, id);
+        else if (lista === 'veiculos')    abrirModal('Editar Veículo',    'Placa', item.nome, lista, id);
+        else if (lista === 'empresas')    abrirModal('Editar Empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '');
+        else if (lista === 'combustiveis') abrirModal('Editar Combustível','Nome',  item.nome, lista, id, item.perda);
+        else if (lista === 'bases')       abrirModal('Editar Base',       'Nome',  item.nome, lista, id);
+    }
+});
+
+// ========== SINCRONIZAÇÃO DOS INPUTS COM HIDDEN ==========
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'empresaInput') {
+        document.getElementById('empresaSelect').value = e.target.value;
+    } else if (e.target.id === 'motoristaInput') {
+        document.getElementById('motoristaSelect').value = e.target.value;
+    } else if (e.target.id === 'placaInput') {
+        document.getElementById('placaSelect').value = e.target.value;
+    } else if (e.target.id === 'baseEntradaInput') {
+        document.getElementById('baseEntrada').value = e.target.value;
+    }
+});
+
+// sincronizarBaseEntrada: função canônica com flag anti-duplicata em ui.js
+
+// ========== INICIALIZAÇÃO ==========
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof sincronizarBaseEntrada === 'function') sincronizarBaseEntrada();
+        _registrarValidacaoBlurLancamentos();
+    });
+} else {
+    if (typeof sincronizarBaseEntrada === 'function') sincronizarBaseEntrada();
+    _registrarValidacaoBlurLancamentos();
 }

@@ -1,14 +1,75 @@
 /*=================================================
-  ANALÍTICO
+  ANALITICO – com Chart.js, tooltips formatados,
+  alternância Valor/Litros, gráfico de evolução de preços,
+  cache e filtro global por empresa
 =================================================*/
-const CORES = [
-    "#1a3a5c","#27a85f","#d97706","#7e3fb3","#c0392b",
-    "#2980b9","#16a085","#8e44ad","#d35400","#27ae60"
-];
 
-// Cache dos dados calculados — necessário para re-renderizar gráficos ao trocar aba
+// Instâncias globais dos gráficos
+let chartMensal, chartMotoristas, chartVeiculos, chartCombustivel, chartComparativo, chartPizzaComb, chartPizzaMotor, chartEvolucaoPrecos, chartEstoque;
+
+// Cache dos dados calculados
 let _dadosAnaliticoAtual = null;
 
+// Métrica atual: 'gasto' ou 'litros' (padrão 'gasto')
+let metricaAtual = 'gasto';
+
+// ========== INICIALIZAÇÃO DOS BOTÕES DE MÉTRICA ==========
+function inicializarBotoesMetrica() {
+    const btnGasto = document.getElementById('btnMetricaGasto');
+    const btnLitros = document.getElementById('btnMetricaLitros');
+    if (!btnGasto || !btnLitros) return;
+
+    btnGasto.addEventListener('click', () => setMetrica('gasto'));
+    btnLitros.addEventListener('click', () => setMetrica('litros'));
+
+    // Define o estado inicial
+    atualizarBotoesMetrica();
+}
+
+function atualizarBotoesMetrica() {
+    const btnGasto = document.getElementById('btnMetricaGasto');
+    const btnLitros = document.getElementById('btnMetricaLitros');
+    if (!btnGasto || !btnLitros) return;
+
+    if (metricaAtual === 'gasto') {
+        btnGasto.style.background = 'var(--primary)';
+        btnGasto.style.color = 'white';
+        btnLitros.style.background = '';
+        btnLitros.style.color = '';
+    } else {
+        btnLitros.style.background = 'var(--primary)';
+        btnLitros.style.color = 'white';
+        btnGasto.style.background = '';
+        btnGasto.style.color = '';
+    }
+}
+
+function setMetrica(metrica) {
+    if (metrica !== 'gasto' && metrica !== 'litros') return;
+    metricaAtual = metrica;
+    atualizarBotoesMetrica();
+
+    // Recarrega a aba atual com a nova métrica
+    if (_dadosAnaliticoAtual) {
+        const abaAtiva = document.querySelector("#analitico .aba-btn.ativa")?.textContent.trim().toLowerCase() || 'mensal';
+        // Mapeia o texto do botão para o ID da aba
+        const mapa = {
+            'mensal': 'mensal',
+            'motorista': 'motoristas',
+            'veículo': 'veiculos',
+            'combustível': 'combustivel',
+            'comparativo': 'comparativo',
+            'distribuição': 'distribuicao',
+            'evolução preços': 'evolucaoPrecos'
+        };
+        // Extrai a primeira palavra do texto do botão
+        const abaId = mapa[abaAtiva.split(' ')[0]] || 'mensal';
+        const botaoAtivo = document.querySelector("#analitico .aba-btn.ativa");
+        trocarAba(abaId, botaoAtivo);
+    }
+}
+
+// ========== FUNÇÕES ORIGINAIS (com filtro global) ==========
 function preencherSelectsAnalitico() {
     preencherSelect("analiticoCombustivel",
         db.combustiveis.map(c => ({ valor: c.nome, texto: c.nome })),
@@ -23,6 +84,8 @@ function carregarAnalitico() {
     const combustivel = document.getElementById("analiticoCombustivel").value;
 
     const lancamentos = db.lancamentos.filter(l => {
+        // Filtro global por empresa (se ativo)
+        if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
         if (inicio && l.dataNota < inicio) return false;
         if (fim    && l.dataNota > fim)    return false;
         return true;
@@ -36,12 +99,18 @@ function carregarAnalitico() {
     renderAbaVeiculos(dados);
     renderAbaCombustivel(dados);
     renderAbaComparativo(dados);
+    renderAbaDistribuicao(dados);
+    renderAbaEvolucaoPrecos(dados);
+    renderAbaEstoque();
 }
 
 function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
     const mensal = {}, porMotorista = {}, porVeiculo = {}, porCombustivel = {};
     let totalGasto = 0, totalLitros = 0;
     const numNotas = lancamentos.length;
+
+    // Para evolução de preços
+    const precosPorMes = {};
 
     lancamentos.forEach(l => {
         const mesKey = l.dataNota ? l.dataNota.slice(0, 7) : "desconhecido";
@@ -83,6 +152,26 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
                 porCombustivel[tipo].precoMin = Math.min(porCombustivel[tipo].precoMin, preco);
                 porCombustivel[tipo].precoMax = Math.max(porCombustivel[tipo].precoMax, preco);
             }
+
+            // Para evolução de preços
+            if (!precosPorMes[mesKey]) precosPorMes[mesKey] = {};
+            if (!precosPorMes[mesKey][tipo]) precosPorMes[mesKey][tipo] = { soma: 0, count: 0 };
+            precosPorMes[mesKey][tipo].soma += preco;
+            precosPorMes[mesKey][tipo].count += (preco > 0 ? 1 : 0);
+        });
+    });
+
+    // Processa preços por mês
+    const mesesOrdenados = Object.keys(mensal).sort();
+    const precosPorCombustivel = {};
+    mesesOrdenados.forEach(mes => {
+        const precosMes = precosPorMes[mes] || {};
+        Object.entries(precosMes).forEach(([tipo, {soma, count}]) => {
+            if (!precosPorCombustivel[tipo]) precosPorCombustivel[tipo] = [];
+            precosPorCombustivel[tipo].push({
+                mes,
+                precoMedio: count > 0 ? soma / count : 0
+            });
         });
     });
 
@@ -92,7 +181,9 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
         mensal:         Object.values(mensal).sort((a, b) => a.mes.localeCompare(b.mes)),
         porMotorista:   Object.values(porMotorista).sort((a, b) => b.gasto - a.gasto),
         porVeiculo:     Object.values(porVeiculo).sort((a, b) => b.gasto - a.gasto),
-        porCombustivel: Object.values(porCombustivel).sort((a, b) => b.litros - a.litros)
+        porCombustivel: Object.values(porCombustivel).sort((a, b) => b.litros - a.litros),
+        precosPorCombustivel: precosPorCombustivel,
+        meses: mesesOrdenados
     };
 }
 
@@ -117,6 +208,19 @@ function renderKPIs(dados) {
     `;
 }
 
+// ========== GRÁFICOS COM CHART.JS ==========
+
+function destruirGraficos() {
+    if (chartMensal) chartMensal.destroy();
+    if (chartMotoristas) chartMotoristas.destroy();
+    if (chartVeiculos) chartVeiculos.destroy();
+    if (chartCombustivel) chartCombustivel.destroy();
+    if (chartComparativo) chartComparativo.destroy();
+    if (chartPizzaComb) chartPizzaComb.destroy();
+    if (chartPizzaMotor) chartPizzaMotor.destroy();
+    if (chartEvolucaoPrecos) chartEvolucaoPrecos.destroy();
+}
+
 function renderAbaMensal(dados) {
     const tbody = document.getElementById("tabelaMensal");
     const meses = dados.mensal;
@@ -134,9 +238,45 @@ function renderAbaMensal(dados) {
             <td>${varBadge || "—"}</td>
         </tr>`;
     }).join("");
-    desenharBarras(document.getElementById("graficoMensal"), {
-        labels: meses.map(m => nomeMes(m.mes)), valores: meses.map(m => m.gasto),
-        cor: CORES[0], titulo: "Gasto Total por Mês (R$)", formatarValor: v => "R$"+v.toFixed(0)
+    
+    const canvas = document.getElementById("graficoMensal");
+    const ctx = canvas.getContext("2d");
+    if (chartMensal) chartMensal.destroy();
+    const colors = getChartColors();
+    chartMensal = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: meses.map(m => nomeMes(m.mes)),
+            datasets: [{
+                label: metricaAtual === 'gasto' ? 'Gasto Total (R$)' : 'Litros Totais',
+                data: meses.map(m => metricaAtual === 'gasto' ? m.gasto : m.litros),
+                backgroundColor: colors.primary + '80',
+                borderColor: colors.primary,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    ticks: {
+                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        color: colors.text
+                    },
+                    grid: { color: colors.grid }
+                },
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+            }
+        }
     });
 }
 
@@ -157,9 +297,45 @@ function renderAbaMotoristas(dados) {
             <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
     }).join("");
-    desenharBarras(document.getElementById("graficoMotoristas"), {
-        labels: lista.map(m => m.nome), valores: lista.map(m => m.gasto),
-        cor: CORES[1], titulo: "Gasto por Motorista (R$)", formatarValor: v => "R$"+v.toFixed(0)
+    
+    const canvas = document.getElementById("graficoMotoristas");
+    const ctx = canvas.getContext("2d");
+    if (chartMotoristas) chartMotoristas.destroy();
+    const colors = getChartColors();
+    chartMotoristas = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: lista.map(m => m.nome.length > 15 ? m.nome.substring(0,12)+'…' : m.nome),
+            datasets: [{
+                label: metricaAtual === 'gasto' ? 'Gasto (R$)' : 'Litros',
+                data: lista.map(m => metricaAtual === 'gasto' ? m.gasto : m.litros),
+                backgroundColor: colors.success + '80',
+                borderColor: colors.success,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    ticks: {
+                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        color: colors.text
+                    },
+                    grid: { color: colors.grid }
+                },
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+            }
+        }
     });
 }
 
@@ -180,9 +356,45 @@ function renderAbaVeiculos(dados) {
             <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
     }).join("");
-    desenharBarras(document.getElementById("graficoVeiculos"), {
-        labels: lista.map(v => v.nome), valores: lista.map(v => v.gasto),
-        cor: CORES[2], titulo: "Gasto por Veículo (R$)", formatarValor: v => "R$"+v.toFixed(0)
+    
+    const canvas = document.getElementById("graficoVeiculos");
+    const ctx = canvas.getContext("2d");
+    if (chartVeiculos) chartVeiculos.destroy();
+    const colors = getChartColors();
+    chartVeiculos = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: lista.map(v => v.nome.length > 10 ? v.nome.substring(0,8)+'…' : v.nome),
+            datasets: [{
+                label: metricaAtual === 'gasto' ? 'Gasto (R$)' : 'Litros',
+                data: lista.map(v => metricaAtual === 'gasto' ? v.gasto : v.litros),
+                backgroundColor: colors.warning + '80',
+                borderColor: colors.warning,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    ticks: {
+                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        color: colors.text
+                    },
+                    grid: { color: colors.grid }
+                },
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+            }
+        }
     });
 }
 
@@ -202,9 +414,44 @@ function renderAbaCombustivel(dados) {
             <td>${fmtR(c.gasto)}</td><td>${pm>0?fmtR4(pm):"—"}</td><td>${mm}</td>
         </tr>`;
     }).join("");
-    desenharBarrasHoriz(document.getElementById("graficoCombustivel"), {
-        labels: lista.map(c => c.nome), valores: lista.map(c => c.litros),
-        cores: CORES, titulo: "Litros por Tipo de Combustível", formatarValor: v => v.toFixed(0)+"L"
+    
+    const canvas = document.getElementById("graficoCombustivel");
+    const ctx = canvas.getContext("2d");
+    if (chartCombustivel) chartCombustivel.destroy();
+    const colors = getChartColors();
+    chartCombustivel = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: lista.map(c => c.nome),
+            datasets: [{
+                label: metricaAtual === 'gasto' ? 'Gasto (R$)' : 'Litros',
+                data: lista.map(c => metricaAtual === 'gasto' ? c.gasto : c.litros),
+                backgroundColor: colors.info + '80',
+                borderColor: colors.info,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    ticks: {
+                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        color: colors.text
+                    },
+                    grid: { color: colors.grid }
+                },
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+            }
+        }
     });
 }
 
@@ -226,12 +473,51 @@ function renderAbaComparativo(dados) {
             <td>${varBadge}</td><td>${fmtL(m.litros)}</td><td>${fmtR(m.gasto)}</td>
         </tr>`;
     }).join("");
-    desenharLinha(document.getElementById("graficoComparativo"), {
-        labels: meses.map(m => nomeMes(m.mes)), valores: custosMedias,
-        cor: CORES[3], titulo: "Custo Médio por Litro (R$/L) — evolução mensal",
-        formatarValor: v => "R$ "+v.toFixed(4)
+    
+    const canvas = document.getElementById("graficoComparativo");
+    const ctx = canvas.getContext("2d");
+    if (chartComparativo) chartComparativo.destroy();
+    const colors = getChartColors();
+    chartComparativo = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: meses.map(m => nomeMes(m.mes)),
+            datasets: [{
+                label: 'Custo Médio (R$/L)',
+                data: custosMedias,
+                borderColor: colors.primary,
+                backgroundColor: colors.primary + '20',
+                tension: 0.1,
+                fill: true,
+                pointBackgroundColor: colors.primary,
+                pointBorderColor: 'white',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => 'R$ ' + ctx.raw.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    ticks: {
+                        callback: (val) => 'R$ ' + val.toFixed(2),
+                        color: colors.text
+                    },
+                    grid: { color: colors.grid }
+                },
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+            }
+        }
     });
 
+    // Alerta de variação
     const ultimo   = custosMedias[custosMedias.length - 1] || 0;
     const anterior = custosMedias[custosMedias.length - 2] || 0;
     const alerta   = document.getElementById("alertaComparativo");
@@ -241,10 +527,10 @@ function renderAbaComparativo(dados) {
         if (Math.abs(diff) >= 1) {
             alerta.style.display = "block";
             if (diff > 0) {
-                alerta.innerHTML = `⚠️ <strong>Atenção:</strong> O custo médio subiu <strong>${diff.toFixed(1)}%</strong> no último mês.`;
+                alerta.innerHTML = `<strong>Atenção:</strong> O custo médio subiu <strong>${diff.toFixed(1)}%</strong> no último mês.`;
                 alerta.style.cssText = "display:block;background:#f8d7da;border-color:#f5c6c6;color:#721c24;border-radius:6px;padding:10px 14px;margin-top:12px;";
             } else {
-                alerta.innerHTML = `✅ <strong>Boa notícia:</strong> O custo médio caiu <strong>${Math.abs(diff).toFixed(1)}%</strong> no último mês.`;
+                alerta.innerHTML = `<strong>Boa notícia:</strong> O custo médio caiu <strong>${Math.abs(diff).toFixed(1)}%</strong> no último mês.`;
                 alerta.style.cssText = "display:block;background:#d4edda;border-color:#b2dfcb;color:#155724;border-radius:6px;padding:10px 14px;margin-top:12px;";
             }
         } else {
@@ -255,6 +541,151 @@ function renderAbaComparativo(dados) {
     }
 }
 
+function renderAbaDistribuicao(dados) {
+    const canvasComb = document.getElementById("graficoPizzaCombustivel");
+    const canvasMotor = document.getElementById("graficoPizzaMotoristas");
+    if (!canvasComb || !canvasMotor) return;
+    
+    const colors = getChartColors();
+    
+    // Pizza por combustível
+    let combData = dados.porCombustivel.map(c => ({ 
+        label: c.nome, 
+        value: metricaAtual === 'gasto' ? c.gasto : c.litros 
+    }));
+    combData.sort((a,b) => b.value - a.value);
+    if (combData.length > 5) {
+        const top5 = combData.slice(0,5);
+        const outros = combData.slice(5).reduce((acc, c) => acc + c.value, 0);
+        combData = top5.concat([{ label: 'Outros', value: outros }]);
+    }
+    
+    if (chartPizzaComb) chartPizzaComb.destroy();
+    chartPizzaComb = new Chart(canvasComb.getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: combData.map(d => d.label),
+            datasets: [{
+                data: combData.map(d => d.value),
+                backgroundColor: ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: colors.text } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')}`
+                    }
+                }
+            }
+        }
+    });
+    
+    // Pizza por motorista
+    let motorData = dados.porMotorista.map(m => ({ 
+        label: m.nome, 
+        value: metricaAtual === 'gasto' ? m.gasto : m.litros 
+    }));
+    motorData.sort((a,b) => b.value - a.value);
+    if (motorData.length > 5) {
+        const top5 = motorData.slice(0,5);
+        const outros = motorData.slice(5).reduce((acc, m) => acc + m.value, 0);
+        motorData = top5.concat([{ label: 'Outros', value: outros }]);
+    }
+    if (chartPizzaMotor) chartPizzaMotor.destroy();
+    chartPizzaMotor = new Chart(canvasMotor.getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: motorData.map(d => d.label),
+            datasets: [{
+                data: motorData.map(d => d.value),
+                backgroundColor: ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: colors.text } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Nova aba: Evolução de Preços
+function renderAbaEvolucaoPrecos(dados) {
+    const canvas = document.getElementById("graficoEvolucaoPrecos");
+    if (!canvas) return;
+
+    const precosPorComb = dados.precosPorCombustivel;
+    const meses = dados.meses;
+
+    if (Object.keys(precosPorComb).length === 0 || meses.length < 2) {
+        canvas.closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Dados insuficientes para evolução de preços.</p>`;
+        return;
+    }
+
+    const colors = getChartColors();
+    const datasets = [];
+    const combustiveis = Object.keys(precosPorComb).sort();
+
+    combustiveis.forEach((tipo, idx) => {
+        const dadosTipo = precosPorComb[tipo];
+        // Preenche todos os meses, mesmo os que não têm dados (null)
+        const valores = meses.map(mes => {
+            const registro = dadosTipo.find(d => d.mes === mes);
+            return registro ? registro.precoMedio : null;
+        });
+        datasets.push({
+            label: tipo,
+            data: valores,
+            borderColor: `hsl(${idx * 60 % 360}, 70%, 50%)`,
+            backgroundColor: 'transparent',
+            tension: 0.2,
+            pointRadius: 4,
+            spanGaps: true
+        });
+    });
+
+    if (chartEvolucaoPrecos) chartEvolucaoPrecos.destroy();
+    const ctx = canvas.getContext("2d");
+    chartEvolucaoPrecos = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: meses.map(m => nomeMes(m)),
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: R$ ${ctx.raw ? ctx.raw.toFixed(4) : '—'}`
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    ticks: { callback: (val) => 'R$ ' + val.toFixed(2), color: colors.text },
+                    grid: { color: colors.grid }
+                },
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+            }
+        }
+    });
+}
+
 function badgeVariacao(atual, anterior) {
     if (anterior <= 0) return "";
     const diff = (atual - anterior) / anterior * 100;
@@ -263,12 +694,191 @@ function badgeVariacao(atual, anterior) {
     return `<span class="badge-var baixa">▼ ${diff.toFixed(1)}%</span>`;
 }
 
+
+/* ─── ABA ESTOQUE ─────────────────────────────── */
+function renderAbaEstoque() {
+    const container = document.getElementById('aba-estoque');
+    if (!container) return;
+
+    const inicio = document.getElementById('analiticoInicio')?.value || '';
+    const fim    = document.getElementById('analiticoFim')?.value    || '';
+    const filtroEmpresa = empresaFiltroGlobal || null;
+
+    if (!db.estoqueEmpresas || !db.combustiveis) {
+        container.innerHTML = '<p class="grafico-vazio">Sem dados de estoque.</p>';
+        return;
+    }
+
+    const empresas = filtroEmpresa
+        ? [filtroEmpresa]
+        : [...new Set(db.lancamentos.map(l => l.empresa).filter(Boolean))];
+
+    const combustiveis = db.combustiveis.filter(c => c.ativo !== false).map(c => c.nome);
+
+    // Acumular saídas, evaporação e Veeder por combustível no período
+    const resumo = {}; // { comb: { saida, evap, veederDias, calcDias, divergencia } }
+
+    combustiveis.forEach(comb => {
+        resumo[comb] = { saida: 0, evap: 0, veederEntradas: 0, veederDias: 0, semVeeder: 0 };
+    });
+
+    // Gerar dias do período
+    const dias = [];
+    if (inicio && fim) {
+        const cur = new Date(inicio + 'T00:00:00');
+        const end = new Date(fim + 'T00:00:00');
+        while (cur <= end) { dias.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+    }
+
+    if (dias.length === 0) {
+        container.innerHTML = '<p class="grafico-vazio">Defina um período nos filtros acima.</p>';
+        return;
+    }
+
+    // Acumular por empresa e combustível
+    empresas.forEach(empresa => {
+        const medEmp = db.estoqueEmpresas?.[empresa] || {};
+        combustiveis.forEach(comb => {
+            const medComb = medEmp[comb] || {};
+            const perdaPct = db.combustiveis.find(c => c.nome === comb)?.perda ?? 0;
+
+            dias.forEach(data => {
+                const med = medComb[data] || {};
+                // Saída
+                resumo[comb].saida += med.saida ?? 0;
+                // Evaporação: usa evapLitros se disponível, senão calcula pelo pct
+                if (med.evapLitros != null) {
+                    resumo[comb].evap += med.evapLitros;
+                } else {
+                    const pct = med.evapPct != null ? med.evapPct : perdaPct;
+                    // Estimativa: usa estoque calculado até esse dia seria complexo aqui,
+                    // então aproximamos: entrada do dia * pct / 100
+                    const entradaDia = (db.lancamentos || [])
+                        .filter(l => l.empresa === empresa && (l.dataDescarga || l.dataNota) === data)
+                        .flatMap(l => l.itens.filter(i => i.tipo === comb))
+                        .reduce((s,i) => s + ((i.qtdDescargada && i.qtdDescargada > 0) ? i.qtdDescargada : (i.qtd || 0)), 0);
+                    if (entradaDia > 0) resumo[comb].evap += entradaDia * pct / 100;
+                }
+                // Veeder
+                if (med.veeder != null) {
+                    resumo[comb].veederEntradas += med.veeder;
+                    resumo[comb].veederDias++;
+                } else {
+                    resumo[comb].semVeeder++;
+                }
+            });
+        });
+    });
+
+    // Entradas totais por combustível no período
+    const entradas = {};
+    combustiveis.forEach(comb => {
+        entradas[comb] = (db.lancamentos || [])
+            .filter(l => {
+                if (filtroEmpresa && l.empresa !== filtroEmpresa) return false;
+                const d = l.dataDescarga || l.dataNota;
+                if (inicio && d < inicio) return false;
+                if (fim    && d > fim)    return false;
+                return true;
+            })
+            .flatMap(l => l.itens.filter(i => i.tipo === comb))
+            .reduce((s,i) => s + ((i.qtdDescargada && i.qtdDescargada > 0) ? i.qtdDescargada : (i.qtd || 0)), 0);
+    });
+
+    // Montar tabela resumo
+    const linhas = combustiveis.map(comb => {
+        const r = resumo[comb];
+        const entrada = entradas[comb] || 0;
+        const saldo = entrada - r.saida - r.evap;
+        return { comb, entrada, saida: r.saida, evap: r.evap, saldo,
+                 veederDias: r.veederDias, semVeeder: r.semVeeder };
+    }).filter(r => r.entrada > 0 || r.saida > 0);
+
+    if (linhas.length === 0) {
+        container.innerHTML = '<p class="grafico-vazio">Sem movimentação no período.</p>';
+        return;
+    }
+
+    const colors = getChartColors();
+
+    const tabelaHTML = `
+    <div class="tabela-container" style="margin-bottom:24px;">
+        <table>
+            <thead><tr>
+                <th>Combustível</th>
+                <th style="text-align:right">Entradas (L)</th>
+                <th style="text-align:right">Vendas (L)</th>
+                <th style="text-align:right">Evaporação (L)</th>
+                <th style="text-align:right">Saldo Calc. (L)</th>
+                <th style="text-align:right">Dias c/ Veeder</th>
+            </tr></thead>
+            <tbody>
+                ${linhas.map(r => `<tr>
+                    <td><strong>${r.comb}</strong></td>
+                    <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(r.entrada)}</td>
+                    <td style="text-align:right;font-family:'JetBrains Mono',monospace">${r.saida > 0 ? fmtL3(r.saida) : '—'}</td>
+                    <td style="text-align:right;font-family:'JetBrains Mono',monospace">${r.evap > 0 ? fmtL3(r.evap) : '—'}</td>
+                    <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${fmtL3(r.saldo)}</td>
+                    <td style="text-align:right;color:${r.semVeeder > 0 ? 'var(--warning)' : 'var(--success)'}">
+                        ${r.veederDias}${r.semVeeder > 0 ? ` <span style="font-size:0.75rem">(${r.semVeeder} s/ leitura)</span>` : ' ✓'}
+                    </td>
+                </tr>`).join('')}
+            </tbody>
+            <tfoot><tr style="font-weight:700;border-top:2px solid var(--border)">
+                <td>TOTAL</td>
+                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.entrada,0))}</td>
+                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.saida,0))}</td>
+                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.evap,0))}</td>
+                <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtL3(linhas.reduce((s,r)=>s+r.saldo,0))}</td>
+                <td></td>
+            </tr></tfoot>
+        </table>
+    </div>`;
+
+    // Gráfico de barras: entradas, vendas, evaporação por combustível
+    const graficoHTML = `<div class="grafico-wrapper" style="height:300px;margin-bottom:24px;">
+        <canvas id="graficoEstoque"></canvas>
+    </div>`;
+
+    container.innerHTML = tabelaHTML + graficoHTML;
+
+    // Renderizar gráfico
+    requestAnimationFrame(() => {
+        const canvas = document.getElementById('graficoEstoque');
+        if (!canvas) return;
+        if (chartEstoque) chartEstoque.destroy();
+        const ctx = canvas.getContext('2d');
+        chartEstoque = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: linhas.map(r => r.comb),
+                datasets: [
+                    { label: 'Entradas', data: linhas.map(r => r.entrada), backgroundColor: 'rgba(99,102,241,0.7)' },
+                    { label: 'Vendas',   data: linhas.map(r => r.saida),   backgroundColor: 'rgba(34,197,94,0.7)' },
+                    { label: 'Evap.',    data: linhas.map(r => r.evap),    backgroundColor: 'rgba(251,146,60,0.7)' },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtL3(ctx.raw)} L` } }
+                },
+                scales: {
+                    y: { ticks: { callback: v => fmtL(v), color: colors.text }, grid: { color: colors.grid } },
+                    x: { ticks: { color: colors.text } }
+                }
+            }
+        });
+    });
+}
+
 function trocarAba(nomeAba, botao) {
     document.querySelectorAll(".aba-conteudo").forEach(a => a.style.display = "none");
     document.querySelectorAll(".aba-btn").forEach(b => b.classList.remove("ativa"));
     document.getElementById("aba-" + nomeAba).style.display = "block";
     botao.classList.add("ativa");
-    // Re-renderiza gráficos após o bloco ficar visível (canvas precisa de largura real)
+    // Re-renderiza gráficos após o bloco ficar visível
     if (_dadosAnaliticoAtual) {
         requestAnimationFrame(() => {
             if (nomeAba === "mensal")      renderAbaMensal(_dadosAnaliticoAtual);
@@ -276,132 +886,14 @@ function trocarAba(nomeAba, botao) {
             if (nomeAba === "veiculos")    renderAbaVeiculos(_dadosAnaliticoAtual);
             if (nomeAba === "combustivel") renderAbaCombustivel(_dadosAnaliticoAtual);
             if (nomeAba === "comparativo") renderAbaComparativo(_dadosAnaliticoAtual);
+            if (nomeAba === "distribuicao") renderAbaDistribuicao(_dadosAnaliticoAtual);
+            if (nomeAba === "evolucaoPrecos") renderAbaEvolucaoPrecos(_dadosAnaliticoAtual);
+            if (nomeAba === "estoque") renderAbaEstoque();
         });
     }
 }
 
-function _canvasWidth(canvas) {
-    const el = canvas.parentElement;
-    return (el.clientWidth || el.offsetWidth || 600) - 32;
-}
-function desenharBarras(canvas, { labels, valores, cor, titulo, formatarValor }) {
-    if (!canvas || labels.length === 0) return;
-    const dpr = window.devicePixelRatio || 1;
-    const W = _canvasWidth(canvas);
-    const H = parseInt(canvas.getAttribute("height")) || 280;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + "px"; canvas.style.height = H + "px";
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr); ctx.clearRect(0, 0, W, H);
-    const PAD_TOP=30, PAD_BOTTOM=60, PAD_LEFT=70, PAD_RIGHT=20;
-    const areaW=W-PAD_LEFT-PAD_RIGHT, areaH=H-PAD_TOP-PAD_BOTTOM;
-    const maxVal=Math.max(...valores,1);
-    const gap=areaW/labels.length;
-    const barW=Math.max(8, gap*0.6);
-    ctx.fillStyle="#1a3a5c"; ctx.font="bold 11px Segoe UI, Arial"; ctx.textAlign="center";
-    ctx.fillText(titulo, W/2, 16);
-    ctx.strokeStyle="#e0e8f0"; ctx.lineWidth=1;
-    for(let i=0;i<=5;i++){
-        const y=PAD_TOP+areaH-(areaH/5)*i;
-        ctx.beginPath(); ctx.moveTo(PAD_LEFT,y); ctx.lineTo(PAD_LEFT+areaW,y); ctx.stroke();
-        ctx.fillStyle="#999"; ctx.font="10px Segoe UI, Arial"; ctx.textAlign="right";
-        ctx.fillText(formatarValor((maxVal/5)*i), PAD_LEFT-6, y+4);
-    }
-    ctx.strokeStyle="#aac"; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(PAD_LEFT,PAD_TOP); ctx.lineTo(PAD_LEFT,PAD_TOP+areaH); ctx.lineTo(PAD_LEFT+areaW,PAD_TOP+areaH); ctx.stroke();
-    valores.forEach((val,idx)=>{
-        const barH=(val/maxVal)*areaH;
-        const x=PAD_LEFT+gap*idx+gap/2-barW/2;
-        const y=PAD_TOP+areaH-barH;
-        ctx.shadowColor="rgba(0,0,0,0.08)"; ctx.shadowBlur=4;
-        ctx.fillStyle=cor;
-        ctx.beginPath();
-        if(ctx.roundRect) ctx.roundRect(x,y,barW,barH,[4,4,0,0]); else ctx.rect(x,y,barW,barH);
-        ctx.fill(); ctx.shadowBlur=0;
-        if(val>0){ctx.fillStyle="#1a3a5c";ctx.font="bold 9px Segoe UI, Arial";ctx.textAlign="center";ctx.fillText(formatarValor(val),x+barW/2,y-4);}
-        ctx.fillStyle="#555"; ctx.font="10px Segoe UI, Arial"; ctx.textAlign="center";
-        const lt=labels[idx].length>10?labels[idx].slice(0,10)+"…":labels[idx];
-        ctx.save(); ctx.translate(x+barW/2,PAD_TOP+areaH+10); ctx.rotate(-0.4); ctx.fillText(lt,0,0); ctx.restore();
-    });
-}
-
-function desenharBarrasHoriz(canvas, { labels, valores, cores, titulo, formatarValor }) {
-    if (!canvas || labels.length === 0) return;
-    const dpr=window.devicePixelRatio||1;
-    const W=_canvasWidth(canvas);
-    const barHeight=28, PAD_TOP=30, PAD_BOTTOM=10, PAD_LEFT=120, PAD_RIGHT=80;
-    const H=PAD_TOP+labels.length*(barHeight+10)+PAD_BOTTOM;
-    canvas.width=W*dpr; canvas.height=H*dpr;
-    canvas.style.width=W+"px"; canvas.style.height=H+"px";
-    canvas.setAttribute("height",H);
-    const ctx=canvas.getContext("2d");
-    ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
-    const areaW=W-PAD_LEFT-PAD_RIGHT;
-    const maxVal=Math.max(...valores,1);
-    ctx.fillStyle="#1a3a5c"; ctx.font="bold 11px Segoe UI, Arial"; ctx.textAlign="center";
-    ctx.fillText(titulo,W/2,16);
-    labels.forEach((label,idx)=>{
-        const val=valores[idx];
-        const barW=(val/maxVal)*areaW;
-        const y=PAD_TOP+idx*(barHeight+10);
-        ctx.fillStyle=cores[idx%cores.length];
-        ctx.shadowColor="rgba(0,0,0,0.07)"; ctx.shadowBlur=3;
-        ctx.beginPath();
-        if(ctx.roundRect) ctx.roundRect(PAD_LEFT,y,barW,barHeight,[0,4,4,0]); else ctx.rect(PAD_LEFT,y,barW,barHeight);
-        ctx.fill(); ctx.shadowBlur=0;
-        ctx.fillStyle="#333"; ctx.font="11px Segoe UI, Arial"; ctx.textAlign="right";
-        const lt=label.length>14?label.slice(0,14)+"…":label;
-        ctx.fillText(lt,PAD_LEFT-8,y+barHeight/2+4);
-        if(val>0){ctx.fillStyle="#1a3a5c";ctx.font="bold 10px Segoe UI, Arial";ctx.textAlign="left";ctx.fillText(formatarValor(val),PAD_LEFT+barW+6,y+barHeight/2+4);}
-    });
-}
-
-function desenharLinha(canvas, { labels, valores, cor, titulo, formatarValor }) {
-    if (!canvas || labels.length < 2) return;
-    const dpr=window.devicePixelRatio||1;
-    const W=_canvasWidth(canvas);
-    const H=parseInt(canvas.getAttribute("height"))||300;
-    canvas.width=W*dpr; canvas.height=H*dpr;
-    canvas.style.width=W+"px"; canvas.style.height=H+"px";
-    const ctx=canvas.getContext("2d");
-    ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
-    const PAD_TOP=36,PAD_BOTTOM=60,PAD_LEFT=74,PAD_RIGHT=20;
-    const areaW=W-PAD_LEFT-PAD_RIGHT, areaH=H-PAD_TOP-PAD_BOTTOM;
-    const valsPos=valores.filter(v=>v>0);
-    const maxVal=valsPos.length>0?Math.max(...valsPos):1;
-    const minVal=valsPos.length>0?Math.min(...valsPos):0;
-    const escalaMax=maxVal*1.12, escalaMin=Math.max(0,minVal*0.88);
-    const escalaRange=escalaMax-escalaMin||1;
-    const n=labels.length, xStep=areaW/(n-1);
-    ctx.fillStyle="#1a3a5c"; ctx.font="bold 11px Segoe UI, Arial"; ctx.textAlign="center";
-    ctx.fillText(titulo,W/2,18);
-    ctx.strokeStyle="#e0e8f0"; ctx.lineWidth=1;
-    for(let i=0;i<=5;i++){
-        const y=PAD_TOP+(areaH/5)*i;
-        ctx.beginPath(); ctx.moveTo(PAD_LEFT,y); ctx.lineTo(PAD_LEFT+areaW,y); ctx.stroke();
-        const vY=escalaMax-(escalaRange/5)*i;
-        ctx.fillStyle="#999"; ctx.font="9px Segoe UI, Arial"; ctx.textAlign="right";
-        ctx.fillText(formatarValor(vY),PAD_LEFT-6,y+4);
-    }
-    ctx.strokeStyle="#aac"; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(PAD_LEFT,PAD_TOP); ctx.lineTo(PAD_LEFT,PAD_TOP+areaH); ctx.lineTo(PAD_LEFT+areaW,PAD_TOP+areaH); ctx.stroke();
-    const pontos=valores.map((val,idx)=>({
-        x:PAD_LEFT+idx*xStep,
-        y:val>0?PAD_TOP+areaH-((val-escalaMin)/escalaRange)*areaH:PAD_TOP+areaH
-    }));
-    ctx.beginPath(); ctx.moveTo(pontos[0].x,PAD_TOP+areaH);
-    pontos.forEach(p=>ctx.lineTo(p.x,p.y));
-    ctx.lineTo(pontos[pontos.length-1].x,PAD_TOP+areaH);
-    ctx.closePath(); ctx.fillStyle=cor+"22"; ctx.fill();
-    ctx.beginPath(); ctx.strokeStyle=cor; ctx.lineWidth=2.5; ctx.lineJoin="round";
-    pontos.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-    ctx.stroke();
-    pontos.forEach((p,idx)=>{
-        const val=valores[idx];
-        ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2);
-        ctx.fillStyle="white"; ctx.fill(); ctx.strokeStyle=cor; ctx.lineWidth=2; ctx.stroke();
-        if(val>0){ctx.fillStyle="#1a3a5c";ctx.font="bold 9px Segoe UI, Arial";ctx.textAlign="center";ctx.fillText(formatarValor(val),p.x,p.y-10);}
-        ctx.fillStyle="#555"; ctx.font="10px Segoe UI, Arial"; ctx.textAlign="center";
-        ctx.save(); ctx.translate(p.x,PAD_TOP+areaH+10); ctx.rotate(-0.4); ctx.fillText(labels[idx],0,0); ctx.restore();
-    });
-}
+// Inicializa os botões de métrica quando a página carregar
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(inicializarBotoesMetrica, 500);
+});
