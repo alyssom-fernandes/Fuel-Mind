@@ -182,7 +182,7 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
             `<div style="margin-top:12px; border-top:1px solid var(--border); padding-top:8px; font-size:0.75rem; color:var(--text-muted);">
                 <strong>Histórico:</strong>
                 <ul style="margin-top:4px; list-style:none; padding-left:0;">
-                    ${item.logs.map(log => `<li>• ${log}</li>`).join('')}
+                    ${item.logs.map(log => `<li>• ${escapeHtml(log)}</li>`).join('')}
                 </ul>
             </div>` : '';
     }
@@ -235,6 +235,7 @@ function confirmarEdicao() {
         const perdaInput = parseFloat(document.getElementById("modalInputPerda").value);
         const perdaAntiga = item.perda;
         if (perdaAntiga !== perdaInput) {
+            if (!item.logs) item.logs = [];
             item.logs.push(`% perda alterada de ${perdaAntiga}% para ${perdaInput}% em ${new Date().toLocaleString('pt-BR')}`);
         }
         item.perda = isNaN(perdaInput) ? 0 : perdaInput;
@@ -553,8 +554,8 @@ function renderizarConjuntos() {
     }
 
     container.innerHTML = exibir.map(c => {
-        const placasStr = c.composicaoAtual.join(", ");
-        const nomeExib = c.nome ? `<strong>${c.nome}</strong>` : `<em style="color:var(--text-muted);">(sem nome)</em>`;
+        const placasStr = c.composicaoAtual.map(escapeHtml).join(", ");
+        const nomeExib = c.nome ? `<strong>${escapeHtml(c.nome)}</strong>` : `<em style="color:var(--text-muted);">(sem nome)</em>`;
         const inativoTag = c.ativo === false ? ' <em class="tag-inativo">inativo</em>' : '';
         return `
         <li class="conjunto-item ${c.ativo === false ? 'inativo' : ''}">
@@ -608,7 +609,7 @@ function abrirEditarConjunto(id) {
                 const de = h.vigenciaDe || "—";
                 const ate = h.vigenciaAte || "atual";
                 return `<div style="font-size:0.78rem;color:var(--text-muted);padding:3px 0;">
-                    <strong>${i+1}.</strong> ${h.placas.join(", ")}
+                    <strong>${i+1}.</strong> ${h.placas.map(escapeHtml).join(", ")}
                     <span style="margin-left:6px;opacity:0.7;">(${de} → ${ate})</span>
                 </div>`;
             }).join("")}
@@ -641,7 +642,7 @@ function _renderizarPlacasConjunto(placas) {
     if (!container) return;
     container.innerHTML = _placasTemp.map((p, i) => `
         <div class="form-linha" style="gap:8px;margin-bottom:6px;" data-idx="${i}">
-            <input type="text" value="${p}" maxlength="8" placeholder="Ex: ABC1D23"
+            <input type="text" value="${escapeHtml(p)}" maxlength="8" placeholder="Ex: ABC1D23"
                    style="text-transform:uppercase;flex:1;"
                    oninput="this.value=this.value.toUpperCase().replace(/[-\\s]/g,''); _placasTemp[${i}]=this.value;">
             <button class="btn-excluir" style="padding:4px 10px;" onclick="_removerPlacaConjunto(${i})">✕</button>
@@ -743,7 +744,7 @@ function atualizarListas() {
         ulM.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhum cadastro ainda.</li>`
             : lista.map(m => `
                 <li class="${m.ativo !== false ? "" : "inativo"}">
-                    <span>${m.nome}${m.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                    <span>${escapeHtml(m.nome)}${m.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="motoristas" data-id="${m.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="motoristas" data-id="${m.id}">${m.ativo !== false ? "Inativar" : "Reativar"}</button>
@@ -760,7 +761,7 @@ function atualizarListas() {
         ulV.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhum cadastro ainda.</li>`
             : lista.map(v => `
                 <li class="${v.ativo !== false ? "" : "inativo"}">
-                    <span>${v.nome}${v.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                    <span>${escapeHtml(v.nome)}${v.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="veiculos" data-id="${v.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="veiculos" data-id="${v.id}">${v.ativo !== false ? "Inativar" : "Reativar"}</button>
@@ -778,7 +779,7 @@ function atualizarListas() {
             : lista.map(e => `
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
-                        ${e.nome} ${e.municipio ? `- ${e.municipio}` : ''}
+                        ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
@@ -798,7 +799,7 @@ function atualizarListas() {
             : lista.map(c => `
                 <li class="${c.ativo !== false ? "" : "inativo"}">
                     <span>
-                        ${c.nome}
+                        ${escapeHtml(c.nome)}
                         ${c.perda > 0 ? `<em class="tag-perda">Perda: ${c.perda}%</em>` : ""}
                         ${c.ativo !== false ? "" : '<em class="tag-inativo">inativo</em>'}
                     </span>
@@ -818,7 +819,7 @@ function atualizarListas() {
         ulB.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhuma base cadastrada ainda.</li>`
             : lista.map(b => `
                 <li class="${b.ativo !== false ? "" : "inativo"}">
-                    <span>${b.nome}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                    <span>${escapeHtml(b.nome)}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="bases" data-id="${b.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="bases" data-id="${b.id}">${b.ativo !== false ? "Inativar" : "Reativar"}</button>
@@ -846,28 +847,28 @@ function atualizarListas() {
     const dlEmpresas = document.getElementById("dlEmpresas");
     if (dlEmpresas) {
         dlEmpresas.innerHTML = empresasAtivas
-            .map(e => `<option value="${e.nome.replace(/"/g, '&quot;')}">${e.municipio ? e.nome + ' (' + e.municipio + ')' : ''}</option>`)
+            .map(e => `<option value="${escapeHtml(e.nome)}">${e.municipio ? escapeHtml(e.nome) + ' (' + escapeHtml(e.municipio) + ')' : ''}</option>`)
             .join('');
     }
 
     const dlMotoristas = document.getElementById("dlMotoristas");
     if (dlMotoristas) {
         dlMotoristas.innerHTML = motoristasAtivos
-            .map(m => `<option value="${m.nome.replace(/"/g, '&quot;')}" label="${normalizarTexto(m.nome)}">`)
+            .map(m => `<option value="${escapeHtml(m.nome)}" label="${escapeHtml(normalizarTexto(m.nome))}">`)
             .join('');
     }
 
     const dlPlacas = document.getElementById("dlPlacas");
     if (dlPlacas) {
         dlPlacas.innerHTML = veiculosAtivos
-            .map(v => `<option value="${v.nome.replace(/"/g, '&quot;')}" label="${normalizarTexto(v.nome)}">`)
+            .map(v => `<option value="${escapeHtml(v.nome)}" label="${escapeHtml(normalizarTexto(v.nome))}">`)
             .join('');
     }
 
     const dlBases = document.getElementById("dlBases");
     if (dlBases) {
         dlBases.innerHTML = basesAtivas
-            .map(b => `<option value="${b.nome.replace(/"/g, '&quot;')}" label="${normalizarTexto(b.nome)}">`)
+            .map(b => `<option value="${escapeHtml(b.nome)}" label="${escapeHtml(normalizarTexto(b.nome))}">`)
             .join('');
     }
 

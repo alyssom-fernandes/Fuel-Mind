@@ -19,7 +19,6 @@ function trocarAbaSistema(aba, btn) {
     const conteudo = document.getElementById(`sistemaAba-${aba}`);
     if (conteudo) conteudo.style.display = 'block';
     if (aba === 'backup') { atualizarInfoSistema(); carregarConfiguracoesTela(); }
-    if (aba === 'conferencia') { _conferenciaInicializar(); }
 }
 
 /* ========== BACKUP ========== */
@@ -172,7 +171,7 @@ function auditarDatas() {
                         if (dtDesc && dtDesc > hoje) problema.push('Descarga futura');
                         if (diffDias > 30) problema.push(`Descarga ${diffDias} dias após nota`);
                         return `<tr>
-                            <td>${l.numeroNota}</td><td>${formatarData(l.dataNota)}</td>
+                            <td>${escapeHtml(l.numeroNota)}</td><td>${formatarData(l.dataNota)}</td>
                             <td>${l.dataDescarga ? formatarData(l.dataDescarga) : '—'}</td>
                             <td style="color:var(--danger);">${problema.join(', ')}</td>
                             <td><button class="btn-secundario" onclick="irParaLancamento('${l.id}');document.getElementById('_modalAuditoria').remove()">Ver</button></td>
@@ -668,14 +667,14 @@ function _autosystemRenderizarConferencia() {
             <div class="campo" style="min-width:180px">
                 <label>Empresa</label>
                 <div style="padding:6px 10px;background:rgba(139,34,82,0.08);border:1px solid var(--primary);border-radius:var(--radius-sm);color:var(--primary);font-size:0.85rem;font-weight:600">
-                    ${empresa || '(nenhuma selecionada)'}
+                    ${escapeHtml(empresa) || '(nenhuma selecionada)'}
                 </div>
             </div>
             <div class="campo" style="min-width:180px">
                 <label>Combustível do relatório</label>
                 <select id="_autoSelComb" onchange="_autosystemAtualizarTabela()">
                     <option value="">-- Selecione --</option>
-                    ${combustiveis.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    ${combustiveis.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
                 </select>
             </div>
         </div>
@@ -774,7 +773,7 @@ function _autosystemAtualizarTabela() {
         </table></div>
         <div class="barra-exportacao" style="margin-top:16px">
             <span class="exportacao-titulo">Exportar:</span>
-            <button class="btn-export btn-xlsx" onclick="_autoExportarExcel('${comb}')">Excel</button>
+            <button class="btn-export btn-xlsx" onclick="_autoExportarExcel('${escapeJsAttr(comb)}')">Excel</button>
         </div>`;
 }
 

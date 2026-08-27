@@ -448,17 +448,17 @@ function importacaoRenderizarEtapa1() {
     preview.innerHTML = `
         <p class="dica" style="margin-bottom:8px">
             <strong>${importacaoLinhas.length - 1}</strong> linha(s) encontradas em
-            <strong>${importacaoArquivoNome}</strong>.
+            <strong>${escapeHtml(importacaoArquivoNome)}</strong>.
             Abaixo, uma amostra das primeiras linhas:
         </p>
         <div style="overflow-x:auto">
             <table class="tabela-preview">
                 <thead>
-                    <tr>${cabecalho.map((c,i) => `<th>Col ${i+1}<br><small>${String(c).substring(0,20)}</small></th>`).join("")}</tr>
+                    <tr>${cabecalho.map((c,i) => `<th>Col ${i+1}<br><small>${escapeHtml(String(c).substring(0,20))}</small></th>`).join("")}</tr>
                 </thead>
                 <tbody>
                     ${amostra.map(linha =>
-                        `<tr>${cabecalho.map((_,i) => `<td>${String(linha[i] || "").substring(0,25)}</td>`).join("")}</tr>`
+                        `<tr>${cabecalho.map((_,i) => `<td>${escapeHtml(String(linha[i] || "").substring(0,25))}</td>`).join("")}</tr>`
                     ).join("")}
                 </tbody>
             </table>
@@ -484,7 +484,7 @@ function importacaoRenderizarEtapa2(cabecalho) {
     });
 
     const opcoes = `<option value="">-- Não importar --</option>` +
-        cabecalho.map((c,i) => `<option value="${i}">Col ${i+1}: ${String(c).substring(0,30)}</option>`).join("");
+        cabecalho.map((c,i) => `<option value="${i}">Col ${i+1}: ${escapeHtml(String(c).substring(0,30))}</option>`).join("");
 
     container.innerHTML = `
         <p class="dica" style="margin-bottom:12px">
@@ -744,10 +744,10 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                             <td style="text-align:center">
                                 <input type="checkbox" id="dup_${i}" style="width:auto; accent-color:var(--primary)">
                             </td>
-                            <td>${n.numeroNota}</td>
+                            <td>${escapeHtml(n.numeroNota)}</td>
                             <td>${formatarData(n.dataNota)}</td>
-                            <td>${n.motorista}</td>
-                            <td>${n.placa}</td>
+                            <td>${escapeHtml(n.motorista)}</td>
+                            <td>${escapeHtml(n.placa)}</td>
                             <td>${n.itens.length} item(ns)</td>
                             <td>${fmtR(n.total)}</td>
                         </tr>`).join("")}
@@ -763,7 +763,7 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
         <details class="detalhes-resumo erro" style="margin-top:8px">
             <summary>Ver erros de validação (${erros.length})</summary>
             <ul style="margin-top:8px; padding-left:20px; font-size:0.85rem; color:var(--danger)">
-                ${erros.map(e => `<li>${e}</li>`).join("")}
+                ${erros.map(e => `<li>${escapeHtml(e)}</li>`).join("")}
             </ul>
         </details>` : ""}
 
@@ -780,9 +780,9 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                         ${novas.slice(0,50).map(n => `
                         <tr>
                             <td>${formatarData(n.dataNota)}</td>
-                            <td>${n.numeroNota}</td>
-                            <td>${n.motorista}</td>
-                            <td>${n.placa}</td>
+                            <td>${escapeHtml(n.numeroNota)}</td>
+                            <td>${escapeHtml(n.motorista)}</td>
+                            <td>${escapeHtml(n.placa)}</td>
                             <td>${n.itens.length} item(ns)</td>
                             <td>${fmtR(n.total)}</td>
                         </tr>`).join("")}

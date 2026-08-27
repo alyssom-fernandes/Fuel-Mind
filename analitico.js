@@ -10,6 +10,32 @@ let chartMensal, chartMotoristas, chartVeiculos, chartCombustivel, chartComparat
 // Cache dos dados calculados
 let _dadosAnaliticoAtual = null;
 
+/**
+ * Baixa como PNG o gráfico Chart.js da aba do Analítico indicada por `nomeGrafico`.
+ * OBS: esta função nunca existia — os botões "Baixar PNG" já presentes no HTML
+ * (ex: Evolução de Preços) chamavam uma função inexistente e não funcionavam.
+ */
+function baixarGrafico(nomeGrafico) {
+    const charts = {
+        mensal: () => chartMensal,
+        motoristas: () => chartMotoristas,
+        veiculos: () => chartVeiculos,
+        combustivel: () => chartCombustivel,
+        comparativo: () => chartComparativo,
+        pizzaCombustivel: () => chartPizzaComb,
+        pizzaMotorista: () => chartPizzaMotor,
+        evolucaoPrecos: () => chartEvolucaoPrecos,
+    };
+    const chart = charts[nomeGrafico]?.();
+    if (!chart) { mostrarToast('Gráfico ainda não carregado.', 'aviso'); return; }
+    const link = document.createElement('a');
+    link.href = chart.toBase64Image('image/png', 1);
+    link.download = `${nomeGrafico}-${new Date().toISOString().slice(0, 10)}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
 // Métrica atual: 'gasto' ou 'litros' (padrão 'gasto')
 let metricaAtual = 'gasto';
 
@@ -51,20 +77,8 @@ function setMetrica(metrica) {
 
     // Recarrega a aba atual com a nova métrica
     if (_dadosAnaliticoAtual) {
-        const abaAtiva = document.querySelector("#analitico .aba-btn.ativa")?.textContent.trim().toLowerCase() || 'mensal';
-        // Mapeia o texto do botão para o ID da aba
-        const mapa = {
-            'mensal': 'mensal',
-            'motorista': 'motoristas',
-            'veículo': 'veiculos',
-            'combustível': 'combustivel',
-            'comparativo': 'comparativo',
-            'distribuição': 'distribuicao',
-            'evolução preços': 'evolucaoPrecos'
-        };
-        // Extrai a primeira palavra do texto do botão
-        const abaId = mapa[abaAtiva.split(' ')[0]] || 'mensal';
-        const botaoAtivo = document.querySelector("#analitico .aba-btn.ativa");
+        const botaoAtivo = document.querySelector("#analiticoAbas .aba-btn.ativa");
+        const abaId = botaoAtivo?.dataset.aba || 'mensal';
         trocarAba(abaId, botaoAtivo);
     }
 }
@@ -82,6 +96,16 @@ function carregarAnalitico() {
     const inicio      = document.getElementById("analiticoInicio").value;
     const fim         = document.getElementById("analiticoFim").value;
     const combustivel = document.getElementById("analiticoCombustivel").value;
+
+    const labelPeriodo = document.getElementById("analiticoPeriodoLabel");
+    if (labelPeriodo) {
+        if (!inicio && !fim) {
+            labelPeriodo.style.display = "block";
+            labelPeriodo.innerHTML = '<p class="dica" style="margin-bottom:12px">Nenhum período selecionado — exibindo <strong>todo o histórico</strong>.</p>';
+        } else {
+            labelPeriodo.style.display = "none";
+        }
+    }
 
     const lancamentos = db.lancamentos.filter(l => {
         // Filtro global por empresa (se ativo)
@@ -127,9 +151,12 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
         l.itens.forEach(item => {
             if (filtroCombustivel && item.tipo !== filtroCombustivel) return;
 
-            const litros = item.qtd   || 0;
-            const gasto  = item.total || 0;
-            const preco  = litros > 0 ? gasto / litros : 0;
+            // Volume agregado segue o critério único (descarga quando houver);
+            // o preço unitário permanece sobre a carga faturada da nota.
+            const litros      = _litrosItem(item);
+            const litrosNota  = item.qtd   || 0;
+            const gasto       = item.total || 0;
+            const preco       = litrosNota > 0 ? gasto / litrosNota : 0;
 
             totalGasto  += gasto;
             totalLitros += litros;
@@ -268,7 +295,7 @@ function renderAbaMensal(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
@@ -291,7 +318,7 @@ function renderAbaMotoristas(dados) {
         const cm  = m.litros > 0 ? m.gasto/m.litros : 0;
         const pct = dados.totalGasto > 0 ? m.gasto/dados.totalGasto*100 : 0;
         return `<tr>
-            <td>${m.nome}</td><td>${m.viagens}</td><td>${fmtL(m.litros)}</td>
+            <td>${escapeHtml(m.nome)}</td><td>${m.viagens}</td><td>${fmtL(m.litros)}</td>
             <td>${fmtR(m.gasto)}</td><td>${cm>0?fmtR4(cm):"—"}</td>
             <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
@@ -327,7 +354,7 @@ function renderAbaMotoristas(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
@@ -350,7 +377,7 @@ function renderAbaVeiculos(dados) {
         const cm  = v.litros > 0 ? v.gasto/v.litros : 0;
         const pct = dados.totalGasto > 0 ? v.gasto/dados.totalGasto*100 : 0;
         return `<tr>
-            <td>${v.nome}</td><td>${v.viagens}</td><td>${fmtL(v.litros)}</td>
+            <td>${escapeHtml(v.nome)}</td><td>${v.viagens}</td><td>${fmtL(v.litros)}</td>
             <td>${fmtR(v.gasto)}</td><td>${cm>0?fmtR4(cm):"—"}</td>
             <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
@@ -386,7 +413,7 @@ function renderAbaVeiculos(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
@@ -409,7 +436,7 @@ function renderAbaCombustivel(dados) {
         const pm = c.litros > 0 ? c.gasto/c.litros : 0;
         const mm = c.precoMin !== Infinity ? `${fmtR4(c.precoMin)} / ${fmtR4(c.precoMax)}` : "—";
         return `<tr>
-            <td>${c.nome}</td><td>${c.notas}</td><td>${fmtL(c.litros)}</td>
+            <td>${escapeHtml(c.nome)}</td><td>${c.notas}</td><td>${fmtL(c.litros)}</td>
             <td>${fmtR(c.gasto)}</td><td>${pm>0?fmtR4(pm):"—"}</td><td>${mm}</td>
         </tr>`;
     }).join("");
@@ -443,7 +470,7 @@ function renderAbaCombustivel(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? 'R$ ' + val.toFixed(2) : val.toFixed(0) + ' L',
+                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
@@ -506,7 +533,7 @@ function renderAbaComparativo(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => 'R$ ' + val.toFixed(2),
+                        callback: (val) => fmtR(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
@@ -676,7 +703,7 @@ function renderAbaEvolucaoPrecos(dados) {
             },
             scales: {
                 y: { 
-                    ticks: { callback: (val) => 'R$ ' + val.toFixed(2), color: colors.text },
+                    ticks: { callback: (val) => fmtR(val), color: colors.text },
                     grid: { color: colors.grid }
                 },
                 x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }

@@ -170,11 +170,11 @@ function _mostrarSelecaoEmpresa(perfil) {
     const overlay = document.getElementById("selecaoEmpresaOverlay");
     const lista   = document.getElementById("selecaoEmpresaLista");
     const nomeEl  = document.getElementById("selecaoEmpresaNome");
-    if (nomeEl) nomeEl.textContent = perfil.nome.split(" ")[0];
+    if (nomeEl) nomeEl.textContent = (perfil.nome || '').split(" ")[0];
 
     lista.innerHTML = empresasDisponiveis.map(emp => `
-        <button class="btn-empresa-troca" onclick="confirmarSelecaoEmpresa('${emp.replace(/'/g, "\\'")}')">
-            <span>${emp}</span>
+        <button class="btn-empresa-troca" onclick="confirmarSelecaoEmpresa('${escapeJsAttr(emp)}')">
+            <span>${escapeHtml(emp)}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;opacity:0.5"><polyline points="9,18 15,12 9,6"/></svg>
         </button>`).join("");
 
@@ -225,7 +225,7 @@ function _aplicarEmpresaAtiva(nome) {
 
     const nomeUsuario = document.getElementById("headerNomeUsuario");
     if (nomeUsuario && window._usuarioAtual) {
-        nomeUsuario.textContent = window._usuarioAtual.nome.split(" ")[0];
+        nomeUsuario.textContent = (window._usuarioAtual.nome || '').split(" ")[0];
     }
 
     const telaAtualId = document.querySelector(".tela[style*='block']")?.id || "dashboard";
@@ -285,8 +285,8 @@ function abrirTrocarEmpresa() {
 
     lista.innerHTML = empresasDisponiveis.map(emp => `
         <button class="btn-empresa-troca ${emp === empresaFiltroNome ? 'ativa' : ''}"
-                onclick="selecionarEmpresaModal('${emp.replace(/'/g, "\\'")}')">
-            <span>${emp}</span>
+                onclick="selecionarEmpresaModal('${escapeJsAttr(emp)}')">
+            <span>${escapeHtml(emp)}</span>
             ${emp === empresaFiltroNome
                 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="20,6 9,17 4,12"/></svg>'
                 : ''}
@@ -921,7 +921,7 @@ async function mostrarTela(id) {
     if (id === "dashboard")    carregarDashboard();
     if (id === "relatorios")   carregarRelatorio();
     if (id === "fretes")       carregarFretes();
-    if (id === "conferencia")  { if (typeof iniciarConferencia === 'function') iniciarConferencia(); }
+    if (id === "conferencia")  { if (typeof _conferenciaInicializar === "function") _conferenciaInicializar(); }
     if (id === "lancamentos") {
         limparFormularioSujo();
         const empresaInput = document.getElementById('empresaInput');

@@ -12,6 +12,9 @@
 let dadosRelatorioAtual = [];
 let dadosHistoricoAtual = [];
 
+/* `_litrosItem()` — critério único de litros — vive em utils.js, para que
+   Dashboard, Analítico e Relatórios compartilhem exatamente a mesma regra. */
+
 // Paginação
 const ITENS_POR_PAGINA = 50;
 let paginaRelatorio = 1;
@@ -77,9 +80,9 @@ function _aplicarFiltroRelatorio() {
         // sejam exibidos corretamente.
         const dataRef  = l.dataDescarga || l.dataNota || "";
         const dataNota = l.dataNota || "";
+        const dentroDoIntervalo = (d) => (!dataInicio || d >= dataInicio) && (!dataFim || d <= dataFim);
 
-        if (dataInicio && dataRef < dataInicio && dataNota < dataInicio) return false;
-        if (dataFim    && dataRef > dataFim    && dataNota > dataFim)    return false;
+        if ((dataInicio || dataFim) && !dentroDoIntervalo(dataRef) && !dentroDoIntervalo(dataNota)) return false;
 
         if (motorista   && l.motorista !== motorista) return false;
         if (placa       && l.placa !== placa)         return false;
@@ -103,8 +106,8 @@ function _aplicarFiltroRelatorio() {
             va = a.dataNota || ''; vb = b.dataNota || '';
             return dir === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
         } else if (campo === 'litros') {
-            va = (a.itens || []).reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
-            vb = (b.itens || []).reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
+            va = (a.itens || []).reduce((s, i) => s + _litrosItem(i), 0);
+            vb = (b.itens || []).reduce((s, i) => s + _litrosItem(i), 0);
             return dir === 'desc' ? vb - va : va - vb;
         } else if (campo === 'total') {
             va = a.total || 0; vb = b.total || 0;
@@ -130,7 +133,7 @@ function _aplicarFiltroRelatorio() {
 
     const totalGeral  = dadosRelatorioAtual.reduce((soma, l) => soma + l.total, 0);
     const totalLitros = dadosRelatorioAtual.reduce((soma, l) =>
-        soma + l.itens.reduce((s, i) => s + ((i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0), 0), 0);
+        soma + l.itens.reduce((s, i) => s + _litrosItem(i), 0), 0);
     const resumo = document.getElementById("resumoRelatorio");
     const barra  = document.getElementById("barraExportacaoRelatorio");
 
@@ -144,7 +147,7 @@ function _aplicarFiltroRelatorio() {
             l.itens.forEach(i => {
                 if (!i.tipo) return;
                 if (!porComb[i.tipo]) porComb[i.tipo] = { litros: 0, total: 0 };
-                porComb[i.tipo].litros += (i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0;
+                porComb[i.tipo].litros += _litrosItem(i);
                 porComb[i.tipo].total  += i.total || 0;
             });
         });
@@ -153,7 +156,7 @@ function _aplicarFiltroRelatorio() {
         const porMotorista = {};
         dadosRelatorioAtual.forEach(l => {
             if (!l.motorista) return;
-            const litros = l.itens.reduce((s, i) => s + ((i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0), 0);
+            const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
             porMotorista[l.motorista] = (porMotorista[l.motorista] || 0) + litros;
         });
         const topMotoristas = Object.entries(porMotorista)
@@ -287,8 +290,14 @@ function _aplicarFiltroHistorico() {
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
         if (motorista  && l.motorista !== motorista) return false;
         if (placa      && l.placa !== placa)         return false;
-        if (dataInicio && l.dataNota < dataInicio)   return false;
-        if (dataFim    && l.dataNota > dataFim)      return false;
+
+        // Mesma lógica do Relatório: passa se QUALQUER uma das duas datas
+        // (nota ou descarga) estiver dentro do intervalo selecionado.
+        const dataRef = l.dataDescarga || l.dataNota || "";
+        const dNota   = l.dataNota || "";
+        const dentroDoIntervalo = (d) => (!dataInicio || d >= dataInicio) && (!dataFim || d <= dataFim);
+        if ((dataInicio || dataFim) && !dentroDoIntervalo(dataRef) && !dentroDoIntervalo(dNota)) return false;
+
         if (busca      && !JSON.stringify(l).toLowerCase().includes(busca)) return false;
         return true;
     });
@@ -352,18 +361,18 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
     const idInlineAberto = _detalheInlineAberto.contexto === contexto ? _detalheInlineAberto.id : null;
 
     tbody.innerHTML = fatia.flatMap(l => {
-        const totalLitros = (l.itens || []).reduce((s, item) => s + (parseFloat(item.qtd) || 0), 0);
+        const totalLitros = (l.itens || []).reduce((s, item) => s + _litrosItem(item), 0);
         const estaAberto  = idInlineAberto === l.id;
 
         const linhaLanc = `
         <tr class="${estaAberto ? 'linha-com-detalhe-aberto' : ''}">
             <td>${formatarData(l.dataNota)}</td>
             <td>${formatarData(l.dataDescarga)}</td>
-            <td>${l.numeroNota}</td>
-            <td>${l.base || '—'}</td>
-            <td>${l.empresa || '—'}</td>
-            <td>${l.motorista || '—'}</td>
-            <td>${l.placa || '—'}</td>
+            <td>${escapeHtml(l.numeroNota)}</td>
+            <td>${escapeHtml(l.base) || '—'}</td>
+            <td>${escapeHtml(l.empresa) || '—'}</td>
+            <td>${escapeHtml(l.motorista) || '—'}</td>
+            <td>${escapeHtml(l.placa) || '—'}</td>
             <td style="text-align:right">${fmtL(totalLitros)}</td>
             <td>${fmtR(l.total)}</td>
             <td class="no-print">
@@ -416,7 +425,7 @@ function toggleDetalheInline(id, contexto) {
 function _buildConteudoDetalhe(l) {
     let htmlItens = (l.itens || []).map(item => `
         <tr>
-            <td>${item.tipo}</td>
+            <td>${escapeHtml(item.tipo)}</td>
             <td>${fmtL3(item.qtd)}</td>
             <td>${item.qtdDescargada ? fmtL3(item.qtdDescargada) : "—"}</td>
             <td>${fmtR4(item.valor)}</td>
@@ -429,12 +438,12 @@ function _buildConteudoDetalhe(l) {
     if (l.anexos && l.anexos.length > 0) {
         anexosHtml = '<ul style="list-style:none; padding-left:0; margin:0">';
         l.anexos.forEach(a => {
-            const href = a.url || a.dados || '';
+            const href = escapeHtml(a.url || a.dados || '');
             const isImagem = a.tipo && a.tipo.startsWith('image/');
             if (isImagem) {
-                anexosHtml += `<li><img src="${href}" class="preview-nf" style="max-width:80px;max-height:80px;margin-right:8px;cursor:pointer;" onclick="window.open('${href}')"></li>`;
+                anexosHtml += `<li><a href="${href}" target="_blank"><img src="${href}" class="preview-nf" style="max-width:80px;max-height:80px;margin-right:8px;cursor:pointer;"></a></li>`;
             } else {
-                anexosHtml += `<li><a href="${href}" target="_blank">${a.nome}</a></li>`;
+                anexosHtml += `<li><a href="${href}" target="_blank">${escapeHtml(a.nome)}</a></li>`;
             }
         });
         anexosHtml += '</ul>';
@@ -447,11 +456,11 @@ function _buildConteudoDetalhe(l) {
             <div class="detalhe-info">
                 <div><span>Data Nota</span><strong>${formatarData(l.dataNota)}</strong></div>
                 <div><span>Data Descarga</span><strong>${l.dataDescarga ? formatarData(l.dataDescarga) : "—"}</strong></div>
-                <div><span>Nota</span><strong>${l.numeroNota}</strong></div>
-                <div><span>Base</span><strong>${l.base || "—"}</strong></div>
-                <div><span>Empresa</span><strong>${l.empresa || "—"}</strong></div>
-                <div><span>Motorista</span><strong>${l.motorista || "—"}</strong></div>
-                <div><span>Placa</span><strong>${l.placa || "—"}</strong></div>
+                <div><span>Nota</span><strong>${escapeHtml(l.numeroNota)}</strong></div>
+                <div><span>Base</span><strong>${escapeHtml(l.base) || "—"}</strong></div>
+                <div><span>Empresa</span><strong>${escapeHtml(l.empresa) || "—"}</strong></div>
+                <div><span>Motorista</span><strong>${escapeHtml(l.motorista) || "—"}</strong></div>
+                <div><span>Placa</span><strong>${escapeHtml(l.placa) || "—"}</strong></div>
                 <div><span>Total</span><strong>${fmtR(l.total)}</strong></div>
             </div>
 
@@ -464,7 +473,7 @@ function _buildConteudoDetalhe(l) {
                 <tbody>${htmlItens}</tbody>
             </table>
 
-            ${l.observacoes ? `<div class="detalhe-obs"><strong>Observações</strong><br>${l.observacoes}</div>` : ''}
+            ${l.observacoes ? `<div class="detalhe-obs"><strong>Observações</strong><br>${escapeHtml(l.observacoes)}</div>` : ''}
 
             <div class="detalhe-obs">
                 <strong>Anexos (${l.anexos?.length || 0})</strong><br>${anexosHtml}
@@ -477,10 +486,10 @@ function _buildConteudoDetalhe(l) {
                     // Suporta log novo (objeto {acao, ts, usuario}) e log antigo (string)
                     if (typeof log === 'object' && log !== null) {
                         const data = new Date(log.ts).toLocaleString('pt-BR');
-                        const usuario = log.usuario && log.usuario !== '—' ? ` — ${log.usuario}` : '';
-                        return `<li><strong>${log.acao}</strong> em ${data}${usuario}</li>`;
+                        const usuario = log.usuario && log.usuario !== '—' ? ` — ${escapeHtml(log.usuario)}` : '';
+                        return `<li><strong>${escapeHtml(log.acao)}</strong> em ${data}${usuario}</li>`;
                     }
-                    return `<li>${log}</li>`;
+                    return `<li>${escapeHtml(log)}</li>`;
                 }).join('')}</ul>
             </div>` : ''}
         </div>
@@ -569,8 +578,8 @@ function exportarExcel(contexto) {
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const linhas = dados.map(l => {
-        const totalLitros = l.itens.reduce((s, i) => s + (i.qtd || 0), 0);
-        const combustiveis = l.itens.map(i => `${i.tipo}: ${i.qtd.toFixed(3)} L`).join(" | ");
+        const totalLitros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
+        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toFixed(3)} L`).join(" | ");
         return [
             formatarData(l.dataNota),
             l.dataDescarga ? formatarData(l.dataDescarga) : "",
@@ -712,7 +721,7 @@ async function exportarPDF(contexto) {
     head.push("Litros (L)", "Total (R$)");
 
     function buildRow(l) {
-        const litros = l.itens.reduce((s, i) => s + (i.qtd || 0), 0);
+        const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
         const row = [formatarData(l.dataNota), l.dataDescarga ? formatarData(l.dataDescarga) : "", l.numeroNota];
         if (cfg.mostrarBase)      row.push(l.base || "");
         if (cfg.mostrarEmpresa)   row.push(l.empresa || "");
@@ -731,7 +740,7 @@ async function exportarPDF(contexto) {
     };
 
     const totalGeral  = dados.reduce((s, l) => s + l.total, 0);
-    const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + (i.qtd || 0), 0), 0);
+    const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
 
     if (!cfg.quebrarPorMes) {
         // ── Modo normal: uma única tabela ──
@@ -779,7 +788,7 @@ async function exportarPDF(contexto) {
             primeiraSecao = false;
 
             let startY = desenharCabecalho(`${tituloCtx} — ${nomeMes(mes)}`);
-            const subTotLitros = lans.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + (i.qtd || 0), 0), 0);
+            const subTotLitros = lans.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
             const subTotGeral  = lans.reduce((s, l) => s + l.total, 0);
 
             doc.setTextColor(...corRGB);
@@ -837,8 +846,8 @@ function exportarCSV(contexto) {
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const linhas = dados.map(l => {
-        const totalLitros = l.itens.reduce((s, i) => s + (i.qtd || 0), 0);
-        const combustiveis = l.itens.map(i => `${i.tipo}: ${i.qtd.toFixed(3)} L`).join(" | ");
+        const totalLitros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
+        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toFixed(3)} L`).join(" | ");
         return [
             formatarData(l.dataNota),
             l.dataDescarga ? formatarData(l.dataDescarga) : "",
@@ -868,7 +877,7 @@ function imprimirRelatorio() {
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para imprimir.", "aviso", 4000); return; }
 
     const totalGeral  = dados.reduce((s, l) => s + l.total, 0);
-    const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + (i.qtd || 0), 0), 0);
+    const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
     const dataHoje    = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
 
     document.getElementById("impressaoTitulo").textContent = titulo;
@@ -882,12 +891,12 @@ function imprimirRelatorio() {
             </tr></thead>
             <tbody>
                 ${dados.map(l => {
-                    const tl = l.itens.reduce((s, i) => s + (i.qtd || 0), 0);
+                    const tl = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
                     return `<tr>
                         <td>${formatarData(l.dataNota)}</td>
                         <td>${l.dataDescarga ? formatarData(l.dataDescarga) : ""}</td>
-                        <td>${l.numeroNota}</td><td>${l.base || ""}</td>
-                        <td>${l.empresa || ""}</td><td>${l.motorista || ""}</td><td>${l.placa || ""}</td>
+                        <td>${escapeHtml(l.numeroNota)}</td><td>${escapeHtml(l.base) || ""}</td>
+                        <td>${escapeHtml(l.empresa) || ""}</td><td>${escapeHtml(l.motorista) || ""}</td><td>${escapeHtml(l.placa) || ""}</td>
                         <td>${tl.toLocaleString("pt-BR", {minimumFractionDigits:3,maximumFractionDigits:3})}</td>
                         <td>R$ ${l.total.toLocaleString("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2})}</td>
                     </tr>`;
@@ -895,7 +904,7 @@ function imprimirRelatorio() {
             </tbody>
             <tfoot><tr>
                 <td colspan="7"><strong>Total Geral</strong></td>
-                <td><strong>${dados.reduce((s,l)=>s+l.itens.reduce((ss,i)=>ss+(i.qtd||0),0),0).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L</strong></td>
+                <td><strong>${dados.reduce((s,l)=>s+l.itens.reduce((ss,i)=>ss+_litrosItem(i),0),0).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L</strong></td>
                 <td><strong>${fmtR(totalGeral)}</strong></td>
             </tr></tfoot>
         </table>
@@ -1001,10 +1010,10 @@ function _executarRelatorioMensal() {
     const combustiveis = db.combustiveis.filter(c => c.ativo !== false);
 
     const totalNotas  = lansMes.length;
-    const totalLitros = lansMes.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+i.qtd,0), 0);
+    const totalLitros = lansMes.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
     const totalGasto  = lansMes.reduce((s,l) => s + l.total, 0);
     const custoMedio  = totalLitros > 0 ? totalGasto/totalLitros : 0;
-    const totLitrosAnt = lansAnterior.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+i.qtd,0), 0);
+    const totLitrosAnt = lansAnterior.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
     const totGastoAnt  = lansAnterior.reduce((s,l) => s + l.total, 0);
 
     doc.setFillColor(...azul);
@@ -1055,12 +1064,12 @@ function _executarRelatorioMensal() {
 
     const combRows = combustiveis.map(c => {
         const itens    = lansMes.flatMap(l => l.itens.filter(i => i.tipo===c.nome));
-        const litros   = itens.reduce((s,i) => s+i.qtd,0);
-        const gasto    = itens.reduce((s,i) => s+(i.total||i.qtd*i.valor),0);
+        const litros   = itens.reduce((s,i) => s+_litrosItem(i),0);
+        const gasto    = itens.reduce((s,i) => s+(i.total ?? i.qtd*i.valor),0);
         const custo    = litros > 0 ? gasto/litros : 0;
         const notas    = lansMes.filter(l=>l.itens.some(i=>i.tipo===c.nome)).length;
         const itensAnt = lansAnterior.flatMap(l => l.itens.filter(i => i.tipo===c.nome));
-        const litrosAnt= itensAnt.reduce((s,i) => s+i.qtd,0);
+        const litrosAnt= itensAnt.reduce((s,i) => s+_litrosItem(i),0);
         const varL     = litrosAnt > 0 ? ((litros-litrosAnt)/litrosAnt*100) : null;
         return [
             c.nome, String(notas),
@@ -1089,7 +1098,7 @@ function _executarRelatorioMensal() {
         doc.autoTable({
             head: [['Descarga','NF','Base','Empresa','Motorista','Placa','Litros','Total']],
             body: sorted.map(l => {
-                const litros = l.itens.reduce((s,i) => s+i.qtd, 0);
+                const litros = l.itens.reduce((s,i) => s+_litrosItem(i), 0);
                 return [
                     formatarData(l.dataDescarga||l.dataNota), l.numeroNota,
                     l.base||'—', l.empresa||'—', l.motorista||'—', l.placa||'—',

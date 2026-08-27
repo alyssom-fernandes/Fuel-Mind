@@ -9,7 +9,7 @@
   (https://console.firebase.google.com) ou via script
   server-side. Nunca inclua credenciais fixas no código-fonte.
 =================================================*/
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAnalytics }  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import {
     getFirestore, doc, getDoc, setDoc, onSnapshot,
@@ -203,12 +203,10 @@ async function usuarioBuscarPorUsername(username) {
  * @returns {Promise<boolean>} `true` se disponível, `false` se já em uso
  */
 async function usuarioUsernameDisponivel(username, uidIgnorar = null) {
-    try {
-        const q = query(USUARIOS_COL, where("username", "==", username.toLowerCase().trim()));
-        const snap = await getDocs(q);
-        if (snap.empty) return true;
-        return snap.docs.every(d => d.id === uidIgnorar);
-    } catch (e) { return true; }
+    const q = query(USUARIOS_COL, where("username", "==", username.toLowerCase().trim()));
+    const snap = await getDocs(q);
+    if (snap.empty) return true;
+    return snap.docs.every(d => d.id === uidIgnorar);
 }
 
 async function usuarioExcluirFirestore(uid) {
@@ -233,17 +231,28 @@ async function authLogout() {
 }
 
 /**
- * Cria um novo usuário no Firebase Authentication.
+ * Cria um novo usuário no Firebase Authentication SEM afetar a sessão atual.
  *
- * ATENÇÃO: `createUserWithEmailAndPassword` faz login automático com o novo
- * usuário, deslogando o admin atual. Exibir mensagem orientativa após criar.
+ * `createUserWithEmailAndPassword` normalmente autentica automaticamente como
+ * o usuário recém-criado no app em que é chamado — o que derrubaria a sessão
+ * do admin logado. Para evitar isso, a criação roda em uma instância
+ * secundária e isolada do Firebase App, descartada logo em seguida; a sessão
+ * principal (`auth`) nunca é tocada.
  *
  * @param {string} email
  * @param {string} senha
  * @returns {Promise<UserCredential>}
  */
 async function authCriarUsuario(email, senha) {
-    return createUserWithEmailAndPassword(auth, email, senha);
+    const nomeAppSecundario = "secundario-criar-usuario";
+    const appExistente = getApps().find(a => a.name === nomeAppSecundario);
+    const appSecundario = appExistente || initializeApp(firebaseConfig, nomeAppSecundario);
+    const authSecundario = getAuth(appSecundario);
+    try {
+        return await createUserWithEmailAndPassword(authSecundario, email, senha);
+    } finally {
+        await deleteApp(appSecundario);
+    }
 }
 
 /**

@@ -14,6 +14,7 @@ const TITULOS_TELAS = {
     historico:    "Histórico",
     analitico:    "Analítico",
     fretes:       "Fretes",
+    conferencia:  "Conferências",
     importacao:   "Importar Planilha",
     cadastros:    "Cadastros",
     sistema:      "Sistema",
@@ -149,9 +150,9 @@ function renderizarListaBases() {
         ? `<li class="vazio">Nenhuma base cadastrada ainda.</li>`
         : lista.map(b => `
             <li class="${b.ativo !== false ? "" : "inativo"}">
-                <span>${b.nome}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                <span>${escapeHtml(b.nome)}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                 <div class="acoes-lista">
-                    <button class="btn-editar"   onclick="abrirModal('Editar Base','Nome','${b.nome.replace(/'/g,"\\'")}','bases','${b.id}')">Editar</button>
+                    <button class="btn-editar"   onclick="abrirModal('Editar Base','Nome','${escapeJsAttr(b.nome)}','bases','${b.id}')">Editar</button>
                     <button class="btn-inativar" onclick="toggleAtivo('bases','${b.id}')">${b.ativo !== false ? "Inativar" : "Reativar"}</button>
                     <button class="btn-excluir"  onclick="excluirCadastro('bases','${b.id}')">Excluir</button>
                 </div>
@@ -313,7 +314,7 @@ function _realizarBusca() {
         html += `<div style="${secStyle}">
             <span style="${labelStyle}">Lançamentos (${lancamentos.length})</span>
             ${lancamentos.map(l => {
-                const litros = l.itens.reduce((s, i) => s + ((i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0), 0);
+                const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
                 const tipos  = [...new Set(l.itens.map(i => i.tipo).filter(Boolean))].join(', ');
                 return `<div style="${itemStyle}"
                     onmouseenter="this.style.background='var(--surface-raised)'"
@@ -321,13 +322,13 @@ function _realizarBusca() {
                     onclick="irParaLancamento('${l.id}'); fecharBuscaGlobal();">
                     <div style="min-width:0">
                         <div style="font-weight:600;font-size:0.85rem;color:var(--text)">
-                            Nota ${l.numeroNota || '—'}
+                            Nota ${escapeHtml(l.numeroNota) || '—'}
                             <span style="font-weight:400;color:var(--text-muted);font-size:0.78rem;margin-left:6px">${formatarData(l.dataNota)}</span>
                         </div>
                         <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;
                              white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                            ${[l.motorista, l.placa, l.empresa].filter(Boolean).join(' · ')}
-                            ${tipos ? `<span style="margin-left:6px;color:var(--primary);font-size:0.7rem">${tipos}</span>` : ''}
+                            ${[l.motorista, l.placa, l.empresa].filter(Boolean).map(escapeHtml).join(' · ')}
+                            ${tipos ? `<span style="margin-left:6px;color:var(--primary);font-size:0.7rem">${escapeHtml(tipos)}</span>` : ''}
                         </div>
                     </div>
                     <div style="text-align:right;flex-shrink:0">
@@ -348,8 +349,8 @@ function _realizarBusca() {
                 <div style="${itemStyle}"
                     onmouseenter="this.style.background='var(--surface-raised)'"
                     onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="_buscaAbrirFiltrado('motorista','${m.nome.replace(/'/g,"\\'")}'); fecharBuscaGlobal();">
-                    <span style="font-size:0.85rem;color:var(--text)">${m.nome}</span>
+                    onclick="_buscaAbrirFiltrado('motorista','${escapeJsAttr(m.nome)}'); fecharBuscaGlobal();">
+                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(m.nome)}</span>
                     <span style="font-size:0.72rem;color:var(--primary)">Ver histórico →</span>
                 </div>`).join('')}
         </div>`;
@@ -363,8 +364,8 @@ function _realizarBusca() {
                 <div style="${itemStyle}"
                     onmouseenter="this.style.background='var(--surface-raised)'"
                     onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="_buscaAbrirFiltrado('placa','${v.nome.replace(/'/g,"\\'")}'); fecharBuscaGlobal();">
-                    <span style="font-size:0.85rem;color:var(--text)">${v.nome}</span>
+                    onclick="_buscaAbrirFiltrado('placa','${escapeJsAttr(v.nome)}'); fecharBuscaGlobal();">
+                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(v.nome)}</span>
                     <span style="font-size:0.72rem;color:var(--primary)">Ver histórico →</span>
                 </div>`).join('')}
         </div>`;
@@ -378,8 +379,8 @@ function _realizarBusca() {
                 <div style="${itemStyle}"
                     onmouseenter="this.style.background='var(--surface-raised)'"
                     onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="_buscaAbrirFiltrado('empresa','${e.nome.replace(/'/g,"\\'")}'); fecharBuscaGlobal();">
-                    <span style="font-size:0.85rem;color:var(--text)">${e.nome}</span>
+                    onclick="_buscaAbrirFiltrado('empresa','${escapeJsAttr(e.nome)}'); fecharBuscaGlobal();">
+                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(e.nome)}</span>
                     <span style="font-size:0.72rem;color:var(--primary)">Ver relatório →</span>
                 </div>`).join('')}
         </div>`;

@@ -125,16 +125,16 @@ function importarXMLNFe(input) {
 
             const naoCruzados = [];
             if (xNomeDest && !db.empresas.find(e => e.ativo !== false && normalizarTexto(xNomeDest).includes(normalizarTexto(e.nome))))
-                naoCruzados.push(`Empresa "${xNomeDest}"`);
+                naoCruzados.push(`Empresa "${escapeHtml(xNomeDest)}"`);
             if (xNomeTransp && !db.motoristas.find(m => m.ativo !== false && normalizarTexto(xNomeTransp).includes(normalizarTexto(m.nome).split(" ")[0])))
-                naoCruzados.push(`Motorista "${xNomeTransp}"`);
+                naoCruzados.push(`Motorista "${escapeHtml(xNomeTransp)}"`);
             if (placaTransp && !db.veiculos.find(v => v.ativo !== false && v.nome.replace(/[-\s]/g,"").toUpperCase() === placaTransp.replace(/[-\s]/g,"").toUpperCase()))
-                naoCruzados.push(`Placa "${placaTransp}"`);
+                naoCruzados.push(`Placa "${escapeHtml(placaTransp)}"`);
             const avisoNaoCruzados = naoCruzados.length > 0
                 ? `<br><small>Não encontrado(s) no cadastro: ${naoCruzados.join(", ")}</small>` : "";
             const itensSemTipo = itensPossiveis.filter(i => !i.tipo);
             const avisoTipos = itensSemTipo.length > 0
-                ? `<br><small>${itensSemTipo.length} produto(s) sem combustível identificado: ${itensSemTipo.map(i => `"${i.nomeProduto}"`).join(", ")}</small>` : "";
+                ? `<br><small>${itensSemTipo.length} produto(s) sem combustível identificado: ${itensSemTipo.map(i => `"${escapeHtml(i.nomeProduto)}"`).join(", ")}</small>` : "";
 
             const banner = document.getElementById("bannerXML");
             banner.style.display = "block";
@@ -201,7 +201,7 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     const div = document.createElement("div");
     div.className = "linha-combustivel";
     const opcoesCombustiveis = db.combustiveis.map(c =>
-        `<option value="${c.nome}" ${dadosIniciais?.tipo === c.nome ? "selected" : ""}>${c.nome}</option>`
+        `<option value="${escapeHtml(c.nome)}" ${dadosIniciais?.tipo === c.nome ? "selected" : ""}>${escapeHtml(c.nome)}</option>`
     ).join("");
     div.innerHTML = `
         <select class="tipo" onchange="atualizarBadgePerda(this); marcarFormularioSujo(); atualizarTotalizadorNota();">
@@ -406,7 +406,14 @@ async function salvarOuAtualizar() {
         // Upload para Firebase Storage — salva só a URL no Firestore
         const lancamentoId = lancamentoEditandoId || gerarId();
         try {
-            // Se for edição, excluir anexos antigos do Storage antes de subir novos
+            // Sobe os novos anexos PRIMEIRO — só exclui os antigos depois de
+            // confirmar que todos os novos foram enviados com sucesso, para
+            // nunca ficar sem nenhum anexo válido se um upload falhar no meio.
+            const arquivos = [];
+            for (const file of Array.from(notaFiles)) {
+                const anexo = await window._firestore.storageUploadAnexo(file, lancamentoId);
+                arquivos.push(anexo);
+            }
             if (lancamentoEditandoId) {
                 const lancamentoAntigo = db.lancamentos.find(l => l.id === lancamentoEditandoId);
                 if (lancamentoAntigo?.anexos?.length > 0) {
@@ -414,11 +421,6 @@ async function salvarOuAtualizar() {
                         if (a.caminho) await window._firestore.storageExcluirAnexo(a.caminho);
                     }
                 }
-            }
-            const arquivos = [];
-            for (const file of Array.from(notaFiles)) {
-                const anexo = await window._firestore.storageUploadAnexo(file, lancamentoId);
-                arquivos.push(anexo);
             }
             salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoId);
         } catch (e) {
@@ -540,7 +542,7 @@ function editarLancamento(id) {
 
         const banner = document.getElementById("bannerEdicao");
         banner.style.display = "block";
-        let bannerHtml = `Editando nota <strong>${l.numeroNota}</strong> — <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
+        let bannerHtml = `Editando nota <strong>${escapeHtml(l.numeroNota)}</strong> — <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
         if (l.anexos && l.anexos.length > 0)
             bannerHtml += `<br><small>Este lançamento possui ${l.anexos.length} anexo(s). Você pode substituí-los ao salvar.</small>`;
         banner.innerHTML = bannerHtml;

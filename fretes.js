@@ -41,15 +41,15 @@ function renderTaxasFretes() {
         const taxa = db.taxasFrete[c.nome] ?? "";
         return `
             <div class="frete-taxa-item">
-                <label>${c.nome}</label>
+                <label>${escapeHtml(c.nome)}</label>
                 <div style="display:flex; gap:8px; align-items:center">
                     <span style="color:var(--text-muted); font-size:0.9rem">R$</span>
                     <input type="number" class="input-tabela" min="0" step="0.0001"
                            style="max-width:130px"
                            value="${taxa}"
                            placeholder="0,0000"
-                           id="taxaFrete_${c.nome.replace(/\s+/g,'_')}"
-                           onchange="salvarTaxaFrete('${c.nome.replace(/'/g,"\\'")}', this.value)">
+                           id="taxaFrete_${escapeHtml(c.nome.replace(/\s+/g,'_'))}"
+                           onchange="salvarTaxaFrete('${escapeJsAttr(c.nome)}', this.value)">
                     <span style="color:var(--text-muted); font-size:0.85rem">/ litro</span>
                 </div>
             </div>
@@ -206,7 +206,7 @@ function renderFreteResumo() {
 function linhasDetalhes(detalhes) {
     return Object.entries(detalhes).map(([tipo, d]) => `
         <tr class="linha-detalhe-frete">
-            <td colspan="2" style="padding-left:24px; color:var(--text-muted); font-size:0.85rem">↳ ${tipo}</td>
+            <td colspan="2" style="padding-left:24px; color:var(--text-muted); font-size:0.85rem">↳ ${escapeHtml(tipo)}</td>
             <td style="color:var(--text-muted); font-size:0.85rem">${fmtL3(d.litros)}</td>
             <td style="color:var(--text-muted); font-size:0.85rem">${db.taxasFrete?.[tipo] > 0 ? fmtR4(db.taxasFrete[tipo]) : "—"}</td>
             <td style="color:var(--text-muted); font-size:0.85rem">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
@@ -226,8 +226,8 @@ function renderAbaPlacas() {
 
     tbody.innerHTML = lista.map(p => `
         <tr>
-            <td><strong>${p.nome}</strong></td>
-            <td style="font-size:0.78rem;color:var(--text-muted)">${p.conjunto || "—"}</td>
+            <td><strong>${escapeHtml(p.nome)}</strong></td>
+            <td style="font-size:0.78rem;color:var(--text-muted)">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
             <td>${fmtL3(p.litros)}</td>
             <td>—</td>
@@ -249,7 +249,7 @@ function renderAbaMotoristasFrete() {
 
     tbody.innerHTML = lista.map(m => `
         <tr>
-            <td><strong>${m.nome}</strong></td>
+            <td><strong>${escapeHtml(m.nome)}</strong></td>
             <td>${m.viagens}</td>
             <td>${fmtL3(m.litros)}</td>
             <td>—</td>
@@ -271,7 +271,7 @@ function renderAbaEmpresasFrete() {
 
     tbody.innerHTML = lista.map(e => `
         <tr>
-            <td><strong>${e.nome}</strong></td>
+            <td><strong>${escapeHtml(e.nome)}</strong></td>
             <td>${e.viagens}</td>
             <td>${fmtL3(e.litros)}</td>
             <td>—</td>
@@ -300,7 +300,7 @@ function renderAbaConjuntosFretes() {
         const detalhesPlacas = Object.entries(c.porPlacaInterna).map(([placa, d]) => `
             <tr class="linha-detalhe-frete">
                 <td colspan="2" style="padding-left:24px; color:var(--text-muted); font-size:0.82rem">
-                     ${placa}
+                     ${escapeHtml(placa)}
                 </td>
                 <td style="color:var(--text-muted); font-size:0.82rem">${d.viagens}</td>
                 <td style="color:var(--text-muted); font-size:0.82rem">${fmtL3(d.litros)}</td>
@@ -310,7 +310,7 @@ function renderAbaConjuntosFretes() {
 
         return `
             <tr style="background:var(--bg-secondary)">
-                <td colspan="2"><strong> ${c.nome}</strong></td>
+                <td colspan="2"><strong> ${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
                 <td><strong>${fmtL3(c.litros)}</strong></td>
                 <td><strong>${fmtR(c.frete)}</strong></td>
@@ -556,7 +556,7 @@ function imprimirFretes() {
     const montarTabela = (titulo, lista) => {
         const linhas = lista.map(item => `
             <tr>
-                <td><strong>${item.nome}</strong></td>
+                <td><strong>${escapeHtml(item.nome)}</strong></td>
                 <td>${item.viagens}</td>
                 <td>${item.litros.toFixed(3)} L</td>
                 <td>—</td>
@@ -564,7 +564,7 @@ function imprimirFretes() {
             </tr>
             ${Object.entries(item.detalhes).map(([tipo, det]) => `
                 <tr style="color:#666; font-size:0.85em">
-                    <td style="padding-left:20px">↳ ${tipo}</td>
+                    <td style="padding-left:20px">↳ ${escapeHtml(tipo)}</td>
                     <td></td>
                     <td>${det.litros.toFixed(3)} L</td>
                     <td>${db.taxasFrete?.[tipo] > 0 ? "R$ " + (db.taxasFrete[tipo]).toFixed(4) : "—"}</td>
@@ -588,7 +588,7 @@ function imprimirFretes() {
         if (!d.porConjunto || d.porConjunto.length === 0) return "";
         const linhas = d.porConjunto.map(c => `
             <tr style="background:#f0f0f0">
-                <td><strong>${c.nome}</strong></td>
+                <td><strong>${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
                 <td><strong>${c.litros.toFixed(3)} L</strong></td>
                 <td>—</td>
@@ -596,7 +596,7 @@ function imprimirFretes() {
             </tr>
             ${Object.entries(c.porPlacaInterna).map(([placa, det]) => `
                 <tr style="color:#444; font-size:0.85em">
-                    <td style="padding-left:16px">${placa}</td>
+                    <td style="padding-left:16px">${escapeHtml(placa)}</td>
                     <td>${det.viagens}</td>
                     <td>${det.litros.toFixed(3)} L</td>
                     <td>—</td>

@@ -4,6 +4,50 @@
   Inclua este arquivo antes dos demais no index.html
 =================================================*/
 
+// ========== ESCAPE HTML (evita XSS ao inserir dados do usuário em innerHTML) ==========
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * Escapa um valor para uso seguro dentro de um argumento de string simples
+ * em um atributo `onclick="fn('...')"` — o caso mais comum no projeto.
+ *
+ * Duas camadas são necessárias: primeiro escapar barra invertida e aspas
+ * simples (para não fechar a string JS antes da hora), depois aplicar
+ * escapeHtml (para não fechar o próprio atributo HTML, delimitado por
+ * aspas duplas). Fazer só a primeira camada — como `str.replace(/'/g,"\\'")`,
+ * padrão usado em vários pontos do projeto — não impede que um valor com `"`
+ * quebre o atributo.
+ */
+function escapeJsAttr(str) {
+    const paraJs = String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return escapeHtml(paraJs);
+}
+
+// ========== CRITÉRIO ÚNICO DE LITROS ==========
+/**
+ * Litros efetivos de um item de lançamento: usa a quantidade descarregada
+ * quando informada (reflete perdas reais de descarga), senão a carga bruta
+ * da nota.
+ *
+ * Vive em utils.js — carregado antes de todos os módulos — para que
+ * Dashboard, Analítico, Relatórios, Histórico e a busca global nunca
+ * divirjam no total de litros de um mesmo período.
+ *
+ * ATENÇÃO: use apenas para AGREGAR volume. Preço unitário (R$/L) continua
+ * baseado na carga da nota (`item.qtd`), que é a quantidade efetivamente
+ * faturada — dividir o valor pela quantidade descarregada inflaria o preço.
+ */
+function _litrosItem(i) {
+    return (i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0;
+}
+
 // ========== CORES PARA GRÁFICOS (CHART.JS) ==========
 function getChartColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -88,8 +132,8 @@ function esconderSpinner(botao) {
 function preencherSelect(idSelect, itens, textoPadrao) {
     const sel = document.getElementById(idSelect);
     if (!sel) return;
-    sel.innerHTML = `<option value="">-- ${textoPadrao} --</option>` +
-        itens.map(i => `<option value="${i.valor}">${i.texto}</option>`).join("");
+    sel.innerHTML = `<option value="">-- ${escapeHtml(textoPadrao)} --</option>` +
+        itens.map(i => `<option value="${escapeHtml(i.valor)}">${escapeHtml(i.texto)}</option>`).join("");
 }
 
 // ========== CONFIGURAÇÕES DE ALERTAS (compartilhado) ==========

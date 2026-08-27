@@ -24,6 +24,20 @@ function podeAlterarRoles() {
     return window._usuarioAtual?.role === "supremo";
 }
 
+/**
+ * Empresas que o usuário logado pode gerenciar na tela de Usuários.
+ * Supremo enxerga todas as empresas ativas; admin só as suas próprias
+ * (evita que um admin veja/gerencie usuários ou conceda acesso a
+ * empresas fora do seu escopo).
+ */
+function _empresasGerenciaveis() {
+    const perfil = window._usuarioAtual;
+    if (!perfil) return [];
+    const ativas = db.empresas.filter(e => e.ativo !== false).map(e => e.nome);
+    if (perfil.role === "supremo") return ativas;
+    return ativas.filter(nome => (perfil.empresas || []).includes(nome));
+}
+
 /* ─── CARREGAR TELA ─── */
 async function carregarUsuarios() {
     const container = document.getElementById("usuariosConteudo");
@@ -63,7 +77,18 @@ async function _recarregarListaUsuarios() {
         if (!window._firestore?.usuariosListar) {
             throw new Error("Firebase não inicializado ainda.");
         }
-        _usuariosCache = await window._firestore.usuariosListar();
+        const todos = await window._firestore.usuariosListar();
+        if (window._usuarioAtual?.role === "supremo") {
+            _usuariosCache = todos;
+        } else {
+            // Admin só enxerga a si mesmo e usuários que compartilhem ao menos
+            // uma empresa com ele — nunca a base de usuários inteira.
+            const minhasEmpresas = window._usuarioAtual?.empresas || [];
+            _usuariosCache = todos.filter(u =>
+                u.uid === window._usuarioAtual?.uid ||
+                (u.empresas || []).some(e => minhasEmpresas.includes(e))
+            );
+        }
         _renderUsuarios();
     } catch (e) {
         console.error("[Usuarios] Erro:", e);
@@ -89,7 +114,7 @@ function _renderUsuarios() {
         const empresasStr = u.role === "supremo"
             ? "<em style='color:var(--text-muted)'>Todas</em>"
             : (u.empresas?.length
-                ? u.empresas.map(e => `<span class="badge-empresa-tag">${e}</span>`).join(" ")
+                ? u.empresas.map(e => `<span class="badge-empresa-tag">${escapeHtml(e)}</span>`).join(" ")
                 : "<em style='color:var(--text-muted)'>Nenhuma</em>");
 
         const ultimoAcesso = u.ultimoAcesso
@@ -120,7 +145,7 @@ function _renderUsuarios() {
                    : ""}`;
 
         return `<tr class="${u.ativo === false ? 'linha-inativo' : ''}">
-            <td><strong>${u.nome}</strong><br><small style="color:var(--text-muted)">${u.email}</small>${u.username ? `<br><small style="color:var(--primary);opacity:0.8">@${u.username}</small>` : ''}</td>
+            <td><strong>${escapeHtml(u.nome)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(u.email)}</small>${u.username ? `<br><small style="color:var(--primary);opacity:0.8">@${escapeHtml(u.username)}</small>` : ''}</td>
             <td>${badges}</td>
             <td>${empresasStr}</td>
             <td style="font-size:0.78rem;color:var(--text-muted)">${ultimoAcesso}</td>
@@ -158,13 +183,13 @@ function abrirModalEditarProprioPerfil() {
         <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
             <div class="campo">
                 <label>Nome completo *</label>
-                <input type="text" id="perfilNomeInput" value="${u.nome || ''}" placeholder="Seu nome completo">
+                <input type="text" id="perfilNomeInput" value="${escapeHtml(u.nome || '')}" placeholder="Seu nome completo">
             </div>
             <div class="campo">
                 <label>Usuário <span style="font-weight:400;opacity:0.65;font-size:0.78rem">(opcional — para login sem e-mail)</span></label>
                 <div style="position:relative">
                     <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">@</span>
-                    <input type="text" id="perfilUsernameInput" value="${u.username || ''}"
+                    <input type="text" id="perfilUsernameInput" value="${escapeHtml(u.username || '')}"
                         placeholder="seunome"
                         style="padding-left:24px"
                         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
@@ -173,7 +198,7 @@ function abrirModalEditarProprioPerfil() {
             </div>
             <div class="campo">
                 <label>E-mail</label>
-                <input type="text" value="${u.email || ''}" disabled
+                <input type="text" value="${escapeHtml(u.email || '')}" disabled
                     style="opacity:0.6;cursor:not-allowed;">
                 <p class="dica" style="margin-top:4px">E-mail não pode ser alterado.</p>
             </div>
@@ -229,15 +254,13 @@ async function confirmarEditarProprioPerfil() {
 
 /* ─── MODAL NOVO USUÁRIO ─── */
 function abrirModalNovoUsuario() {
-    const empresas = db.empresas.filter(e => e.ativo !== false).map(e => e.nome);
-    _abrirModalUsuario(null, empresas);
+    _abrirModalUsuario(null, _empresasGerenciaveis());
 }
 
 function abrirModalEditarUsuario(uid) {
     const u = _usuariosCache.find(u => u.uid === uid);
     if (!u) return;
-    const empresas = db.empresas.filter(e => e.ativo !== false).map(e => e.nome);
-    _abrirModalUsuario(u, empresas);
+    _abrirModalUsuario(u, _empresasGerenciaveis());
 }
 
 function _abrirModalUsuario(usuario, todasEmpresas) {
@@ -257,7 +280,7 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
         const dotBg   = marcada ? 'var(--primary)' : 'transparent';
         return `<button type="button"
             class="btn-empresa-toggle${marcada ? ' selecionada' : ''}"
-            data-empresa="${emp}"
+            data-empresa="${escapeHtml(emp)}"
             onclick="_toggleEmpresaBtn(this)"
             style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;
                    padding:8px 12px;margin-bottom:6px;border-radius:var(--radius-sm);
@@ -265,7 +288,7 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
                    color:var(--text);cursor:pointer;transition:all 0.15s;font-size:0.88rem;">
             <span class="emp-toggle-dot" style="width:14px;height:14px;flex-shrink:0;border-radius:50%;
                 border:2px solid ${borderC};background:${dotBg};transition:all 0.15s;"></span>
-            ${emp}
+            ${escapeHtml(emp)}
         </button>`;
     }).join("");
 
@@ -278,11 +301,11 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
         <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
             <div class="campo">
                 <label>Nome completo *</label>
-                <input type="text" id="usuarioNomeInput" value="${usuario?.nome || ''}" placeholder="Ex: João Silva">
+                <input type="text" id="usuarioNomeInput" value="${escapeHtml(usuario?.nome || '')}" placeholder="Ex: João Silva">
             </div>
             <div class="campo">
                 <label>E-mail *</label>
-                <input type="email" id="usuarioEmailInput" value="${usuario?.email || ''}" placeholder="email@exemplo.com" ${!isNovo ? 'disabled' : ''}>
+                <input type="email" id="usuarioEmailInput" value="${escapeHtml(usuario?.email || '')}" placeholder="email@exemplo.com" ${!isNovo ? 'disabled' : ''}>
                 ${!isNovo ? '<p class="dica" style="margin-top:4px">E-mail não pode ser alterado.</p>' : ''}
             </div>
             ${isNovo ? `
@@ -295,7 +318,7 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
                 <label>Usuário <span style="font-weight:400;opacity:0.65;font-size:0.78rem">(opcional — para login sem e-mail)</span></label>
                 <div style="position:relative">
                     <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">@</span>
-                    <input type="text" id="usuarioUsernameInput" value="${usuario?.username || ''}"
+                    <input type="text" id="usuarioUsernameInput" value="${escapeHtml(usuario?.username || '')}"
                         placeholder="seunome" style="padding-left:24px"
                         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
                 </div>
@@ -374,7 +397,8 @@ async function confirmarNovoUsuario() {
     const senha    = document.getElementById("usuarioSenhaInput")?.value.trim();
     const role     = document.getElementById("usuarioRoleSelect")?.value;
     const username = document.getElementById("usuarioUsernameInput")?.value.trim().toLowerCase() || null;
-    const empresas = role === "supremo" ? [] : _coletarEmpresasSelecionadas();
+    const permitidas = _empresasGerenciaveis();
+    const empresas = role === "supremo" ? [] : _coletarEmpresasSelecionadas().filter(e => permitidas.includes(e));
 
     if (!nome)  return mostrarToast("Informe o nome do usuário.", "aviso");
     if (!email) return mostrarToast("Informe o e-mail.", "aviso");
@@ -433,7 +457,8 @@ async function confirmarEditarUsuario(uid) {
     const nome     = document.getElementById("usuarioNomeInput")?.value.trim();
     const role     = document.getElementById("usuarioRoleSelect")?.value;
     const username = document.getElementById("usuarioUsernameInput")?.value.trim().toLowerCase() || null;
-    const empresas = role === "supremo" ? [] : _coletarEmpresasSelecionadas();
+    const permitidas = _empresasGerenciaveis();
+    const empresas = role === "supremo" ? [] : _coletarEmpresasSelecionadas().filter(e => permitidas.includes(e));
 
     if (!nome) return mostrarToast("Informe o nome.", "aviso");
     if (username && username.length < 3) return mostrarToast("O usuário deve ter ao menos 3 caracteres.", "aviso");

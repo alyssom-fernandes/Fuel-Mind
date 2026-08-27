@@ -135,7 +135,7 @@ function carregarDashboard() {
     });
 
     const totalNotas  = lancamentosMes.length;
-    const totalLitros = lancamentosMes.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + i.qtd, 0), 0);
+    const totalLitros = lancamentosMes.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
     const totalGasto  = lancamentosMes.reduce((s, l) => s + l.total, 0);
     const custoMedio  = totalLitros > 0 ? totalGasto / totalLitros : 0;
 
@@ -175,16 +175,16 @@ function carregarDashboard() {
     document.getElementById("ultimasEntradasBody").innerHTML = ultimas.length === 0
         ? `<tr><td colspan="10" class="td-vazio">Nenhum lançamento ainda.</td></tr>`
         : ultimas.map(l => {
-            const totalLitros = (l.itens || []).reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
+            const totalLitros = (l.itens || []).reduce((s, i) => s + _litrosItem(i), 0);
             return `
             <tr>
                 <td>${formatarData(l.dataNota)}</td>
                 <td>${formatarData(l.dataDescarga)}</td>
-                <td>${l.numeroNota}</td>
-                <td>${l.base || '—'}</td>
-                <td>${l.empresa || '—'}</td>
-                <td>${l.motorista || '—'}</td>
-                <td>${l.placa || '—'}</td>
+                <td>${escapeHtml(l.numeroNota)}</td>
+                <td>${escapeHtml(l.base) || '—'}</td>
+                <td>${escapeHtml(l.empresa) || '—'}</td>
+                <td>${escapeHtml(l.motorista) || '—'}</td>
+                <td>${escapeHtml(l.placa) || '—'}</td>
                 <td style="text-align:right">${totalLitros.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}</td>
                 <td>${fmtR(l.total)}</td>
                 <td class="no-print">
@@ -212,8 +212,8 @@ function _renderAlertas(lancamentosMes) {
                     alertas.push({
                         tipo: 'preco', chave: chavePreco,
                         icone: '', cor: 'laranja',
-                        titulo: `Preço alto — ${i.tipo}`,
-                        msg: `Nota <strong>${l.numeroNota}</strong> (${formatarData(l.dataNota)}): ` +
+                        titulo: `Preço alto — ${escapeHtml(i.tipo)}`,
+                        msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
                              `<strong>${fmtR4(i.valor)}/L</strong> — ` +
                              `R$&nbsp;${diff.toFixed(2)} acima da média dos últimos ${cfg.precoPeriodoDias} dias ` +
                              `(média: ${fmtR4(media)}/L)`,
@@ -231,8 +231,8 @@ function _renderAlertas(lancamentosMes) {
                         alertas.push({
                             tipo: 'volume', chave: chaveVol,
                             icone: '', cor: 'azul',
-                            titulo: `Volume acima do usual — ${i.tipo}`,
-                            msg: `Nota <strong>${l.numeroNota}</strong>: ` +
+                            titulo: `Volume acima do usual — ${escapeHtml(i.tipo)}`,
+                            msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong>: ` +
                                  `<strong>${fmtL3(i.qtd)}</strong> — ` +
                                  `${varPerc.toFixed(0)}% acima da média histórica ` +
                                  `(média: ${fmtL3(mediaVol)}/nota)`,
@@ -243,8 +243,8 @@ function _renderAlertas(lancamentosMes) {
                         alertas.push({
                             tipo: 'volume', chave: chaveVol,
                             icone: '', cor: 'azul',
-                            titulo: `Volume abaixo do usual — ${i.tipo}`,
-                            msg: `Nota <strong>${l.numeroNota}</strong>: ` +
+                            titulo: `Volume abaixo do usual — ${escapeHtml(i.tipo)}`,
+                            msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong>: ` +
                                  `<strong>${fmtL3(i.qtd)}</strong> — ` +
                                  `${Math.abs(varPerc).toFixed(0)}% abaixo da média histórica ` +
                                  `(média: ${fmtL3(mediaVol)}/nota)`,
@@ -282,7 +282,7 @@ function _renderAlertas(lancamentosMes) {
                     alertas.push({
                         tipo: 'data', chave: chaveData,
                         icone: '', cor: 'vermelho',
-                        titulo: `Data suspeita — nota ${l.numeroNota}`,
+                        titulo: `Data suspeita — nota ${escapeHtml(l.numeroNota)}`,
                         msg: motivo.join(' · '),
                         id: l.id,
                         notificacao: `Data suspeita na nota ${l.numeroNota}: ${motivo.join(', ')}`,
@@ -354,16 +354,15 @@ function renderDashCombustiveis(lancamentosMes) {
     combustiveis.forEach(c => {
         const itens = lancamentosMes.flatMap(l => l.itens.filter(i => i.tipo === c.nome));
         resumo[c.nome] = {
-            litros: itens.reduce((s, i) => s + i.qtd, 0),
-            gasto:  itens.reduce((s, i) => s + (i.total || i.qtd * i.valor), 0),
+            litros: itens.reduce((s, i) => s + _litrosItem(i), 0),
+            gasto:  itens.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0),
             notas:  lancamentosMes.filter(l => l.itens.some(i => i.tipo === c.nome)).length,
         };
     });
 
     const abas = combustiveis.map(c => `
-        <button class="aba-btn ${c.nome === dashAbaAtiva ? 'ativa' : ''}"
-                onclick="dashAbaAtiva='${c.nome}'; renderDashCombustiveis(window._dashLancMes || []); this.closest('.analitico-abas') && document.querySelectorAll('#dashCombustiveisContainer .aba-btn').forEach(b=>b.classList.remove('ativa')); this.classList.add('ativa');">
-            ${c.nome}
+        <button class="aba-btn ${c.nome === dashAbaAtiva ? 'ativa' : ''}">
+            ${escapeHtml(c.nome)}
             ${resumo[c.nome].litros > 0 ? `<span class="badge-aba">${fmtL(resumo[c.nome].litros)}</span>` : ''}
         </button>
     `).join('');
@@ -376,14 +375,11 @@ function renderDashCombustiveis(lancamentosMes) {
         <div id="dashCombConteudo">${_renderConteudoCombustivel(dashAbaAtiva, resumo[dashAbaAtiva], lancamentosMes)}</div>
     `;
 
-    // Corrige o onclick das abas para também atualizar o conteúdo
-    container.querySelectorAll('.aba-btn').forEach(btn => {
+    // Liga o clique de cada aba pelo índice (evita ambiguidade entre nomes de
+    // combustível que compartilham prefixo, ex: "Diesel" e "Diesel S10").
+    container.querySelectorAll('.aba-btn').forEach((btn, idx) => {
         btn.onclick = function() {
-            dashAbaAtiva = combustiveis[container.querySelectorAll('.aba-btn').length - 1 - [...container.querySelectorAll('.aba-btn')].reverse().indexOf(this)].nome;
-            // simples: pega o nome do botão pelo texto
-            const nomeComb = this.textContent.trim().split('\n')[0].trim();
-            const combMatch = combustiveis.find(c => nomeComb.startsWith(c.nome));
-            if (combMatch) dashAbaAtiva = combMatch.nome;
+            dashAbaAtiva = combustiveis[idx].nome;
             container.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativa'));
             this.classList.add('ativa');
             document.getElementById('dashCombConteudo').innerHTML =
@@ -394,7 +390,7 @@ function renderDashCombustiveis(lancamentosMes) {
 
 function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
     if (!r || r.litros === 0) {
-        return `<p class="dica">Nenhum lançamento de <strong>${nomeComb}</strong> no período.</p>`;
+        return `<p class="dica">Nenhum lançamento de <strong>${escapeHtml(nomeComb)}</strong> no período.</p>`;
     }
 
     const custoMedio = r.litros > 0 ? r.gasto / r.litros : 0;
@@ -408,8 +404,8 @@ function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
         return l.dataNota && l.dataNota.startsWith(mesAntStr);
     });
     const itensMesAnt = lancMesAnt.flatMap(l => l.itens.filter(i => i.tipo === nomeComb));
-    const gastMesAnt  = itensMesAnt.reduce((s, i) => s + (i.total || i.qtd * i.valor), 0);
-    const litMesAnt   = itensMesAnt.reduce((s, i) => s + i.qtd, 0);
+    const gastMesAnt  = itensMesAnt.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0);
+    const litMesAnt   = itensMesAnt.reduce((s, i) => s + _litrosItem(i), 0);
     const custoAnt    = litMesAnt > 0 ? gastMesAnt / litMesAnt : 0;
     let variacaoHTML  = '';
     if (custoAnt > 0) {
@@ -434,11 +430,11 @@ function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
                 const item = l.itens.find(i => i.tipo === nomeComb);
                 return `<tr>
                     <td>${formatarData(l.dataDescarga || l.dataNota)}</td>
-                    <td>${l.numeroNota}</td>
-                    <td>${l.motorista || '—'}</td>
+                    <td>${escapeHtml(l.numeroNota)}</td>
+                    <td>${escapeHtml(l.motorista) || '—'}</td>
                     <td>${fmtL3(item.qtd)}</td>
                     <td>${fmtR4(item.valor)}</td>
-                    <td>${fmtR(item.total || item.qtd * item.valor)}</td>
+                    <td>${fmtR(item.total ?? item.qtd * item.valor)}</td>
                 </tr>`;
             }).join('')}
             </tbody></table>
@@ -465,7 +461,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
         </div>
         <div style="margin-top:4px">
             <span class="dica" style="font-size:0.78rem">
-                Últimas entradas de <strong>${nomeComb}</strong> no período · ordenadas por descarga
+                Últimas entradas de <strong>${escapeHtml(nomeComb)}</strong> no período · ordenadas por descarga
             </span>
         </div>
         ${tabelaHTML}`;
@@ -494,8 +490,8 @@ function renderComparativoMeses() {
         combustiveis.forEach(c => {
             const itens = lans.flatMap(l => l.itens.filter(i => i.tipo === c.nome));
             porComb[c.nome] = {
-                litros: itens.reduce((s, i) => s + i.qtd, 0),
-                gasto:  itens.reduce((s, i) => s + (i.total || i.qtd * i.valor), 0),
+                litros: itens.reduce((s, i) => s + _litrosItem(i), 0),
+                gasto:  itens.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0),
             };
         });
         const totalLitros = Object.values(porComb).reduce((s, v) => s + v.litros, 0);
@@ -518,7 +514,7 @@ function renderComparativoMeses() {
         </tr>`;
     }).join('');
 
-    const combHeaders = combustiveis.map(c => `<th>${c.nome}</th>`).join('');
+    const combHeaders = combustiveis.map(c => `<th>${escapeHtml(c.nome)}</th>`).join('');
 
     container.innerHTML = `
         <div class="tabela-container" style="overflow-x:auto">
@@ -552,7 +548,7 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
     const dados = combustiveis.map(c => {
         const gasto = lancamentosMes.reduce((acc, l) => {
             const item = l.itens.find(i => i.tipo === c.nome);
-            return acc + (item ? (item.total || item.qtd * item.valor) : 0);
+            return acc + (item ? (item.total ?? item.qtd * item.valor) : 0);
         }, 0);
         return { nome: c.nome, valor: gasto };
     }).filter(d => d.valor > 0);
@@ -620,7 +616,7 @@ function _verDetalheDashboard(id) {
 
     const conteudo = typeof _buildConteudoDetalhe === 'function'
         ? _buildConteudoDetalhe(l)
-        : `<p>Nota: <strong>${l.numeroNota}</strong> — ${l.empresa || '—'} — ${fmtR(l.total)}</p>`;
+        : `<p>Nota: <strong>${escapeHtml(l.numeroNota)}</strong> — ${escapeHtml(l.empresa) || '—'} — ${fmtR(l.total)}</p>`;
 
     div.innerHTML = `
         <div class="modal" style="max-width:680px;width:100%;max-height:85vh;overflow-y:auto;">
