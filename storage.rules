@@ -1,0 +1,59 @@
+rules_version = '2';
+
+// =============================================================================
+//  Fuel Mind — regras do Cloud Storage
+//
+//  Dois tipos de arquivo são enviados pelo app:
+//    anexos/{lancamentoId}/{arquivo}  — notas fiscais e comprovantes
+//    logos/{empresaSlug}/{arquivo}    — logotipo usado no cabeçalho do PDF
+//
+//  Mesma observação das regras do Firestore: como os lançamentos vivem em
+//  um documento único e não há vínculo de empresa no caminho do anexo, a
+//  regra não consegue isolar anexo por empresa. Ela garante que só usuário
+//  autenticado e ativo acessa, e limita tipo e tamanho do que entra.
+// =============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function ativo() {
+      return autenticado()
+        && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('ativo', true) != false;
+    }
+
+    function tamanhoAceitavel() {
+      return request.resource.size < 10 * 1024 * 1024;   // 10 MB
+    }
+
+    function tipoAceitavel() {
+      return request.resource.contentType.matches('image/.*')
+          || request.resource.contentType == 'application/pdf';
+    }
+
+    // Anexos de lançamento (imagem ou PDF da nota)
+    match /anexos/{lancamentoId}/{arquivo} {
+      allow read:   if ativo();
+      allow write:  if ativo() && tamanhoAceitavel() && tipoAceitavel();
+      allow delete: if ativo();
+    }
+
+    // Logotipo da empresa, usado no PDF
+    match /logos/{empresaSlug}/{arquivo} {
+      allow read:   if ativo();
+      allow write:  if ativo()
+                    && tamanhoAceitavel()
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if ativo();
+    }
+
+    // Bloqueio padrão
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

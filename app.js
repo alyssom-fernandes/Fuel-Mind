@@ -853,7 +853,9 @@ function mostrarToast(mensagem, tipo = "sucesso", duracao = 3000) {
     toast.id = "toastSistema";
     toast.className = `toast toast-${tipo}`;
     const icones = { sucesso: "✓", erro: "✕", aviso: "⚠", info: "i" };
-    toast.innerHTML = `<span class="toast-icone">${icones[tipo] || "i"}</span><span class="toast-msg">${mensagem}</span>`;
+    // `mensagem` é escapada: praticamente toda chamada interpola nome de
+    // cadastro, número de nota ou nome de arquivo. Nenhum chamador passa HTML.
+    toast.innerHTML = `<span class="toast-icone">${icones[tipo] || "i"}</span><span class="toast-msg">${escapeHtml(mensagem)}</span>`;
     document.body.appendChild(toast);
     requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add("toast-visivel")));
     setTimeout(() => {

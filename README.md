@@ -33,13 +33,13 @@
 - AutoSystem report import — compares entries against system entries to flag divergences
 
 ### 🚛 Freight
-- Per-fuel rate configuration (R$/L)
+- Per-company freight rate (R$/L), set in each company's record
 - Automatic calculation by plate, driver, company, and vehicle set
 - Vehicle sets with historical composition (respects date-of-haul)
 - Excel, PDF, CSV, print export
 
 ### 🔧 Registrations
-- Drivers, vehicles, companies (with municipality), fuel types (with loss %), bases, vehicle sets
+- Drivers, vehicles, companies (with municipality and freight rate), fuel types (with loss %), bases, vehicle sets
 - Inactive/reactivate with cascade propagation to entries
 
 ### 👥 Users & Permissions

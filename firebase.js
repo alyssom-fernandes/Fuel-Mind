@@ -47,6 +47,7 @@ const auth      = getAuth(app);
 
 const DB_REF       = doc(firestore, "dados", "principal");
 const USUARIOS_COL = collection(firestore, "usuarios");
+const USERNAMES_COL = collection(firestore, "usernames");
 
 /* ─── DADOS (Firestore) ─── */
 
@@ -178,16 +179,60 @@ async function usuariosListar() {
     } catch (e) { console.error("[Usuarios] Erro ao listar:", e); return []; }
 }
 
+/* ─── ÍNDICE PÚBLICO DE USERNAMES ─────────────────────────────────────
+   O login por @usuario precisa descobrir o e-mail ANTES de autenticar,
+   e regra de segurança não consegue restringir uma consulta a um campo
+   específico. Liberar a coleção `usuarios` para leitura anônima exporia
+   nome, e-mail, papel e empresas de todo mundo.
+
+   Por isso o mapeamento vive em `usernames/{username}`, contendo apenas
+   o e-mail necessário para o login. `usuarios` fica restrita a usuários
+   autenticados.
+   ────────────────────────────────────────────────────────────────────*/
+
+/** Username utilizável como ID de documento no Firestore. */
+function _usernameValido(username) {
+    const u = String(username || "").toLowerCase().trim();
+    return /^[a-z0-9._-]{3,}$/.test(u) && u !== "." && u !== ".." ? u : null;
+}
+
+/** Cria ou atualiza a entrada do índice. */
+async function usernameMapaDefinir(username, email, uid) {
+    const u = _usernameValido(username);
+    if (!u) return;
+    await setDoc(doc(firestore, "usernames", u), { email, uid });
+}
+
+/** Remove a entrada do índice (troca ou exclusão de usuário). */
+async function usernameMapaRemover(username) {
+    const u = _usernameValido(username);
+    if (!u) return;
+    try { await deleteDoc(doc(firestore, "usernames", u)); }
+    catch (e) { console.warn("[Usernames] Falha ao remover:", e.message); }
+}
+
 /**
- * Busca um usuário pelo campo `username` (case-insensitive).
- * Requer leitura pública da coleção `usuarios` (`allow read: if true`)
- * porque é chamada antes da autenticação no fluxo de login por username.
+ * Busca um usuário pelo `username` (case-insensitive) para o login.
+ *
+ * Consulta primeiro o índice público `usernames/{username}`. O fallback
+ * para a consulta antiga em `usuarios` cobre a janela entre publicar
+ * este código e rodar a migração do índice — depois que as regras forem
+ * publicadas ele passa a falhar e o índice vira o único caminho.
+ *
  * @param {string} username - Username sem o `@`
- * @returns {Promise<Object|null>} Perfil do usuário ou `null` se não encontrado
+ * @returns {Promise<Object|null>} `{ uid, email }` ou `null` se não encontrado
  */
 async function usuarioBuscarPorUsername(username) {
+    const u = _usernameValido(username);
+    if (!u) return null;
+
     try {
-        const q = query(USUARIOS_COL, where("username", "==", username.toLowerCase().trim()));
+        const snap = await getDoc(doc(firestore, "usernames", u));
+        if (snap.exists()) return { uid: snap.data().uid, ...snap.data() };
+    } catch (e) { console.warn("[Usernames] Índice indisponível:", e.message); }
+
+    try {
+        const q = query(USUARIOS_COL, where("username", "==", u));
         const snap = await getDocs(q);
         if (snap.empty) return null;
         const d = snap.docs[0];
@@ -203,10 +248,11 @@ async function usuarioBuscarPorUsername(username) {
  * @returns {Promise<boolean>} `true` se disponível, `false` se já em uso
  */
 async function usuarioUsernameDisponivel(username, uidIgnorar = null) {
-    const q = query(USUARIOS_COL, where("username", "==", username.toLowerCase().trim()));
-    const snap = await getDocs(q);
-    if (snap.empty) return true;
-    return snap.docs.every(d => d.id === uidIgnorar);
+    const u = _usernameValido(username);
+    if (!u) return false;
+    const snap = await getDoc(doc(firestore, "usernames", u));
+    if (!snap.exists()) return true;
+    return snap.data().uid === uidIgnorar;
 }
 
 async function usuarioExcluirFirestore(uid) {
@@ -286,6 +332,7 @@ window._firestore = {
     storageUploadLogo, storageExcluirLogo,
     usuarioBuscar, usuarioSalvar, usuariosListar, usuarioExcluirFirestore,
     usuarioBuscarPorUsername, usuarioUsernameDisponivel,
+    usernameMapaDefinir, usernameMapaRemover,
     authLogin, authLogout, authCriarUsuario, authAlterarSenha,
     authEnviarResetSenha, authEscutar, authUsuarioAtual
 };

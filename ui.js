@@ -547,6 +547,12 @@ document.addEventListener("keydown", function(e) {
  * @example
  * if (!await fmConfirm({ titulo: 'Excluir?', msg: 'Esta ação não pode ser desfeita.', confirmTxt: 'Excluir', tipo: 'perigo' })) return;
  */
+/**
+ * Modal de confirmação. Todo texto recebido é escapado: `titulo` e `msg`
+ * carregam nomes de cadastro ("Excluir \"${item.nome}\"?") e não devem
+ * interpretar HTML. Se algum dia for preciso destaque visual aqui, use
+ * um parâmetro dedicado em vez de aceitar markup cru.
+ */
 function fmConfirm({ titulo = 'Confirmar', msg = '', confirmTxt = 'Confirmar', cancelTxt = 'Cancelar', tipo = 'perigo' } = {}) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
@@ -558,11 +564,11 @@ function fmConfirm({ titulo = 'Confirmar', msg = '', confirmTxt = 'Confirmar', c
 
         overlay.innerHTML = `
             <div class="modal" style="max-width:420px">
-                <h3 style="margin-bottom:${msg ? '12px' : '20px'}">${titulo}</h3>
-                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:20px;white-space:pre-wrap">${msg}</p>` : ''}
+                <h3 style="margin-bottom:${msg ? '12px' : '20px'}">${escapeHtml(titulo)}</h3>
+                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:20px;white-space:pre-wrap">${escapeHtml(msg)}</p>` : ''}
                 <div class="modal-acoes">
-                    <button class="btn-secundario fm-cancel">${cancelTxt}</button>
-                    <button class="btn-primario fm-ok" style="background:${cor};border-color:${cor}">${confirmTxt}</button>
+                    <button class="btn-secundario fm-cancel">${escapeHtml(cancelTxt)}</button>
+                    <button class="btn-primario fm-ok" style="background:${cor};border-color:${cor}">${escapeHtml(confirmTxt)}</button>
                 </div>
             </div>`;
 

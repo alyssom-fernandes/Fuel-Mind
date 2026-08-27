@@ -1,0 +1,147 @@
+rules_version = '2';
+
+// =============================================================================
+//  Fuel Mind — regras do Firestore
+//
+//  LIMITE ESTRUTURAL IMPORTANTE
+//  Todos os dados operacionais (lançamentos, cadastros, taxas) vivem em UM
+//  único documento: dados/principal. Regra de segurança avalia o documento
+//  inteiro — não campo a campo, nem elemento a elemento de um array. Ou seja:
+//  quem pode ler dados/principal lê os lançamentos de TODAS as empresas.
+//
+//  O filtro por empresa que existe hoje no app (empresaFiltroGlobal,
+//  _empresasGerenciaveis) é conveniência de interface, NÃO isolamento.
+//  Para isolar de verdade seria preciso quebrar o documento por empresa
+//  (ex.: dados/{empresaId}) e então restringir por request.auth.
+//
+//  O que estas regras garantem hoje:
+//   - só usuário autenticado E ativo lê ou grava os dados;
+//   - a coleção usuarios não é mais legível anonimamente;
+//   - ninguém promove o próprio papel nem se dá acesso a outras empresas;
+//   - o índice público expõe apenas o e-mail necessário para o login por @.
+//
+//  NOTA SOBRE get(campo, padrão)
+//  Acessar campo inexistente em regra do Firestore gera ERRO de avaliação,
+//  o que nega o acesso. Perfis antigos ou criados à mão pelo console podem
+//  não ter `ativo`, `role` ou `empresas` — por isso todo acesso a campo usa
+//  a forma com valor padrão.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function temPerfil() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    // Usuário desativado pelo admin perde o acesso mesmo com sessão válida.
+    // Perfil sem o campo `ativo` é tratado como ativo, que é o padrão do app.
+    function ativo() {
+      return temPerfil() && perfil().get('ativo', true) != false;
+    }
+
+    function papel() {
+      return temPerfil() ? perfil().get('role', '') : '';
+    }
+
+    function ehSupremo() {
+      return ativo() && papel() == 'supremo';
+    }
+
+    function ehAdmin() {
+      return ativo() && papel() == 'admin';
+    }
+
+    function gerenciaUsuarios() {
+      return ehSupremo() || ehAdmin();
+    }
+
+    function papelDe(dados) {
+      return dados.get('role', '');
+    }
+
+    // Campos que só quem gerencia usuários pode alterar.
+    function campoSensivelIntacto(antes, depois) {
+      return antes.get('role', '') == depois.get('role', '')
+        && antes.get('ativo', true) == depois.get('ativo', true)
+        && antes.get('empresas', []) == depois.get('empresas', []);
+    }
+
+    // ── Dados operacionais ───────────────────────────────────────────────
+    // Documento único com toda a base. Ver o limite descrito no topo.
+    match /dados/{documento} {
+      allow read, write: if ativo();
+    }
+
+    // ── Perfis de usuário ────────────────────────────────────────────────
+    match /usuarios/{uid} {
+
+      // Ler o próprio perfil é necessário logo após o login, antes de
+      // qualquer outra checagem — por isso a condição não usa ativo().
+      // O app já derruba a sessão de quem está inativo.
+      allow get: if autenticado() && (request.auth.uid == uid || gerenciaUsuarios());
+
+      // Listagem é da tela de Usuários. O recorte por empresa continua
+      // sendo feito no cliente: como o admin precisa enxergar quem
+      // compartilha empresa com ele, a regra não consegue estreitar mais
+      // sem quebrar a tela.
+      allow list: if gerenciaUsuarios();
+
+      // Criação feita por quem gerencia usuários, ou auto-criação do
+      // próprio registro — que nunca pode nascer supremo.
+      allow create: if gerenciaUsuarios()
+                    || (autenticado()
+                        && request.auth.uid == uid
+                        && papelDe(request.resource.data) != 'supremo');
+
+      allow update: if
+        // Supremo altera qualquer perfil, inclusive papel e empresas.
+        ehSupremo()
+        // Admin altera perfis comuns, mas não mexe em supremo nem cria um.
+        || (ehAdmin()
+            && papelDe(resource.data) != 'supremo'
+            && papelDe(request.resource.data) != 'supremo')
+        // Qualquer autenticado atualiza o próprio perfil (nome, username,
+        // ultimoAcesso) desde que não toque em papel, ativo ou empresas.
+        || (autenticado()
+            && request.auth.uid == uid
+            && campoSensivelIntacto(resource.data, request.resource.data));
+
+      allow delete: if ehSupremo()
+                    || (ehAdmin() && papelDe(resource.data) != 'supremo');
+    }
+
+    // ── Índice público username → e-mail ─────────────────────────────────
+    // Leitura anônima de documento único é intencional e necessária: o
+    // login por @usuario precisa resolver o e-mail ANTES de autenticar.
+    // O documento contém apenas { email, uid } — nunca nome, papel ou
+    // empresas. A listagem da coleção continua restrita, para que não seja
+    // possível varrer todos os e-mails de uma vez.
+    match /usernames/{username} {
+      allow get:  if true;
+      allow list: if gerenciaUsuarios();
+
+      allow create, update: if gerenciaUsuarios()
+                            || (autenticado()
+                                && request.resource.data.get('uid', '') == request.auth.uid);
+
+      allow delete: if gerenciaUsuarios()
+                    || (autenticado() && resource.data.get('uid', '') == request.auth.uid);
+    }
+
+    // ── Bloqueio padrão ──────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

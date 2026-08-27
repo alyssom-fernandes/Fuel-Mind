@@ -15,6 +15,19 @@ const ROLES = {
     usuario: { label: "Usuário",  desc: "Acesso operacional às empresas permitidas" },
 };
 
+/**
+ * Mantém o índice público `usernames/{username}` em sincronia com o perfil.
+ * Remove a entrada antiga quando o username muda ou é apagado, para não
+ * deixar apontamento órfão permitindo login por um @ que não existe mais.
+ */
+async function _sincronizarIndiceUsername(usernameAntigo, usernameNovo, email, uid) {
+    const antigo = usernameAntigo || null;
+    const novo   = usernameNovo   || null;
+    if (antigo === novo) return;
+    if (antigo) await window._firestore.usernameMapaRemover(antigo);
+    if (novo)   await window._firestore.usernameMapaDefinir(novo, email, uid);
+}
+
 /* ─── VERIFICAÇÃO DE PERMISSÃO ─── */
 function podeGerenciarUsuarios() {
     return window._usuarioAtual?.role === "supremo" || window._usuarioAtual?.role === "admin";
@@ -36,6 +49,49 @@ function _empresasGerenciaveis() {
     const ativas = db.empresas.filter(e => e.ativo !== false).map(e => e.nome);
     if (perfil.role === "supremo") return ativas;
     return ativas.filter(nome => (perfil.empresas || []).includes(nome));
+}
+
+/**
+ * Regrava o índice público `usernames/{username}` para todos os usuários
+ * que já têm username cadastrado.
+ *
+ * Necessária uma única vez, na virada para o índice: antes dela o login
+ * por @usuario dependia de a coleção `usuarios` ser legível sem
+ * autenticação. Idempotente — pode ser rodada quantas vezes for preciso.
+ */
+async function migrarIndiceUsernames() {
+    if (window._usuarioAtual?.role !== "supremo") {
+        return mostrarToast("Apenas o usuário supremo pode reconstruir o índice.", "aviso");
+    }
+    const comUsername = _usuariosCache.filter(u => u.username && u.email);
+    if (comUsername.length === 0) return mostrarToast("Nenhum usuário com @ cadastrado.", "info");
+
+    if (!await fmConfirm({
+        titulo: "Reconstruir índice de @usuarios?",
+        msg: `${comUsername.length} usuário(s) serão regravados no índice público de login.
+
+O índice guarda apenas o e-mail associado a cada @, e é o que permite entrar sem digitar o e-mail completo.`,
+        confirmTxt: "Reconstruir",
+        tipo: "info"
+    })) return;
+
+    let ok = 0, falhas = 0;
+    for (const u of comUsername) {
+        try {
+            await window._firestore.usernameMapaDefinir(u.username, u.email, u.uid);
+            ok++;
+        } catch (e) {
+            falhas++;
+            console.error("[Usernames] Falha em @" + u.username + ":", e);
+        }
+    }
+    mostrarToast(
+        falhas === 0
+            ? `Índice reconstruído: ${ok} usuário(s).`
+            : `Índice reconstruído com ${ok} sucesso(s) e ${falhas} falha(s). Veja o console.`,
+        falhas === 0 ? "sucesso" : "aviso",
+        6000
+    );
 }
 
 /* ─── CARREGAR TELA ─── */
@@ -153,8 +209,16 @@ function _renderUsuarios() {
         </tr>`;
     }).join("");
 
+    const semIndice = _usuariosCache.filter(u => u.username).length;
+
     container.innerHTML = `
-        <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;">
+            ${supremoAtual && semIndice > 0
+                ? `<button class="btn-secundario" onclick="migrarIndiceUsernames()"
+                       title="Regrava o índice público que permite login por @usuario">
+                       Reconstruir índice de @usuarios
+                   </button>`
+                : ''}
             <button class="btn-primario" onclick="abrirModalNovoUsuario()">Novo Usuário</button>
         </div>
         <div class="tabela-container">
@@ -238,7 +302,9 @@ async function confirmarEditarProprioPerfil() {
         if (username) dados.username = username;
         else dados.username = null; // limpa se vazio
 
+        const usernameAntigo = window._usuarioAtual.username || null;
         await window._firestore.usuarioSalvar(window._usuarioAtual.uid, dados);
+        await _sincronizarIndiceUsername(usernameAntigo, username, window._usuarioAtual.email, window._usuarioAtual.uid);
         window._usuarioAtual.nome = nome;
         window._usuarioAtual.username = username || null;
         fecharUsuarioModal();
@@ -429,6 +495,7 @@ async function confirmarNovoUsuario() {
             criadoEm: new Date().toISOString(),
             ultimoAcesso: null
         });
+        if (username) await window._firestore.usernameMapaDefinir(username, email, uid);
 
         fecharUsuarioModal();
         mostrarToast(`Usuário "${nome}" criado com sucesso!`, "sucesso", 5000);
@@ -485,7 +552,9 @@ async function confirmarEditarUsuario(uid) {
             }
         }
 
+        const usernameAntigo = _usuariosCache.find(u => u.uid === uid)?.username || null;
         await window._firestore.usuarioSalvar(uid, { nome, role, empresas, username: username || null });
+        await _sincronizarIndiceUsername(usernameAntigo, username, alvo?.email, uid);
         fecharUsuarioModal();
         mostrarToast("Usuário atualizado.", "sucesso");
         await _recarregarListaUsuarios();
@@ -532,6 +601,7 @@ async function excluirUsuario(uid) {
 
     try {
         await window._firestore.usuarioExcluirFirestore(uid);
+        if (u.username) await window._firestore.usernameMapaRemover(u.username);
         mostrarToast(`Usuário "${u.nome}" excluído.`, "sucesso");
         await _recarregarListaUsuarios();
     } catch (e) {

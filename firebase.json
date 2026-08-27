@@ -1,10 +1,22 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "firestore.rules",
+      "storage.rules",
+      "demo.html",
+      "README.md",
+      "README.pt-BR.md",
+      "Artes/**"
     ]
   }
 }

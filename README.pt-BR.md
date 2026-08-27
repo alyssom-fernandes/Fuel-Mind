@@ -33,13 +33,13 @@
 - Importação de relatório AutoSystem — compara entradas do relatório com os lançamentos do sistema e aponta divergências
 
 ### 🚛 Fretes
-- Taxa por combustível configurável (R$/L)
+- Taxa de frete por empresa (R$/L), definida no cadastro de cada empresa
 - Cálculo automático por placa, motorista, empresa e conjunto de veículos
 - Conjuntos de veículos com composição histórica (respeita data do carregamento)
 - Exportação Excel, PDF, CSV, impressão
 
 ### 🔧 Cadastros
-- Motoristas, veículos, empresas (com município), combustíveis (com % de perda), bases, conjuntos de veículos
+- Motoristas, veículos, empresas (com município e taxa de frete), combustíveis (com % de perda), bases, conjuntos de veículos
 - Inativar/reativar com propagação em cascata para lançamentos
 
 ### 👥 Usuários e Permissões
