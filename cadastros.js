@@ -136,35 +136,21 @@ window.resolverConjuntoPorPlaca = function(placa, data) {
 // ========== MODAL DE EDIÇÃO ==========
 let modalContexto = null;
 
-function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '') {
+function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '', taxaFreteAtual = '') {
     modalContexto = { lista, id };
     document.getElementById("modalTitulo").textContent = titulo;
     document.getElementById("modalLabel").textContent = label;
     document.getElementById("modalInput").value = valorAtual;
 
+    // O wrapper de empresas e o de perda sao estaticos no index.html; aqui so
+    // alternamos a visibilidade e preenchemos os valores do item em edicao.
     const wrapperMunicipio = document.getElementById("modalCampoMunicipioWrapper");
-    if (lista === "empresas") {
-        if (!wrapperMunicipio) {
-            const modal = document.querySelector("#modalOverlay .modal");
-            const div = document.createElement("div");
-            div.id = "modalCampoMunicipioWrapper";
-            div.className = "campo";
-            div.style.marginTop = "12px";
-            div.innerHTML = `
-                <label>Município/UF</label>
-                <input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
-            `;
-            const perdaWrapper = document.getElementById("modalCampoPerdaWrapper");
-            if (perdaWrapper) {
-                perdaWrapper.insertAdjacentElement('beforebegin', div);
-            } else {
-                document.querySelector(".modal-acoes").insertAdjacentElement('beforebegin', div);
-            }
-        }
-        document.getElementById("modalCampoMunicipioWrapper").style.display = "flex";
+    if (lista === "empresas" && wrapperMunicipio) {
+        wrapperMunicipio.style.display = "flex";
         document.getElementById("modalInputMunicipio").value = municipioAtual;
-    } else {
-        if (wrapperMunicipio) wrapperMunicipio.style.display = "none";
+        document.getElementById("modalInputTaxaFrete").value = taxaFreteAtual;
+    } else if (wrapperMunicipio) {
+        wrapperMunicipio.style.display = "none";
     }
 
     const wrapperPerda = document.getElementById("modalCampoPerdaWrapper");
@@ -227,6 +213,18 @@ function confirmarEdicao() {
                 if (!item.logs) item.logs = [];
                 item.logs.push(`Município alterado de "${item.municipio || 'vazio'}" para "${novoMun || 'vazio'}" em ${new Date().toLocaleString('pt-BR')}`);
                 item.municipio = novoMun;
+            }
+        }
+
+        const taxaInput = document.getElementById("modalInputTaxaFrete");
+        if (taxaInput) {
+            const parsed = parseFloat(taxaInput.value);
+            const novaTaxa = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+            const taxaAntiga = _taxaFreteDaEmpresa(item);
+            if (taxaAntiga !== novaTaxa) {
+                if (!item.logs) item.logs = [];
+                item.logs.push(`Taxa de frete alterada de R$ ${taxaAntiga.toFixed(4)}/L para R$ ${novaTaxa.toFixed(4)}/L em ${new Date().toLocaleString('pt-BR')}`);
+                item.taxaFrete = novaTaxa;
             }
         }
     }
@@ -399,8 +397,11 @@ migrarEmpresas();
 function salvarEmpresa() {
     const input = document.getElementById("nomeEmpresa");
     const inputMun = document.getElementById("municipioEmpresa");
+    const inputTaxa = document.getElementById("taxaFreteEmpresa");
     const nome = input.value.trim();
     const municipio = inputMun ? inputMun.value.trim() : '';
+    const taxaParsed = parseFloat(inputTaxa ? inputTaxa.value : '');
+    const taxaFrete = isNaN(taxaParsed) || taxaParsed < 0 ? 0 : taxaParsed;
     if (!nome) {
         mostrarToast("Digite o nome da empresa.", "erro", 4000);
         return;
@@ -413,11 +414,13 @@ function salvarEmpresa() {
         id: gerarId(),
         nome,
         municipio,
+        taxaFrete,
         ativo: true,
         logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
     });
     input.value = "";
     if (inputMun) inputMun.value = "";
+    if (inputTaxa) inputTaxa.value = "";
     salvarDB();
     atualizarListas();
     setTimeout(() => {
@@ -780,6 +783,7 @@ function atualizarListas() {
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda">Frete: ${fmtR4(_taxaFreteDaEmpresa(e))}/L</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
@@ -990,7 +994,7 @@ document.addEventListener('click', function(e) {
     } else if (acao === 'editar') {
         if (lista === 'motoristas') abrirModal('Editar Motorista',  'Nome',  item.nome, lista, id);
         else if (lista === 'veiculos')    abrirModal('Editar Veículo',    'Placa', item.nome, lista, id);
-        else if (lista === 'empresas')    abrirModal('Editar Empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '');
+        else if (lista === 'empresas')    abrirModal('Editar Empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '', item.taxaFrete ?? '');
         else if (lista === 'combustiveis') abrirModal('Editar Combustível','Nome',  item.nome, lista, id, item.perda);
         else if (lista === 'bases')       abrirModal('Editar Base',       'Nome',  item.nome, lista, id);
     }

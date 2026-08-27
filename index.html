@@ -218,12 +218,7 @@
 <!-- FRETES -->
 <div id="fretes" class="tela">
   <h2 id="tituloFretes" style="display:block;">Resumo de Fretes</h2>
-  <p class="dica">Dados calculados automaticamente a partir dos lançamentos do mês selecionado.</p>
-  <div class="sistema-secao" style="margin-bottom:20px">
-    <h3>Taxas de Frete por Combustível (R$/litro)</h3>
-    <p class="dica" style="margin-top:4px">Defina o valor pago por litro transportado para cada tipo de combustível.</p>
-    <div id="fretesTodasTaxas" class="frete-taxas-grid"></div>
-  </div>
+  <p class="dica">Dados calculados automaticamente a partir dos lançamentos do mês selecionado. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
   <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
     <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
     <input type="month" id="fretesSelectMes" onchange="calcularEExibirFretes()" style="max-width:180px">
@@ -676,8 +671,10 @@
     <div class="form-linha" style="flex-wrap:wrap">
       <input id="nomeEmpresa" placeholder="Nome da empresa" style="flex:2">
       <input id="municipioEmpresa" placeholder="Município/UF (ex: São Paulo, SP)" style="flex:1">
+      <input id="taxaFreteEmpresa" type="number" min="0" step="0.0001" placeholder="Frete R$/L" style="flex:0 0 130px">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
+    <p class="dica" style="margin-top:-4px">A taxa de frete é o valor pago por litro transportado para a empresa e pode ser ajustada depois em Editar.</p>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaEmpresas"></ul>
   </div>
@@ -781,6 +778,9 @@
     <div class="campo"><label id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
     <div class="campo" id="modalCampoMunicipioWrapper" style="display:none; margin-top:12px;">
       <label>Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
+      <label style="margin-top:12px">Taxa de frete (R$/litro)</label>
+      <input id="modalInputTaxaFrete" type="number" min="0" step="0.0001" placeholder="0,0000">
+      <p class="dica" style="margin-top:4px">Valor pago por litro transportado para esta empresa.</p>
     </div>
     <div class="campo" id="modalCampoPerdaWrapper" style="display:none; margin-top:12px;">
       <label>% Perda Tolerada</label><input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">

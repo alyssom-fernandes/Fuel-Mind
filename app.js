@@ -377,7 +377,6 @@ const DB_PADRAO = {
     empresas:      [],
     combustiveis:  [],
     lancamentos:   [],
-    taxasFrete:    {},
     bases:         [],
     configRelatorio: {
         titulo: "Controle de Entradas de Combustível",
@@ -661,7 +660,6 @@ function _ligarListenerTempoReal() {
  * - Arrays (`motoristas`, `veiculos`, `empresas`, `combustiveis`, `lancamentos`,
  *   `bases`): substituídos integralmente se `dados` tiver array
  *   válido; senão mantém array vazio do padrão.
- * - Objetos (`taxasFrete`): copiados em profundidade se presentes; senão mantém `{}`.
  * - `configRelatorio`: merge superficial (`Object.assign`) com o padrão,
  *   preservando configurações parcialmente salvas.
  *
@@ -680,12 +678,6 @@ function _mesclarComPadrao(dados) {
 
     ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases'].forEach(campo => {
         if (Array.isArray(dados[campo])) resultado[campo] = dados[campo];
-    });
-
-    ['taxasFrete'].forEach(campo => {
-        if (dados[campo] && typeof dados[campo] === 'object') {
-            resultado[campo] = JSON.parse(JSON.stringify(dados[campo]));
-        }
     });
 
     if (dados.configRelatorio && typeof dados.configRelatorio === 'object') {

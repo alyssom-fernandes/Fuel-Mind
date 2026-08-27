@@ -48,6 +48,19 @@ function _litrosItem(i) {
     return (i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0;
 }
 
+// ========== TAXA DE FRETE DA EMPRESA ==========
+/**
+ * Taxa de frete (R$/litro) de um registro de empresa, normalizada.
+ *
+ * A taxa é atributo da empresa contratante — não do combustível
+ * transportado. Valor ausente, inválido ou negativo vira 0, para que o
+ * cálculo de frete nunca produza NaN nem valor negativo.
+ */
+function _taxaFreteDaEmpresa(empresa) {
+    const taxa = parseFloat(empresa?.taxaFrete);
+    return isNaN(taxa) || taxa < 0 ? 0 : taxa;
+}
+
 // ========== CORES PARA GRÁFICOS (CHART.JS) ==========
 function getChartColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';

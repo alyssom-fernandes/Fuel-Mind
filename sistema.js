@@ -87,7 +87,7 @@ async function resetSeguro() {
     }
     db = {
         motoristas: [], veiculos: [], empresas: [], combustiveis: [],
-        lancamentos: [], bases: [], taxasFrete: {}, configRelatorio: db.configRelatorio
+        lancamentos: [], bases: [], configRelatorio: db.configRelatorio
     };
     salvarDB(); atualizarListas(); atualizarInfoSistema();
     if (window._firestore && typeof _ligarListenerTempoReal === 'function') _ligarListenerTempoReal();

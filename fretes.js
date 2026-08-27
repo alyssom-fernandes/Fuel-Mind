@@ -4,8 +4,10 @@
   Lógica: para cada mês, agrupa os lançamentos por
   Placa, Motorista, Empresa e Conjunto, calculando:
     Litros transportados (qtd carga)
-    Frete = litros × taxa por combustível
-  A taxa é configurável por combustível e salva em db.taxasFrete
+    Frete = litros × taxa da empresa do lançamento
+  A taxa é atributo da empresa contratante — vive em
+  db.empresas[].taxaFrete e é editada no cadastro de
+  Empresas. Não varia por combustível.
   FIX: garantirConjuntos() chamado antes de processar para
        garantir que db.conjuntosVeiculos existe
 =================================================*/
@@ -13,55 +15,60 @@
 let dadosFretesAtual = null;
 
 /*=================================================
+  TAXA DE FRETE — LEITURA
+=================================================*/
+
+/**
+ * Taxa de frete (R$/litro) de uma empresa, pelo nome.
+ * Ponto único de leitura do módulo: nenhum cálculo deve ler
+ * `taxaFrete` direto do registro.
+ */
+function _taxaFreteEmpresa(nomeEmpresa) {
+    return _taxaFreteDaEmpresa(db.empresas.find(e => e.nome === nomeEmpresa));
+}
+
+/**
+ * Taxa a exibir para um agrupamento que pode reunir mais de uma empresa —
+ * uma placa ou motorista que rodou para duas contratantes no mesmo mês.
+ *
+ * Retorna a taxa quando há uma única empresa envolvida e `null` quando há
+ * mistura. Nesse caso a coluna vira "—", mas o frete somado permanece
+ * exato: ele é acumulado lançamento a lançamento, cada um já com a taxa
+ * da sua própria empresa.
+ */
+function _taxaFreteGrupo(grupo) {
+    if (!grupo || !grupo.empresas || grupo.empresas.size !== 1) return null;
+    return _taxaFreteEmpresa([...grupo.empresas][0]);
+}
+
+/** Taxa do grupo formatada para as tabelas da tela. */
+function _fmtTaxaGrupo(grupo) {
+    const taxa = _taxaFreteGrupo(grupo);
+    return taxa > 0 ? fmtR4(taxa) : "—";
+}
+
+/** Taxa do grupo em texto puro, para Excel e CSV. */
+function _taxaGrupoTexto(grupo) {
+    const taxa = _taxaFreteGrupo(grupo);
+    return taxa > 0 ? taxa.toFixed(4) : "";
+}
+
+/** Taxa do grupo com prefixo R$, para PDF e impressão. */
+function _taxaGrupoMoeda(grupo) {
+    const taxa = _taxaFreteGrupo(grupo);
+    return taxa > 0 ? "R$ " + taxa.toFixed(4) : "—";
+}
+
+/*=================================================
   CARREGAR TELA DE FRETES
 =================================================*/
 function carregarFretes() {
-    if (!db.taxasFrete) { db.taxasFrete = {}; salvarDB(); }
-
     const hoje = new Date();
     const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
 
     const sel = document.getElementById("fretesSelectMes");
     if (sel && !sel.value) sel.value = mesAtual;
 
-    renderTaxasFretes();
-    calcularEExibirFretes();
-}
-
-function renderTaxasFretes() {
-    const container = document.getElementById("fretesTodasTaxas");
-    if (!container) return;
-
-    if (db.combustiveis.length === 0) {
-        container.innerHTML = `<p class="dica">Nenhum combustível cadastrado.</p>`;
-        return;
-    }
-
-    container.innerHTML = db.combustiveis.map(c => {
-        const taxa = db.taxasFrete[c.nome] ?? "";
-        return `
-            <div class="frete-taxa-item">
-                <label>${escapeHtml(c.nome)}</label>
-                <div style="display:flex; gap:8px; align-items:center">
-                    <span style="color:var(--text-muted); font-size:0.9rem">R$</span>
-                    <input type="number" class="input-tabela" min="0" step="0.0001"
-                           style="max-width:130px"
-                           value="${taxa}"
-                           placeholder="0,0000"
-                           id="taxaFrete_${escapeHtml(c.nome.replace(/\s+/g,'_'))}"
-                           onchange="salvarTaxaFrete('${escapeJsAttr(c.nome)}', this.value)">
-                    <span style="color:var(--text-muted); font-size:0.85rem">/ litro</span>
-                </div>
-            </div>
-        `;
-    }).join("");
-}
-
-function salvarTaxaFrete(nomeCombustivel, valor) {
-    if (!db.taxasFrete) db.taxasFrete = {};
-    const val = parseFloat(valor);
-    db.taxasFrete[nomeCombustivel] = isNaN(val) ? 0 : val;
-    salvarDB();
     calcularEExibirFretes();
 }
 
@@ -88,6 +95,7 @@ function calcularEExibirFretes() {
         const motorista = l.motorista || "(sem motorista)";
         const empresa   = l.empresa   || "(sem empresa)";
         const dataRef   = l.dataDescarga || l.dataNota || mes + "-01";
+        const taxaEmpresa = _taxaFreteEmpresa(empresa);
 
         // Resolver conjunto vigente para esta placa e data
         const conjObj = typeof resolverConjuntoPorPlaca === 'function'
@@ -100,9 +108,9 @@ function calcularEExibirFretes() {
             ? (conjObj.nome || `Conjunto ${conjObj.composicaoAtual[0]}`)
             : null;
 
-        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, detalhes: {}, conjunto: conjLabel };
-        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista,  viagens: 0, litros: 0, frete: 0, detalhes: {} };
-        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,    viagens: 0, litros: 0, frete: 0, detalhes: {} };
+        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set(), conjunto: conjLabel };
+        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista,  viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set() };
+        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,    viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set() };
 
         if (conjKey && !porConjunto[conjKey]) {
             porConjunto[conjKey] = {
@@ -113,6 +121,7 @@ function calcularEExibirFretes() {
                 litros: 0,
                 frete: 0,
                 detalhes: {},
+                empresas: new Set(),
                 porPlacaInterna: {}
             };
         }
@@ -122,10 +131,15 @@ function calcularEExibirFretes() {
         porEmpresa[empresa].viagens++;
         if (conjKey) porConjunto[conjKey].viagens++;
 
+        // Registra a origem para saber se o grupo tem taxa única ou mista
+        porPlaca[placa].empresas.add(empresa);
+        porMotorista[motorista].empresas.add(empresa);
+        porEmpresa[empresa].empresas.add(empresa);
+        if (conjKey) porConjunto[conjKey].empresas.add(empresa);
+
         l.itens.forEach(item => {
             const litros = item.qtd || 0;
-            const taxa   = db.taxasFrete?.[item.tipo] ?? 0;
-            const frete  = litros * taxa;
+            const frete  = litros * taxaEmpresa;
             const tipo   = item.tipo || "Desconhecido";
 
             // Por placa
@@ -174,7 +188,10 @@ function calcularEExibirFretes() {
         mes,
         totalNotas:  lancamentosMes.length,
         totalLitros: lancamentosMes.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + (i.qtd || 0), 0), 0),
-        totalFrete:  lancamentosMes.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + (i.qtd || 0) * (db.taxasFrete?.[i.tipo] ?? 0), 0), 0),
+        totalFrete:  lancamentosMes.reduce((s, l) => {
+            const taxa = _taxaFreteEmpresa(l.empresa || "(sem empresa)");
+            return s + l.itens.reduce((ss, i) => ss + (i.qtd || 0) * taxa, 0);
+        }, 0),
         porPlaca:     sortDesc(porPlaca),
         porMotorista: sortDesc(porMotorista),
         porEmpresa:   sortDesc(porEmpresa),
@@ -203,13 +220,25 @@ function renderFreteResumo() {
     }
 }
 
-function linhasDetalhes(detalhes) {
+/**
+ * Sublinhas de quebra por combustível.
+ *
+ * A célula de taxa fica vazia de propósito: a taxa é da empresa e já
+ * aparece na linha principal do grupo — repeti-la em cada combustível
+ * daria a impressão falsa de que ela varia por produto.
+ *
+ * `colunasNome` é quantas colunas iniciais o rótulo ocupa, já que as
+ * tabelas têm larguras diferentes (Por Placa tem a coluna Conjunto a
+ * mais). Sem isso as sublinhas caem sob os cabeçalhos errados.
+ */
+function linhasDetalhes(detalhes, colunasNome = 2) {
+    const estilo = 'color:var(--text-muted); font-size:0.85rem';
     return Object.entries(detalhes).map(([tipo, d]) => `
         <tr class="linha-detalhe-frete">
-            <td colspan="2" style="padding-left:24px; color:var(--text-muted); font-size:0.85rem">↳ ${escapeHtml(tipo)}</td>
-            <td style="color:var(--text-muted); font-size:0.85rem">${fmtL3(d.litros)}</td>
-            <td style="color:var(--text-muted); font-size:0.85rem">${db.taxasFrete?.[tipo] > 0 ? fmtR4(db.taxasFrete[tipo]) : "—"}</td>
-            <td style="color:var(--text-muted); font-size:0.85rem">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
+            <td colspan="${colunasNome}" style="padding-left:24px; ${estilo}">↳ ${escapeHtml(tipo)}</td>
+            <td style="${estilo}">${fmtL3(d.litros)}</td>
+            <td></td>
+            <td style="${estilo}">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
         </tr>
     `).join("");
 }
@@ -230,10 +259,10 @@ function renderAbaPlacas() {
             <td style="font-size:0.78rem;color:var(--text-muted)">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
             <td>${fmtL3(p.litros)}</td>
-            <td>—</td>
+            <td>${_fmtTaxaGrupo(p)}</td>
             <td><strong>${fmtR(p.frete)}</strong></td>
         </tr>
-        ${linhasDetalhes(p.detalhes)}
+        ${linhasDetalhes(p.detalhes, 3)}
     `).join("");
 }
 
@@ -252,7 +281,7 @@ function renderAbaMotoristasFrete() {
             <td><strong>${escapeHtml(m.nome)}</strong></td>
             <td>${m.viagens}</td>
             <td>${fmtL3(m.litros)}</td>
-            <td>—</td>
+            <td>${_fmtTaxaGrupo(m)}</td>
             <td><strong>${fmtR(m.frete)}</strong></td>
         </tr>
         ${linhasDetalhes(m.detalhes)}
@@ -274,7 +303,7 @@ function renderAbaEmpresasFrete() {
             <td><strong>${escapeHtml(e.nome)}</strong></td>
             <td>${e.viagens}</td>
             <td>${fmtL3(e.litros)}</td>
-            <td>—</td>
+            <td>${_fmtTaxaGrupo(e)}</td>
             <td><strong>${fmtR(e.frete)}</strong></td>
         </tr>
         ${linhasDetalhes(e.detalhes)}
@@ -299,20 +328,22 @@ function renderAbaConjuntosFretes() {
 
         const detalhesPlacas = Object.entries(c.porPlacaInterna).map(([placa, d]) => `
             <tr class="linha-detalhe-frete">
-                <td colspan="2" style="padding-left:24px; color:var(--text-muted); font-size:0.82rem">
+                <td style="padding-left:24px; color:var(--text-muted); font-size:0.82rem">
                      ${escapeHtml(placa)}
                 </td>
                 <td style="color:var(--text-muted); font-size:0.82rem">${d.viagens}</td>
                 <td style="color:var(--text-muted); font-size:0.82rem">${fmtL3(d.litros)}</td>
+                <td></td>
                 <td style="color:var(--text-muted); font-size:0.82rem">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
             </tr>
         `).join("");
 
         return `
             <tr style="background:var(--bg-secondary)">
-                <td colspan="2"><strong> ${escapeHtml(c.nome)}</strong></td>
+                <td><strong> ${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
                 <td><strong>${fmtL3(c.litros)}</strong></td>
+                <td>${_fmtTaxaGrupo(c)}</td>
                 <td><strong>${fmtR(c.frete)}</strong></td>
             </tr>
             ${detalhesPlacas}
@@ -349,9 +380,9 @@ function exportarFretesExcel() {
     linhas.push(["POR PLACA"]);
     linhas.push(["Placa", "Conjunto", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porPlaca.forEach(p => {
-        linhas.push([p.nome, p.conjunto || "—", p.viagens, p.litros.toFixed(3), "", p.frete.toFixed(2)]);
+        linhas.push([p.nome, p.conjunto || "—", p.viagens, p.litros.toFixed(3), _taxaGrupoTexto(p), p.frete.toFixed(2)]);
         Object.entries(p.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
     linhas.push([]);
@@ -359,12 +390,12 @@ function exportarFretesExcel() {
     linhas.push(["POR CONJUNTO"]);
     linhas.push(["Conjunto", "", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porConjunto.forEach(c => {
-        linhas.push([c.nome, "", c.viagens, c.litros.toFixed(3), "", c.frete.toFixed(2)]);
+        linhas.push([c.nome, "", c.viagens, c.litros.toFixed(3), _taxaGrupoTexto(c), c.frete.toFixed(2)]);
         Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
             linhas.push([`  ↳ ${placa}`, "", det.viagens, det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
         Object.entries(c.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
     linhas.push([]);
@@ -372,9 +403,9 @@ function exportarFretesExcel() {
     linhas.push(["POR MOTORISTA"]);
     linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, m.litros.toFixed(3), "", m.frete.toFixed(2)]);
+        linhas.push([m.nome, m.viagens, m.litros.toFixed(3), _taxaGrupoTexto(m), m.frete.toFixed(2)]);
         Object.entries(m.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
     linhas.push([]);
@@ -382,9 +413,9 @@ function exportarFretesExcel() {
     linhas.push(["POR EMPRESA"]);
     linhas.push(["Empresa", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porEmpresa.forEach(e => {
-        linhas.push([e.nome, e.viagens, e.litros.toFixed(3), "", e.frete.toFixed(2)]);
+        linhas.push([e.nome, e.viagens, e.litros.toFixed(3), _taxaGrupoTexto(e), e.frete.toFixed(2)]);
         Object.entries(e.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
 
@@ -416,13 +447,12 @@ function exportarFretesPDF() {
     const montarCorpo = (lista) => {
         const rows = [];
         lista.forEach(item => {
-            rows.push([item.nome, item.viagens, item.litros.toFixed(3), "—", `R$ ${item.frete.toFixed(2)}`]);
+            rows.push([item.nome, item.viagens, item.litros.toFixed(3), _taxaGrupoMoeda(item), `R$ ${item.frete.toFixed(2)}`]);
             Object.entries(item.detalhes).forEach(([tipo, det]) => {
-                const taxa = db.taxasFrete?.[tipo] ?? 0;
                 rows.push([
                     `  ↳ ${tipo}`, "",
                     det.litros.toFixed(3),
-                    taxa > 0 ? `R$ ${taxa.toFixed(4)}` : "—",
+                    "",
                     det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"
                 ]);
             });
@@ -433,13 +463,12 @@ function exportarFretesPDF() {
     const montarCorpoConjuntos = (lista) => {
         const rows = [];
         lista.forEach(c => {
-            rows.push([`${c.nome}`, c.viagens, c.litros.toFixed(3), "—", `R$ ${c.frete.toFixed(2)}`]);
+            rows.push([`${c.nome}`, c.viagens, c.litros.toFixed(3), _taxaGrupoMoeda(c), `R$ ${c.frete.toFixed(2)}`]);
             Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
-                rows.push([`  ${placa}`, det.viagens, det.litros.toFixed(3), "—", det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"]);
+                rows.push([`  ${placa}`, det.viagens, det.litros.toFixed(3), "", det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"]);
             });
             Object.entries(c.detalhes).forEach(([tipo, det]) => {
-                const taxa = db.taxasFrete?.[tipo] ?? 0;
-                rows.push([`    ↳ ${tipo}`, "", det.litros.toFixed(3), taxa > 0 ? `R$ ${taxa.toFixed(4)}` : "—", det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"]);
+                rows.push([`    ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"]);
             });
         });
         return rows;
@@ -493,17 +522,17 @@ function exportarFretesCSV() {
     linhas.push(["POR PLACA"]);
     linhas.push(["Placa", "Conjunto", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porPlaca.forEach(p => {
-        linhas.push([p.nome, p.conjunto || "—", p.viagens, p.litros.toFixed(3), "", p.frete.toFixed(2)]);
+        linhas.push([p.nome, p.conjunto || "—", p.viagens, p.litros.toFixed(3), _taxaGrupoTexto(p), p.frete.toFixed(2)]);
         Object.entries(p.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
     linhas.push([]);
 
     linhas.push(["POR CONJUNTO"]);
-    linhas.push(["Conjunto", "", "Viagens", "Litros (L)", "", "Frete (R$)"]);
+    linhas.push(["Conjunto", "", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porConjunto.forEach(c => {
-        linhas.push([c.nome, "", c.viagens, c.litros.toFixed(3), "", c.frete.toFixed(2)]);
+        linhas.push([c.nome, "", c.viagens, c.litros.toFixed(3), _taxaGrupoTexto(c), c.frete.toFixed(2)]);
         Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
             linhas.push([`  ↳ ${placa}`, "", det.viagens, det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
@@ -513,9 +542,9 @@ function exportarFretesCSV() {
     linhas.push(["POR MOTORISTA"]);
     linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, m.litros.toFixed(3), "", m.frete.toFixed(2)]);
+        linhas.push([m.nome, m.viagens, m.litros.toFixed(3), _taxaGrupoTexto(m), m.frete.toFixed(2)]);
         Object.entries(m.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
     linhas.push([]);
@@ -523,9 +552,9 @@ function exportarFretesCSV() {
     linhas.push(["POR EMPRESA"]);
     linhas.push(["Empresa", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porEmpresa.forEach(e => {
-        linhas.push([e.nome, e.viagens, e.litros.toFixed(3), "", e.frete.toFixed(2)]);
+        linhas.push([e.nome, e.viagens, e.litros.toFixed(3), _taxaGrupoTexto(e), e.frete.toFixed(2)]);
         Object.entries(e.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), (db.taxasFrete?.[tipo] ?? 0).toFixed(4), det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
         });
     });
 
@@ -559,7 +588,7 @@ function imprimirFretes() {
                 <td><strong>${escapeHtml(item.nome)}</strong></td>
                 <td>${item.viagens}</td>
                 <td>${item.litros.toFixed(3)} L</td>
-                <td>—</td>
+                <td>${_taxaGrupoMoeda(item)}</td>
                 <td><strong>R$ ${item.frete.toFixed(2)}</strong></td>
             </tr>
             ${Object.entries(item.detalhes).map(([tipo, det]) => `
@@ -567,7 +596,7 @@ function imprimirFretes() {
                     <td style="padding-left:20px">↳ ${escapeHtml(tipo)}</td>
                     <td></td>
                     <td>${det.litros.toFixed(3)} L</td>
-                    <td>${db.taxasFrete?.[tipo] > 0 ? "R$ " + (db.taxasFrete[tipo]).toFixed(4) : "—"}</td>
+                    <td></td>
                     <td>${det.frete > 0 ? "R$ " + det.frete.toFixed(2) : "—"}</td>
                 </tr>
             `).join("")}
@@ -591,7 +620,7 @@ function imprimirFretes() {
                 <td><strong>${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
                 <td><strong>${c.litros.toFixed(3)} L</strong></td>
-                <td>—</td>
+                <td>${_taxaGrupoMoeda(c)}</td>
                 <td><strong>R$ ${c.frete.toFixed(2)}</strong></td>
             </tr>
             ${Object.entries(c.porPlacaInterna).map(([placa, det]) => `
@@ -599,7 +628,7 @@ function imprimirFretes() {
                     <td style="padding-left:16px">${escapeHtml(placa)}</td>
                     <td>${det.viagens}</td>
                     <td>${det.litros.toFixed(3)} L</td>
-                    <td>—</td>
+                    <td></td>
                     <td>${det.frete > 0 ? "R$ " + det.frete.toFixed(2) : "—"}</td>
                 </tr>
             `).join("")}
