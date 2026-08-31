@@ -18,7 +18,188 @@ function trocarAbaSistema(aba, btn) {
     document.querySelectorAll('.sistema-aba-conteudo').forEach(el => el.style.display = 'none');
     const conteudo = document.getElementById(`sistemaAba-${aba}`);
     if (conteudo) conteudo.style.display = 'block';
-    if (aba === 'backup') { atualizarInfoSistema(); carregarConfiguracoesTela(); }
+    if (aba === 'backup') {
+        atualizarInfoSistema();
+        carregarConfiguracoesTela();
+        // A migração é operação de supremo — some para os demais.
+        const secao = document.getElementById("secaoMigracaoEmpresa");
+        if (secao) secao.style.display = window._usuarioAtual?.role === "supremo" ? "block" : "none";
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MIGRAÇÃO — ISOLAMENTO POR EMPRESA
+
+   Reparte o documento único `dados/principal` em:
+
+     dados/compartilhado   cadastros e configuração
+     dados/lanc__{id}      lançamentos de cada empresa
+
+   Por que: regra de segurança avalia o documento inteiro. Enquanto tudo
+   morava junto, qualquer usuário autenticado lia os lançamentos de todas
+   as empresas — o filtro por empresa na tela era conveniência, não
+   barreira.
+
+   O `dados/principal` NÃO é apagado por esta função. Ele permanece como
+   rede de segurança; apagá-lo é passo manual, depois de dias estáveis.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Confere se todo lançamento aponta para uma empresa cadastrada.
+ * @returns {{ok: boolean, orfaos: Array}}
+ */
+function _conferirEmpresasDosLancamentos(lancamentos, empresas) {
+    const nomes = new Set(empresas.map(e => e.nome));
+    const orfaos = lancamentos.filter(l => !l.empresa || !nomes.has(l.empresa));
+    return { ok: orfaos.length === 0, orfaos };
+}
+
+/**
+ * Executa a migração. Só o supremo, e só a partir do layout antigo.
+ *
+ * A migração recusa se encontrar lançamento sem empresa válida: em vez de
+ * inventar um destino, ela lista o que está errado para correção manual.
+ * Todo lançamento pertence à empresa selecionada no momento em que foi
+ * criado, então órfão aqui significa dado inconsistente, não caso normal.
+ */
+async function migrarParaIsolamentoPorEmpresa() {
+    if (window._usuarioAtual?.role !== "supremo") {
+        return mostrarToast("Apenas o usuário supremo pode executar a migração.", "aviso", 5000);
+    }
+    if (!window._firestore) {
+        return mostrarToast("Sem conexão com a nuvem.", "erro", 5000);
+    }
+
+    const antigo = await window._firestore.firestoreCarregarDoc("principal");
+    if (!antigo) {
+        return mostrarToast("Não há dados no layout antigo — nada a migrar.", "info", 5000);
+    }
+
+    const lancamentos = antigo.lancamentos || [];
+    const empresas    = antigo.empresas    || [];
+
+    // ── Verificação ANTES de qualquer gravação ──
+    const conferencia = _conferirEmpresasDosLancamentos(lancamentos, empresas);
+    if (!conferencia.ok) {
+        const amostra = conferencia.orfaos.slice(0, 8)
+            .map(l => `• Nota ${l.numeroNota || "(sem número)"} — empresa: ${l.empresa || "(vazia)"}`)
+            .join("\n");
+        const resto = conferencia.orfaos.length > 8
+            ? `\n… e mais ${conferencia.orfaos.length - 8}.` : "";
+        await fmConfirm({
+            titulo: "Migração interrompida",
+            msg: `${conferencia.orfaos.length} lançamento(s) não apontam para uma empresa cadastrada. `
+               + `Corrija cada um antes de migrar — o destino dele depende da empresa.\n\n${amostra}${resto}`,
+            confirmTxt: "Entendi",
+            cancelTxt: "Fechar",
+            tipo: "aviso"
+        });
+        console.table(conferencia.orfaos.map(l => ({ nota: l.numeroNota, empresa: l.empresa, data: l.dataNota })));
+        return;
+    }
+
+    // ── Agrupamento ──
+    const porEmpresa = {};
+    empresas.forEach(e => { porEmpresa[e.id] = []; });
+    lancamentos.forEach(l => {
+        const id = empresas.find(e => e.nome === l.empresa).id;
+        porEmpresa[id].push(l);
+    });
+
+    const resumo = empresas
+        .map(e => `• ${e.nome}: ${porEmpresa[e.id].length} lançamento(s)`)
+        .join("\n");
+
+    if (!await fmConfirm({
+        titulo: "Migrar para isolamento por empresa?",
+        msg: `${lancamentos.length} lançamento(s) serão repartidos em ${empresas.length} documento(s):\n\n${resumo}\n\n`
+           + `Os cadastros vão para um documento compartilhado. O documento antigo NÃO será apagado.`,
+        confirmTxt: "Migrar",
+        tipo: "info"
+    })) return;
+
+    try {
+        // Cadastros primeiro: é ele que dá sentido aos ids dos demais.
+        await window._firestore.firestoreSalvarDoc("compartilhado", {
+            motoristas:        antigo.motoristas   || [],
+            veiculos:          antigo.veiculos     || [],
+            empresas:          empresas,
+            combustiveis:      antigo.combustiveis || [],
+            bases:             antigo.bases        || [],
+            conjuntosVeiculos: antigo.conjuntosVeiculos || [],
+            configRelatorio:   antigo.configRelatorio  || {}
+        });
+
+        for (const e of empresas) {
+            await window._firestore.firestoreSalvarDoc(
+                window._firestore.docLancamentosNome(e.id),
+                { lancamentos: porEmpresa[e.id] }
+            );
+        }
+
+        // Perfis passam a carregar os ids que as regras vão consultar.
+        const usuarios = await window._firestore.usuariosListar();
+        let perfisAtualizados = 0;
+        for (const u of usuarios) {
+            if (u.role === "supremo") continue;
+            const ids = (u.empresas || [])
+                .map(nome => empresas.find(e => e.nome === nome)?.id)
+                .filter(Boolean);
+            await window._firestore.usuarioSalvar(u.uid, { empresaIds: ids });
+            perfisAtualizados++;
+        }
+
+        await fmConfirm({
+            titulo: "Migração concluída",
+            msg: `${empresas.length} documento(s) de lançamentos criados e ${perfisAtualizados} perfil(is) atualizado(s).\n\n`
+               + `Próximo passo: publicar as regras por empresa. Recarregue a página para o app passar a usar o layout novo.`,
+            confirmTxt: "Recarregar agora",
+            cancelTxt: "Depois",
+            tipo: "info"
+        }) && window.location.reload();
+
+    } catch (e) {
+        console.error("[Migração]", e);
+        mostrarToast("Falha na migração: " + e.message + ". O documento antigo continua intacto.", "erro", 9000);
+    }
+}
+
+/**
+ * Confere se o layout novo bate com o antigo, sem gravar nada.
+ * Use depois da migração, antes de publicar as regras.
+ */
+async function conferirMigracao() {
+    if (!window._firestore) return mostrarToast("Sem conexão com a nuvem.", "erro", 4000);
+
+    const antigo = await window._firestore.firestoreCarregarDoc("principal");
+    if (!antigo) return mostrarToast("Documento antigo não existe mais.", "info", 5000);
+
+    const empresas = antigo.empresas || [];
+    const linhas = [];
+    let totalNovo = 0;
+
+    for (const e of empresas) {
+        const doc = await window._firestore
+            .firestoreCarregarDoc(window._firestore.docLancamentosNome(e.id))
+            .catch(() => null);
+        const n = (doc?.lancamentos || []).length;
+        totalNovo += n;
+        linhas.push(`• ${e.nome}: ${n}`);
+    }
+
+    const totalAntigo = (antigo.lancamentos || []).length;
+    const bate = totalAntigo === totalNovo;
+
+    await fmConfirm({
+        titulo: bate ? "Conferência bateu" : "DIVERGÊNCIA na conferência",
+        msg: `Documento antigo: ${totalAntigo} lançamento(s)\n`
+           + `Somando os novos: ${totalNovo}\n\n${linhas.join("\n")}\n\n`
+           + (bate ? "Pode seguir para a publicação das regras."
+                   : "NÃO publique as regras. Rode a migração novamente."),
+        confirmTxt: "Fechar",
+        cancelTxt: "Fechar",
+        tipo: bate ? "info" : "perigo"
+    });
 }
 
 /* ========== BACKUP ========== */

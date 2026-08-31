@@ -477,6 +477,18 @@
       <div id="infoSistema" class="info-sistema"></div>
       <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
     </div>
+    <div class="sistema-secao" id="secaoMigracaoEmpresa" style="display:none">
+      <h3>Isolamento por Empresa</h3>
+      <p class="dica" style="margin-bottom:12px">
+        Reparte os lançamentos em um documento por empresa, para que a regra de segurança
+        do servidor — e não a tela — decida quem enxerga o quê. O documento antigo não é
+        apagado. Rode a migração, confira o resultado e só então publique as regras novas.
+      </p>
+      <div class="sistema-acoes" style="flex-wrap:wrap;gap:10px">
+        <button class="btn-primario"   onclick="migrarParaIsolamentoPorEmpresa()">Migrar dados</button>
+        <button class="btn-secundario" onclick="conferirMigracao()">Conferir migração</button>
+      </div>
+    </div>
     <div class="sistema-secao zona-perigo">
       <h3>Zona de Perigo</h3>
       <p class="dica" style="color:var(--danger); margin-bottom:12px">As ações abaixo são irreversíveis. Faça um backup antes de continuar.</p>

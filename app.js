@@ -392,15 +392,29 @@ let db = JSON.parse(JSON.stringify(DB_PADRAO));
 
 // _salvandoDB é um contador: >0 significa que há um save em andamento.
 let _salvandoDB = 0;
-let _unsubscribeListener = null;
+// Um unsubscribe por documento escutado: "compartilhado" e cada "lanc__{id}".
+let _unsubs = {};
 let _pendentesSincronizacao = false;
 
-// Hash do último payload enviado ao Firestore — evita loop de echo do save.
-let _ultimoHashSalvo = null;
+// Hash do último payload que NÓS gravamos, por documento. O Firestore
+// devolve o snapshot logo após o setDoc; sem isso esse eco recarregaria a
+// memória e dispararia render em cadeia. Com N documentos, o token precisa
+// ser por documento — um eco de um doc não pode consumir o token de outro.
+let _hashPorDoc = {};
 
 // Timer do debounce — agrupa writes múltiplos em um único setDoc.
 let _timerDebounce = null;
 const _DEBOUNCE_MS = 600;
+
+// Nome do documento de cadastros compartilhados.
+const _NOME_COMPARTILHADO = "compartilhado";
+const _NOME_LEGADO        = "principal";
+
+// true quando os dados já estão repartidos por empresa; false enquanto o
+// banco ainda estiver no documento único `dados/principal`. Definido na
+// carga e consultado pelos listeners — inferir isso pela presença de uma
+// chave em _hashPorDoc funcionava, mas era frágil demais para o que decide.
+let _layoutNovo = false;
 
 // ========== GERADOR DE ID ÚNICO ==========
 /**
@@ -436,6 +450,81 @@ function _hashStr(str) {
  * Se o Firebase não estiver disponível, marca `_pendentesSincronizacao`
  * para tentar novamente quando a conexão for restabelecida.
  */
+/* ═══════════════════════════════════════════════════════════════════════
+   REPARTIÇÃO POR EMPRESA
+
+   Os lançamentos vivem em um documento por empresa (`dados/lanc__{id}`) e
+   os cadastros num documento comum (`dados/compartilhado`). Em memória o
+   `db` continua com a mesma forma de sempre — `db.lancamentos` é um array
+   único — só que contendo apenas as empresas que o usuário pode ver.
+
+   É isso que mantém dashboard, analítico, relatórios e fretes intocados:
+   eles seguem iterando `db.lancamentos` sem saber da repartição.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** Ids das empresas cujos lançamentos o usuário logado pode carregar. */
+function _empresaIdsPermitidos() {
+    const perfil = window._usuarioAtual;
+    const todas  = (db.empresas || []).map(e => e.id);
+    if (!perfil || perfil.role === "supremo") return todas;
+    const liberadas = perfil.empresaIds || [];
+    return todas.filter(id => liberadas.includes(id));
+}
+
+/**
+ * Id da empresa de um lançamento. O lançamento guarda o NOME da empresa;
+ * o documento é nomeado pelo id. Esta é a única ponte entre os dois.
+ */
+function _empresaIdDoLancamento(l) {
+    return (db.empresas || []).find(e => e.nome === l.empresa)?.id || null;
+}
+
+/** Nome do documento de lançamentos de uma empresa. */
+function _nomeDocLanc(empresaId) {
+    return window._firestore ? window._firestore.docLancamentosNome(empresaId)
+                             : "lanc__" + empresaId;
+}
+
+/**
+ * Reparte o `db` em um payload por documento.
+ *
+ * Só entram documentos das empresas permitidas: um usuário que carregou
+ * duas empresas não pode, ao salvar, apagar o documento de uma terceira
+ * que ele nunca leu.
+ */
+function _montarPayloads() {
+    const payloads = {};
+
+    payloads[_NOME_COMPARTILHADO] = {
+        motoristas:        db.motoristas,
+        veiculos:          db.veiculos,
+        empresas:          db.empresas,
+        combustiveis:      db.combustiveis,
+        bases:             db.bases,
+        conjuntosVeiculos: db.conjuntosVeiculos || [],
+        configRelatorio:   db.configRelatorio
+    };
+
+    const permitidos = _empresaIdsPermitidos();
+    permitidos.forEach(id => { payloads[_nomeDocLanc(id)] = { lancamentos: [] }; });
+
+    db.lancamentos.forEach(l => {
+        const id = _empresaIdDoLancamento(l);
+        if (!id || !permitidos.includes(id)) return;
+        payloads[_nomeDocLanc(id)].lancamentos.push(l);
+    });
+
+    return payloads;
+}
+
+/** Absorve o retorno de um documento de lançamentos na memória. */
+function _absorverLancamentos(empresaId, lista) {
+    const nomeEmpresa = (db.empresas || []).find(e => e.id === empresaId)?.nome;
+    if (!nomeEmpresa) return;
+    db.lancamentos = db.lancamentos.filter(l => l.empresa !== nomeEmpresa)
+                                   .concat(lista || []);
+}
+
 function salvarDB() {
     try { localStorage.setItem("db_backup", JSON.stringify(db)); } catch(_) {}
 
@@ -461,21 +550,46 @@ function salvarDB() {
  * Em caso de falha, agenda retry automático em 30s via `_pendentesSincronizacao`.
  * Não cancela nem recria o listener — ele continua ativo durante o save.
  */
+/**
+ * Grava no Firestore apenas os documentos que mudaram.
+ *
+ * Antes era um `setDoc` do `db` inteiro. Agora o `db` é repartido e cada
+ * documento só é enviado se seu conteúdo diferir do último que gravamos —
+ * editar um lançamento da Empresa A não reescreve o documento da B.
+ *
+ * Em caso de falha, agenda retry automático em 30s via `_pendentesSincronizacao`.
+ */
 function _executarSave() {
-    // NÃO cancela o listener aqui. O listener já ignora snapshots
-    // enquanto _salvandoDB > 0, então não é necessário desligá-lo
-    // e religar — o que gerava listeners orphans acumulados.
-
     _salvandoDB++;
-    const payload = JSON.parse(JSON.stringify(db));
-    _ultimoHashSalvo = _hashStr(JSON.stringify(payload));
 
-    window._firestore.firestoreSalvar(payload)
+    const payloads = _layoutNovo
+        ? _montarPayloads()
+        : { [_NOME_LEGADO]: JSON.parse(JSON.stringify(db)) };
+    const mudaram  = Object.keys(payloads).filter(nome =>
+        _hashStr(JSON.stringify(payloads[nome])) !== _hashPorDoc[nome]);
+
+    if (mudaram.length === 0) {
+        _salvandoDB = Math.max(0, _salvandoDB - 1);
+        _pendentesSincronizacao = false;
+        _setStatusConexao("sincronizado");
+        return;
+    }
+
+    // O hash é marcado ANTES da gravação: o eco do snapshot pode chegar
+    // antes da promise resolver, e sem o token ele recarregaria a memória.
+    // Se a gravação falhar, o token é descartado para o retry reenviar.
+    const gravacoes = mudaram.map(nome => {
+        const payload = JSON.parse(JSON.stringify(payloads[nome]));
+        _hashPorDoc[nome] = _hashStr(JSON.stringify(payload));
+        return window._firestore.firestoreSalvarDoc(nome, payload)
+            .catch(err => { delete _hashPorDoc[nome]; throw err; });
+    });
+
+    Promise.all(gravacoes)
         .then(() => {
             _salvandoDB = Math.max(0, _salvandoDB - 1);
             _pendentesSincronizacao = false;
             _setStatusConexao("sincronizado");
-            // Oculta completamente após 3s — display:none evita cliques invisíveis na área
             setTimeout(() => {
                 const el = document.getElementById("_statusConexao");
                 if (el) el.style.display = "none";
@@ -485,12 +599,7 @@ function _executarSave() {
             _salvandoDB = Math.max(0, _salvandoDB - 1);
             _pendentesSincronizacao = true;
             _setStatusConexao("erro");
-            // Reagenda tentativa automática em 30s
-            setTimeout(() => {
-                if (_pendentesSincronizacao) {
-                    salvarDB();
-                }
-            }, 30000);
+            setTimeout(() => { if (_pendentesSincronizacao) salvarDB(); }, 30000);
             mostrarToast("Erro ao salvar na nuvem. Tentando novamente em 30s…", "erro", 6000);
         });
 }
@@ -520,6 +629,17 @@ function sincronizarAgora() {
  *
  * @returns {Promise<void>}
  */
+/**
+ * Carrega o banco do Firestore e liga os listeners de tempo real.
+ *
+ * Ordem obrigatória: o documento compartilhado vem primeiro porque é ele
+ * que traz `db.empresas` — sem a lista de empresas não há como resolver
+ * quais documentos de lançamento o usuário pode ler.
+ *
+ * Se `dados/compartilhado` não existir, o banco ainda está no layout
+ * antigo (documento único `dados/principal`); nesse caso ele é carregado
+ * como sempre foi, e a tela de Sistema oferece a migração.
+ */
 async function carregarDB() {
     _mostrarLoading(true);
     try {
@@ -530,24 +650,33 @@ async function carregarDB() {
             return;
         }
 
-        const dados = await window._firestore.firestoreCarregar();
+        const compartilhado = await window._firestore.firestoreCarregarDoc(_NOME_COMPARTILHADO);
 
-        if (dados) {
-            db = _mesclarComPadrao(dados);
-            try { localStorage.setItem("db_backup", JSON.stringify(db)); } catch(_) {}
+        if (compartilhado) {
+            _layoutNovo = true;
+            db = _mesclarComPadrao(Object.assign({}, compartilhado, { lancamentos: [] }));
+
+            const ids = _empresaIdsPermitidos();
+            const docs = await Promise.all(ids.map(id =>
+                window._firestore.firestoreCarregarDoc(_nomeDocLanc(id)).catch(() => null)));
+
+            db.lancamentos = docs.flatMap(d => (d && d.lancamentos) || []);
             _pendentesSincronizacao = false;
         } else {
-            const local = localStorage.getItem("db_backup") || localStorage.getItem("db");
-            if (local) {
-                db = _mesclarComPadrao(JSON.parse(local));
-                await window._firestore.firestoreSalvar(JSON.parse(JSON.stringify(db)));
-                mostrarToast("Dados locais migrados para a nuvem com sucesso!", "sucesso", 5000);
+            // ── Layout antigo, ainda não migrado ──
+            _layoutNovo = false;
+            const dados = await window._firestore.firestoreCarregar();
+            if (dados) {
+                db = _mesclarComPadrao(dados);
                 _pendentesSincronizacao = false;
             } else {
+                const local = localStorage.getItem("db_backup") || localStorage.getItem("db");
+                if (local) db = _mesclarComPadrao(JSON.parse(local));
                 _pendentesSincronizacao = false;
             }
         }
 
+        try { localStorage.setItem("db_backup", JSON.stringify(db)); } catch(_) {}
         _ligarListenerTempoReal();
 
     } catch(e) {
@@ -563,7 +692,6 @@ async function carregarDB() {
         migrarDados();
         atualizarListas();
         if (empresaFiltroGlobal) _aplicarEmpresaAtiva(empresaFiltroGlobal);
-        // Backup automático aqui — após dados carregados, nunca com db vazio
         verificarBackupAutomatico();
         setTimeout(() => {
             mostrarTela("dashboard");
@@ -574,81 +702,111 @@ async function carregarDB() {
 
 // Flag que previne criação de múltiplos listeners simultâneos.
 // _ligarListenerTempoReal pode ser chamada de vários pontos; sem essa
-// proteção, chamadas em rápida sucessão enquanto _unsubscribeListener
-// ainda é null gerariam listeners orphans que nunca seriam cancelados,
+// proteção, chamadas em rápida sucessão enquanto `_unsubs` ainda está
+// vazio gerariam listeners orphans que nunca seriam cancelados,
 // acumulando onSnapshot ativos e causando loop de writes + vazamento de RAM.
 let _listenerCriando = false;
 
 /**
- * Registra o listener `onSnapshot` para sincronização em tempo real com o Firestore.
+ * Registra os listeners `onSnapshot` de sincronização em tempo real: um no
+ * documento compartilhado e um em cada documento de lançamentos permitido.
+ * No layout antigo, um único listener em `dados/principal`.
  *
- * Cancela qualquer listener anterior antes de criar um novo (garante que nunca
- * existam dois `onSnapshot` simultâneos no mesmo documento).
+ * Cancela todos os listeners anteriores antes de criar novos (garante que
+ * nunca existam dois `onSnapshot` simultâneos no mesmo documento).
  *
  * A flag `_listenerCriando` previne reentrada — se duas chamadas chegarem
- * antes do listener ser registrado, apenas a primeira cria o listener.
+ * antes dos listeners serem registrados, apenas a primeira os cria.
  *
- * O handler de snapshot ignora atualizações enquanto `_salvandoDB > 0`
- * (proteção anti-regressão durante saves) e descarta o echo imediato do
- * próprio save comparando o hash do payload (`_ultimoHashSalvo`).
+ * O handler ignora atualizações enquanto `_salvandoDB > 0` (proteção
+ * anti-regressão durante saves) e descarta o echo do próprio save
+ * comparando o hash por documento (`_hashPorDoc`).
  *
  * O handler de erro religa automaticamente após 2s em caso de
  * `permission-denied` transitório (ocorre nos primeiros instantes após login).
  */
 function _ligarListenerTempoReal() {
-    // Cancela qualquer listener anterior antes de criar um novo.
-    if (_unsubscribeListener) {
-        _unsubscribeListener();
-        _unsubscribeListener = null;
-    }
+    Object.values(_unsubs).forEach(fn => { try { fn(); } catch(_) {} });
+    _unsubs = {};
 
-    // Reentrada: se já está no processo de criar (ex: duas chamadas sobrepostas),
-    // a segunda é ignorada — o primeiro listener já vai ser registrado.
     if (_listenerCriando) return;
     _listenerCriando = true;
 
-    _unsubscribeListener = window._firestore.firestoreEscutar((dados) => {
-        // Ignora enquanto há um save em andamento (evita sobrescrever dados não salvos).
-        if (_salvandoDB > 0) return;
-
-        // Ignora o echo imediato do próprio save comparando o hash.
-        // O Firestore devolve o snapshot logo após o setDoc — sem isso,
-        // esse evento causaria um novo render desnecessário (e em cadeia).
-        if (_ultimoHashSalvo !== null) {
-            const hashRecebido = _hashStr(JSON.stringify(dados));
-            if (hashRecebido === _ultimoHashSalvo) {
-                _ultimoHashSalvo = null; // Consome o token — próximos eventos passam
-                return;
-            }
-            _ultimoHashSalvo = null;
-        }
-
-        db = _mesclarComPadrao(dados);
-        _pendentesSincronizacao = false;
-
-        const telaAtual = document.querySelector(".tela[style*='block']");
-        if (telaAtual) {
-            const id = telaAtual.id;
-            if (id === "dashboard")  carregarDashboard();
-            if (id === "relatorios") carregarRelatorio();
-            if (id === "analitico")  { if (typeof carregarAnalitico === 'function') carregarAnalitico(); }
-            if (id === "fretes")     carregarFretes();
-            if (["motoristas","veiculos","empresas","combustiveis","cadastros"].includes(id)) atualizarListas();
-        }
-    }, (erro) => {
-        // Erro de permissão transitório — acontece quando o token do Auth ainda
-        // não propagou para o Firestore logo após o login. Religa após 2s.
+    // Layout antigo: um listener no documento único, como antes.
+    if (!_layoutNovo) {
+        _unsubs[_NOME_LEGADO] = window._firestore.firestoreEscutar(
+            dados => _aoReceberDoc(_NOME_LEGADO, dados),
+            _aoFalharListener);
         _listenerCriando = false;
-        _unsubscribeListener = null;
-        if (erro?.code === 'permission-denied' || erro?.code === 'resource-exhausted') {
-            setTimeout(_ligarListenerTempoReal, 2000);
-        } else {
-            console.error("[Firestore] Erro listener:", erro);
-            _setStatusConexao("erro");
-        }
+        return;
+    }
+
+    _unsubs[_NOME_COMPARTILHADO] = window._firestore.firestoreEscutarDoc(
+        _NOME_COMPARTILHADO,
+        dados => _aoReceberDoc(_NOME_COMPARTILHADO, dados),
+        _aoFalharListener);
+
+    _empresaIdsPermitidos().forEach(id => {
+        const nome = _nomeDocLanc(id);
+        _unsubs[nome] = window._firestore.firestoreEscutarDoc(
+            nome,
+            dados => _aoReceberDoc(nome, dados, id),
+            _aoFalharListener);
     });
 
     _listenerCriando = false;
+}
+
+/**
+ * Trata a chegada de um snapshot, seja do documento compartilhado, de um
+ * documento de lançamentos ou do documento único antigo.
+ */
+function _aoReceberDoc(nome, dados, empresaId) {
+    if (_salvandoDB > 0) return;
+
+    // Eco do nosso próprio save: consome o token e ignora.
+    if (_hashPorDoc[nome]) {
+        if (_hashStr(JSON.stringify(dados)) === _hashPorDoc[nome]) {
+            _hashPorDoc[nome] = null;
+            return;
+        }
+        _hashPorDoc[nome] = null;
+    }
+
+    if (nome === _NOME_LEGADO) {
+        db = _mesclarComPadrao(dados);
+    } else if (nome === _NOME_COMPARTILHADO) {
+        const lancamentos = db.lancamentos;
+        db = _mesclarComPadrao(Object.assign({}, dados, { lancamentos }));
+    } else {
+        _absorverLancamentos(empresaId, dados.lancamentos);
+    }
+
+    _pendentesSincronizacao = false;
+    _rerenderTelaAtual();
+}
+
+function _aoFalharListener(erro) {
+    _listenerCriando = false;
+    // Permissão negada logo após o login é transitório: o token do Auth
+    // ainda não propagou para o Firestore. Religa tudo após 2s.
+    if (erro?.code === 'permission-denied' || erro?.code === 'resource-exhausted') {
+        setTimeout(_ligarListenerTempoReal, 2000);
+    } else {
+        console.error("[Firestore] Erro listener:", erro);
+        _setStatusConexao("erro");
+    }
+}
+
+function _rerenderTelaAtual() {
+    const telaAtual = document.querySelector(".tela[style*='block']");
+    if (!telaAtual) return;
+    const id = telaAtual.id;
+    if (id === "dashboard")  carregarDashboard();
+    if (id === "relatorios") carregarRelatorio();
+    if (id === "analitico")  { if (typeof carregarAnalitico === 'function') carregarAnalitico(); }
+    if (id === "fretes")     carregarFretes();
+    if (["motoristas","veiculos","empresas","combustiveis","cadastros"].includes(id)) atualizarListas();
 }
 
 /**
@@ -968,7 +1126,8 @@ async function restaurarBackupAutomatico(chave) {
     if (!dados) return mostrarToast("Backup não encontrado.", "erro", 4000);
     if (!await fmConfirm({ titulo: "Restaurar backup?", msg: `Data: ${chave.replace("backupAuto_","")}\n\nOs dados atuais serão substituídos por esta versão.`, confirmTxt: "Restaurar", tipo: "perigo" })) return;
     try {
-        if (_unsubscribeListener) { _unsubscribeListener(); _unsubscribeListener = null; }
+        Object.values(_unsubs).forEach(fn => { try { fn(); } catch(_) {} });
+        _unsubs = {};
         db = _mesclarComPadrao(JSON.parse(dados));
         salvarDB();
         migrarDados();

@@ -3,20 +3,26 @@ rules_version = '2';
 // =============================================================================
 //  Fuel Mind — regras do Firestore
 //
-//  LIMITE ESTRUTURAL IMPORTANTE
-//  Todos os dados operacionais (lançamentos, cadastros, taxas) vivem em UM
-//  único documento: dados/principal. Regra de segurança avalia o documento
-//  inteiro — não campo a campo, nem elemento a elemento de um array. Ou seja:
-//  quem pode ler dados/principal lê os lançamentos de TODAS as empresas.
+//  ORGANIZAÇÃO DOS DADOS
+//    dados/compartilhado   cadastros e configuração — todo usuário ativo lê
+//    dados/lanc__{id}      lançamentos de UMA empresa, pelo id dela
+//    dados/principal       layout antigo, monolítico — só supremo, para
+//                          migração e rollback
 //
-//  O filtro por empresa que existe hoje no app (empresaFiltroGlobal,
-//  _empresasGerenciaveis) é conveniência de interface, NÃO isolamento.
-//  Para isolar de verdade seria preciso quebrar o documento por empresa
-//  (ex.: dados/{empresaId}) e então restringir por request.auth.
+//  O isolamento por empresa acontece no nome do documento: a regra libera
+//  dados/lanc__{id} apenas para quem tem aquele id em empresaIds[] no
+//  próprio perfil. Antes disso tudo vivia em dados/principal, e como regra
+//  avalia o documento inteiro, qualquer usuário lia os lançamentos de
+//  todas as empresas.
 //
-//  O que estas regras garantem hoje:
+//  O perfil guarda empresas[] com NOMES, que é o que a interface exibe, e
+//  empresaIds[] com os IDS, que é o que estas regras consultam. Os dois
+//  existem para que renomear uma empresa não invalide permissão nenhuma.
+//
+//  O que estas regras garantem:
 //   - só usuário autenticado E ativo lê ou grava os dados;
-//   - a coleção usuarios não é mais legível anonimamente;
+//   - cada usuário lê apenas os lançamentos das empresas do seu perfil;
+//   - a coleção usuarios não é legível anonimamente;
 //   - ninguém promove o próprio papel nem se dá acesso a outras empresas;
 //   - o índice público expõe apenas o e-mail necessário para o login por @.
 //
@@ -70,17 +76,42 @@ service cloud.firestore {
       return dados.get('role', '');
     }
 
+    // Acesso aos lançamentos de uma empresa: supremo vê todas; os demais,
+    // apenas as que estiverem em empresaIds[] do próprio perfil.
+    function podeNaEmpresa(empresaId) {
+      return ehSupremo()
+        || perfil().get('empresaIds', []).hasAny([empresaId]);
+    }
+
     // Campos que só quem gerencia usuários pode alterar.
     function campoSensivelIntacto(antes, depois) {
       return antes.get('role', '') == depois.get('role', '')
         && antes.get('ativo', true) == depois.get('ativo', true)
-        && antes.get('empresas', []) == depois.get('empresas', []);
+        && antes.get('empresas', []) == depois.get('empresas', [])
+        && antes.get('empresaIds', []) == depois.get('empresaIds', []);
     }
 
-    // ── Dados operacionais ───────────────────────────────────────────────
-    // Documento único com toda a base. Ver o limite descrito no topo.
-    match /dados/{documento} {
+    // ── Cadastros compartilhados ─────────────────────────────────────────
+    // Motoristas, veículos, empresas, combustíveis, bases e conjuntos não
+    // têm vínculo com empresa — servem todas. Todo usuário ativo lê e grava.
+    match /dados/compartilhado {
       allow read, write: if ativo();
+    }
+
+    // ── Layout antigo ────────────────────────────────────────────────────
+    // Mantido durante a transição como rede de segurança. Restrito ao
+    // supremo: é ele quem roda a migração e quem apaga o documento depois.
+    match /dados/principal {
+      allow read, write: if ehSupremo();
+    }
+
+    // ── Lançamentos, um documento por empresa ────────────────────────────
+    // `documento` chega como "lanc__{empresaId}". A regra recorta o id
+    // depois do prefixo e confere contra empresaIds[] do perfil.
+    match /dados/{documento} {
+      allow read, write: if ativo()
+                         && documento.matches('lanc__.*')
+                         && podeNaEmpresa(documento.split('lanc__')[1]);
     }
 
     // ── Perfis de usuário ────────────────────────────────────────────────

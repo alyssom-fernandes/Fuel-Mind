@@ -16,6 +16,22 @@ const ROLES = {
 };
 
 /**
+ * Converte nomes de empresa nos ids correspondentes.
+ *
+ * O perfil guarda os dois: `empresas` com nomes, que é o que a interface
+ * exibe e o que os filtros comparam, e `empresaIds` com os ids, que é o
+ * que as regras de segurança usam para liberar `dados/lanc__{id}`.
+ *
+ * Manter os dois evita reescrever os 33 pontos que comparam empresa por
+ * nome, e evita que renomear uma empresa invalide permissões.
+ */
+function _idsDasEmpresas(nomes) {
+    return (nomes || [])
+        .map(nome => db.empresas.find(e => e.nome === nome)?.id)
+        .filter(Boolean);
+}
+
+/**
  * Mantém o índice público `usernames/{username}` em sincronia com o perfil.
  * Remove a entrada antiga quando o username muda ou é apagado, para não
  * deixar apontamento órfão permitindo login por um @ que não existe mais.
@@ -490,6 +506,7 @@ async function confirmarNovoUsuario() {
 
         await window._firestore.usuarioSalvar(uid, {
             nome, email, role, empresas,
+            empresaIds: _idsDasEmpresas(empresas),
             username: username || null,
             ativo: true,
             criadoEm: new Date().toISOString(),
@@ -553,7 +570,11 @@ async function confirmarEditarUsuario(uid) {
         }
 
         const usernameAntigo = _usuariosCache.find(u => u.uid === uid)?.username || null;
-        await window._firestore.usuarioSalvar(uid, { nome, role, empresas, username: username || null });
+        await window._firestore.usuarioSalvar(uid, {
+            nome, role, empresas,
+            empresaIds: _idsDasEmpresas(empresas),
+            username: username || null
+        });
         await _sincronizarIndiceUsername(usernameAntigo, username, alvo?.email, uid);
         fecharUsuarioModal();
         mostrarToast("Usuário atualizado.", "sucesso");

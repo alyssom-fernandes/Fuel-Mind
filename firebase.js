@@ -45,7 +45,33 @@ const firestore = getFirestore(app);
 const storage   = getStorage(app);
 const auth      = getAuth(app);
 
-const DB_REF       = doc(firestore, "dados", "principal");
+/* ─── DOCUMENTOS DE DADOS ──────────────────────────────────────────────
+   Os dados operacionais moram na coleção `dados`, repartidos assim:
+
+     dados/compartilhado   cadastros e configuração — visíveis a todos
+     dados/lanc__{id}      lançamentos de UMA empresa, pelo id dela
+     dados/principal       layout antigo, monolítico (só migração/rollback)
+
+   A separação existe porque regra de segurança avalia o documento
+   inteiro: enquanto tudo morava junto, quem podia ler os próprios
+   lançamentos lia os de todas as empresas.
+
+   O nome do documento usa o ID da empresa, nunca o nome: renomear uma
+   empresa propaga o nome novo para os lançamentos, e se o documento
+   fosse nomeado pelo nome seria preciso move-lo e refazer permissões a
+   cada renomeação.
+   ─────────────────────────────────────────────────────────────────────*/
+const DOC_COMPARTILHADO = "compartilhado";
+const DOC_LEGADO        = "principal";
+
+/** Nome do documento de lançamentos de uma empresa. */
+function docLancamentosNome(empresaId) {
+    return "lanc__" + String(empresaId);
+}
+
+const _docDados = (nome) => doc(firestore, "dados", nome);
+
+const DB_REF = _docDados(DOC_LEGADO);
 const USUARIOS_COL = collection(firestore, "usuarios");
 const USERNAMES_COL = collection(firestore, "usernames");
 
@@ -90,6 +116,44 @@ function firestoreEscutar(callback, onErro) {
         if (typeof onErro === 'function') onErro(e);
         else console.error("[Firestore] Erro listener:", e);
     });
+}
+
+/* ─── ACESSO POR DOCUMENTO ─── */
+
+/**
+ * Lê um documento da coleção `dados`.
+ * @param {string} nome - "compartilhado", "lanc__{id}" ou "principal"
+ * @returns {Promise<Object|null>} Dados, ou `null` se não existir
+ */
+async function firestoreCarregarDoc(nome) {
+    const snap = await getDoc(_docDados(nome));
+    return snap.exists() ? snap.data() : null;
+}
+
+/**
+ * Sobrescreve um documento da coleção `dados`.
+ * Lança exceção em caso de falha, para o caller decidir o retry.
+ */
+async function firestoreSalvarDoc(nome, dados) {
+    await setDoc(_docDados(nome), dados);
+}
+
+/**
+ * Listener de tempo real em um documento da coleção `dados`.
+ * @returns {function} unsubscribe
+ */
+function firestoreEscutarDoc(nome, callback, onErro) {
+    return onSnapshot(_docDados(nome), snap => {
+        if (snap.exists()) callback(snap.data());
+    }, e => {
+        if (typeof onErro === 'function') onErro(e);
+        else console.error("[Firestore] Erro listener em " + nome + ":", e);
+    });
+}
+
+/** Remove um documento da coleção `dados` (usado no corte do layout antigo). */
+async function firestoreExcluirDoc(nome) {
+    await deleteDoc(_docDados(nome));
 }
 
 /* ─── STORAGE (Firebase Storage) ─── */
@@ -328,6 +392,8 @@ function authUsuarioAtual() {
 // Exporta tudo para uso global
 window._firestore = {
     firestoreCarregar, firestoreSalvar, firestoreEscutar,
+    firestoreCarregarDoc, firestoreSalvarDoc, firestoreEscutarDoc, firestoreExcluirDoc,
+    docLancamentosNome, DOC_COMPARTILHADO, DOC_LEGADO,
     storageUploadAnexo, storageExcluirAnexo,
     storageUploadLogo, storageExcluirLogo,
     usuarioBuscar, usuarioSalvar, usuariosListar, usuarioExcluirFirestore,
