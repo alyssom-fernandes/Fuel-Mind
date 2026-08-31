@@ -29,6 +29,14 @@
         </div>
         <button id="btnLogin" class="btn-primario" onclick="fazerLogin()" style="width:100%;padding:12px;font-size:1rem;">Entrar</button>
         <p id="loginErro" style="color:var(--danger);font-size:0.82rem;margin-top:12px;display:none;"></p>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+          <button class="btn-secundario" onclick="abrirModoDemo()" style="width:100%;padding:10px;font-size:0.88rem;">
+            Ver demonstração
+          </button>
+          <p style="color:var(--text-muted);font-size:0.72rem;margin-top:8px;line-height:1.4">
+            Dados fictícios, sem login. Nada é gravado na nuvem.
+          </p>
+        </div>
     </div>
 </div>
 
@@ -784,6 +792,20 @@
 </div>
 
 <!-- MODAL DE EDIÇÃO -->
+<div id="demoOverlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModoDemo()">
+  <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+    <h3 style="margin-bottom:4px">Entrar na demonstração</h3>
+    <p class="dica" style="margin-bottom:16px">
+      Escolha um perfil. Cada um enxerga um conjunto diferente de empresas —
+      é assim que o controle de acesso do sistema funciona.
+    </p>
+    <div id="demoListaUsuarios" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="modal-acoes" style="margin-top:18px">
+      <button class="btn-cancelar" onclick="fecharModoDemo()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalOverlay" class="modal-overlay" style="display:none" onclick="fecharModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 id="modalTitulo">Editar</h3>
@@ -846,6 +868,7 @@
 <script src="importacao.js"></script>
 <script src="usuarios.js"></script>
 <script src="ui.js"></script>
+<script src="demo.js"></script>
 <script>
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {

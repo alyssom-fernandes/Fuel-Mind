@@ -526,6 +526,13 @@ function _absorverLancamentos(empresaId, lista) {
 }
 
 function salvarDB() {
+    // Modo demonstração: nada sai da máquina. Esta é a trava — se ela
+    // falhar, dados fictícios acabam na base real. Vem antes de tudo.
+    if (typeof demoAtivo === 'function' && demoAtivo()) {
+        demoSalvar();
+        return;
+    }
+
     try { localStorage.setItem("db_backup", JSON.stringify(db)); } catch(_) {}
 
     if (!window._firestore) {
@@ -641,6 +648,9 @@ function sincronizarAgora() {
  * como sempre foi, e a tela de Sistema oferece a migração.
  */
 async function carregarDB() {
+    // Em demo os dados já foram postos em memória por entrarModoDemo().
+    if (typeof demoAtivo === 'function' && demoAtivo()) return;
+
     _mostrarLoading(true);
     try {
         if (!window._firestore) {
