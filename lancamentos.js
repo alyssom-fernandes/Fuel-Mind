@@ -627,7 +627,7 @@ function limparFormulario() {
  * Remove os anexos do Firebase Storage antes de excluir o registro do Firestore.
  *
  * @param {string} id                          - ID do lançamento
- * @param {'relatorio'|'historico'} [contexto='relatorio'] - Tela de origem (para rerenderizar após exclusão)
+ * @param {'relatorio'} [contexto='relatorio'] - Tela de origem (para rerenderizar após exclusão)
  * @returns {Promise<void>}
  */
 async function excluirLancamento(id, contexto = 'relatorio') {
@@ -644,6 +644,5 @@ async function excluirLancamento(id, contexto = 'relatorio') {
 
     db.lancamentos = db.lancamentos.filter(x => x.id !== id);
     salvarDB();
-    if (contexto === 'relatorio') recarregarRelatorioSemZerarFiltros();
-    else carregarHistorico();
+    recarregarRelatorioSemZerarFiltros();
 }

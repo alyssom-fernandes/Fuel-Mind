@@ -10,7 +10,6 @@
 
 // ========== VARIÁVEIS GLOBAIS ==========
 let dadosRelatorioAtual = [];
-let dadosHistoricoAtual = [];
 
 /* `_litrosItem()` — critério único de litros — vive em utils.js, para que
    Dashboard, Analítico e Relatórios compartilhem exatamente a mesma regra. */
@@ -18,7 +17,6 @@ let dadosHistoricoAtual = [];
 // Paginação
 const ITENS_POR_PAGINA = 50;
 let paginaRelatorio = 1;
-let paginaHistorico = 1;
 
 // Ordenação por clique nos cabeçalhos: { campo, dir }
 // campo: 'dataNota' | 'dataDesc' | 'litros' | 'total'
@@ -227,103 +225,6 @@ function limparFiltros(contexto) {
             if (el) el.value = "";
         });
         carregarRelatorio();
-    } else if (contexto === "historico") {
-        ["historicoDataInicio","historicoDataFim","historicoMotorista","historicoPlaca","historicoBusca"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = "";
-        });
-        dadosHistoricoAtual = [];
-        document.getElementById("tabelaHistorico").innerHTML =
-            `<tr><td colspan="9" class="td-vazio">Selecione um motorista ou placa para filtrar.</td></tr>`;
-        document.getElementById("resumoHistorico").style.display = "none";
-        const barra = document.getElementById("barraExportacaoHistorico");
-        if (barra) barra.style.display = "none";
-    }
-}
-
-/*=================================================
-  HISTÓRICO
-=================================================*/
-function preencherSelectsHistorico() {
-    preencherSelect("historicoMotorista",
-        db.motoristas.map(m => ({ valor: m.nome, texto: m.nome + (m.ativo ? "" : " (inativo)") })),
-        "Todos os motoristas"
-    );
-    preencherSelect("historicoPlaca",
-        db.veiculos.map(v => ({ valor: v.nome, texto: v.nome + (v.ativo ? "" : " (inativo)") })),
-        "Todas as placas"
-    );
-}
-
-function carregarHistorico() {
-    paginaHistorico = 1;
-    const motorista = document.getElementById("historicoMotorista")?.value;
-    const placa     = document.getElementById("historicoPlaca")?.value;
-    if (!motorista && !placa) {
-        document.getElementById("tabelaHistorico").innerHTML =
-            `<tr><td colspan="9" class="td-vazio">Selecione um motorista ou placa para filtrar.</td></tr>`;
-        document.getElementById("resumoHistorico").style.display = "none";
-        const barra = document.getElementById("barraExportacaoHistorico");
-        if (barra) barra.style.display = "none";
-        return;
-    }
-    _aplicarFiltroHistorico();
-}
-
-function _aplicarFiltroHistorico() {
-    const motorista  = document.getElementById("historicoMotorista").value;
-    const placa      = document.getElementById("historicoPlaca").value;
-    const dataInicio = document.getElementById("historicoDataInicio").value;
-    const dataFim    = document.getElementById("historicoDataFim").value;
-    const busca      = document.getElementById("historicoBusca").value.trim().toLowerCase();
-
-    if (!motorista && !placa) {
-        document.getElementById("tabelaHistorico").innerHTML =
-            `<tr><td colspan="9" class="td-vazio">Selecione um motorista ou placa para filtrar.</td></tr>`;
-        document.getElementById("resumoHistorico").style.display = "none";
-        const barra = document.getElementById("barraExportacaoHistorico");
-        if (barra) barra.style.display = "none";
-        return;
-    }
-
-    dadosHistoricoAtual = db.lancamentos.filter(l => {
-        if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-        if (motorista  && l.motorista !== motorista) return false;
-        if (placa      && l.placa !== placa)         return false;
-
-        // Mesma lógica do Relatório: passa se QUALQUER uma das duas datas
-        // (nota ou descarga) estiver dentro do intervalo selecionado.
-        const dataRef = l.dataDescarga || l.dataNota || "";
-        const dNota   = l.dataNota || "";
-        const dentroDoIntervalo = (d) => (!dataInicio || d >= dataInicio) && (!dataFim || d <= dataFim);
-        if ((dataInicio || dataFim) && !dentroDoIntervalo(dataRef) && !dentroDoIntervalo(dNota)) return false;
-
-        if (busca      && !JSON.stringify(l).toLowerCase().includes(busca)) return false;
-        return true;
-    });
-
-    dadosHistoricoAtual.sort((a, b) => {
-        const va = a.dataDescarga || a.dataNota;
-        const vb = b.dataDescarga || b.dataNota;
-        return vb.localeCompare(va);
-    });
-
-    renderTabelaLancamentos("tabelaHistorico", dadosHistoricoAtual, paginaHistorico, "historico");
-
-    const totalGeral = dadosHistoricoAtual.reduce((soma, l) => soma + l.total, 0);
-    const resumo = document.getElementById("resumoHistorico");
-    const barra  = document.getElementById("barraExportacaoHistorico");
-
-    if (dadosHistoricoAtual.length === 0) {
-        resumo.style.display = "none";
-        if (barra) barra.style.display = "none";
-    } else {
-        resumo.style.display = "block";
-        resumo.innerHTML = `
-            <strong>${dadosHistoricoAtual.length}</strong> lançamento(s) &nbsp;|&nbsp;
-            Total: <strong>${fmtR(totalGeral)}</strong>
-        `;
-        if (barra) barra.style.display = "flex";
     }
 }
 
@@ -339,7 +240,7 @@ function _aplicarFiltroHistorico() {
  * @param {string} idTabela  - ID do `<tbody>` onde renderizar as linhas
  * @param {Array}  dados     - Array de lançamentos já filtrados e ordenados
  * @param {number} [pagina=1] - Página atual (1-indexed)
- * @param {'relatorio'|'historico'} [contexto='relatorio']
+ * @param {'relatorio'} [contexto='relatorio']
  */
 function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relatorio") {
     const tbody = document.getElementById(idTabela);
@@ -408,11 +309,7 @@ function toggleDetalheInline(id, contexto) {
     const jaAberto = _detalheInlineAberto.id === id && _detalheInlineAberto.contexto === contexto;
     _detalheInlineAberto = jaAberto ? { contexto: null, id: null } : { contexto, id };
 
-    if (contexto === "relatorio") {
-        renderTabelaLancamentos("tabelaRelatorio", dadosRelatorioAtual, paginaRelatorio, "relatorio");
-    } else {
-        renderTabelaLancamentos("tabelaHistorico", dadosHistoricoAtual, paginaHistorico, "historico");
-    }
+    renderTabelaLancamentos("tabelaRelatorio", dadosRelatorioAtual, paginaRelatorio, "relatorio");
 
     if (!jaAberto) {
         setTimeout(() => {
@@ -551,14 +448,9 @@ function _irParaPagina(pagina, contexto) {
     if (_detalheInlineAberto.contexto === contexto) {
         _detalheInlineAberto = { contexto: null, id: null };
     }
-    if (contexto === "relatorio") {
-        paginaRelatorio = pagina;
-        renderTabelaLancamentos("tabelaRelatorio", dadosRelatorioAtual, paginaRelatorio, "relatorio");
-    } else if (contexto === "historico") {
-        paginaHistorico = pagina;
-        renderTabelaLancamentos("tabelaHistorico", dadosHistoricoAtual, paginaHistorico, "historico");
-    }
-    document.getElementById(contexto === "relatorio" ? "relatorios" : "historico")
+    paginaRelatorio = pagina;
+    renderTabelaLancamentos("tabelaRelatorio", dadosRelatorioAtual, paginaRelatorio, "relatorio");
+    document.getElementById("relatorios")
         .querySelector(".tabela-container")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -571,10 +463,10 @@ function _irParaPagina(pagina, contexto) {
  * Exporta os dados filtrados do relatório para uma planilha Excel (.xlsx).
  * Usa a biblioteca SheetJS (XLSX) carregada globalmente.
  *
- * @param {'relatorio'|'historico'} contexto - Fonte dos dados a exportar
+ * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  */
 function exportarExcel(contexto) {
-    const dados = contexto === "relatorio" ? dadosRelatorioAtual : dadosHistoricoAtual;
+    const dados = dadosRelatorioAtual;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const linhas = dados.map(l => {
@@ -605,11 +497,11 @@ function exportarExcel(contexto) {
  *   2. `db.configRelatorio.logo` (base64 legado)
  *   3. Sem logo
  *
- * @param {'relatorio'|'historico'} contexto - Fonte dos dados a exportar
+ * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  * @returns {Promise<void>}
  */
 async function exportarPDF(contexto) {
-    const dados = contexto === "relatorio" ? dadosRelatorioAtual : dadosHistoricoAtual;
+    const dados = dadosRelatorioAtual;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const cfg = Object.assign({
@@ -839,10 +731,10 @@ async function exportarPDF(contexto) {
  * Exporta os dados filtrados para CSV com separador `;` e BOM UTF-8.
  * O BOM garante que Excel abra o arquivo com acentuação correta.
  *
- * @param {'relatorio'|'historico'} contexto - Fonte dos dados a exportar
+ * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  */
 function exportarCSV(contexto) {
-    const dados = contexto === "relatorio" ? dadosRelatorioAtual : dadosHistoricoAtual;
+    const dados = dadosRelatorioAtual;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const linhas = dados.map(l => {
@@ -870,9 +762,8 @@ function exportarCSV(contexto) {
 
 // ========== IMPRIMIR ==========
 function imprimirRelatorio() {
-    const telaRelatorio = document.getElementById("relatorios").style.display !== "none";
-    const dados  = telaRelatorio ? dadosRelatorioAtual : dadosHistoricoAtual;
-    const titulo = telaRelatorio ? "Relatório de Entradas" : "Histórico de Entradas";
+    const dados  = dadosRelatorioAtual;
+    const titulo = "Relatório de Entradas";
 
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para imprimir.", "aviso", 4000); return; }
 
@@ -914,7 +805,7 @@ function imprimirRelatorio() {
 
 // ========== WHATSAPP ==========
 function compartilharWhatsApp(contexto) {
-    const lista = contexto === "relatorio" ? dadosRelatorioAtual : dadosHistoricoAtual;
+    const lista = dadosRelatorioAtual;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
     const totalGeral = lista.reduce((s, l) => s + l.total, 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
@@ -928,7 +819,7 @@ function compartilharWhatsApp(contexto) {
 
 // ========== E-MAIL ==========
 function compartilharEmail(contexto) {
-    const lista = contexto === "relatorio" ? dadosRelatorioAtual : dadosHistoricoAtual;
+    const lista = dadosRelatorioAtual;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
     const totalGeral = lista.reduce((s, l) => s + l.total, 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
@@ -1144,7 +1035,7 @@ function _executarRelatorioMensal() {
  *   filtroRapido('mes')                → contexto padrão 'relatorio'
  *   filtroRapido('relatorio', 'mes')   → contexto explícito
  *
- * Contextos válidos: 'relatorio' | 'analitico' | 'historico'
+ * Contextos válidos: 'relatorio' | 'analitico'
  *
  * Períodos válidos:
  *   'hoje'         → apenas o dia de hoje
@@ -1166,7 +1057,7 @@ function _executarRelatorioMensal() {
  *   - `filtroRapido('mes')` → contexto padrão `'relatorio'`
  *   - `filtroRapido('relatorio', 'mes')` → contexto explícito
  *
- * @param {'relatorio'|'historico'|'analitico'|string} arg1
+ * @param {'relatorio'|'analitico'|string} arg1
  *   Período (se chamada de 1 argumento) ou contexto (se 2 argumentos)
  * @param {'hoje'|'semana'|'mes'|'mes_anterior'|'30dias'|'90dias'|'ano'} [arg2]
  *   Período (obrigatório se `arg1` for o contexto)
@@ -1207,12 +1098,6 @@ function filtroRapido(arg1, arg2) {
         if (elI) elI.value = inicio;
         if (elF) elF.value = fim;
         if (typeof carregarAnalitico === 'function') carregarAnalitico();
-    } else if (contexto === 'historico') {
-        const elI = document.getElementById("historicoDataInicio");
-        const elF = document.getElementById("historicoDataFim");
-        if (elI) elI.value = inicio;
-        if (elF) elF.value = fim;
-        carregarHistorico();
     }
 }
 

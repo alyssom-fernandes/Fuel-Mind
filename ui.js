@@ -11,7 +11,6 @@ const TITULOS_TELAS = {
     dashboard:    "Dashboard",
     lancamentos:  "Lançamentos",
     relatorios:   "Relatórios",
-    historico:    "Histórico",
     analitico:    "Analítico",
     fretes:       "Fretes",
     conferencia:  "Conferências",

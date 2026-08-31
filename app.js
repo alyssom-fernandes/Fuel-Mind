@@ -255,7 +255,6 @@ function setEmpresaFiltro(nome) {
             case "relatorios":  carregarRelatorio(); break;
             case "analitico":   if (typeof carregarAnalitico === 'function') carregarAnalitico(); break;
             case "fretes":      carregarFretes();    break;
-            case "historico":   carregarHistorico(); break;
         }
     }
 }
@@ -329,10 +328,8 @@ document.addEventListener('keydown', (e) => {
     }
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault();
-        if (document.getElementById('relatorios').style.display === 'block') {
+        if (document.getElementById('relatorios')?.style.display === 'block') {
             document.getElementById('filtroBusca')?.focus();
-        } else if (document.getElementById('historico').style.display === 'block') {
-            document.getElementById('historicoBusca')?.focus();
         }
     }
     if (e.ctrlKey && e.key === 'n') {
@@ -1076,7 +1073,6 @@ async function mostrarTela(id) {
     if (el) el.style.display = "block";
 
     if (["motoristas","veiculos","empresas","combustiveis","cadastros"].includes(id)) atualizarListas();
-    if (id === "historico")    preencherSelectsHistorico();
     if (id === "analitico")    { if (typeof carregarAnalitico === 'function') carregarAnalitico(); }
     if (id === "sistema")      atualizarInfoSistema();
     if (id === "usuarios")     { if (typeof carregarUsuarios === 'function') carregarUsuarios(); }
