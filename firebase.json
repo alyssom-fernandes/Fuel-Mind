@@ -8,9 +8,10 @@
   "hosting": {
     "public": ".",
     "ignore": [
-      "firebase.json",
       "**/.*",
+      "**/.*/**",
       "**/node_modules/**",
+      "firebase.json",
       "firestore.rules",
       "storage.rules",
       "demo.html",
