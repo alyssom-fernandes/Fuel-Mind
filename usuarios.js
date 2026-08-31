@@ -146,10 +146,15 @@ async function _recarregarListaUsuarios() {
     container.innerHTML = `<p class="dica">Carregando usuários...</p>`;
 
     try {
-        if (!window._firestore?.usuariosListar) {
+        const emDemo = typeof demoAtivo === 'function' && demoAtivo();
+        if (!emDemo && !window._firestore?.usuariosListar) {
             throw new Error("Firebase não inicializado ainda.");
         }
-        const todos = await window._firestore.usuariosListar();
+        // Em demonstração a lista vem dos perfis fictícios: não há sessão
+        // autenticada, e chamar o Firestore aqui só produz permission-denied.
+        const todos = (typeof demoAtivo === 'function' && demoAtivo())
+            ? JSON.parse(JSON.stringify(DEMO_USUARIOS))
+            : await window._firestore.usuariosListar();
         if (window._usuarioAtual?.role === "supremo") {
             _usuariosCache = todos;
         } else {
