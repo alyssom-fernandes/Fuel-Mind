@@ -380,4 +380,30 @@ function _demoMostrarFaixa() {
         </span>`;
     document.body.appendChild(faixa);
     document.body.classList.add("com-faixa-demo");
+
+    _demoMedirFaixa();
+    window.addEventListener("resize", _demoMedirFaixa);
+}
+
+/**
+ * Publica a altura real da faixa em `--faixa-demo-h`.
+ *
+ * A sidebar e o cabeçalho são posicionados a partir dessa variável, então
+ * eles descem junto em vez de ficarem por baixo da faixa. Medir em vez de
+ * fixar um valor importa porque o texto quebra em duas linhas em telas
+ * estreitas — com altura fixa, a sidebar ficaria desalinhada no celular.
+ */
+function _demoMedirFaixa() {
+    const faixa = document.getElementById("demoFaixa");
+    if (!faixa) return;
+    document.documentElement.style.setProperty("--faixa-demo-h", faixa.offsetHeight + "px");
+}
+
+/** Devolve o layout ao normal ao sair da demonstração. */
+function _demoEsconderFaixa() {
+    const faixa = document.getElementById("demoFaixa");
+    if (faixa) faixa.remove();
+    window.removeEventListener("resize", _demoMedirFaixa);
+    document.body.classList.remove("com-faixa-demo");
+    document.documentElement.style.removeProperty("--faixa-demo-h");
 }
