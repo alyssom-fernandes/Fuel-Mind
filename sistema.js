@@ -395,13 +395,13 @@ function corrigirCampoEmMassa(campo) {
                 Substituirá o campo <strong>${campo}</strong> em todos os lançamentos que corresponderem ao filtro.
             </p>
             <div class="campo" style="margin-bottom:16px">
-                <label>Novo valor</label>
+                <label for="correcaoMassaSelect">Novo valor</label>
                 <select id="correcaoMassaSelect" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
                     ${lista.map(val => `<option value="${val}">${val}</option>`).join('')}
                 </select>
             </div>
             <div class="campo" style="margin-bottom:16px">
-                <label>Substituir apenas lançamentos com este valor antigo (deixe vazio para todos)</label>
+                <label for="correcaoMassaAntigo">Substituir apenas lançamentos com este valor antigo (deixe vazio para todos)</label>
                 <input type="text" id="correcaoMassaAntigo" placeholder="Ex: Posto Antigo"
                     style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-sizing:border-box">
             </div>
@@ -682,14 +682,14 @@ function carregarConfiguracoesTela() {
 
     <!-- Título e orientação -->
     <div class="form-grid" style="grid-template-columns:1fr auto auto;gap:12px;align-items:end">
-      <div class="campo"><label>Título do relatório</label><input type="text" id="pdfTitulo"></div>
-      <div class="campo"><label>Orientação</label>
+      <div class="campo"><label for="pdfTitulo">Título do relatório</label><input type="text" id="pdfTitulo"></div>
+      <div class="campo"><label for="pdfOrientacao">Orientação</label>
         <select id="pdfOrientacao">
           <option value="landscape">Paisagem</option>
           <option value="portrait">Retrato</option>
         </select>
       </div>
-      <div class="campo"><label>Fonte</label>
+      <div class="campo"><label for="pdfFonte">Fonte</label>
         <select id="pdfFonte">
           <option value="helvetica">Helvetica</option>
           <option value="courier">Courier</option>
@@ -700,13 +700,13 @@ function carregarConfiguracoesTela() {
 
     <!-- Cor e margens -->
     <div class="form-grid" style="grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
-      <div class="campo"><label>Cor de destaque</label>
+      <div class="campo"><label for="pdfCorDestaque">Cor de destaque</label>
         <input type="color" id="pdfCorDestaque" style="height:38px;width:60px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
       </div>
-      <div class="campo"><label>Margem esq. (mm)</label><input type="number" id="pdfMargemEsq" min="5" max="40" step="1"></div>
-      <div class="campo"><label>Margem dir. (mm)</label><input type="number" id="pdfMargemDir" min="5" max="40" step="1"></div>
-      <div class="campo"><label>Margem topo (mm)</label><input type="number" id="pdfMargemTopo" min="5" max="40" step="1"></div>
-      <div class="campo"><label>Margem rodapé (mm)</label><input type="number" id="pdfMargemRodape" min="5" max="30" step="1"></div>
+      <div class="campo"><label for="pdfMargemEsq">Margem esq. (mm)</label><input type="number" id="pdfMargemEsq" min="5" max="40" step="1"></div>
+      <div class="campo"><label for="pdfMargemDir">Margem dir. (mm)</label><input type="number" id="pdfMargemDir" min="5" max="40" step="1"></div>
+      <div class="campo"><label for="pdfMargemTopo">Margem topo (mm)</label><input type="number" id="pdfMargemTopo" min="5" max="40" step="1"></div>
+      <div class="campo"><label for="pdfMargemRodape">Margem rodapé (mm)</label><input type="number" id="pdfMargemRodape" min="5" max="30" step="1"></div>
     </div>
 
     <!-- Colunas -->
@@ -723,7 +723,7 @@ function carregarConfiguracoesTela() {
 
     <!-- Rodapé -->
     <div class="campo">
-      <label>Texto do rodapé (opcional)</label>
+      <label for="pdfRodapeTexto">Texto do rodapé (opcional)</label>
       <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial">
     </div>
 
@@ -848,7 +848,7 @@ function _autosystemRenderizarConferencia() {
                 </div>
             </div>
             <div class="campo" style="min-width:180px">
-                <label>Combustível do relatório</label>
+                <label for="_autoSelComb">Combustível do relatório</label>
                 <select id="_autoSelComb" onchange="_autosystemAtualizarTabela()">
                     <option value="">-- Selecione --</option>
                     ${combustiveis.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
@@ -1015,9 +1015,9 @@ function abrirConfigAlertas() {
                 </div>
                 <div id="_cfgPrecoOpts" style="${cfg.precoAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                        <div class="campo"><label>Diferença mínima (R$/L)</label>
+                        <div class="campo"><label for="_cfgPrecoDif">Diferença mínima (R$/L)</label>
                         <input type="number" id="_cfgPrecoDif" value="${cfg['precoDiferencaR$']}" min="0.01" max="5" step="0.01" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
-                        <div class="campo"><label>Período de referência</label>
+                        <div class="campo"><label for="_cfgPrecoPer">Período de referência</label>
                         <select id="_cfgPrecoPer" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" onchange="_cfgPreview()">${periodOpts}</select></div>
                     </div>
                 </div>
@@ -1031,9 +1031,9 @@ function abrirConfigAlertas() {
                 </div>
                 <div id="_cfgVolOpts" style="${cfg.volumeAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                        <div class="campo"><label>% acima da média histórica</label>
+                        <div class="campo"><label for="_cfgVolAcima">% acima da média histórica</label>
                         <input type="number" id="_cfgVolAcima" value="${cfg.volumeAcimaPerc}" min="10" max="500" step="5" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
-                        <div class="campo"><label>% abaixo da média histórica</label>
+                        <div class="campo"><label for="_cfgVolAbaixo">% abaixo da média histórica</label>
                         <input type="number" id="_cfgVolAbaixo" value="${cfg.volumeAbaixoPerc}" min="10" max="99" step="5" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
                     </div>
                 </div>
@@ -1047,9 +1047,9 @@ function abrirConfigAlertas() {
                 </div>
                 <div id="_cfgDataOpts" style="${cfg.dataAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                        <div class="campo"><label>Tolerância de data futura (dias)</label>
+                        <div class="campo"><label for="_cfgDataToler">Tolerância de data futura (dias)</label>
                         <input type="number" id="_cfgDataToler" value="${cfg.dataTolerDias}" min="0" max="30" step="1" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
-                        <div class="campo"><label>Máx. dias entre nota e descarga</label>
+                        <div class="campo"><label for="_cfgDataMaxDiff">Máx. dias entre nota e descarga</label>
                         <input type="number" id="_cfgDataMaxDiff" value="${cfg.dataMaxDescNota}" min="1" max="90" step="1" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
                     </div>
                 </div>

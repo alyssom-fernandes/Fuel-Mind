@@ -267,7 +267,7 @@ function abrirModalEditarProprioPerfil() {
         <div class="modal-header"><h3>Editar Meu Perfil</h3></div>
         <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
             <div class="campo">
-                <label>Nome completo *</label>
+                <label for="perfilNomeInput">Nome completo *</label>
                 <input type="text" id="perfilNomeInput" value="${escapeHtml(u.nome || '')}" placeholder="Seu nome completo">
             </div>
             <div class="campo">
@@ -387,17 +387,17 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
         </div>
         <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
             <div class="campo">
-                <label>Nome completo *</label>
+                <label for="usuarioNomeInput">Nome completo *</label>
                 <input type="text" id="usuarioNomeInput" value="${escapeHtml(usuario?.nome || '')}" placeholder="Ex: João Silva">
             </div>
             <div class="campo">
-                <label>E-mail *</label>
+                <label for="usuarioEmailInput">E-mail *</label>
                 <input type="email" id="usuarioEmailInput" value="${escapeHtml(usuario?.email || '')}" placeholder="email@exemplo.com" ${!isNovo ? 'disabled' : ''}>
                 ${!isNovo ? '<p class="dica" style="margin-top:4px">E-mail não pode ser alterado.</p>' : ''}
             </div>
             ${isNovo ? `
             <div class="campo">
-                <label>Senha temporária *</label>
+                <label for="usuarioSenhaInput">Senha temporária *</label>
                 <input type="text" id="usuarioSenhaInput" value="123456" placeholder="Mínimo 6 caracteres">
                 <p class="dica" style="margin-top:4px">O usuário poderá alterar a senha após o primeiro acesso.</p>
             </div>` : ''}
@@ -412,7 +412,7 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
                 <p class="dica" style="margin-top:4px">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
             </div>
             <div class="campo">
-                <label>Nível de acesso *</label>
+                <label for="usuarioRoleSelect">Nível de acesso *</label>
                 <select id="usuarioRoleSelect" onchange="_toggleEmpresasRole()">
                     ${rolesOpts}
                 </select>
@@ -643,11 +643,11 @@ function abrirModalAlterarSenha() {
         <div class="modal-header"><h3>Alterar Minha Senha</h3></div>
         <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
             <div class="campo">
-                <label>Nova senha *</label>
+                <label for="novaSenhaInput">Nova senha *</label>
                 <input type="password" id="novaSenhaInput" placeholder="Mínimo 6 caracteres">
             </div>
             <div class="campo">
-                <label>Confirmar nova senha *</label>
+                <label for="confirmarSenhaInput">Confirmar nova senha *</label>
                 <input type="password" id="confirmarSenhaInput" placeholder="Repita a nova senha">
             </div>
         </div>

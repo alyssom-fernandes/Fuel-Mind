@@ -20,11 +20,11 @@
         <h2 style="margin-bottom:4px; font-size:1.4rem;">Fuel Mind</h2>
         <p style="color:var(--text-muted); margin-bottom:28px; font-size:0.82rem;">Sistema de Gestão de Combustível</p>
         <div class="campo" style="text-align:left; margin-bottom:12px;">
-            <label style="font-size:0.78rem;">E-mail ou usuário</label>
+            <label for="loginEmail" style="font-size:0.78rem;">E-mail ou usuário</label>
             <input type="text" id="loginEmail" placeholder="seu@email.com ou @usuario" autocomplete="username" style="width:100%;box-sizing:border-box;">
         </div>
         <div class="campo" style="text-align:left; margin-bottom:20px;">
-            <label style="font-size:0.78rem;">Senha</label>
+            <label for="loginSenha" style="font-size:0.78rem;">Senha</label>
             <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" style="width:100%;box-sizing:border-box;">
         </div>
         <button id="btnLogin" class="btn-primario" onclick="fazerLogin()" style="width:100%;padding:12px;font-size:1rem;">Entrar</button>
@@ -187,37 +187,37 @@
   <div class="importar-xml-bloco">
     <label class="importar-xml-label">Importar XML da NF-e <span class="tag-opcional">opcional</span></label>
     <p class="dica">Selecione o arquivo .xml da nota fiscal para pré-preencher o formulário automaticamente.</p>
-    <input type="file" id="xmlNFe" accept=".xml" onchange="importarXMLNFe(this)">
+    <input type="file" id="xmlNFe" aria-label="Arquivo XML da NF-e" accept=".xml" onchange="importarXMLNFe(this)">
   </div>
   <div class="form-grid">
-    <div class="campo"><label>Data da Nota Fiscal <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label><input type="date" id="dataNota" oninput="marcarFormularioSujo()"></div>
-    <div class="campo"><label>Data da Descarga</label><input type="date" id="dataDescarga" oninput="marcarFormularioSujo()"></div>
-    <div class="campo"><label>Número da Nota</label><input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()"></div>
+    <div class="campo"><label for="dataNota">Data da Nota Fiscal <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label><input type="date" id="dataNota" oninput="marcarFormularioSujo()"></div>
+    <div class="campo"><label for="dataDescarga">Data da Descarga</label><input type="date" id="dataDescarga" oninput="marcarFormularioSujo()"></div>
+    <div class="campo"><label for="numeroNota">Número da Nota</label><input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()"></div>
     <div class="campo">
-      <label>Base / Distribuidora</label>
+      <label for="baseEntradaInput">Base / Distribuidora</label>
       <input id="baseEntradaInput" list="dlBases" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
       <datalist id="dlBases"></datalist>
       <input type="hidden" id="baseEntrada">
     </div>
     <div class="campo">
-      <label>Empresa <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
+      <label for="empresaInput">Empresa <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
       <input id="empresaInput" list="dlEmpresas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
       <datalist id="dlEmpresas"></datalist>
       <input type="hidden" id="empresaSelect">
     </div>
     <div class="campo">
-      <label>Motorista <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
+      <label for="motoristaInput">Motorista <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
       <input id="motoristaInput" list="dlMotoristas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
       <datalist id="dlMotoristas"></datalist>
       <input type="hidden" id="motoristaSelect">
     </div>
     <div class="campo">
-      <label>Placa do Veículo <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
+      <label for="placaInput">Placa do Veículo <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
       <input id="placaInput" list="dlPlacas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
       <datalist id="dlPlacas"></datalist>
       <input type="hidden" id="placaSelect">
     </div>
-    <div class="campo"><label>Observações</label><textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea></div>
+    <div class="campo"><label for="observacoes">Observações</label><textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea></div>
   </div>
   <h3>Combustíveis desta Nota</h3>
   <div id="combustiveisNota"></div>
@@ -234,7 +234,7 @@
   <h2 id="tituloFretes" style="display:block;">Resumo de Fretes</h2>
   <p class="dica">Dados calculados automaticamente a partir dos lançamentos do mês selecionado. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
   <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
-    <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
+    <label for="fretesSelectMes" style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
     <input type="month" id="fretesSelectMes" onchange="calcularEExibirFretes()" style="max-width:180px">
     <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
   </div>
@@ -275,14 +275,14 @@
 <div id="relatorios" class="tela">
   <h2 id="tituloRelatorios" style="display:block;">Relatórios</h2>
   <div class="filtros">
-      <div class="campo"><label>Data início</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
-      <div class="campo"><label>Data fim</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
-      <div class="campo"><label>Motorista</label><select id="filtroMotorista" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
-      <div class="campo"><label>Placa</label><select id="filtroPlaca" onchange="carregarRelatorio()"><option value="">Todas</option></select></div>
-      <div class="campo"><label>Combustível</label><select id="filtroCombustivel" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
-      <div class="campo"><label>Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota" oninput="carregarRelatorio()"></div>
-      <div class="campo"><label>Base</label><input id="filtroBase" placeholder="Base" oninput="carregarRelatorio()"></div>
-      <div class="campo"><label>Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDataInicio">Data início</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDataFim">Data fim</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroMotorista">Motorista</label><select id="filtroMotorista" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
+      <div class="campo"><label for="filtroPlaca">Placa</label><select id="filtroPlaca" onchange="carregarRelatorio()"><option value="">Todas</option></select></div>
+      <div class="campo"><label for="filtroCombustivel">Combustível</label><select id="filtroCombustivel" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
+      <div class="campo"><label for="filtroNota">Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota" oninput="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroBase">Base</label><input id="filtroBase" placeholder="Base" oninput="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroBusca">Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorio()"></div>
     </div>
     <div class="filtros-acoes">
       <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
@@ -334,9 +334,9 @@
 <div id="analitico" class="tela">
   <h2 id="tituloAnalitico" style="display:block;">Analítico</h2>
     <div class="analitico-filtros">
-      <div class="campo"><label>Período inicial</label><input type="date" id="analiticoInicio"></div>
-      <div class="campo"><label>Período final</label><input type="date" id="analiticoFim"></div>
-      <div class="campo"><label>Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
+      <div class="campo"><label for="analiticoInicio">Período inicial</label><input type="date" id="analiticoInicio"></div>
+      <div class="campo"><label for="analiticoFim">Período final</label><input type="date" id="analiticoFim"></div>
+      <div class="campo"><label for="analiticoCombustivel">Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
       <div class="campo" style="justify-content:flex-end; padding-top:18px"><button class="btn-primario" onclick="carregarAnalitico()">Atualizar</button></div>
     </div>
     <div class="filtros-rapidos-linha">
@@ -475,7 +475,7 @@
       <div class="sistema-acoes">
         <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
         <div class="campo" style="max-width:360px; margin-top:12px">
-          <label>Restaurar a partir de backup (.json)</label>
+          <label for="inputBackup">Restaurar a partir de backup (.json)</label>
           <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
         </div>
       </div>
@@ -521,7 +521,7 @@
     </div>
     <div class="sistema-secao" style="margin-bottom:20px">
       <h3>Selecionar arquivo</h3>
-      <input type="file" id="importacaoArquivo" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" style="margin-top:6px">
+      <input type="file" id="importacaoArquivo" aria-label="Arquivo de planilha para importar" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" style="margin-top:6px">
       <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv</p>
     </div>
     <div id="importacaoEtapas" style="display:none">
@@ -545,7 +545,7 @@
       <h3>Tema Personalizado</h3>
       <p class="dica">Escolha a cor principal do sistema (afeta botões, abas ativas, etc.)</p>
       <div style="display:flex; gap:10px; align-items:center;">
-        <input type="color" id="corPrimaria" value="#a02828" onchange="aplicarCorPersonalizada(this.value)">
+        <input type="color" id="corPrimaria" aria-label="Cor principal do sistema" value="#a02828" onchange="aplicarCorPersonalizada(this.value)">
         <button class="btn-secundario" onclick="resetarCorPadrao()">Restaurar padrão</button>
       </div>
     </div>
@@ -569,7 +569,7 @@
           <div style="display:flex;flex-direction:column;gap:6px">
             <button class="btn-secundario" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
             <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
-            <input id="pdfLogoInput" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
+            <input id="pdfLogoInput" aria-label="Arquivo de imagem da logo" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
           </div>
           <span class="dica" style="font-size:0.75rem;margin:0">PNG ou JPG, máx. 500 KB.<br>Aparece no canto esquerdo do cabeçalho.</span>
         </div>
@@ -578,18 +578,18 @@
       <!-- Título, orientação e fonte -->
       <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;flex-wrap:wrap;">
         <div class="campo">
-          <label>Título do relatório</label>
+          <label for="pdfTitulo">Título do relatório</label>
           <input type="text" id="pdfTitulo" value="Controle de Entradas de Combustível" style="width:100%;box-sizing:border-box;">
         </div>
         <div class="campo">
-          <label>Orientação</label>
+          <label for="pdfOrientacao">Orientação</label>
           <select id="pdfOrientacao">
             <option value="landscape" selected>Paisagem</option>
             <option value="portrait">Retrato</option>
           </select>
         </div>
         <div class="campo">
-          <label>Fonte</label>
+          <label for="pdfFonte">Fonte</label>
           <select id="pdfFonte">
             <option value="helvetica">Helvetica</option>
             <option value="courier">Courier</option>
@@ -601,24 +601,24 @@
       <!-- Cor de destaque e margens -->
       <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:12px;align-items:end;margin-bottom:16px;flex-wrap:wrap;">
         <div class="campo">
-          <label>Cor de destaque</label>
+          <label for="pdfCorDestaque">Cor de destaque</label>
           <input type="color" id="pdfCorDestaque" value="#1a3a5c"
                  style="height:38px;width:60px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
         </div>
         <div class="campo">
-          <label>Margem esq. (mm)</label>
+          <label for="pdfMargemEsq">Margem esq. (mm)</label>
           <input type="number" id="pdfMargemEsq" value="14" min="5" max="40" step="1">
         </div>
         <div class="campo">
-          <label>Margem dir. (mm)</label>
+          <label for="pdfMargemDir">Margem dir. (mm)</label>
           <input type="number" id="pdfMargemDir" value="14" min="5" max="40" step="1">
         </div>
         <div class="campo">
-          <label>Margem topo (mm)</label>
+          <label for="pdfMargemTopo">Margem topo (mm)</label>
           <input type="number" id="pdfMargemTopo" value="14" min="5" max="40" step="1">
         </div>
         <div class="campo">
-          <label>Margem rodapé (mm)</label>
+          <label for="pdfMargemRodape">Margem rodapé (mm)</label>
           <input type="number" id="pdfMargemRodape" value="10" min="5" max="30" step="1">
         </div>
       </div>
@@ -637,7 +637,7 @@
 
       <!-- Rodapé customizável -->
       <div class="campo" style="margin-bottom:16px;">
-        <label>Texto do rodapé (opcional)</label>
+        <label for="pdfRodapeTexto">Texto do rodapé (opcional)</label>
         <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial" style="max-width:420px;">
       </div>
 
@@ -695,9 +695,9 @@
   <div id="cad-empresas" class="aba-conteudo">
     <h3>Empresas</h3>
     <div class="form-linha" style="flex-wrap:wrap">
-      <input id="nomeEmpresa" placeholder="Nome da empresa" style="flex:2">
-      <input id="municipioEmpresa" placeholder="Município/UF (ex: São Paulo, SP)" style="flex:1">
-      <input id="taxaFreteEmpresa" type="number" min="0" step="0.0001" placeholder="Frete R$/L" style="flex:0 0 130px">
+      <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" style="flex:2">
+      <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município/UF (ex: São Paulo, SP)" style="flex:1">
+      <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="number" min="0" step="0.0001" placeholder="Frete R$/L" style="flex:0 0 130px">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
     <p class="dica" style="margin-top:-4px">A taxa de frete é o valor pago por litro transportado para a empresa e pode ser ajustada depois em Editar.</p>
@@ -706,21 +706,21 @@
   </div>
   <div id="cad-motoristas" class="aba-conteudo" style="display:none">
     <h3>Motoristas</h3>
-    <div class="form-linha"><input id="nomeMotorista" placeholder="Nome do motorista"><button class="btn-primario" onclick="salvarMotorista()">Adicionar</button></div>
+    <div class="form-linha"><input id="nomeMotorista" aria-label="Nome do motorista" placeholder="Nome do motorista"><button class="btn-primario" onclick="salvarMotorista()">Adicionar</button></div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativos" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaMotoristas"></ul>
   </div>
   <div id="cad-veiculos" class="aba-conteudo" style="display:none">
     <h3>Veículos</h3>
-    <div class="form-linha"><input id="placaVeiculo" placeholder="Placa (ex: ABC-1234)"><button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button></div>
+    <div class="form-linha"><input id="placaVeiculo" aria-label="Placa do veículo" placeholder="Placa (ex: ABC-1234)"><button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button></div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosVeiculos" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaVeiculos"></ul>
   </div>
   <div id="cad-combustiveis" class="aba-conteudo" style="display:none">
     <h3>Tipos de Combustível</h3>
     <div class="form-linha">
-      <input id="nomeCombustivel" placeholder="Tipo (ex: S10)">
-      <input id="perdaCombustivel" type="number" placeholder="% perda tolerada" min="0" max="10" step="0.01" style="max-width:200px">
+      <input id="nomeCombustivel" aria-label="Nome do combustível" placeholder="Tipo (ex: S10)">
+      <input id="perdaCombustivel" aria-label="Percentual de perda tolerada" type="number" placeholder="% perda tolerada" min="0" max="10" step="0.01" style="max-width:200px">
       <button class="btn-primario" onclick="salvarCombustivel()">Adicionar</button>
     </div>
     <p class="dica">A % de perda tolerada é usada para calcular automaticamente a perda esperada nos lançamentos.</p>
@@ -730,7 +730,7 @@
   <div id="cad-bases" class="aba-conteudo" style="display:none">
     <h3>Bases / Distribuidoras</h3>
     <div class="form-linha">
-      <input id="nomeBase" placeholder="Nome da base (ex: REPLAN, REVAP...)">
+      <input id="nomeBase" aria-label="Nome da base" placeholder="Nome da base (ex: REPLAN, REVAP...)">
       <button class="btn-primario" onclick="salvarBase()">Adicionar</button>
     </div>
     <p class="dica">Cadastre aqui as distribuidoras e refinarias de origem dos combustíveis.</p>
@@ -770,7 +770,7 @@
   <div class="modal busca-global-modal" style="max-width:800px; width:90%;">
     <div class="busca-global-header">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="busca-global-icone"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="buscaGlobalInput" placeholder="Buscar nota, motorista, empresa, placa..." class="busca-global-input" oninput="executarBuscaGlobal()" autocomplete="off">
+      <input type="text" id="buscaGlobalInput" aria-label="Busca global" placeholder="Buscar nota, motorista, empresa, placa..." class="busca-global-input" oninput="executarBuscaGlobal()" autocomplete="off">
       <kbd class="busca-kbd busca-kbd-esc" onclick="fecharBuscaGlobal()">Esc</kbd>
     </div>
     <div id="buscaGlobalResultados" class="busca-global-resultados"></div>
@@ -826,15 +826,15 @@
 <div id="modalOverlay" class="modal-overlay" style="display:none" onclick="fecharModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 id="modalTitulo">Editar</h3>
-    <div class="campo"><label id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
+    <div class="campo"><label for="modalInput" id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
     <div class="campo" id="modalCampoMunicipioWrapper" style="display:none; margin-top:12px;">
-      <label>Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
-      <label style="margin-top:12px">Taxa de frete (R$/litro)</label>
+      <label for="modalInputMunicipio">Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
+      <label for="modalInputTaxaFrete" style="margin-top:12px">Taxa de frete (R$/litro)</label>
       <input id="modalInputTaxaFrete" type="number" min="0" step="0.0001" placeholder="0,0000">
       <p class="dica" style="margin-top:4px">Valor pago por litro transportado para esta empresa.</p>
     </div>
     <div class="campo" id="modalCampoPerdaWrapper" style="display:none; margin-top:12px;">
-      <label>% Perda Tolerada</label><input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">
+      <label for="modalInputPerda">% Perda Tolerada</label><input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">
     </div>
     <div id="modalLogs"></div>
     <div class="modal-acoes">
@@ -849,7 +849,7 @@
   <div class="modal" style="max-width:520px; width:92%;" onclick="event.stopPropagation()">
     <h3 id="conjuntoFormTitulo">Conjunto de Veículos</h3>
     <div class="campo" style="margin-bottom:12px;">
-      <label>Nome do conjunto <span style="color:var(--text-muted);font-size:0.8rem;">(opcional)</span></label>
+      <label for="conjuntoNomeInput">Nome do conjunto <span style="color:var(--text-muted);font-size:0.8rem;">(opcional)</span></label>
       <input id="conjuntoNomeInput" type="text" placeholder="Ex: Conjunto Volvo 01">
     </div>
     <div class="campo" style="margin-bottom:8px;">
@@ -860,7 +860,7 @@
     </div>
     <div class="campo" style="margin-bottom:12px;" id="conjuntoVigenciaWrapper">
       <label>Data de vigência da nova composição <span style="color:var(--danger);font-size:0.8rem;">(obrigatório ao alterar placas)</span></label>
-      <input id="conjuntoDataVigencia" type="date">
+      <input id="conjuntoDataVigencia" aria-label="Data de vigência da composição" type="date">
       <p class="dica">Lançamentos anteriores a essa data continuarão vinculados à composição anterior.</p>
     </div>
     <div id="conjuntoHistorico" style="display:none; margin-bottom:12px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:0.8rem;"></div>

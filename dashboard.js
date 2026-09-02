@@ -94,11 +94,11 @@ function _garantirFiltrosDashboard() {
     filtrosDiv.style.cssText = 'display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;';
     filtrosDiv.innerHTML = `
         <div class="campo" style="min-width:140px">
-            <label>Período — início</label>
+            <label for="dashInicio">Período — início</label>
             <input type="date" id="dashInicio" value="${inicioMesStr}" onchange="carregarDashboard()">
         </div>
         <div class="campo" style="min-width:140px">
-            <label>Período — fim</label>
+            <label for="dashFim">Período — fim</label>
             <input type="date" id="dashFim" value="${fimHojeStr}" onchange="carregarDashboard()">
         </div>
         <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;padding-bottom:2px;">

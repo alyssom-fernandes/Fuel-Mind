@@ -867,13 +867,13 @@ function gerarRelatorioMensalPDF() {
                 Gera um PDF formatado com resumo executivo, detalhamento por combustível e comparativo com o mês anterior.
             </p>
             <div class="campo" style="margin-bottom:8px">
-                <label>Mês de referência</label>
+                <label for="_selMesRelMensal">Mês de referência</label>
                 <select id="_selMesRelMensal" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
                     ${opcoes.join('')}
                 </select>
             </div>
             <div class="campo" style="margin-bottom:20px">
-                <label>Nome do posto / empresa (cabeçalho)</label>
+                <label for="_nomeEmpresaRel">Nome do posto / empresa (cabeçalho)</label>
                 <input id="_nomeEmpresaRel" type="text" value="${empresaFiltroNome || db.empresas?.[0]?.nome || 'Posto Rosário'}"
                     style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-sizing:border-box">
             </div>
