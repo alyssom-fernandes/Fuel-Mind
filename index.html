@@ -277,11 +277,11 @@
   <div class="filtros">
       <div class="campo"><label>Data início</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
       <div class="campo"><label>Data fim</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
-      <div class="campo"><label>Motorista</label><select id="filtroMotorista"><option value="">Todos</option></select></div>
-      <div class="campo"><label>Placa</label><select id="filtroPlaca"><option value="">Todas</option></select></div>
-      <div class="campo"><label>Combustível</label><select id="filtroCombustivel"><option value="">Todos</option></select></div>
-      <div class="campo"><label>Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota"></div>
-      <div class="campo"><label>Base</label><input id="filtroBase" placeholder="Base"></div>
+      <div class="campo"><label>Motorista</label><select id="filtroMotorista" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
+      <div class="campo"><label>Placa</label><select id="filtroPlaca" onchange="carregarRelatorio()"><option value="">Todas</option></select></div>
+      <div class="campo"><label>Combustível</label><select id="filtroCombustivel" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
+      <div class="campo"><label>Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota" oninput="carregarRelatorio()"></div>
+      <div class="campo"><label>Base</label><input id="filtroBase" placeholder="Base" oninput="carregarRelatorio()"></div>
       <div class="campo"><label>Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorio()"></div>
     </div>
     <div class="filtros-acoes">

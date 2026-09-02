@@ -59,6 +59,32 @@ function carregarRelatorio() {
     _aplicarFiltroRelatorio();
 }
 
+/**
+ * Texto de um lançamento para a busca livre, em cache.
+ *
+ * Antes isto era `JSON.stringify(l)` executado sobre CADA lançamento a CADA
+ * tecla digitada — reserializava a base inteira, incluindo logs e anexos, por
+ * caractere. O cache é invalidado por identidade do objeto: qualquer edição
+ * cria um objeto novo no fluxo de save, então um lançamento alterado
+ * reindexará sozinho.
+ */
+const _cacheBusca = new WeakMap();
+function _textoBuscavel(l) {
+    let txt = _cacheBusca.get(l);
+    if (txt === undefined) {
+        txt = [l.numeroNota, l.empresa, l.motorista, l.placa, l.base, l.observacoes,
+               l.dataNota, l.dataDescarga,
+               ...(l.itens || []).map(i => i.tipo),
+               // Quem criou ou editou: a busca antiga alcançava isso porque
+               // serializava o objeto inteiro, e é uso legítimo — "o que o
+               // Fulano lançou". Só o nome entra, não a ação nem o timestamp.
+               ...(l.logs || []).map(g => (typeof g === 'object' && g) ? g.usuario : g)]
+              .filter(Boolean).join(" ").toLowerCase();
+        _cacheBusca.set(l, txt);
+    }
+    return txt;
+}
+
 function _aplicarFiltroRelatorio() {
     const dataInicio  = document.getElementById("filtroDataInicio").value;
     const dataFim     = document.getElementById("filtroDataFim").value;
@@ -87,7 +113,7 @@ function _aplicarFiltroRelatorio() {
         if (nota        && !l.numeroNota.toLowerCase().includes(nota)) return false;
         if (base        && !(l.base || "").toLowerCase().includes(base)) return false;
         if (combustivel && !l.itens.some(i => i.tipo === combustivel)) return false;
-        if (busca       && !JSON.stringify(l).toLowerCase().includes(busca)) return false;
+        if (busca       && !_textoBuscavel(l).includes(busca)) return false;
         return true;
     });
 

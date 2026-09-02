@@ -445,14 +445,15 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     }
     salvarDB();
     limparFormulario();
+    // `mostrarTela('relatorios')` já chama carregarRelatorio() internamente —
+    // por isso não há um segundo carregarRelatorio() aqui. Havia, e todo
+    // salvamento renderizava a tabela duas vezes.
     mostrarTela('relatorios');
 
-    // ── Após edição: reaplicar filtros sem zerá-los ──
-    // ── Após novo/clone: recarregar normalmente (sem filtros prévios relevantes) ──
+    // Após edição, reaplica os filtros que o usuário tinha montado em vez de
+    // deixar o recarregamento padrão zerá-los.
     if (eraEdicao && typeof recarregarRelatorioSemZerarFiltros === 'function') {
         setTimeout(() => recarregarRelatorioSemZerarFiltros(), 0);
-    } else {
-        carregarRelatorio();
     }
 }
 

@@ -1021,17 +1021,36 @@ if (corSalva) {
  * @param {number} [duracao=3000] - Duração em ms antes de sumir.
  *   Usar 4000ms para validações de formulário, 6000-8000ms para erros graves.
  */
+/**
+ * Exibe uma mensagem efêmera.
+ *
+ * As mensagens se EMPILHAM. Antes, cada chamada removia a anterior — e como há
+ * caminhos que emitem duas em sequência (o salvamento e o erro de nuvem, por
+ * exemplo), a primeira era destruída antes de poder ser lida.
+ *
+ * O contêiner declara `role="status"` e `aria-live="polite"`: o projeto não
+ * tinha nenhuma região viva, então nada do que o sistema comunicava por toast
+ * chegava a leitor de tela.
+ */
 function mostrarToast(mensagem, tipo = "sucesso", duracao = 3000) {
-    const anterior = document.getElementById("toastSistema");
-    if (anterior) anterior.remove();
+    let pilha = document.getElementById("toastPilha");
+    if (!pilha) {
+        pilha = document.createElement("div");
+        pilha.id = "toastPilha";
+        pilha.setAttribute("role", "status");
+        pilha.setAttribute("aria-live", "polite");
+        document.body.appendChild(pilha);
+    }
+    // Teto de 3: além disso a pilha vira ruído e cobre a tela.
+    while (pilha.children.length >= 3) pilha.firstElementChild.remove();
+
     const toast = document.createElement("div");
-    toast.id = "toastSistema";
     toast.className = `toast toast-${tipo}`;
     const icones = { sucesso: "✓", erro: "✕", aviso: "⚠", info: "i" };
     // `mensagem` é escapada: praticamente toda chamada interpola nome de
     // cadastro, número de nota ou nome de arquivo. Nenhum chamador passa HTML.
     toast.innerHTML = `<span class="toast-icone">${icones[tipo] || "i"}</span><span class="toast-msg">${escapeHtml(mensagem)}</span>`;
-    document.body.appendChild(toast);
+    pilha.appendChild(toast);
     requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add("toast-visivel")));
     setTimeout(() => {
         toast.classList.remove("toast-visivel");
@@ -1053,9 +1072,25 @@ function limparFormularioSujo() {
     if (titulo) titulo.textContent = titulo.textContent.replace("● ", "");
 }
 
+/**
+ * Avisa que há um lançamento em andamento antes de trocar de tela.
+ *
+ * O texto anterior dizia "Sair agora vai descartar tudo que foi preenchido"
+ * e o botão era "Descartar e sair" — o que era FALSO: `mostrarTela` só troca
+ * `display`, nada limpa os campos, e os dados continuam lá na volta. O efeito
+ * prático era caro: quem precisava conferir uma nota no relatório ou cadastrar
+ * um motorista acreditava que o preço era perder tudo — então ou não conferia,
+ * e errava, ou conferia e redigitava.
+ */
 async function confirmarSaidaFormulario() {
     if (!_formularioSujo) return true;
-    return await fmConfirm({ titulo: "Dados não salvos", msg: "Sair agora vai descartar tudo que foi preenchido.\n\nDeseja continuar?", confirmTxt: "Descartar e sair", cancelTxt: "Ficar", tipo: "aviso" });
+    return await fmConfirm({
+        titulo: "Lançamento em andamento",
+        msg: "Você tem um lançamento preenchido e ainda não salvo.\n\nOs dados continuam aqui quando você voltar a esta tela.",
+        confirmTxt: "Sair mesmo assim",
+        cancelTxt: "Continuar preenchendo",
+        tipo: "aviso"
+    });
 }
 
 /**
