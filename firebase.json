@@ -2,9 +2,6 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "storage": {
-    "rules": "storage.rules"
-  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -13,7 +10,6 @@
       "**/node_modules/**",
       "firebase.json",
       "firestore.rules",
-      "storage.rules",
       "demo.html",
       "README.md",
       "README.pt-BR.md",

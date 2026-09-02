@@ -473,7 +473,7 @@ function _pdfEmpresaAtiva() {
 
 /**
  * Chamado pelo input[type=file] do logo.
- * Faz upload para Firebase Storage e salva a URL em db.configRelatorio.logos[empresa].
+ * Reduz a imagem e grava como base64 em db.configRelatorio.logos[empresa].
  */
 async function pdfCarregarLogo(input) {
     const file = input.files[0];
@@ -490,39 +490,73 @@ async function pdfCarregarLogo(input) {
 
     try {
         const empresa = _pdfEmpresaAtiva();
-
-        // Excluir logo anterior do Storage se existir
-        const logoAntigo = db.configRelatorio?.logos?.[empresa];
-        if (logoAntigo?.caminho) {
-            await window._firestore.storageExcluirLogo(logoAntigo.caminho).catch(() => {});
-        }
-
-        const resultado = await window._firestore.storageUploadLogo(file, empresa);
+        // A imagem é reduzida antes de virar base64: ela mora dentro do
+        // documento do Firestore, que tem teto de 1 MB compartilhado com
+        // todos os cadastros. Um logo de cabeçalho de PDF não precisa de
+        // mais que ~320px de largura.
+        const dataUri = await _reduzirImagemParaDataUri(file, 320);
 
         if (!db.configRelatorio) db.configRelatorio = {};
         if (!db.configRelatorio.logos) db.configRelatorio.logos = {};
-        db.configRelatorio.logos[empresa] = resultado;
+        db.configRelatorio.logos[empresa] = { url: dataUri, nome: file.name };
 
-        // Atualiza prévia
-        _pdfAtualizarPrevia(resultado.url, empresa);
+        _pdfAtualizarPrevia(dataUri, empresa);
         salvarDB();
-        mostrarToast('Logo salva com sucesso!', 'sucesso', 3000);
+        const kb = Math.round(dataUri.length * 0.75 / 1024);
+        mostrarToast(`Logo salva (${kb} KB).`, 'sucesso', 3000);
     } catch (e) {
-        mostrarToast('Erro ao enviar logo: ' + e.message, 'erro', 6000);
+        mostrarToast('Erro ao processar a logo: ' + e.message, 'erro', 6000);
     } finally {
         if (btn) esconderSpinner(btn);
         input.value = '';
     }
 }
 
+/**
+ * Reduz uma imagem para no máximo `larguraMax` pixels de largura e devolve
+ * um data URI. Mantém a proporção e não amplia imagens já pequenas.
+ *
+ * Existe porque o projeto não usa Firebase Storage: a logo vive dentro do
+ * documento de dados, e uma imagem em tamanho original estouraria o limite
+ * de 1 MB por documento sozinha.
+ */
+function _reduzirImagemParaDataUri(file, larguraMax) {
+    return new Promise((resolve, reject) => {
+        const leitor = new FileReader();
+        leitor.onerror = () => reject(new Error('não foi possível ler o arquivo'));
+        leitor.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('arquivo não é uma imagem válida'));
+            img.onload = () => {
+                const escala  = Math.min(1, larguraMax / img.width);
+                const largura = Math.round(img.width  * escala);
+                const altura  = Math.round(img.height * escala);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = largura;
+                canvas.height = altura;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, largura, altura);
+
+                // PNG preserva transparência, que logo costuma ter; se ficar
+                // grande demais, cai para JPEG com fundo branco.
+                let saida = canvas.toDataURL('image/png');
+                if (saida.length > 120 * 1024) {
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, largura, altura);
+                    saida = canvas.toDataURL('image/jpeg', 0.85);
+                }
+                resolve(saida);
+            };
+            img.src = leitor.result;
+        };
+        leitor.readAsDataURL(file);
+    });
+}
+
 async function pdfRemoverLogo() {
     const empresa = _pdfEmpresaAtiva();
-    const logo = db.configRelatorio?.logos?.[empresa];
-
-    if (logo?.caminho) {
-        await window._firestore.storageExcluirLogo(logo.caminho).catch(() => {});
-    }
-
     if (!db.configRelatorio) db.configRelatorio = {};
     if (!db.configRelatorio.logos) db.configRelatorio.logos = {};
     delete db.configRelatorio.logos[empresa];
@@ -616,46 +650,8 @@ function carregarConfiguracoesTela() {
     const logoSrc = logoEmpresa?.url || cfg.logo || null;
     _pdfAtualizarPrevia(logoSrc, empresa);
 
-    // Migração automática: se existe logo legada em base64 e ainda não há logos no Storage,
-    // converte e faz upload silenciosamente para o Storage
-    if (cfg.logo && !logoEmpresa && window._firestore?.storageUploadLogo) {
-        _migrarLogoLegada(cfg.logo, empresa);
-    }
 }
 
-/**
- * Migra a logo legada (base64) para o Firebase Storage silenciosamente.
- * Chamada automaticamente ao abrir configurações se necessário.
- */
-async function _migrarLogoLegada(base64, empresa) {
-    try {
-        // Converte base64 para Blob
-        const match    = base64.match(/^data:image\/(\w+);base64,/);
-        const mimeType = match ? `image/${match[1]}` : 'image/jpeg';
-        const ext      = match ? match[1] : 'jpg';
-        const byteStr  = atob(base64.split(',')[1] || base64);
-        const arr      = new Uint8Array(byteStr.length);
-        for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
-        const blob = new Blob([arr], { type: mimeType });
-        const file = new File([blob], `logo-migrada.${ext}`, { type: mimeType });
-
-        const resultado = await window._firestore.storageUploadLogo(file, empresa);
-
-        if (!db.configRelatorio) db.configRelatorio = {};
-        if (!db.configRelatorio.logos) db.configRelatorio.logos = {};
-        db.configRelatorio.logos[empresa] = resultado;
-        // Remove o base64 do Firestore após migração bem-sucedida
-        db.configRelatorio.logo = null;
-        salvarDB();
-
-        // Atualiza a prévia com a URL do Storage
-        _pdfAtualizarPrevia(resultado.url, empresa);
-        console.info('[Logo] Logo legada migrada para Storage com sucesso.');
-    } catch (e) {
-        console.warn('[Logo] Falha ao migrar logo legada:', e.message);
-        // Mantém o base64 como fallback — não quebra nada
-    }
-}
 
 /*
   HTML esperado na aba de config PDF (sistemaAba-backup ou similar).

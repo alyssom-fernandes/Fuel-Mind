@@ -372,9 +372,10 @@ function _buildConteudoDetalhe(l) {
 
             ${l.observacoes ? `<div class="detalhe-obs"><strong>Observações</strong><br>${escapeHtml(l.observacoes)}</div>` : ''}
 
+            ${l.anexos && l.anexos.length > 0 ? `
             <div class="detalhe-obs">
-                <strong>Anexos (${l.anexos?.length || 0})</strong><br>${anexosHtml}
-            </div>
+                <strong>Anexos (${l.anexos.length})</strong><br>${anexosHtml}
+            </div>` : ''}
 
             ${l.logs && l.logs.length > 0 ? `
             <div class="detalhe-obs">
@@ -493,7 +494,7 @@ function exportarExcel(contexto) {
  * cor de destaque, logo por empresa, quebra por mês, etc.).
  *
  * A logo da empresa ativa é resolvida na ordem:
- *   1. `db.configRelatorio.logos[empresaFiltroGlobal].url` (Storage URL → pré-carregada como base64)
+ *   1. `db.configRelatorio.logos[empresaFiltroGlobal].url` (base64 reduzido)
  *   2. `db.configRelatorio.logo` (base64 legado)
  *   3. Sem logo
  *
@@ -523,25 +524,11 @@ async function exportarPDF(contexto) {
     }, db.configRelatorio || {});
 
     // Converte cor hex → [r, g, b]
-    // ── Resolve logo: Storage URL > base64 legado > sem logo ──
-    // Se há uma URL do Storage para a empresa ativa, pré-carrega como base64
-    // antes de criar o documento (jsPDF não aceita URLs remotas diretamente).
-    const logoStorage = cfg.logos?.[empresaFiltroGlobal]?.url || null;
-    if (logoStorage && logoStorage.startsWith('http')) {
-        try {
-            const resp = await fetch(logoStorage);
-            const blob = await resp.blob();
-            cfg.logo = await new Promise((res, rej) => {
-                const reader = new FileReader();
-                reader.onload  = () => res(reader.result);
-                reader.onerror = rej;
-                reader.readAsDataURL(blob);
-            });
-        } catch (e) {
-            console.warn('[exportarPDF] Falha ao pré-carregar logo do Storage:', e);
-            // mantém cfg.logo como base64 legado ou null
-        }
-    }
+    // ── Logo da empresa ativa ──
+    // Sempre um data URI: o projeto não usa Firebase Storage, então a logo é
+    // reduzida e gravada como base64 no próprio documento (ver sistema.js).
+    // jsPDF não aceita URL remota, então isso também simplifica o desenho.
+    cfg.logo = cfg.logos?.[empresaFiltroGlobal]?.url || cfg.logo || null;
 
     function hexRgb(hex) {
         const h = hex.replace('#','');

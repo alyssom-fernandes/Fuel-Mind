@@ -306,7 +306,6 @@ function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = nul
  * 3. Valida datas (futuras, descarga anterior à nota)
  * 4. Verifica duplicidade de nota
  * 5. Valida preço médio por combustível (alerta se > 10% da média)
- * 6. Se houver anexos, faz upload para Firebase Storage antes de salvar
  * 7. Chama `salvarLancamentoFinal` com todos os dados validados
  *
  * @returns {Promise<void>}
@@ -385,61 +384,16 @@ async function salvarOuAtualizar() {
     if (!confirmouMedia) { esconderSpinner(btn); return; }
     if (itens.length === 0) { esconderSpinner(btn); mostrarToast("Adicione pelo menos um combustível.", "aviso"); return; }
 
-    const notaFiles = document.getElementById("notaFiscalFile").files;
-    if (notaFiles.length > 0) {
-        const LIMITE_ARQUIVO_MB = 10;
-        const LIMITE_TOTAL_MB   = 30;
-        let totalBytes = 0;
-        for (let i = 0; i < notaFiles.length; i++) {
-            if (notaFiles[i].size > LIMITE_ARQUIVO_MB * 1024 * 1024) {
-                esconderSpinner(btn);
-                mostrarToast(`Arquivo "${notaFiles[i].name}" excede ${LIMITE_ARQUIVO_MB} MB.`, "aviso", 5000);
-                return;
-            }
-            totalBytes += notaFiles[i].size;
-        }
-        if (totalBytes > LIMITE_TOTAL_MB * 1024 * 1024) {
-            esconderSpinner(btn);
-            mostrarToast(`Total dos anexos (${(totalBytes/1024/1024).toFixed(1)} MB) excede ${LIMITE_TOTAL_MB} MB.`, "aviso", 5000);
-            return;
-        }
-        // Upload para Firebase Storage — salva só a URL no Firestore
-        const lancamentoId = lancamentoEditandoId || gerarId();
-        try {
-            // Sobe os novos anexos PRIMEIRO — só exclui os antigos depois de
-            // confirmar que todos os novos foram enviados com sucesso, para
-            // nunca ficar sem nenhum anexo válido se um upload falhar no meio.
-            const arquivos = [];
-            for (const file of Array.from(notaFiles)) {
-                const anexo = await window._firestore.storageUploadAnexo(file, lancamentoId);
-                arquivos.push(anexo);
-            }
-            if (lancamentoEditandoId) {
-                const lancamentoAntigo = db.lancamentos.find(l => l.id === lancamentoEditandoId);
-                if (lancamentoAntigo?.anexos?.length > 0) {
-                    for (const a of lancamentoAntigo.anexos) {
-                        if (a.caminho) await window._firestore.storageExcluirAnexo(a.caminho);
-                    }
-                }
-            }
-            salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoId);
-        } catch (e) {
-            mostrarToast("Erro ao enviar anexo: " + e.message, "erro", 6000);
-        } finally {
-            esconderSpinner(btn);
-        }
-    } else {
-        salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, []);
-        esconderSpinner(btn);
-    }
+    salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa,
+                          motorista, placa, itens, total, observacoes, []);
+    esconderSpinner(btn);
 }
 
 /**
  * Persiste o lançamento no `db` e aciona `salvarDB`.
  *
- * Separada de `salvarOuAtualizar` para permitir que o upload dos anexos
- * para o Firebase Storage termine antes de salvar — o ID do lançamento
- * precisa ser o mesmo usado no caminho do Storage e no Firestore.
+ * Separada de `salvarOuAtualizar` por clareza: aquela valida e monta os
+ * itens, esta persiste.
  *
  * Se `lancamentoIdPreGerado` for fornecido (caso com anexos), usa esse ID.
  * Caso contrário, usa `lancamentoEditandoId` (edição sem novos anexos)
@@ -459,7 +413,7 @@ async function salvarOuAtualizar() {
  * @param {Array}  itens              - Array de `{ tipo, qtd, qtdDescargada, valor, total }`
  * @param {number} total              - Total calculado da nota
  * @param {string} observacoes
- * @param {Array}  arquivos           - Array de `{ nome, tipo, url, caminho }` (Storage) ou `[]`
+ * @param {Array}  arquivos           - Sempre `[]`; anexo de nota foi descontinuado
  * @param {string} [lancamentoIdPreGerado] - ID pré-gerado quando há upload de anexos
  */
 function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoIdPreGerado) {
@@ -608,7 +562,6 @@ function limparFormulario() {
     document.getElementById("motoristaSelect").value  = "";
     document.getElementById("placaInput").value       = "";
     document.getElementById("placaSelect").value      = "";
-    document.getElementById("notaFiscalFile").value   = "";
     document.getElementById("combustiveisNota").innerHTML = "";
     document.getElementById("tituloLancamentos").textContent  = "Lançamento de Entrada";
     document.getElementById("btnSalvarLancamento").textContent = "Salvar Entrada";
@@ -624,7 +577,6 @@ function limparFormulario() {
 =================================================*/
 /**
  * Exclui um lançamento após confirmação do usuário via `fmConfirm`.
- * Remove os anexos do Firebase Storage antes de excluir o registro do Firestore.
  *
  * @param {string} id                          - ID do lançamento
  * @param {'relatorio'} [contexto='relatorio'] - Tela de origem (para rerenderizar após exclusão)

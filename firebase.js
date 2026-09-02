@@ -16,9 +16,6 @@ import {
     collection, getDocs, deleteDoc, query, where
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-    getStorage, ref, uploadBytes, getDownloadURL, deleteObject
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-import {
     getAuth,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
@@ -42,7 +39,6 @@ const firebaseConfig = {
 const app       = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const firestore = getFirestore(app);
-const storage   = getStorage(app);
 const auth      = getAuth(app);
 
 /* ─── DOCUMENTOS DE DADOS ──────────────────────────────────────────────
@@ -154,60 +150,6 @@ function firestoreEscutarDoc(nome, callback, onErro) {
 /** Remove um documento da coleção `dados` (usado no corte do layout antigo). */
 async function firestoreExcluirDoc(nome) {
     await deleteDoc(_docDados(nome));
-}
-
-/* ─── STORAGE (Firebase Storage) ─── */
-
-/**
- * Faz upload de um File para Storage em anexos/{lancamentoId}/{nomeUnico}
- * Retorna { nome, tipo, url } — apenas a URL é salva no Firestore.
- */
-async function storageUploadAnexo(file, lancamentoId) {
-    const nomeUnico = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const caminho   = `anexos/${lancamentoId}/${nomeUnico}`;
-    const storageRef = ref(storage, caminho);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return { nome: file.name, tipo: file.type, url, caminho };
-}
-
-/**
- * Faz upload de uma imagem de logo para Storage em logos/{empresa}/{nomeUnico}
- * Retorna { url, caminho }
- */
-async function storageUploadLogo(file, empresa) {
-    const nomeUnico  = `${Date.now()}-logo${file.name.slice(file.name.lastIndexOf('.'))}`;
-    const empresaSlug = empresa.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const caminho    = `logos/${empresaSlug}/${nomeUnico}`;
-    const storageRef = ref(storage, caminho);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return { url, caminho };
-}
-
-/**
- * Exclui um logo do Storage pelo caminho. Silencioso se não existir.
- */
-async function storageExcluirLogo(caminho) {
-    if (!caminho) return;
-    try { await deleteObject(ref(storage, caminho)); }
-    catch (e) { if (e.code !== 'storage/object-not-found') throw e; }
-}
-
-
-/**
- * Exclui um anexo do Storage pelo campo `caminho` salvo no lançamento.
- * Silencioso se o arquivo não existir (pode ter sido deletado manualmente).
- * @param {string} caminho - Path interno do Storage (ex: `"anexos/id/nome"`)
- * @returns {Promise<void>}
- */
-async function storageExcluirAnexo(caminho) {
-    if (!caminho) return;
-    try {
-        await deleteObject(ref(storage, caminho));
-    } catch (e) {
-        if (e.code !== 'storage/object-not-found') throw e;
-    }
 }
 
 /* ─── USUÁRIOS (Firestore) ─── */
@@ -394,8 +336,6 @@ window._firestore = {
     firestoreCarregar, firestoreSalvar, firestoreEscutar,
     firestoreCarregarDoc, firestoreSalvarDoc, firestoreEscutarDoc, firestoreExcluirDoc,
     docLancamentosNome, DOC_COMPARTILHADO, DOC_LEGADO,
-    storageUploadAnexo, storageExcluirAnexo,
-    storageUploadLogo, storageExcluirLogo,
     usuarioBuscar, usuarioSalvar, usuariosListar, usuarioExcluirFirestore,
     usuarioBuscarPorUsername, usuarioUsernameDisponivel,
     usernameMapaDefinir, usernameMapaRemover,
