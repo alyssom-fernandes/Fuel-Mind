@@ -31,11 +31,21 @@
         <p id="loginErro" style="color:var(--danger);font-size:0.82rem;margin-top:12px;display:none;"></p>
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
           <button class="btn-secundario" onclick="abrirModoDemo()" style="width:100%;padding:10px;font-size:0.88rem;">
-            Ver demonstração
+            Acessar modo demo
           </button>
           <p style="color:var(--text-muted);font-size:0.72rem;margin-top:8px;line-height:1.4">
             Dados fictícios, sem login. Nada é gravado na nuvem.
           </p>
+        </div>
+
+        <!-- Assinatura AFN Systems — padrão do brand guide -->
+        <div class="pf-assinatura">
+          <div class="pf-marca">
+            <span class="pf-afn" style="font-size:13px">AFN</span>
+            <span class="pf-gap"></span>
+            <span class="pf-sys" style="font-size:13px">SYSTEMS</span>
+          </div>
+          <span class="pf-by">by Alyssom Fernandes</span>
         </div>
     </div>
 </div>
@@ -114,7 +124,18 @@
     </div>
   </nav>
   <div class="sidebar-footer">
-    <div class="sidebar-footer-info">Fuel Mind<br><span id="sidebar-data-footer"></span></div>
+    <div class="sidebar-footer-info">
+      <div class="pf-rodape">
+        <div class="pf-marca">
+          <span class="pf-afn" style="font-size:10px">AFN</span>
+          <span class="pf-gap"></span>
+          <span class="pf-sys" style="font-size:10px">SYSTEMS</span>
+        </div>
+        <span class="pf-pipe" style="font-size:13px">|</span>
+        <span class="pf-info" style="font-size:11px">Fuel Mind</span>
+      </div>
+      <span id="sidebar-data-footer" class="pf-info" style="font-size:9px;opacity:0.7"></span>
+    </div>
   </div>
 </aside>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="fecharSidebar()"></div>
