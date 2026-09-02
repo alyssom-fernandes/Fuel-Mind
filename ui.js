@@ -406,7 +406,6 @@ const _ATALHOS = [
     {
         grupo: "Navegação",
         itens: [
-            { teclas: ["Ctrl", "N"],   descricao: "Novo lançamento" },
             { teclas: ["Ctrl", "K"],   descricao: "Busca global" },
             { teclas: ["Escape"],      descricao: "Fechar modal aberto" },
         ]
@@ -634,8 +633,11 @@ document.addEventListener("DOMContentLoaded", function() {
         if (el) el.style.display = "none";
     });
 
+    // Único registro do Ctrl+K no projeto — havia um segundo, inline no fim do
+    // index.html, junto de um Escape que o app.js já tratava.
+    // `toLowerCase` porque `e.key` vem 'K' com Caps Lock ou Shift.
     document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        if ((e.ctrlKey || e.metaKey) && (e.key || '').toLowerCase() === 'k') {
             e.preventDefault();
             abrirBuscaGlobal();
         }

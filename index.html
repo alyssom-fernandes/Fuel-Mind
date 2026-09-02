@@ -886,17 +886,5 @@
 <script src="usuarios.js"></script>
 <script src="ui.js"></script>
 <script src="demo.js"></script>
-<script>
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        abrirBuscaGlobal();
-    }
-    if (e.key === 'Escape') {
-        const m = document.getElementById('buscaGlobalModal');
-        if (m && m.style.display !== 'none') fecharBuscaGlobal();
-    }
-});
-</script>
 </body>
 </html>

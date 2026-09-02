@@ -320,27 +320,30 @@ function atualizarTitulosInternos() {
 }
 
 document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 's') {
+    // Normaliza a tecla: `e.key` vem em maiúscula com Caps Lock ou Shift, e a
+    // comparação direta com 's' fazia todos os atalhos pararem justamente no
+    // estado de teclado de quem digita placa. `metaKey` cobre o Mac.
+    const comando = e.ctrlKey || e.metaKey;
+    const tecla   = (e.key || '').toLowerCase();
+    const telaVisivel = id => document.getElementById(id)?.style.display === 'block';
+
+    if (comando && tecla === 's') {
         e.preventDefault();
-        if (document.getElementById('lancamentos').style.display === 'block') {
+        if (telaVisivel('lancamentos')) {
             document.getElementById('btnSalvarLancamento')?.click();
         }
     }
-    if (e.ctrlKey && e.key === 'f') {
+    // O preventDefault só acontece quando o atalho tem o que fazer. Antes ele
+    // vinha primeiro e engolia o Ctrl+F do navegador em todas as outras telas,
+    // sem colocar nada no lugar.
+    if (comando && tecla === 'f' && telaVisivel('relatorios')) {
         e.preventDefault();
-        if (document.getElementById('relatorios')?.style.display === 'block') {
-            document.getElementById('filtroBusca')?.focus();
-        }
+        document.getElementById('filtroBusca')?.focus();
     }
-    if (e.ctrlKey && e.key === 'n') {
-        e.preventDefault();
-        limparFormulario();
-        mostrarTela('lancamentos');
-    }
-    if (e.ctrlKey && e.key === 't') {
-        e.preventDefault();
-        toggleModoEscuro();
-    }
+    // Ctrl+N e Ctrl+T eram reservados pelo Chrome: o navegador abria janela ou
+    // aba de qualquer jeito E o handler ainda rodava. No caso do Ctrl+N,
+    // limparFormulario() apagava um lançamento preenchido enquanto uma janela
+    // nova roubava a atenção — perda total e silenciosa. Removidos.
     if (e.key === 'Escape') {
         const modal = document.getElementById('modalOverlay');
         if (modal && modal.style.display === 'flex') fecharModal();
@@ -841,7 +844,14 @@ function _mesclarComPadrao(dados) {
     const resultado = JSON.parse(JSON.stringify(DB_PADRAO));
     if (!dados || typeof dados !== 'object') return resultado;
 
-    ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases'].forEach(campo => {
+    // `conjuntosVeiculos` PRECISA estar aqui. _montarPayloads o grava no
+    // documento compartilhado, mas enquanto ele faltava nesta lista a carga
+    // devolvia undefined, garantirConjuntos() ressemeava os 34 conjuntos do
+    // CONJUNTOS_INICIAIS com ids novos, e o save seguinte gravava isso por
+    // cima — toda edição de conjunto era revertida em silêncio, e os ids
+    // mudando quebravam o histórico de vigência.
+    ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases',
+     'conjuntosVeiculos'].forEach(campo => {
         if (Array.isArray(dados[campo])) resultado[campo] = dados[campo];
     });
 
