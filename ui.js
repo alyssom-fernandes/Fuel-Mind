@@ -81,14 +81,6 @@ function atualizarRelogio() {
 setInterval(atualizarRelogio, 1000);
 atualizarRelogio();
 
-/* ========== RODAPÉ DA SIDEBAR ========== */
-function atualizarFooterSidebar() {
-    const el = document.getElementById("sidebar-data-footer");
-    if (!el) return;
-    el.textContent = new Date().getFullYear();
-}
-atualizarFooterSidebar();
-
 /*─────────────────────────────────────────────────
   HOOK DE NAVEGAÇÃO
   Chamado por app.js ao final de mostrarTela

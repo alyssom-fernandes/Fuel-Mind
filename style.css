@@ -226,16 +226,6 @@ body {
 .sidebar-item svg { width: 17px; height: 17px; }
 .sidebar-item-label { overflow: hidden; text-overflow: ellipsis; }
 .sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 6px 14px; }
-.sidebar-footer {
-    padding: 12px 16px;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    flex-shrink: 0;
-}
-.sidebar-footer-info {
-    font-size: 0.65rem; color: #a02828;
-    text-align: center; line-height: 1.6;
-}
-
 /* ── MAIN AREA ── */
 .main-area {
     margin-left: var(--sidebar-width);
@@ -1081,12 +1071,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 [data-theme="light"] .sidebar-item.ativo .sidebar-item-icon svg { stroke: var(--primary); }
 [data-theme="light"] .sidebar-item .sidebar-item-icon { color: #94a3b8; }
 [data-theme="light"] .sidebar-item.ativo .sidebar-item-icon { color: var(--primary); }
-[data-theme="light"] .sidebar-footer {
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
-    color: #94a3b8;
-}
-
 /* ── ALERTAS MODO ESCURO ── */
 [data-theme="dark"] .alerta-card {
     background: rgba(30,37,53,0.95) !important;
@@ -1483,9 +1467,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
     /* ── Header: esconder data/hora ── */
     .header-datetime { display: none; }
-
-    /* ── Sidebar footer: compacto ── */
-    .sidebar-footer { padding: 12px 16px; font-size: 0.72rem; }
 
     /* ── Sistema: grid de info em 1 coluna ── */
     .info-sistema { grid-template-columns: 1fr; }
