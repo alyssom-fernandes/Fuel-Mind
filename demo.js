@@ -145,13 +145,23 @@ function _demoGerarBase() {
     ];
 
     // ── Lançamentos: 8 meses de histórico, para os gráficos terem curva ──
+    //
+    // O volume por mês é alto de propósito. Com a dúzia de notas que havia
+    // antes, cada combinação de empresa e combustível ficava com uma ou duas
+    // notas nos últimos 30 dias, e o alerta de preço — que exige cinco
+    // observações para não inventar anomalia — nunca falava. O modo demo
+    // existe para mostrar o sistema inteiro, então precisa de histórico que
+    // sustente os avisos. Cem notas por mês, divididas por três empresas e
+    // quatro combustíveis, dão cerca de oito observações por combinação em
+    // trinta dias. Também é mais fiel à operação real, de 10 a 30 notas por
+    // dia.
     const lancamentos = [];
     let contador = 1000;
 
     for (let mesAtras = 7; mesAtras >= 0; mesAtras--) {
         const base = new Date(hoje.getFullYear(), hoje.getMonth() - mesAtras, 1);
         const diasNoMes = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
-        const quantidade = 12 + Math.floor(rnd() * 8);
+        const quantidade = 84 + Math.floor(rnd() * 24);
 
         for (let n = 0; n < quantidade; n++) {
             const dia = 1 + Math.floor(rnd() * diasNoMes);
@@ -161,8 +171,16 @@ function _demoGerarBase() {
             const dataDescarga = new Date(dataNota);
             dataDescarga.setDate(dataDescarga.getDate() + Math.floor(rnd() * 3));
 
-            const emp  = empresas[Math.floor(rnd() * empresas.length)];
-            const comb = DEMO_COMBUSTIVEIS[Math.floor(rnd() * DEMO_COMBUSTIVEIS.length)];
+            // Empresa e combustível são distribuídos em ciclo, não sorteados.
+            // Sorteio uniforme deixa combinações de fora por azar, e a
+            // referência de preço filtra por empresa E combustível: bastava
+            // uma combinação ficar com menos de cinco notas em trinta dias
+            // para o alerta emudecer justamente na demonstração. O ciclo
+            // garante cobertura pareja; motorista, placa, base e valores
+            // continuam sorteados, então os relatórios não ficam robóticos.
+            const par  = n % (empresas.length * DEMO_COMBUSTIVEIS.length);
+            const emp  = empresas[par % empresas.length];
+            const comb = DEMO_COMBUSTIVEIS[Math.floor(par / empresas.length)];
 
             // Preço oscila ±6% em torno da base, com leve alta ao longo do tempo
             const tendencia = 1 + (7 - mesAtras) * 0.004;
@@ -383,6 +401,45 @@ function _demoMostrarFaixa() {
 
     _demoMedirFaixa();
     window.addEventListener("resize", _demoMedirFaixa);
+}
+
+/**
+ * Dica do que experimentar, só no modo demonstração e só na tela de
+ * lançamento.
+ *
+ * Três dos avisos do formulário só aparecem quando o operador digita algo
+ * que os provoque — data no futuro, descarga antes da nota, preço fora da
+ * referência. Numa demonstração, ninguém adivinha que eles existem. Esta
+ * dica os torna visíveis sem precisar de dado plantado, e some com um
+ * clique. Fica escondida fora da demo.
+ */
+function _demoDicaLancamento() {
+    if (!demoAtivo()) return;
+    if (sessionStorage.getItem("fm_demo_dica_lanc") === "fechada") return;
+    if (document.getElementById("demoDicaLanc")) return;
+
+    const banner = document.getElementById("bannerRascunho");
+    if (!banner || !banner.parentNode) return;
+
+    const dica = document.createElement("div");
+    dica.id = "demoDicaLanc";
+    dica.className = "demo-dica";
+    dica.innerHTML = `
+        <strong>Para ver os avisos em ação</strong>
+        <ul>
+            <li>Ponha uma <strong>data de descarga anterior à da nota</strong>: vira erro e impede salvar.</li>
+            <li>Ponha uma <strong>data no futuro</strong>: vira alerta e deixa salvar.</li>
+            <li>Digite um <strong>preço bem acima do normal</strong>, tipo o dobro: o sistema compara com a mediana dos últimos 30 dias.</li>
+            <li>Repita o <strong>número de uma nota já lançada</strong>, na mesma data e empresa: aparece o aviso de duplicidade.</li>
+            <li>Digite um <strong>motorista que não existe</strong>: a lista oferece cadastrar na hora.</li>
+        </ul>
+        <button onclick="_demoFecharDicaLanc()">Entendi</button>`;
+    banner.parentNode.insertBefore(dica, banner);
+}
+
+function _demoFecharDicaLanc() {
+    sessionStorage.setItem("fm_demo_dica_lanc", "fechada");
+    document.getElementById("demoDicaLanc")?.remove();
 }
 
 /**

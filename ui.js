@@ -101,6 +101,10 @@ window._uiNavHook = function(telaId) {
     if (typeof atualizarTitulosInternos === 'function') {
         atualizarTitulosInternos();
     }
+
+    if (telaId === "lancamentos" && typeof _demoDicaLancamento === 'function') {
+        _demoDicaLancamento();
+    }
 };
 
 /* atualizarFiltroEmpresaGlobal está em app.js */

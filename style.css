@@ -1721,3 +1721,38 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .faixa-validacao li { margin-bottom: 3px; }
 .faixa-validacao a  { color: inherit; text-decoration: underline; }
 .faixa-validacao a:hover { opacity: 0.8; }
+
+/* ══ DICA DO MODO DEMONSTRAÇÃO ═══════════════════════════════════════
+   Só aparece na demo, e só na tela de lançamento: os avisos do
+   formulário dependem de o operador digitar algo que os provoque, e
+   numa demonstração ninguém adivinha que existem. */
+.demo-dica {
+    background: var(--info-light); border: 1px solid var(--info);
+    border-left: 4px solid var(--info); border-radius: var(--radius);
+    padding: 12px 16px; margin-bottom: 16px;
+    font-size: 0.85rem; line-height: 1.6; color: var(--info);
+}
+.demo-dica ul { margin: 8px 0 10px; padding-left: 20px; }
+.demo-dica li { margin-bottom: 4px; }
+.demo-dica strong { color: inherit; }
+.demo-dica button {
+    background: transparent; border: 1px solid currentColor; color: inherit;
+    padding: 4px 14px; border-radius: var(--radius-sm);
+    font-size: 0.8rem; cursor: pointer;
+}
+.demo-dica button:hover { background: rgba(255,255,255,0.08); }
+
+/* A regra global `ul li` do arquivo transforma item de lista em linha
+   flex com espaço entre as pontas — serve às listas de cadastro, mas
+   estica o texto corrido destas duas listas. Aqui elas voltam a ser
+   lista de texto normal. */
+.demo-dica li,
+.faixa-validacao li {
+    display: list-item; justify-content: initial; align-items: initial;
+    padding: 0; border: 0; gap: 0; flex-wrap: initial;
+    font-size: inherit; background: none;
+}
+.demo-dica li:hover,
+.faixa-validacao li:hover { background: none; }
+.demo-dica ul,
+.faixa-validacao ul { list-style: disc; }
