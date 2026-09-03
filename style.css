@@ -1590,3 +1590,95 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 @media (max-width: 480px) {
     #toastPilha { left: 16px; right: 16px; bottom: 16px; align-items: stretch; }
 }
+
+/* ══ COMBOBOX DE CADASTRO (motorista, placa, base) ═══════════════════
+   Substitui o <datalist> nativo nos campos que apontam para cadastro.
+   O wrapper existe para a lista se posicionar em relação ao campo. */
+.fm-combo { position: relative; display: block; width: 100%; }
+.fm-combo-lista {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    /* Acima do bannerXML e do totalizador, abaixo dos modais (que usam 1000+). */
+    z-index: 60;
+    margin: 0; padding: 4px; list-style: none;
+    max-height: 260px; overflow-y: auto;
+    background: var(--surface-raised, var(--surface));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+}
+.fm-combo-cabecalho {
+    font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--text-light);
+    padding: 6px 10px 4px;
+}
+.fm-combo-item {
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    font-size: 0.875rem; color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.fm-combo-item:hover { background: var(--surface-hover); }
+.fm-combo-item.ativo { background: var(--primary); color: var(--text-on-dark); }
+.fm-combo-item.ativo .fm-combo-extra { color: var(--text-on-dark); opacity: 0.75; }
+.fm-combo-extra { font-size: 0.75rem; color: var(--text-light); flex-shrink: 0; }
+.fm-combo-vazio {
+    padding: 8px 10px; font-size: 0.83rem; color: var(--text-light); font-style: italic;
+}
+.fm-combo-novo { color: var(--primary-mid); font-weight: 600; }
+.fm-combo-novo.ativo { color: var(--text-on-dark); }
+/* Anúncio para leitor de tela; invisível na tela. */
+.fm-combo-status {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+}
+/* Campo preenchido por sugestão do histórico, não escolhido pelo operador. */
+.campo-sugerido {
+    border-color: var(--info) !important;
+    background: var(--info-light) !important;
+}
+
+/* ══ FAIXA DE RASCUNHO RECUPERADO ════════════════════════════════════ */
+.banner-rascunho {
+    background: var(--warning-light); border: 1px solid var(--warning);
+    border-left: 4px solid var(--warning); border-radius: var(--radius);
+    padding: 12px 16px; margin-bottom: 16px;
+    font-size: 0.875rem; color: var(--warning); line-height: 1.7;
+}
+.banner-rascunho small { display: block; margin-top: 4px; color: var(--text-muted); font-size: 0.8rem; }
+.banner-acoes { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.banner-acoes button { padding: 6px 14px; font-size: 0.82rem; }
+
+/* ══ MARCA DE CAMPO HERDADO ══════════════════════════════════════════ */
+.marca-herdada {
+    display: inline-block; margin-left: 6px; padding: 1px 6px;
+    border-radius: 999px; background: var(--info-light); color: var(--info);
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* ══ LANÇADAS NESTA SESSÃO ═══════════════════════════════════════════ */
+.sessao-bloco { margin-top: 28px; }
+.sessao-contador {
+    font-size: 0.68rem; font-weight: 700; color: var(--text-light);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-left: 8px;
+}
+.sessao-item {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 9px 12px; margin-bottom: 6px;
+    background: var(--surface-alt); border: 1px solid var(--border-light);
+    border-radius: var(--radius); font-size: 0.845rem;
+}
+.sessao-hora    { color: var(--text-light); font-size: 0.75rem; min-width: 40px; }
+.sessao-nota    { font-weight: 700; min-width: 70px; }
+.sessao-empresa { color: var(--text-muted); flex: 1; min-width: 120px; }
+.sessao-base    { color: var(--text-light); min-width: 90px; }
+.sessao-litros  { min-width: 100px; text-align: right; }
+.sessao-total   { min-width: 100px; text-align: right; font-weight: 600; }
+.sessao-item .btn-excluir { margin-left: auto; }
+
+.dica-atalho {
+    font-size: 0.72rem; color: var(--text-light);
+    align-self: center; margin-left: 4px;
+}
+@media (max-width: 640px) {
+    .dica-atalho { display: none; }
+    .sessao-empresa, .sessao-base { min-width: 0; }
+}

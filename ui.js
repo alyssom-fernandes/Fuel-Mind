@@ -416,7 +416,11 @@ const _ATALHOS = [
     {
         grupo: "Lançamentos",
         itens: [
-            { teclas: ["Ctrl", "S"],   descricao: "Salvar lançamento (na tela de Lançamentos)" },
+            { teclas: ["Ctrl", "Enter"], descricao: "Salvar e lançar a próxima nota" },
+            { teclas: ["Ctrl", "S"],     descricao: "Salvar (mesma ação do botão principal)" },
+            { teclas: ["↓", "↑"],        descricao: "Percorrer sugestões de motorista, placa e base" },
+            { teclas: ["Enter"],         descricao: "Escolher a sugestão destacada" },
+            { teclas: ["Escape"],        descricao: "Fechar a lista de sugestões" },
         ]
     },
     {

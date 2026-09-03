@@ -182,6 +182,7 @@
 <!-- LANÇAMENTOS -->
 <div id="lancamentos" class="tela">
   <h2 id="tituloLancamentos" style="display:block;">Lançamento de Entrada</h2>
+  <div id="bannerRascunho" class="banner-rascunho" style="display:none"></div>
   <div id="bannerEdicao" class="banner-edicao"></div>
   <div id="bannerXML" class="banner-xml" style="display:none"></div>
   <div class="importar-xml-bloco">
@@ -191,12 +192,14 @@
   </div>
   <div class="form-grid">
     <div class="campo"><label for="dataNota">Data da Nota Fiscal <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label><input type="date" id="dataNota" oninput="marcarFormularioSujo()"></div>
-    <div class="campo"><label for="dataDescarga">Data da Descarga</label><input type="date" id="dataDescarga" oninput="marcarFormularioSujo()"></div>
+    <div class="campo">
+      <label for="dataDescarga">Data da Descarga <span id="marcaHerdada" class="marca-herdada" style="display:none" title="Veio da nota anterior. Confira.">herdada</span></label>
+      <input type="date" id="dataDescarga" oninput="marcarFormularioSujo(); _limparMarcaHerdada()">
+    </div>
     <div class="campo"><label for="numeroNota">Número da Nota</label><input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()"></div>
     <div class="campo">
       <label for="baseEntradaInput">Base / Distribuidora</label>
-      <input id="baseEntradaInput" list="dlBases" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
-      <datalist id="dlBases"></datalist>
+      <input id="baseEntradaInput" placeholder="Digite para pesquisar" oninput="marcarFormularioSujo()">
       <input type="hidden" id="baseEntrada">
     </div>
     <div class="campo">
@@ -207,14 +210,12 @@
     </div>
     <div class="campo">
       <label for="motoristaInput">Motorista <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
-      <input id="motoristaInput" list="dlMotoristas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
-      <datalist id="dlMotoristas"></datalist>
+      <input id="motoristaInput" placeholder="Digite para pesquisar" oninput="marcarFormularioSujo()">
       <input type="hidden" id="motoristaSelect">
     </div>
     <div class="campo">
       <label for="placaInput">Placa do Veículo <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
-      <input id="placaInput" list="dlPlacas" placeholder="Digite ou selecione" oninput="marcarFormularioSujo()">
-      <datalist id="dlPlacas"></datalist>
+      <input id="placaInput" placeholder="Digite para pesquisar" oninput="marcarFormularioSujo()">
       <input type="hidden" id="placaSelect">
     </div>
     <div class="campo"><label for="observacoes">Observações</label><textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea></div>
@@ -224,8 +225,18 @@
   <button class="btn-secundario" onclick="adicionarCombustivelNota()">Adicionar Combustível</button>
   <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
   <div class="acoes-lancamento">
-    <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar()">Salvar Entrada</button>
-    <button class="btn-cancelar" onclick="limparFormulario()">Cancelar</button>
+    <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar('proxima')">Salvar e lançar próxima</button>
+    <button class="btn-secundario" id="btnSalvarSair" onclick="salvarOuAtualizar('sair')">Salvar e sair</button>
+    <button class="btn-cancelar" onclick="descartarFormulario()">Cancelar</button>
+    <span class="dica-atalho">Ctrl+Enter salva e abre a próxima</span>
+  </div>
+
+  <!-- Lançadas nesta sessão: prova visível de que cada nota entrou, com
+       desfazer à mão. É o que torna ficar na tela confiável, em vez de
+       ir ao relatório conferir depois de cada nota. -->
+  <div id="sessaoBloco" class="sessao-bloco" style="display:none">
+    <h3>Lançadas nesta sessão <span id="sessaoContador" class="sessao-contador"></span></h3>
+    <div id="sessaoLista"></div>
   </div>
 </div>
 
@@ -876,6 +887,8 @@
 <script src="utils.js"></script>
 <script src="app.js"></script>
 <script src="cadastros.js"></script>
+<script src="combobox.js"></script>
+<script src="rascunho.js"></script>
 <script src="lancamentos.js"></script>
 <script src="relatorios.js"></script>
 <script src="analitico.js"></script>

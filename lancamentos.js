@@ -20,7 +20,19 @@ function importarXMLNFe(input) {
         return;
     }
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = async function (e) {
+        // A importação sobrescreve os campos e zera as linhas de combustível.
+        // Era mais um caminho de perda silenciosa: quem tinha meia nota
+        // digitada e importava o XML por engano perdia tudo sem aviso.
+        if (_formularioSujo) {
+            if (!await fmConfirm({
+                titulo: "Substituir o que está preenchido?",
+                msg: "O XML vai sobrescrever os campos e as linhas de combustível desta tela.",
+                confirmTxt: "Substituir pelo XML",
+                cancelTxt: "Manter o que está",
+                tipo: "aviso"
+            })) { input.value = ""; return; }
+        }
         try {
             const parser = new DOMParser();
             const xml = parser.parseFromString(e.target.result, "text/xml");
@@ -326,12 +338,18 @@ function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = nul
  * 3. Valida datas (futuras, descarga anterior à nota)
  * 4. Verifica duplicidade de nota
  * 5. Valida preço médio por combustível (alerta se > 10% da média)
+ * 6. Mostra a conferência final, quando o operador vai continuar lançando
  * 7. Chama `salvarLancamentoFinal` com todos os dados validados
  *
+ * @param {'proxima'|'sair'} [modo='proxima'] - o que fazer depois de gravar.
+ *   `proxima` mantém o operador na tela, com o contexto do lote preservado;
+ *   `sair` leva ao relatório, como era antes. Salvar deixou de decidir
+ *   sozinho qual é o próximo trabalho: quem lança um bolo de notas continua
+ *   lançando, e ir ao relatório a cada nota custava tempo e foco.
  * @returns {Promise<void>}
  */
-async function salvarOuAtualizar() {
-    const btn = document.getElementById("btnSalvarLancamento");
+async function salvarOuAtualizar(modo = 'proxima') {
+    const btn = document.getElementById(modo === 'sair' ? "btnSalvarSair" : "btnSalvarLancamento");
     mostrarSpinner(btn, btn.innerText);
 
     const dataNota     = document.getElementById("dataNota").value;
@@ -404,8 +422,33 @@ async function salvarOuAtualizar() {
     if (!confirmouMedia) { esconderSpinner(btn); return; }
     if (itens.length === 0) { esconderSpinner(btn); mostrarToast("Adicione pelo menos um combustível.", "aviso"); return; }
 
+    // ── Conferência final ──
+    // Só no caminho "salvar e lançar próxima", e só para nota nova. É o
+    // preço do trade-off declarado pelo dono, segurança primeiro: quem
+    // continua na tela não passa pelo relatório, então esta é a única
+    // oportunidade de olhar a nota inteira antes de ela existir. Quem
+    // escolhe "salvar e sair" cai no relatório e confere lá.
+    if (modo === 'proxima' && !lancamentoEditandoId) {
+        const litros = itens.reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
+        const resumo =
+            `Empresa: ${empresa}\n`
+            + `Base: ${base || "—"}\n`
+            + `Data da nota: ${formatarData(dataNota)}${dataDescarga ? `   Descarga: ${formatarData(dataDescarga)}` : ""}\n`
+            + `Nota: ${numeroNota || "—"}\n`
+            + `Motorista: ${motorista}   Placa: ${placa}\n`
+            + `${itens.length} combustível(is), ${fmtL3(litros)}\n`
+            + `Total: ${fmtR(total)}`;
+        if (!await fmConfirm({
+            titulo: "Confirmar lançamento",
+            msg: resumo,
+            confirmTxt: "Confirmar e lançar próxima",
+            cancelTxt: "Voltar e corrigir",
+            tipo: "info"
+        })) { esconderSpinner(btn); return; }
+    }
+
     salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa,
-                          motorista, placa, itens, total, observacoes, []);
+                          motorista, placa, itens, total, observacoes, [], undefined, modo);
     esconderSpinner(btn);
 }
 
@@ -419,9 +462,10 @@ async function salvarOuAtualizar() {
  * Caso contrário, usa `lancamentoEditandoId` (edição sem novos anexos)
  * ou gera um novo ID via `gerarId()`.
  *
- * Após salvar, navega para a tela adequada:
- * - Edição: recarrega o relatório preservando os filtros
- * - Novo/clone: navega para o relatório
+ * Depois de gravar, o destino depende do `modo`:
+ * - `proxima`: fica na tela, limpa só o que pertence à nota e devolve o
+ *   foco à Data da Nota. É o caminho normal de quem lança um bolo de notas.
+ * - `sair`: vai ao relatório, preservando os filtros quando era edição.
  *
  * @param {string} dataNota
  * @param {string} dataDescarga
@@ -435,8 +479,9 @@ async function salvarOuAtualizar() {
  * @param {string} observacoes
  * @param {Array}  arquivos           - Sempre `[]`; anexo de nota foi descontinuado
  * @param {string} [lancamentoIdPreGerado] - ID pré-gerado quando há upload de anexos
+ * @param {'proxima'|'sair'} [modo='proxima'] - destino depois de gravar
  */
-function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoIdPreGerado) {
+function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoIdPreGerado, modo = 'proxima') {
     // Detecta se é edição ou novo/clone — para decidir como recarregar o relatório
     const eraEdicao = !!(lancamentoEditandoId && !isClonando);
 
@@ -464,17 +509,186 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         mostrarToast("Lançamento salvo com sucesso!", "sucesso");
     }
     salvarDB();
-    limparFormulario();
-    // `mostrarTela('relatorios')` já chama carregarRelatorio() internamente —
-    // por isso não há um segundo carregarRelatorio() aqui. Havia, e todo
-    // salvamento renderizava a tabela duas vezes.
-    mostrarTela('relatorios');
 
-    // Após edição, reaplica os filtros que o usuário tinha montado em vez de
-    // deixar o recarregamento padrão zerá-los.
-    if (eraEdicao && typeof recarregarRelatorioSemZerarFiltros === 'function') {
-        setTimeout(() => recarregarRelatorioSemZerarFiltros(), 0);
+    // O rascunho é apagado AQUI, depois de o lançamento entrar na memória e
+    // no backup local, e não depois da confirmação do Firestore. `salvarDB`
+    // pode passar meio minuto tentando de novo; nesse intervalo o rascunho
+    // ainda existiria e reapareceria depois como uma nota fantasma.
+    if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
+
+    // O contador de uso sobe só agora: passar por um nome na lista e escolher
+    // outro não pode virar sinal de frequência.
+    if (typeof fmUsoRegistrar === 'function') {
+        fmUsoRegistrar('motorista', motorista);
+        fmUsoRegistrar('placa', placa);
+        fmUsoRegistrar('base', base);
     }
+
+    if (!eraEdicao) _sessaoRegistrar(lancamento);
+
+    if (modo === 'sair') {
+        limparFormulario();
+        // `mostrarTela('relatorios')` já chama carregarRelatorio() internamente —
+        // por isso não há um segundo carregarRelatorio() aqui. Havia, e todo
+        // salvamento renderizava a tabela duas vezes.
+        mostrarTela('relatorios');
+
+        // Após edição, reaplica os filtros que o usuário tinha montado em vez de
+        // deixar o recarregamento padrão zerá-los.
+        if (eraEdicao && typeof recarregarRelatorioSemZerarFiltros === 'function') {
+            setTimeout(() => recarregarRelatorioSemZerarFiltros(), 0);
+        }
+        return;
+    }
+
+    // modo 'proxima': o operador continua onde está.
+    if (eraEdicao) {
+        // Correção em cadeia: a nota corrigida continua na tela para o caso de
+        // haver mais de um erro nela.
+        limparFormularioSujo();
+        _sessaoRenderizar();
+        return;
+    }
+    limparFormularioParcial();
+}
+
+/*=================================================
+  RESET PARCIAL — o contexto do lote fica, a nota vai
+=================================================*/
+/**
+ * Prepara a tela para a próxima nota do mesmo bolo.
+ *
+ * A divisão entre o que fica e o que sai é explícita de propósito. A lição
+ * das ferramentas que erram isso (o "criar outro" do Jira é o exemplo
+ * citado por quatro das cinco pesquisas) é que preservar campo errado em
+ * silêncio gera registro errado que ninguém vê.
+ *
+ * Fica: Empresa (já travada pela empresa ativa), Base e Data da Descarga.
+ * Sai:  Data da Nota, Número, Motorista, Placa, Observações e os itens.
+ *
+ * Motorista e Placa saem por decisão do dono: numa sequência de notas o
+ * caminhão às vezes muda, e o custo dos dois erros é diferente. Limpar
+ * quando devia preservar custa segundos de digitação; preservar quando
+ * devia limpar produz nota com motorista errado que só aparece na
+ * conferência. A sugestão cruzada em `combobox.js` devolve a velocidade
+ * sem herdar nada.
+ */
+function limparFormularioParcial() {
+    lancamentoEditandoId = null;
+    isClonando = false;
+
+    ["dataNota", "numeroNota", "observacoes"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = "";
+    });
+    ["motoristaInput", "motoristaSelect", "placaInput", "placaSelect"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = "";
+    });
+    document.getElementById("motoristaInput")?.classList.remove("campo-sugerido");
+    document.getElementById("placaInput")?.classList.remove("campo-sugerido");
+    document.getElementById("combustiveisNota").innerHTML = "";
+
+    const bannerXML = document.getElementById("bannerXML");
+    if (bannerXML) { bannerXML.style.display = "none"; bannerXML.innerHTML = ""; }
+    document.getElementById("bannerEdicao").style.display = "none";
+    document.getElementById("tituloLancamentos").textContent  = "Lançamento de Entrada";
+    document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";
+    const btnSair = document.getElementById("btnSalvarSair");
+    if (btnSair) btnSair.textContent = "Salvar e sair";
+
+    // A data da descarga fica, mas marcada: economizar oito dígitos não vale
+    // um erro de data que passa em silêncio. A marca sai no primeiro toque.
+    const marca = document.getElementById("marcaHerdada");
+    if (marca) marca.style.display = document.getElementById("dataDescarga").value ? "inline-block" : "none";
+
+    limparFormularioSujo();
+    atualizarTotalizadorNota();
+    _sessaoRenderizar();
+
+    // O primeiro campo realmente novo é a Data da Nota, porque ela deixou de
+    // ser herdada. O foco ir para lá é o que permite lançar sem tocar no mouse.
+    const foco = document.getElementById("dataNota");
+    if (foco) foco.focus();
+}
+
+function _limparMarcaHerdada() {
+    const marca = document.getElementById("marcaHerdada");
+    if (marca) marca.style.display = "none";
+}
+
+/*=================================================
+  LANÇADAS NESTA SESSÃO
+=================================================*/
+/**
+ * Lista as notas gravadas desde que a tela foi aberta.
+ *
+ * Existe porque salvar sem sair do lugar tira do operador a única prova que
+ * ele tinha de que a nota entrou: a tabela do relatório. Sem prova visível,
+ * ele vai conferir de qualquer forma e o ganho desaparece. É também a rede
+ * de segurança do campo que ficou preenchido por engano — o erro aparece
+ * na linha, não semanas depois.
+ *
+ * Guarda id e hora: o lançamento em si vive em `db.lancamentos`, e ler de lá
+ * na hora de renderizar evita mostrar dado velho depois de uma edição. A hora
+ * é anotada aqui, e não deduzida do log, porque log antigo é string sem
+ * carimbo de tempo e daria hora errada.
+ */
+let _idsSessao = [];
+
+function _sessaoRegistrar(lancamento) {
+    _idsSessao.unshift({
+        id: lancamento.id,
+        hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    });
+    _sessaoRenderizar();
+}
+
+function _sessaoRenderizar() {
+    const bloco = document.getElementById("sessaoBloco");
+    const lista = document.getElementById("sessaoLista");
+    if (!bloco || !lista) return;
+
+    const presentes = _idsSessao
+        .map(reg => {
+            const l = (db.lancamentos || []).find(x => x.id === reg.id);
+            return l ? { l, hora: reg.hora } : null;
+        })
+        .filter(Boolean);
+
+    if (!presentes.length) { bloco.style.display = "none"; lista.innerHTML = ""; return; }
+
+    bloco.style.display = "block";
+    const contador = document.getElementById("sessaoContador");
+    if (contador) contador.textContent = `${presentes.length} nota${presentes.length > 1 ? "s" : ""}`;
+
+    lista.innerHTML = presentes.map(({ l, hora }) => {
+        const litros = (l.itens || []).reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
+        return `<div class="sessao-item">
+            <span class="sessao-hora">${escapeHtml(hora)}</span>
+            <span class="sessao-nota">${escapeHtml(l.numeroNota || "sem número")}</span>
+            <span class="sessao-empresa">${escapeHtml(l.empresa || "")}</span>
+            <span class="sessao-base">${escapeHtml(l.base || "—")}</span>
+            <span class="sessao-litros">${fmtL3(litros)}</span>
+            <span class="sessao-total">${fmtR(l.total || 0)}</span>
+            <button class="btn-excluir" title="Desfazer este lançamento"
+                    onclick="_sessaoDesfazer('${l.id}')">Desfazer</button>
+        </div>`;
+    }).join("");
+}
+
+async function _sessaoDesfazer(id) {
+    const l = (db.lancamentos || []).find(x => x.id === id);
+    if (!l) return;
+    if (!await fmConfirm({
+        titulo: "Desfazer o lançamento?",
+        msg: `${l.numeroNota ? `Nota ${l.numeroNota}` : "Lançamento"} de ${l.empresa}.\n\nEle será apagado.`,
+        confirmTxt: "Desfazer",
+        tipo: "perigo"
+    })) return;
+    db.lancamentos = db.lancamentos.filter(x => x.id !== id);
+    _idsSessao = _idsSessao.filter(x => x.id !== id);
+    salvarDB();
+    _sessaoRenderizar();
+    mostrarToast("Lançamento desfeito.", "info");
 }
 
 /*=================================================
@@ -523,7 +737,13 @@ function editarLancamento(id) {
         banner.innerHTML = bannerHtml;
         document.getElementById("tituloLancamentos").textContent  = "Editando Lançamento";
         _aplicarMarcadorSujo();   // trocar o texto do título apagava o marcador
-        document.getElementById("btnSalvarLancamento").textContent = "Atualizar Entrada";
+        // Na edição o primário fica sendo só "Salvar", para correção em
+        // cadeia: uma nota com dois erros não obriga a reabrir a tela.
+        document.getElementById("btnSalvarLancamento").textContent = "Salvar";
+        const btnSairEd = document.getElementById("btnSalvarSair");
+        if (btnSairEd) btnSairEd.textContent = "Salvar e voltar";
+        const marcaEd = document.getElementById("marcaHerdada");
+        if (marcaEd) marcaEd.style.display = "none";
     }, 0);
 }
 
@@ -561,7 +781,9 @@ function clonarLancamento(id) {
     l.itens.forEach(item => adicionarCombustivelNota(item));
     document.getElementById("tituloLancamentos").textContent  = "Novo Lançamento (Clonado)";
     _aplicarMarcadorSujo();   // idem: o clone já nasce sujo
-    document.getElementById("btnSalvarLancamento").textContent = "Salvar Entrada";
+    document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";
+    const btnSairCl = document.getElementById("btnSalvarSair");
+    if (btnSairCl) btnSairCl.textContent = "Salvar e sair";
     document.getElementById("bannerEdicao").style.display = "none";
     mostrarTela("lancamentos");
 }
@@ -586,13 +808,40 @@ function limparFormulario() {
     document.getElementById("placaInput").value       = "";
     document.getElementById("placaSelect").value      = "";
     document.getElementById("combustiveisNota").innerHTML = "";
+    document.getElementById("motoristaInput").classList.remove("campo-sugerido");
+    document.getElementById("placaInput").classList.remove("campo-sugerido");
     document.getElementById("tituloLancamentos").textContent  = "Lançamento de Entrada";
-    document.getElementById("btnSalvarLancamento").textContent = "Salvar Entrada";
+    document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";
+    const btnSairLimpo = document.getElementById("btnSalvarSair");
+    if (btnSairLimpo) btnSairLimpo.textContent = "Salvar e sair";
     document.getElementById("bannerEdicao").style.display = "none";
     const bannerXML = document.getElementById("bannerXML");
     if (bannerXML) bannerXML.style.display = "none";
+    const marca = document.getElementById("marcaHerdada");
+    if (marca) marca.style.display = "none";
     limparFormularioSujo();
+    if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
     atualizarTotalizadorNota();
+}
+
+/**
+ * O botão Cancelar, agora com pergunta.
+ *
+ * `limparFormulario` apagava a tela inteira num clique, sem confirmar, e era
+ * um dos caminhos de perda real de trabalho preenchido. Agora só pergunta
+ * quando há algo a perder.
+ */
+async function descartarFormulario() {
+    if (_formularioSujo) {
+        if (!await fmConfirm({
+            titulo: "Descartar o que está preenchido?",
+            msg: "O lançamento em andamento será apagado desta tela.",
+            confirmTxt: "Descartar",
+            cancelTxt: "Continuar preenchendo",
+            tipo: "perigo"
+        })) return;
+    }
+    limparFormulario();
 }
 
 /*=================================================

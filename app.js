@@ -208,6 +208,9 @@ function _entrarNoSistema(perfil, empresa) {
 /* ─── LOGOUT ─── */
 async function fazerLogout() {
     if (!await fmConfirm({ titulo: "Sair do sistema?", msg: "Sua sessão será encerrada.", confirmTxt: "Sair", cancelTxt: "Cancelar", tipo: "aviso" })) return;
+    // O rascunho é apagado no logout: a chave é por usuário, mas deixar
+    // trabalho de um turno esperando o próximo login não ajuda ninguém.
+    if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
     empresaFiltroGlobal = null;
     empresaFiltroNome   = "";
     window._usuarioAtual = null;
@@ -330,6 +333,16 @@ document.addEventListener('keydown', (e) => {
     if (comando && tecla === 's') {
         e.preventDefault();
         if (telaVisivel('lancamentos')) {
+            document.getElementById('btnSalvarLancamento')?.click();
+        }
+    }
+    // Ctrl+Enter é o atalho do botão primário — "salvar e lançar próxima" numa
+    // nota nova, "salvar" numa correção. É o que permite atravessar um bolo de
+    // notas sem tocar no mouse. Ctrl+S faz o mesmo, porque nesta tela o
+    // primário sempre é a ação de salvar.
+    if (comando && (e.key === 'Enter' || tecla === 'enter')) {
+        if (telaVisivel('lancamentos')) {
+            e.preventDefault();
             document.getElementById('btnSalvarLancamento')?.click();
         }
     }
@@ -1080,6 +1093,9 @@ function _aplicarMarcadorSujo() {
 function marcarFormularioSujo() {
     _formularioSujo = true;
     _aplicarMarcadorSujo();
+    // Todo campo do formulário já chamava esta função, então ela é o gancho
+    // natural do rascunho: não foi preciso espalhar ouvintes pela tela.
+    if (typeof fmRascunhoAgendar === 'function') fmRascunhoAgendar();
 }
 
 function limparFormularioSujo() {
@@ -1154,6 +1170,10 @@ async function mostrarTela(id) {
                 document.getElementById('empresaSelect').value = empresaFiltroGlobal;
             }
         }
+        // Oferece o rascunho, se houver, sem tocar em campo nenhum, e refaz a
+        // lista de notas já lançadas nesta sessão.
+        if (typeof fmRascunhoVerificar === 'function') fmRascunhoVerificar();
+        if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar();
     }
 
     // Atualiza highlight da sidebar

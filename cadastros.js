@@ -5,7 +5,8 @@
   FIX: IDs com aspas em todos os onclick inline
   FIX: alert() de validação substituídos por mostrarToast
   FIX v2: converterPlacaMercosul corrigida (último dígito não era cortado)
-  FIX v3: datalists dlEmpresas/dlMotoristas/dlPlacas/dlBases corrigidos
+  Empresa usa datalist (dlEmpresas); motorista, placa e base usam o
+  combobox de combobox.js
           + validação blur nos campos de lançamento
   FIX v4: toggleAtivo e excluirCadastro agora usam String(id) na busca,
           corrigindo falha silenciosa quando IDs vinham do Firestore
@@ -182,8 +183,83 @@ function fecharModal() {
     modalContexto = null;
 }
 
+/* ── CADASTRO RÁPIDO, SEM SAIR DO LANÇAMENTO ────────────────────────
+   Quando o combobox não encontra o que foi digitado, ele oferece
+   "Cadastrar X" e chama isto. Reaproveita o mesmo modal da edição, que
+   já tem título, rótulo e um campo de texto — para motorista, placa e
+   base é exatamente o que se precisa, e o alerta de uma das pesquisas
+   sobre formulário de cadastro grande demais não se aplica.
+
+   O que muda em relação à edição: `id` nulo significa criar. O botão
+   Salvar continua chamando `confirmarEdicao`, que desvia no início.
+   ────────────────────────────────────────────────────────────────── */
+const _CADASTRO_RAPIDO = {
+    motoristas: { titulo: "Cadastrar motorista", label: "Nome do motorista" },
+    veiculos:   { titulo: "Cadastrar veículo",   label: "Placa" },
+    bases:      { titulo: "Cadastrar base",      label: "Nome da base / distribuidora" }
+};
+
+function abrirModalCadastroRapido(lista, valorInicial, aoConcluir) {
+    const conf = _CADASTRO_RAPIDO[lista];
+    if (!conf) return;
+
+    modalContexto = { lista, id: null, aoConcluir };
+    document.getElementById("modalTitulo").textContent = conf.titulo;
+    document.getElementById("modalLabel").textContent  = conf.label;
+    document.getElementById("modalInput").value        = valorInicial || "";
+
+    // Nenhum dos três usa os campos extras de empresa ou combustível.
+    const wm = document.getElementById("modalCampoMunicipioWrapper");
+    if (wm) wm.style.display = "none";
+    const wp = document.getElementById("modalCampoPerdaWrapper");
+    if (wp) wp.style.display = "none";
+    const logs = document.getElementById("modalLogs");
+    if (logs) logs.innerHTML = "";
+
+    document.getElementById("modalOverlay").style.display = "flex";
+    const inp = document.getElementById("modalInput");
+    inp.focus();
+    inp.select();
+}
+
+function _confirmarCadastroRapido() {
+    const { lista, aoConcluir } = modalContexto;
+    let nome = document.getElementById("modalInput").value.trim();
+    if (!nome) {
+        mostrarToast("O campo não pode ficar vazio.", "erro", 4000);
+        return;
+    }
+
+    if (lista === "veiculos") {
+        const limpa = nome.toUpperCase().replace(/[-\s]/g, "");
+        nome = (typeof converterPlacaMercosul === "function" && converterPlacaMercosul(limpa)) || limpa;
+    }
+
+    if (db[lista].some(i => normalizarTexto(i.nome) === normalizarTexto(nome))) {
+        mostrarToast("Já existe um cadastro com esse nome.", "erro", 4000);
+        return;
+    }
+
+    const item = {
+        id: gerarId(),
+        nome,
+        ativo: true,
+        logs: [`Cadastrado pelo formulário de lançamento em ${new Date().toLocaleString("pt-BR")}`]
+    };
+    if (lista === "bases") item.municipio = "";
+    db[lista].push(item);
+
+    salvarDB();
+    atualizarListas();
+    fecharModal();
+    mostrarToast(`${nome} cadastrado.`, "sucesso");
+    if (typeof aoConcluir === "function") aoConcluir(nome);
+}
+
 function confirmarEdicao() {
     if (!modalContexto) return;
+    // `id` nulo é criação, vinda do combobox do lançamento.
+    if (modalContexto.id === null) return _confirmarCadastroRapido();
     const { lista, id } = modalContexto;
     const novoValor = document.getElementById("modalInput").value.trim();
     if (!novoValor) {
@@ -737,8 +813,9 @@ async function salvarConjunto() {
 
 /*=================================================
   ATUALIZAR LISTAS, SELECTS, DATALISTS E FILTRO GLOBAL
-  FIX v3: preenche corretamente dlEmpresas, dlMotoristas,
-          dlPlacas e dlBases (IDs usados no index.html)
+  Preenche os selects espelho, o datalist de empresas e os filtros do
+          relatorio. Motorista, placa e base saíram daqui: quem lê o
+          cadastro agora é o combobox, na hora de renderizar.
 =================================================*/
 function atualizarListas() {
     // MOTORISTAS
@@ -857,26 +934,9 @@ function atualizarListas() {
             .join('');
     }
 
-    const dlMotoristas = document.getElementById("dlMotoristas");
-    if (dlMotoristas) {
-        dlMotoristas.innerHTML = motoristasAtivos
-            .map(m => `<option value="${escapeHtml(m.nome)}" label="${escapeHtml(normalizarTexto(m.nome))}">`)
-            .join('');
-    }
-
-    const dlPlacas = document.getElementById("dlPlacas");
-    if (dlPlacas) {
-        dlPlacas.innerHTML = veiculosAtivos
-            .map(v => `<option value="${escapeHtml(v.nome)}" label="${escapeHtml(normalizarTexto(v.nome))}">`)
-            .join('');
-    }
-
-    const dlBases = document.getElementById("dlBases");
-    if (dlBases) {
-        dlBases.innerHTML = basesAtivas
-            .map(b => `<option value="${escapeHtml(b.nome)}" label="${escapeHtml(normalizarTexto(b.nome))}">`)
-            .join('');
-    }
+    // Motorista, Placa e Base não usam mais `<datalist>`: passaram para o
+    // combobox de `combobox.js`, que lê `db` direto na hora de renderizar.
+    // Não há índice a atualizar aqui. Empresa segue no datalist acima.
 
     // FILTROS DE RELATÓRIO
     preencherSelect("filtroMotorista",   db.motoristas.map(m => ({ valor: m.nome, texto: m.nome + (m.ativo !== false ? "" : " (inativo)") })), "Todos");
@@ -1020,12 +1080,17 @@ document.addEventListener('input', function(e) {
 // sincronizarBaseEntrada: função canônica com flag anti-duplicata em ui.js
 
 // ========== INICIALIZAÇÃO ==========
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof sincronizarBaseEntrada === 'function') sincronizarBaseEntrada();
-        _registrarValidacaoBlurLancamentos();
-    });
-} else {
+function _inicializarCamposLancamento() {
     if (typeof sincronizarBaseEntrada === 'function') sincronizarBaseEntrada();
     _registrarValidacaoBlurLancamentos();
+    // Depois dos ouvintes de blur: o combobox envolve o input num wrapper, e
+    // os ouvintes ficam no input, não no wrapper, então a ordem não importa
+    // para eles — mas importa que o combobox rode uma vez só.
+    if (typeof fmComboboxAplicarLancamento === 'function') fmComboboxAplicarLancamento();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _inicializarCamposLancamento);
+} else {
+    _inicializarCamposLancamento();
 }

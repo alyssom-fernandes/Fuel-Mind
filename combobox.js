@@ -1,0 +1,448 @@
+/*=================================================
+  COMBOBOX.JS — seletor de cadastro para o formulário
+  de lançamento, no lugar do `<datalist>` nativo.
+
+  Por que existe (tema 03 da pesquisa):
+  o `<datalist>` não oferece gancho para "não encontrei — cadastrar",
+  não permite ordenar por uso e não dá controle sobre o popup. Os três
+  campos que apontam para cadastro — Motorista, Placa e Base — passam a
+  usar este componente. Empresa continua no `<datalist>`: ela vem da
+  empresa ativa e só é editável ao corrigir uma nota antiga.
+
+  Decisões que vieram da pesquisa e NÃO devem ser revertidas sem motivo:
+  - Busca sem acento, por qualquer palavra, nunca aproximada. Numa
+    ferramenta fiscal, "ABC" não pode trazer "A1B2C".
+  - O uso é só desempate. Relevância textual sempre vence: um cadastro
+    usado 40 vezes não pode subir acima de um que casa melhor com o
+    que foi digitado.
+  - Sem seleção automática do primeiro resultado e sem confirmar ao
+    sair do campo. A confirmação é sempre explícita, com Enter ou
+    clique.
+=================================================*/
+
+/* ── CONTADOR DE USO ─────────────────────────────────────────────────
+   Fica no localStorage, por usuário, e nunca no Firestore: o cadastro
+   mora no documento compartilhado, então contar uso lá viraria uma
+   escrita por seleção num documento que todos escutam.
+
+   A chave é o nome normalizado, não o id, porque o lançamento guarda o
+   nome. Renomear um cadastro zera o contador dele, o que é aceitável.
+
+   Sobe apenas quando o lançamento é salvo, nunca quando o operador
+   apenas passa pelo resultado: destacar um nome e escolher outro não
+   pode virar sinal.
+   ────────────────────────────────────────────────────────────────── */
+const FM_USO_VERSAO = 1;
+const FM_USO_TETO    = 100;   // acima disso o uso não pesa mais
+
+function _fmChaveUso() {
+    const uid = (window._usuarioAtual && window._usuarioAtual.uid) || 'anon';
+    return 'fm_uso_' + uid;
+}
+
+function fmUsoLer() {
+    try {
+        const bruto = localStorage.getItem(_fmChaveUso());
+        if (!bruto) return {};
+        const dados = JSON.parse(bruto);
+        if (dados.v !== FM_USO_VERSAO) return {};
+        return dados.campos || {};
+    } catch (_) {
+        return {};
+    }
+}
+
+function _fmUsoGravar(campos) {
+    try {
+        localStorage.setItem(_fmChaveUso(), JSON.stringify({ v: FM_USO_VERSAO, campos }));
+    } catch (_) { /* quota: o combobox funciona sem ranking */ }
+}
+
+/**
+ * Registra que um valor foi efetivamente usado num lançamento salvo.
+ * @param {string} campo - 'motorista' | 'placa' | 'base'
+ * @param {string} nome  - valor gravado no lançamento
+ */
+function fmUsoRegistrar(campo, nome) {
+    if (!nome) return;
+    const chave  = normalizarTexto(nome);
+    if (!chave) return;
+    const campos = fmUsoLer();
+    if (!campos[campo]) campos[campo] = {};
+    const atual = campos[campo][chave] || { uso: 0, ultimoUso: 0 };
+    campos[campo][chave] = { uso: atual.uso + 1, ultimoUso: Date.now() };
+    _fmUsoGravar(campos);
+}
+
+function _fmUsoDe(campo, nome) {
+    const campos = fmUsoLer();
+    const registro = campos[campo] && campos[campo][normalizarTexto(nome)];
+    return registro || { uso: 0, ultimoUso: 0 };
+}
+
+/* ── PONTUAÇÃO ───────────────────────────────────────────────────────
+   Hierarquia textual bem separada, e o uso somando no máximo 500 —
+   menos que a distância entre dois degraus de texto. É isso que impede
+   o ranking de uso de transformar uma correspondência ruim em boa.
+   ────────────────────────────────────────────────────────────────── */
+function _fmPontuar(textoNorm, tokensItem, consultaNorm, tokensBusca, campo, nomeOriginal) {
+    let score = 0;
+
+    if (textoNorm === consultaNorm) score += 10000;
+
+    for (const t of tokensBusca) {
+        if (tokensItem.indexOf(t) !== -1)                       score += 3000;
+        else if (tokensItem.some(ti => ti.startsWith(t)))       score += 2000;
+        else if (tokensItem.some(ti => ti.indexOf(t) !== -1))   score += 1000;
+        else return -Infinity;   // toda palavra digitada tem de casar
+    }
+
+    const { uso, ultimoUso } = _fmUsoDe(campo, nomeOriginal);
+    score += Math.min(uso, FM_USO_TETO) * 5;
+    if (ultimoUso) {
+        const dias = (Date.now() - ultimoUso) / 86400000;
+        score += Math.max(0, 100 - dias);   // recência decai sozinha
+    }
+    return score;
+}
+
+/* ── COMPONENTE ─────────────────────────────────────────────────────*/
+
+const _fmCombos = {};   // inputId -> estado, para atualizar de fora
+
+/**
+ * Transforma um `<input>` existente em combobox acessível.
+ *
+ * @param {object} opts
+ * @param {string}   opts.input        - id do input já presente no HTML
+ * @param {string}   opts.campoUso     - chave do contador de uso
+ * @param {Function} opts.fonte        - () => array de cadastros `{id, nome, ativo}`
+ * @param {Function} opts.aoSelecionar - (nome) => void, escreve nos campos espelho
+ * @param {string}   opts.rotulo       - "motorista", para as mensagens
+ * @param {string}   [opts.listaCadastro] - chave em `db` para o cadastro rápido
+ * @param {Function} [opts.normalizarValor] - normalização extra (placa)
+ */
+function fmComboboxInit(opts) {
+    const input = document.getElementById(opts.input);
+    if (!input || _fmCombos[opts.input]) return;
+
+    // O input vive dentro de `.campo`; envolvemos apenas ele, para a lista
+    // poder se posicionar em relação ao campo sem alterar o grid do form.
+    const wrapper = document.createElement('div');
+    wrapper.className = 'fm-combo';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const lista = document.createElement('ul');
+    lista.className = 'fm-combo-lista';
+    lista.id = opts.input + '-lista';
+    lista.setAttribute('role', 'listbox');
+    lista.hidden = true;
+    wrapper.appendChild(lista);
+
+    const status = document.createElement('span');
+    status.className = 'fm-combo-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    wrapper.appendChild(status);
+
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-controls', lista.id);
+    input.setAttribute('autocomplete', 'off');
+    input.removeAttribute('list');   // o datalist sai de cena
+
+    const est = { opts, input, lista, status, itens: [], ativo: -1, aberta: false };
+    _fmCombos[opts.input] = est;
+
+    input.addEventListener('input', () => {
+        input.classList.remove('campo-sugerido');
+        _fmAbrir(est);
+    });
+    input.addEventListener('focus', () => _fmAbrir(est));
+    input.addEventListener('blur',  () => _fmFechar(est));
+    input.addEventListener('keydown', e => _fmTeclado(est, e));
+}
+
+function _fmValoresFonte(est) {
+    const bruto = est.opts.fonte() || [];
+    return bruto.filter(i => i && i.nome && i.ativo !== false);
+}
+
+function _fmAbrir(est) {
+    const consultaBruta = est.opts.normalizarValor
+        ? est.opts.normalizarValor(est.input.value)
+        : est.input.value;
+    const consultaNorm = normalizarTexto(consultaBruta);
+    const tokensBusca  = consultaNorm.split(/\s+/).filter(Boolean);
+    const fonte        = _fmValoresFonte(est);
+
+    let itens;
+    let cabecalho = '';
+
+    if (!tokensBusca.length) {
+        // Campo vazio: os oito mais usados, com rótulo. Sem o rótulo, oito
+        // nomes soltos parecem a lista inteira.
+        itens = fonte
+            .map(i => {
+                const u = _fmUsoDe(est.opts.campoUso, i.nome);
+                return { item: i, score: u.uso * 1000 + (u.ultimoUso || 0) / 1e10 };
+            })
+            .filter(r => r.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8)
+            .map(r => r.item);
+        if (itens.length) cabecalho = 'Mais usados';
+        else itens = fonte.slice(0, 8);
+    } else {
+        itens = fonte
+            .map(i => {
+                const alvo = est.opts.normalizarValor
+                    ? est.opts.normalizarValor(i.nome)
+                    : i.nome;
+                const textoNorm = normalizarTexto(alvo);
+                const tokensItem = textoNorm.split(/\s+/).filter(Boolean);
+                return {
+                    item: i,
+                    score: _fmPontuar(textoNorm, tokensItem, consultaNorm, tokensBusca,
+                                      est.opts.campoUso, i.nome)
+                };
+            })
+            .filter(r => r.score > -Infinity)
+            .sort((a, b) => b.score - a.score)
+            .map(r => r.item);
+    }
+
+    est.itens = itens.slice();
+    est.ativo = -1;   // nunca destacar sozinho: seleção é sempre explícita
+
+    // "Cadastrar X" aparece só quando a busca não achou nada. Oferecer o
+    // atalho junto de resultados válidos convida a criar duplicata com uma
+    // tecla, e cadastro duplicado é exatamente o que a checagem por acento
+    // acabou de fechar. Quem quer um cadastro novo com nome parecido usa a
+    // tela de Cadastros.
+    const podeCriar = !!est.opts.listaCadastro && tokensBusca.length > 0 && itens.length === 0;
+
+    let html = '';
+    if (cabecalho) {
+        html += `<li class="fm-combo-cabecalho" role="presentation">${escapeHtml(cabecalho)}</li>`;
+    }
+    html += itens.map((i, idx) => {
+        const extra = i.municipio ? ` <span class="fm-combo-extra">${escapeHtml(i.municipio)}</span>` : '';
+        return `<li class="fm-combo-item" role="option" aria-selected="false"
+                    id="${est.lista.id}-opt-${idx}" data-idx="${idx}">${escapeHtml(i.nome)}${extra}</li>`;
+    }).join('');
+
+    if (!itens.length && tokensBusca.length) {
+        html += `<li class="fm-combo-vazio" role="presentation">Nenhum ${escapeHtml(est.opts.rotulo)} encontrado</li>`;
+    }
+    if (podeCriar) {
+        est.itens.push({ __novo: true, nome: est.input.value.trim() });
+        const idx = est.itens.length - 1;
+        html += `<li class="fm-combo-item fm-combo-novo" role="option" aria-selected="false"
+                     id="${est.lista.id}-opt-${idx}" data-idx="${idx}">
+                     + Cadastrar "${escapeHtml(est.input.value.trim())}"</li>`;
+    }
+
+    if (!html) { _fmFechar(est); return; }
+
+    est.lista.innerHTML = html;
+    est.lista.hidden = false;
+    est.aberta = true;
+    est.input.setAttribute('aria-expanded', 'true');
+    est.status.textContent = itens.length
+        ? `${itens.length} ${itens.length === 1 ? 'resultado' : 'resultados'}`
+        : `Nenhum ${est.opts.rotulo} encontrado`;
+
+    // `mousedown` com preventDefault, e não `click`: sem isso o clique num
+    // item (ou na barra de rolagem da lista) dispara o blur do input, que
+    // fecha a lista antes de o clique chegar.
+    est.lista.querySelectorAll('.fm-combo-item').forEach(li => {
+        li.addEventListener('mousedown', e => {
+            e.preventDefault();
+            _fmSelecionar(est, parseInt(li.dataset.idx, 10));
+        });
+    });
+}
+
+function _fmFechar(est) {
+    est.lista.hidden = true;
+    est.aberta = false;
+    est.ativo = -1;
+    est.input.setAttribute('aria-expanded', 'false');
+    est.input.removeAttribute('aria-activedescendant');
+    est.status.textContent = '';
+}
+
+function _fmDestacar(est, idx) {
+    const lis = est.lista.querySelectorAll('.fm-combo-item');
+    if (!lis.length) return;
+    if (idx < 0) idx = lis.length - 1;
+    if (idx >= lis.length) idx = 0;
+    lis.forEach(l => { l.classList.remove('ativo'); l.setAttribute('aria-selected', 'false'); });
+    const alvo = lis[idx];
+    alvo.classList.add('ativo');
+    alvo.setAttribute('aria-selected', 'true');
+    // O foco do DOM não sai do input: quem anda é o `aria-activedescendant`.
+    est.input.setAttribute('aria-activedescendant', alvo.id);
+    alvo.scrollIntoView({ block: 'nearest' });
+    est.ativo = parseInt(alvo.dataset.idx, 10);
+}
+
+function _fmSelecionar(est, idx) {
+    const escolhido = est.itens[idx];
+    if (!escolhido) return;
+
+    if (escolhido.__novo) {
+        _fmFechar(est);
+        abrirModalCadastroRapido(est.opts.listaCadastro, escolhido.nome, nomeCriado => {
+            est.input.value = nomeCriado;
+            est.opts.aoSelecionar(nomeCriado);
+            marcarFormularioSujo();
+            est.input.focus();
+        });
+        return;
+    }
+
+    est.input.value = escolhido.nome;
+    est.input.classList.remove('campo-sugerido');
+    est.opts.aoSelecionar(escolhido.nome);
+    marcarFormularioSujo();
+    _fmFechar(est);
+}
+
+function _fmTeclado(est, e) {
+    const tecla = e.key;
+
+    if (tecla === 'ArrowDown') {
+        e.preventDefault();   // sem isso a página rola junto com a lista
+        if (!est.aberta) { _fmAbrir(est); _fmDestacar(est, 0); }
+        else _fmDestacar(est, est.lista.querySelectorAll('.fm-combo-item.ativo').length
+                              ? _fmIndiceVisual(est) + 1 : 0);
+        return;
+    }
+    if (tecla === 'ArrowUp') {
+        e.preventDefault();
+        if (!est.aberta) { _fmAbrir(est); _fmDestacar(est, -1); }
+        else _fmDestacar(est, _fmIndiceVisual(est) - 1);
+        return;
+    }
+    if (tecla === 'Enter') {
+        if (est.aberta && est.ativo >= 0) {
+            e.preventDefault();
+            _fmSelecionar(est, est.ativo);
+        }
+        // Sem item destacado o Enter não faz nada aqui: quem salva é
+        // Ctrl+Enter, e um Enter solto não pode gravar nota.
+        return;
+    }
+    if (tecla === 'Escape') {
+        if (est.aberta) {
+            // Sem `stopPropagation` o mesmo Escape que fecha a lista fecharia
+            // o modal por trás, porque há dois ouvintes de Escape no document.
+            e.preventDefault();
+            e.stopPropagation();
+            _fmFechar(est);
+        }
+        return;
+    }
+    if (tecla === 'Tab') {
+        _fmFechar(est);   // sai sem selecionar; confirmar no blur é proibido
+    }
+    // Home, End, Backspace, Delete e setas laterais ficam com o navegador.
+}
+
+function _fmIndiceVisual(est) {
+    const lis = [...est.lista.querySelectorAll('.fm-combo-item')];
+    return lis.findIndex(l => l.classList.contains('ativo'));
+}
+
+/* ── LIGAÇÃO COM O FORMULÁRIO DE LANÇAMENTO ─────────────────────────*/
+
+/**
+ * Aplica o combobox aos três campos que apontam para cadastro.
+ * Chamado uma vez, depois do DOM pronto.
+ */
+function fmComboboxAplicarLancamento() {
+    fmComboboxInit({
+        input: 'baseEntradaInput',
+        campoUso: 'base',
+        rotulo: 'base',
+        listaCadastro: 'bases',
+        fonte: () => db.bases || [],
+        aoSelecionar: nome => setBase(nome)
+    });
+
+    fmComboboxInit({
+        input: 'motoristaInput',
+        campoUso: 'motorista',
+        rotulo: 'motorista',
+        listaCadastro: 'motoristas',
+        fonte: () => db.motoristas || [],
+        aoSelecionar: nome => {
+            document.getElementById('motoristaSelect').value = nome;
+            _sugerirPlacaPeloMotorista(nome);
+        }
+    });
+
+    fmComboboxInit({
+        input: 'placaInput',
+        campoUso: 'placa',
+        rotulo: 'placa',
+        listaCadastro: 'veiculos',
+        // Placa casa igual com hífen, espaço ou nada: ABC-1D23 = ABC 1D23.
+        normalizarValor: v => String(v || '').replace(/[-\s]/g, ''),
+        fonte: () => db.veiculos || [],
+        aoSelecionar: nome => {
+            document.getElementById('placaSelect').value = nome;
+            _sugerirMotoristaPelaPlaca(nome);
+        }
+    });
+}
+
+/* ── SUGESTÃO CRUZADA MOTORISTA ↔ PLACA ─────────────────────────────
+   Motorista e Placa são limpos a cada nota, por decisão do dono: numa
+   sequência de notas o caminhão às vezes muda, e herdar em silêncio
+   produz nota com motorista errado. A sugestão devolve a velocidade
+   sem herdar: escolhido o motorista, aparece a placa que ele mais
+   rodou, marcada como sugestão e trocável com uma tecla.
+   ────────────────────────────────────────────────────────────────── */
+function _fmParMaisFrequente(campoBusca, valor, campoAlvo) {
+    if (!valor || !Array.isArray(db.lancamentos)) return '';
+    const alvoNorm = normalizarTexto(valor);
+    const contagem = {};
+    for (const l of db.lancamentos) {
+        if (normalizarTexto(l[campoBusca] || '') !== alvoNorm) continue;
+        const par = l[campoAlvo];
+        if (!par) continue;
+        // Lançamentos da empresa ativa pesam mais que os das outras.
+        const peso = (empresaFiltroGlobal && l.empresa === empresaFiltroGlobal) ? 10 : 1;
+        contagem[par] = (contagem[par] || 0) + peso;
+    }
+    let melhor = '', maior = 0;
+    for (const k in contagem) if (contagem[k] > maior) { maior = contagem[k]; melhor = k; }
+    return melhor;
+}
+
+function _sugerirPlacaPeloMotorista(motorista) {
+    const placa = document.getElementById('placaInput');
+    if (!placa || placa.value.trim()) return;
+    const sugerida = _fmParMaisFrequente('motorista', motorista, 'placa');
+    if (!sugerida) return;
+    placa.value = sugerida;
+    document.getElementById('placaSelect').value = sugerida;
+    placa.classList.add('campo-sugerido');
+    placa.title = 'Placa sugerida pelo histórico deste motorista. Digite para trocar.';
+}
+
+function _sugerirMotoristaPelaPlaca(placa) {
+    const mot = document.getElementById('motoristaInput');
+    if (!mot || mot.value.trim()) return;
+    const sugerido = _fmParMaisFrequente('placa', placa, 'motorista');
+    if (!sugerido) return;
+    mot.value = sugerido;
+    document.getElementById('motoristaSelect').value = sugerido;
+    mot.classList.add('campo-sugerido');
+    mot.title = 'Motorista sugerido pelo histórico desta placa. Digite para trocar.';
+}
