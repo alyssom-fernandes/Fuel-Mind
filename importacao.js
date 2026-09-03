@@ -600,12 +600,14 @@ function importacaoProcessar() {
         if (!placa)       { erros.push(`Linha ${linhaNum}: Placa vazia`); return; }
         if (!combustivel) { erros.push(`Linha ${linhaNum}: Combustível vazio`); return; }
 
-        const qtd   = parseFloat(qtdStr);
-        const qtdD  = parseFloat(qtdDescStr) || 0;
-        const valor = parseFloat(valorStr);
+        const qtd   = parseNumeroBR(qtdStr);
+        // `?? 0` e não `|| 0`: descarga vazia é zero de verdade, mas
+        // descarga ilegível precisa continuar sendo erro, não virar zero.
+        const qtdD  = parseNumeroBR(qtdDescStr) ?? 0;
+        const valor = parseNumeroBR(valorStr);
 
-        if (isNaN(qtd) || qtd <= 0)     { erros.push(`Linha ${linhaNum}: Quantidade inválida ("${qtdStr}")`); return; }
-        if (isNaN(valor) || valor <= 0)  { erros.push(`Linha ${linhaNum}: Valor unitário inválido ("${valorStr}")`); return; }
+        if (qtd === null || qtd <= 0)     { erros.push(`Linha ${linhaNum}: Quantidade inválida ("${qtdStr}")`); return; }
+        if (valor === null || valor <= 0)  { erros.push(`Linha ${linhaNum}: Valor unitário inválido ("${valorStr}")`); return; }
 
         const chave = `${dataNota}||${numeroNota}||${motorista}||${placa}`;
 

@@ -225,8 +225,8 @@ function atualizarTotalizadorNota() {
     const linhas = document.querySelectorAll(".linha-combustivel");
     let totalLitros = 0, totalValor = 0, temDados = false;
     linhas.forEach(linha => {
-        const qtd   = parseFloat(linha.querySelector(".qtd")?.value)   || 0;
-        const valor = parseFloat(linha.querySelector(".valor")?.value) || 0;
+        const qtd   = parseNumeroBR(linha.querySelector(".qtd")?.value)   || 0;
+        const valor = parseNumeroBR(linha.querySelector(".valor")?.value) || 0;
         if (qtd > 0) { totalLitros += qtd; totalValor += qtd * valor; temDados = true; }
     });
     const el = document.getElementById("totalizadorNota");
@@ -248,6 +248,26 @@ function atualizarTotalizadorNota() {
 /*=================================================
   ADICIONAR LINHA DE COMBUSTÍVEL
 =================================================*/
+/**
+ * Formata o valor que vai no atributo `value` de um campo numérico da
+ * linha de combustível.
+ *
+ * O valor pode chegar como número (do XML, de um clone, de um lançamento
+ * em edição) ou como o texto cru que o operador tinha digitado (do
+ * rascunho restaurado). O texto cru é devolvido como está, porque
+ * reinterpretá-lo aqui poderia mudar o que a pessoa escreveu; o número
+ * sai no formato de exibição.
+ *
+ * O retorno passa por `escapeHtml` em quem chama: quando o campo era
+ * `type="number"` o navegador garantia que só houvesse dígitos ali, e
+ * essa garantia acabou junto com o tipo nativo.
+ */
+function _valorInicialNumero(v, casas) {
+    if (v === null || v === undefined || v === "") return "";
+    if (typeof v === "number") return fmtNumeroExibicao(v, casas);
+    return String(v);
+}
+
 function adicionarCombustivelNota(dadosIniciais = null) {
     const container = document.getElementById("combustiveisNota");
     const div = document.createElement("div");
@@ -259,20 +279,23 @@ function adicionarCombustivelNota(dadosIniciais = null) {
         <select class="tipo" onchange="atualizarBadgePerda(this); marcarFormularioSujo(); atualizarTotalizadorNota();">
             <option value="">-- Combustível --</option>${opcoesCombustiveis}
         </select>
-        <input type="number" class="qtd" placeholder="Qtd carga (L)" min="0" step="0.001"
-               value="${dadosIniciais?.qtd || ""}"
+        <input type="text" inputmode="decimal" autocomplete="off" class="qtd fm-numero" placeholder="Qtd carga (L)"
+               value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtd, 3))}"
                oninput="atualizarTotalizadorNota(); marcarFormularioSujo();"
                onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))">
-        <input type="number" class="qtdDescargada" placeholder="Qtd descarga (L)" min="0" step="0.001"
-               value="${dadosIniciais?.qtdDescargada || ""}"
+        <input type="text" inputmode="decimal" autocomplete="off" class="qtdDescargada fm-numero" placeholder="Qtd descarga (L)"
+               value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtdDescargada, 3))}"
                oninput="marcarFormularioSujo();"
                onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))">
-        <input type="number" class="valor" placeholder="Valor unit. (R$)" min="0" step="0.0001"
-               value="${dadosIniciais?.valor || ""}"
+        <input type="text" inputmode="decimal" autocomplete="off" class="valor fm-numero" placeholder="Valor unit. (R$)"
+               value="${escapeHtml(_valorInicialNumero(dadosIniciais?.valor, 4))}"
                oninput="atualizarTotalizadorNota(); marcarFormularioSujo();">
         <div class="badge-wrapper"></div>
         <button class="btn-excluir" onclick="this.parentElement.remove(); atualizarTotalizadorNota();">Remover</button>`;
     container.appendChild(div);
+    // A linha nasce depois da carga da página, então precisa ser preparada
+    // aqui: é o que aplica teclado decimal, formatação e bloqueio da roda.
+    if (typeof fmNumericoAtivar === 'function') fmNumericoAtivar(div);
     if (dadosIniciais?.tipo) atualizarBadgePerda(div.querySelector(".tipo"));
     atualizarTotalizadorNota();
     marcarFormularioSujo();
@@ -282,8 +305,8 @@ function atualizarBadgePerda(selectTipo) {
     const linha = selectTipo.closest(".linha-combustivel");
     linha.querySelector(".badge-wrapper").innerHTML = calcularPerdaBadge(
         selectTipo.value,
-        parseFloat(linha.querySelector(".qtd").value),
-        parseFloat(linha.querySelector(".qtdDescargada").value)
+        parseNumeroBR(linha.querySelector(".qtd").value),
+        parseNumeroBR(linha.querySelector(".qtdDescargada").value)
     );
 }
 
@@ -415,9 +438,12 @@ async function salvarOuAtualizar(modo = 'proxima') {
     let total = 0;
     for (const linha of document.querySelectorAll(".linha-combustivel")) {
         const tipo          = linha.querySelector(".tipo").value;
-        const qtd           = parseFloat(linha.querySelector(".qtd").value) || 0;
-        const qtdDescargada = parseFloat(linha.querySelector(".qtdDescargada").value) || 0;
-        const valor         = parseFloat(linha.querySelector(".valor").value) || 0;
+        // `parseNumeroBR` devolve null no que não entendeu, e a validação já
+        // barrou esse caso antes de chegar aqui; o `?? 0` só cobre campo
+        // vazio, que é zero de verdade.
+        const qtd           = parseNumeroBR(linha.querySelector(".qtd").value) ?? 0;
+        const qtdDescargada = parseNumeroBR(linha.querySelector(".qtdDescargada").value) ?? 0;
+        const valor         = parseNumeroBR(linha.querySelector(".valor").value) ?? 0;
         if (tipo && qtd > 0) {
             const itemTotal = qtd * valor;
             itens.push({ tipo, qtd, qtdDescargada, valor, total: itemTotal });
@@ -437,7 +463,7 @@ async function salvarOuAtualizar(modo = 'proxima') {
     // e confere lá, então perguntar por rotina seria um clique sem retorno.
     const precisaConferir = (modo === 'proxima' && !lancamentoEditandoId) || alertas.length > 0;
     if (precisaConferir) {
-        const litros = itens.reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
+        const litros = itens.reduce((s, i) => s + (Number(i.qtd) || 0), 0);
         const cabecalho = alertas.length
             ? (alertas.length === 1 ? "1 ponto para conferir:\n" : `${alertas.length} pontos para conferir:\n`)
               + alertas.map(a => `  • ${a.texto}`).join("\n") + "\n\n"
@@ -699,7 +725,7 @@ function _sessaoRenderizar() {
     if (contador) contador.textContent = `${presentes.length} nota${presentes.length > 1 ? "s" : ""}`;
 
     lista.innerHTML = presentes.map(({ l, hora }) => {
-        const litros = (l.itens || []).reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
+        const litros = (l.itens || []).reduce((s, i) => s + (Number(i.qtd) || 0), 0);
         return `<div class="sessao-item">
             <span class="sessao-hora">${escapeHtml(hora)}</span>
             <span class="sessao-nota">${escapeHtml(l.numeroNota || "sem número")}</span>

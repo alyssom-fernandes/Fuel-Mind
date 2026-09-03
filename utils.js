@@ -103,6 +103,119 @@ function fmtR4(v) {
     return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:4, maximumFractionDigits:4 });
 }
 
+/* ══ NÚMERO EM PORTUGUÊS ═════════════════════════════════════════════
+   Por que isto existe (tema 05 da pesquisa).
+
+   Os campos numéricos usavam `<input type="number">`, e no Chrome em
+   pt-BR isso falha em silêncio de três maneiras, todas verificadas no
+   navegador antes de escrever este código:
+
+   1. Digitar "1,5" deixa o campo VAZIO, e `checkValidity()` ainda
+      responde `true`, porque campo vazio é válido quando não é
+      obrigatório. Nenhuma borda vermelha, nenhum aviso.
+   2. A roda do mouse sobre o campo focado altera o valor. Rolar cinco
+      cliques sobre 10000 litros deixou 9999,999. Ninguém vê isso.
+   3. `parseFloat("1,23") || 0` devolve 1, e `parseFloat("1.234,56")`
+      devolve 1,234. O padrão antigo do código não zerava o que não
+      entendia: ele TRUNCAVA, e truncar é pior, porque 1 litro passa por
+      qualquer validação de "maior que zero" enquanto um zero chamaria
+      atenção.
+
+   A saída é tratar número como texto e fazer a conversão aqui, num só
+   lugar. `parseFloat` cru não deve mais tocar em valor digitado.
+   ────────────────────────────────────────────────────────────────── */
+
+/**
+ * Converte texto em número, entendendo a escrita brasileira.
+ *
+ * Aceita "1234,5", "1.234,56", "1234.5", "R$ 1.234,56" e "1 234,56".
+ * Quando há vírgula, ela é o separador decimal e os pontos são milhar.
+ * Quando só há pontos, decide por heurística de tamanho — a mesma que a
+ * importação de planilha já usava desde antes deste tema.
+ *
+ * **Nunca devolve zero para entrada que não entendeu.** Devolve `null`,
+ * para quem chama poder distinguir "vazio", "inválido" e "zero de
+ * verdade". Era exatamente essa confusão que corrompia número em
+ * silêncio.
+ *
+ * @param {string|number} valor
+ * @returns {number|null} número, ou `null` se vazio ou irreconhecível
+ */
+function parseNumeroBR(valor) {
+    if (typeof valor === "number") return Number.isFinite(valor) ? valor : null;
+
+    let s = String(valor ?? "")
+        .replace(/R\$/gi, "")
+        .replace(/\s| /g, "")
+        .trim();
+
+    if (!s || s === "-") return null;
+    // Só dígitos, separadores e um sinal na frente.
+    if (!/^[+-]?[\d.,]+$/.test(s)) return null;
+
+    const negativo = s.startsWith("-");
+    s = s.replace(/^[+-]/, "");
+
+    const virgulas = (s.match(/,/g) || []).length;
+    const pontos   = (s.match(/\./g) || []).length;
+
+    if (virgulas > 1) return null;              // "1,2,3" não é número
+
+    if (virgulas === 1) {
+        // Vírgula manda: ela é o decimal, todo ponto é milhar.
+        s = s.replace(/\./g, "").replace(",", ".");
+    } else if (pontos > 1) {
+        // "1.234.567" só pode ser agrupamento de milhar.
+        s = s.replace(/\./g, "");
+    } else if (pontos === 1) {
+        // O caso ambíguo: "1.234" tanto pode ser mil e duzentos e trinta
+        // e quatro quanto um vírgula duzentos e trinta e quatro. A
+        // heurística abaixo veio da importação de planilha, onde já era
+        // usada, e só age quando há exatamente três casas depois do
+        // ponto, que é o formato de milhar. O operador vê o resultado
+        // formatado ao sair do campo, então uma interpretação errada
+        // fica visível antes de virar lançamento.
+        const [inteiro, decimal] = s.split(".");
+        const semSinal = inteiro.replace("-", "");
+        if (decimal.length === 3) {
+            const vi = parseInt(semSinal, 10) || 0;
+            if (semSinal.length >= 4 || vi >= 100 || decimal.endsWith("00")) {
+                s = s.replace(".", "");
+            }
+        }
+    }
+
+    const n = Number((negativo ? "-" : "") + s);
+    return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Número no formato em que o operador o edita: vírgula decimal, sem
+ * separador de milhar. Agrupar durante a edição faria o cursor pular a
+ * cada tecla, que é a reclamação clássica de campo com máscara.
+ */
+function fmtNumeroEdicao(n, casas) {
+    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "";
+    return Number(n).toLocaleString("pt-BR", {
+        useGrouping: false,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: casas
+    });
+}
+
+/**
+ * Número como fica depois de editado: com separador de milhar e casas
+ * fixas. Sem unidade e sem cifrão — eles ficam no rótulo, nunca dentro
+ * do campo, senão o próprio parser teria de removê-los depois.
+ */
+function fmtNumeroExibicao(n, casas) {
+    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "";
+    return Number(n).toLocaleString("pt-BR", {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas
+    });
+}
+
 // ========== FORMATAÇÃO DE TOOLTIPS (CHART.JS) ==========
 function formatarTooltipValor(valor, tipo = 'R$') {
     if (tipo === 'R$') {

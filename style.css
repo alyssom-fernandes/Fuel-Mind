@@ -1756,3 +1756,9 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .faixa-validacao li:hover { background: none; }
 .demo-dica ul,
 .faixa-validacao ul { list-style: disc; }
+
+/* ══ CAMPOS NUMÉRICOS EM PORTUGUÊS ═══════════════════════════════════
+   Deixaram de ser `type="number"` e viraram texto, então perderam o
+   alinhamento e as setas do tipo nativo. Número alinhado à direita é
+   mais fácil de comparar de uma linha para a outra. */
+.fm-numero { text-align: right; font-variant-numeric: tabular-nums; }

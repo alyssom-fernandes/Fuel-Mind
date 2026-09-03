@@ -711,7 +711,7 @@
     <div class="form-linha" style="flex-wrap:wrap">
       <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" style="flex:2">
       <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município/UF (ex: São Paulo, SP)" style="flex:1">
-      <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="number" min="0" step="0.0001" placeholder="Frete R$/L" style="flex:0 0 130px">
+      <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Frete R$/L" style="flex:0 0 130px">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
     <p class="dica" style="margin-top:-4px">A taxa de frete é o valor pago por litro transportado para a empresa e pode ser ajustada depois em Editar.</p>
@@ -734,7 +734,7 @@
     <h3>Tipos de Combustível</h3>
     <div class="form-linha">
       <input id="nomeCombustivel" aria-label="Nome do combustível" placeholder="Tipo (ex: S10)">
-      <input id="perdaCombustivel" aria-label="Percentual de perda tolerada" type="number" placeholder="% perda tolerada" min="0" max="10" step="0.01" style="max-width:200px">
+      <input id="perdaCombustivel" aria-label="Percentual de perda tolerada" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="% perda tolerada" style="max-width:200px">
       <button class="btn-primario" onclick="salvarCombustivel()">Adicionar</button>
     </div>
     <p class="dica">A % de perda tolerada é usada para calcular automaticamente a perda esperada nos lançamentos.</p>
@@ -844,11 +844,11 @@
     <div class="campo" id="modalCampoMunicipioWrapper" style="display:none; margin-top:12px;">
       <label for="modalInputMunicipio">Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
       <label for="modalInputTaxaFrete" style="margin-top:12px">Taxa de frete (R$/litro)</label>
-      <input id="modalInputTaxaFrete" type="number" min="0" step="0.0001" placeholder="0,0000">
+      <input id="modalInputTaxaFrete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="0,0000">
       <p class="dica" style="margin-top:4px">Valor pago por litro transportado para esta empresa.</p>
     </div>
     <div class="campo" id="modalCampoPerdaWrapper" style="display:none; margin-top:12px;">
-      <label for="modalInputPerda">% Perda Tolerada</label><input id="modalInputPerda" type="number" min="0" max="10" step="0.01" placeholder="Ex: 0.3">
+      <label for="modalInputPerda">% Perda Tolerada</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
     </div>
     <div id="modalLogs"></div>
     <div class="modal-acoes">
@@ -890,6 +890,7 @@
 <script src="utils.js"></script>
 <script src="app.js"></script>
 <script src="cadastros.js"></script>
+<script src="numerico.js"></script>
 <script src="combobox.js"></script>
 <script src="rascunho.js"></script>
 <script src="validacao.js"></script>

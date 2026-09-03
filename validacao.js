@@ -133,6 +133,10 @@ function limparValidacao() {
     document.querySelectorAll(".linha-combustivel").forEach(l => {
         const av = l.querySelector(".aviso-preco");
         if (av) av.remove();
+        l.querySelectorAll(".qtd, .qtdDescargada, .valor").forEach(c => {
+            c.classList.remove("campo-bloqueio");
+            c.removeAttribute("aria-invalid");
+        });
     });
     const faixa = document.getElementById("faixaValidacao");
     if (faixa) faixa.style.display = "none";
@@ -227,10 +231,34 @@ function validarLancamento() {
 
     // ── Itens ──
     let temItemValido = false;
+    const numerosInvalidos = [];
     document.querySelectorAll(".linha-combustivel").forEach(linha => {
         const tipo  = linha.querySelector(".tipo").value;
-        const qtd   = parseFloat(linha.querySelector(".qtd").value) || 0;
-        const valor = parseFloat(linha.querySelector(".valor").value) || 0;
+        // Texto que não é número devolve null aqui, e vira bloqueio abaixo.
+        // Antes disto, `parseFloat(...) || 0` truncava "1,23" para 1 e o
+        // lançamento saía com uma quantidade plausível e errada.
+        const qtdTxt   = linha.querySelector(".qtd").value.trim();
+        const descTxt  = linha.querySelector(".qtdDescargada").value.trim();
+        const valorTxt = linha.querySelector(".valor").value.trim();
+        const qtd   = parseNumeroBR(qtdTxt);
+        const valor = parseNumeroBR(valorTxt);
+
+        [["Quantidade", ".qtd", qtdTxt, qtd],
+         ["Quantidade descarregada", ".qtdDescargada", descTxt, parseNumeroBR(descTxt)],
+         ["Valor unitário", ".valor", valorTxt, valor]].forEach(([rotulo, sel, txt, num]) => {
+            const campo = linha.querySelector(sel);
+            const ruim = txt !== "" && num === null;
+            // O campo em si fica marcado, e não só a faixa lá embaixo: o
+            // erro precisa aparecer onde o número foi digitado.
+            campo.classList.toggle("campo-bloqueio", ruim);
+            if (ruim) {
+                campo.setAttribute("aria-invalid", "true");
+                numerosInvalidos.push(`${rotulo} "${txt}" não é um número.`);
+            } else {
+                campo.removeAttribute("aria-invalid");
+            }
+        });
+
         if (tipo && qtd > 0) temItemValido = true;
 
         const antigo = linha.querySelector(".aviso-preco");
@@ -255,6 +283,12 @@ function validarLancamento() {
     if (_tentouSalvar && !temItemValido) {
         bloqueios.push({ campo: null, texto: "Adicione pelo menos um combustível com quantidade.", tipo: "bloqueio" });
     }
+    // Número irreconhecível bloqueia sempre, mesmo antes de tentar salvar:
+    // não há leitura possível daquele texto, e deixar passar é o caminho
+    // que corrompia o lançamento em silêncio.
+    numerosInvalidos.forEach(texto => {
+        bloqueios.push({ campo: null, texto, tipo: "bloqueio" });
+    });
 
     // ── Desenha ──
     _CAMPOS_VALIDADOS.forEach(id => {

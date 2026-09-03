@@ -149,7 +149,9 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     if (lista === "empresas" && wrapperMunicipio) {
         wrapperMunicipio.style.display = "flex";
         document.getElementById("modalInputMunicipio").value = municipioAtual;
-        document.getElementById("modalInputTaxaFrete").value = taxaFreteAtual;
+        // Campo de texto agora: o número precisa entrar já em português,
+        // senão "0.28" apareceria com ponto e voltaria mal interpretado.
+        fmNumericoDefinir(document.getElementById("modalInputTaxaFrete"), taxaFreteAtual === "" ? null : taxaFreteAtual);
     } else if (wrapperMunicipio) {
         wrapperMunicipio.style.display = "none";
     }
@@ -157,7 +159,7 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     const wrapperPerda = document.getElementById("modalCampoPerdaWrapper");
     if (lista === "combustiveis") {
         wrapperPerda.style.display = "flex";
-        document.getElementById("modalInputPerda").value = perdaAtual ?? 0;
+        fmNumericoDefinir(document.getElementById("modalInputPerda"), perdaAtual ?? 0);
     } else {
         if (wrapperPerda) wrapperPerda.style.display = "none";
     }
@@ -296,8 +298,8 @@ function confirmarEdicao() {
 
         const taxaInput = document.getElementById("modalInputTaxaFrete");
         if (taxaInput) {
-            const parsed = parseFloat(taxaInput.value);
-            const novaTaxa = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+            const parsed = parseNumeroBR(taxaInput.value);
+            const novaTaxa = parsed === null || parsed < 0 ? 0 : parsed;
             const taxaAntiga = _taxaFreteDaEmpresa(item);
             if (taxaAntiga !== novaTaxa) {
                 if (!item.logs) item.logs = [];
@@ -308,7 +310,7 @@ function confirmarEdicao() {
     }
 
     if (lista === "combustiveis") {
-        const perdaInput = parseFloat(document.getElementById("modalInputPerda").value);
+        const perdaInput = parseNumeroBR(document.getElementById("modalInputPerda").value) ?? 0;
         const perdaAntiga = item.perda;
         if (perdaAntiga !== perdaInput) {
             if (!item.logs) item.logs = [];
@@ -478,8 +480,8 @@ function salvarEmpresa() {
     const inputTaxa = document.getElementById("taxaFreteEmpresa");
     const nome = input.value.trim();
     const municipio = inputMun ? inputMun.value.trim() : '';
-    const taxaParsed = parseFloat(inputTaxa ? inputTaxa.value : '');
-    const taxaFrete = isNaN(taxaParsed) || taxaParsed < 0 ? 0 : taxaParsed;
+    const taxaParsed = parseNumeroBR(inputTaxa ? inputTaxa.value : '');
+    const taxaFrete = taxaParsed === null || taxaParsed < 0 ? 0 : taxaParsed;
     if (!nome) {
         mostrarToast("Digite o nome da empresa.", "erro", 4000);
         return;
@@ -512,7 +514,7 @@ function salvarCombustivel() {
     const inputNome  = document.getElementById("nomeCombustivel");
     const inputPerda = document.getElementById("perdaCombustivel");
     const nome  = inputNome.value.trim();
-    const perda = parseFloat(inputPerda.value) || 0;
+    const perda = parseNumeroBR(inputPerda.value) ?? 0;
     if (!nome) {
         mostrarToast("Digite o tipo de combustível.", "erro", 4000);
         return;

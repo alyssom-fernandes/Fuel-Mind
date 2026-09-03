@@ -822,7 +822,9 @@ function _autosystemDetectarEProcessar() {
         const [,d,m,y] = mData;
         const ano = y.length === 2 ? '20'+y : y;
         const data = `${ano}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-        const _n = (v) => parseFloat(String(v||'').replace(/\s/g,'').replace(',','.')) || 0;
+        // Era um parser próprio que trocava a vírgula mas não removia o
+        // milhar, então "1.234,56" saía como 1,234. Usa o do sistema.
+        const _n = (v) => parseNumeroBR(v) ?? 0;
         linhasDados.push({ data, entrada: _n(row[idxEntrada]) });
     });
 
