@@ -13,7 +13,8 @@
       "demo.html",
       "README.md",
       "README.pt-BR.md",
-      "Artes/**"
+      "Artes/**",
+      "docs/**"
     ]
   }
 }
