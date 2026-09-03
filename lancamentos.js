@@ -82,6 +82,13 @@ function importarXMLNFe(input) {
             // ── usa setBase() para garantir sincronização dos três campos ──
             if (baseParaPreencher) setBase(baseParaPreencher);
 
+            // A empresa ativa desabilita o campo na interface, mas `disabled`
+            // não impede atribuição por script: até aqui o XML sobrescrevia a
+            // empresa em silêncio e a nota era salva na empresa do arquivo,
+            // com o campo cinza exibindo outro nome. Agora, quando há empresa
+            // ativa e o destinatário do XML é outro, o campo não é tocado e a
+            // divergência aparece no banner e num aviso.
+            let avisoEmpresaDivergente = "";
             if (xNomeDest) {
                 const empCadastrada = db.empresas.find(e =>
                     e.ativo !== false &&
@@ -89,8 +96,21 @@ function importarXMLNFe(input) {
                      normalizarTexto(e.nome).includes(normalizarTexto(xNomeDest)))
                 );
                 if (empCadastrada) {
-                    document.getElementById("empresaInput").value  = empCadastrada.nome;
-                    document.getElementById("empresaSelect").value = empCadastrada.nome;
+                    if (empresaFiltroGlobal && empCadastrada.nome !== empresaFiltroGlobal) {
+                        avisoEmpresaDivergente =
+                            `<br><small><strong>Empresa não alterada.</strong> O XML é de `
+                            + `"${escapeHtml(empCadastrada.nome)}" e a empresa ativa é `
+                            + `"${escapeHtml(empresaFiltroGlobal)}". Para lançar na outra, `
+                            + `troque a empresa ativa no cabeçalho e importe de novo.</small>`;
+                        mostrarToast(
+                            `O XML é da empresa "${empCadastrada.nome}", diferente da empresa ativa. `
+                            + `A empresa do lançamento não foi alterada.`,
+                            "aviso", 7000
+                        );
+                    } else {
+                        document.getElementById("empresaInput").value  = empCadastrada.nome;
+                        document.getElementById("empresaSelect").value = empCadastrada.nome;
+                    }
                 }
             }
             if (xNomeTransp) {
@@ -138,7 +158,7 @@ function importarXMLNFe(input) {
 
             const banner = document.getElementById("bannerXML");
             banner.style.display = "block";
-            banner.innerHTML = `XML importado — campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoNaoCruzados}${avisoTipos}`;
+            banner.innerHTML = `XML importado — campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoEmpresaDivergente}${avisoNaoCruzados}${avisoTipos}`;
         } catch (err) {
             mostrarToast("Erro ao ler o XML da NF-e: " + err.message, "erro", 5000);
         }
@@ -502,6 +522,7 @@ function editarLancamento(id) {
             bannerHtml += `<br><small>Este lançamento possui ${l.anexos.length} anexo(s). Você pode substituí-los ao salvar.</small>`;
         banner.innerHTML = bannerHtml;
         document.getElementById("tituloLancamentos").textContent  = "Editando Lançamento";
+        _aplicarMarcadorSujo();   // trocar o texto do título apagava o marcador
         document.getElementById("btnSalvarLancamento").textContent = "Atualizar Entrada";
     }, 0);
 }
@@ -539,6 +560,7 @@ function clonarLancamento(id) {
     document.getElementById("combustiveisNota").innerHTML = "";
     l.itens.forEach(item => adicionarCombustivelNota(item));
     document.getElementById("tituloLancamentos").textContent  = "Novo Lançamento (Clonado)";
+    _aplicarMarcadorSujo();   // idem: o clone já nasce sujo
     document.getElementById("btnSalvarLancamento").textContent = "Salvar Entrada";
     document.getElementById("bannerEdicao").style.display = "none";
     mostrarTela("lancamentos");

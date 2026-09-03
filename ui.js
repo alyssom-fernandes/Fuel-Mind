@@ -256,7 +256,10 @@ function executarBuscaGlobal() {
 }
 
 function _realizarBusca() {
-    const termo = document.getElementById("buscaGlobalInput").value.trim().toLowerCase();
+    // normalizarTexto no termo e no conteúdo: até aqui a busca era
+    // accent-sensitive e procurar "jose" não encontrava "José", enquanto os
+    // datalists do formulário já dobravam acento. Os dois agora combinam.
+    const termo = normalizarTexto(document.getElementById("buscaGlobalInput").value);
     const resultadosDiv = document.getElementById("buscaGlobalResultados");
 
     if (termo.length < 2) {
@@ -266,23 +269,23 @@ function _realizarBusca() {
 
     // ── Lançamentos ──
     const lancamentos = db.lancamentos.filter(l => {
-        const s = `${l.numeroNota} ${l.empresa || ''} ${l.motorista || ''} ${l.placa || ''} ${l.base || ''} ${l.observacoes || ''}`.toLowerCase();
+        const s = normalizarTexto(`${l.numeroNota} ${l.empresa || ''} ${l.motorista || ''} ${l.placa || ''} ${l.base || ''} ${l.observacoes || ''}`);
         return s.includes(termo);
     }).slice(0, 20);
 
     // ── Motoristas ──
     const motoristas = (db.motoristas || []).filter(m =>
-        m.nome && m.nome.toLowerCase().includes(termo)
+        m.nome && normalizarTexto(m.nome).includes(termo)
     ).slice(0, 5);
 
     // ── Placas/Veículos ──
     const placas = (db.veiculos || []).filter(v =>
-        v.nome && v.nome.toLowerCase().includes(termo)
+        v.nome && normalizarTexto(v.nome).includes(termo)
     ).slice(0, 5);
 
     // ── Empresas ──
     const empresas = (db.empresas || []).filter(e =>
-        e.nome && e.nome.toLowerCase().includes(termo)
+        e.nome && normalizarTexto(e.nome).includes(termo)
     ).slice(0, 3);
 
     if (!lancamentos.length && !motoristas.length && !placas.length && !empresas.length) {

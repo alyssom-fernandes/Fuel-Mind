@@ -1060,16 +1060,31 @@ function mostrarToast(mensagem, tipo = "sucesso", duracao = 3000) {
 
 let _formularioSujo = false;
 
+/**
+ * Escreve (ou apaga) o marcador `●` no título da tela de lançamento,
+ * conforme `_formularioSujo`.
+ *
+ * O id certo é `tituloLancamentos`, com S. As duas funções abaixo
+ * procuravam `tituloLancamento` — uma letra a menos — e por isso o marcador
+ * nunca apareceu desde que foi escrito. Derivar do estado, em vez de
+ * empilhar e remover prefixo, deixa a função idempotente e permite
+ * reaplicar o marcador depois de trocar o texto do título.
+ */
+function _aplicarMarcadorSujo() {
+    const titulo = document.getElementById("tituloLancamentos");
+    if (!titulo) return;
+    const base = titulo.textContent.replace(/^●\s*/, "");
+    titulo.textContent = _formularioSujo ? "● " + base : base;
+}
+
 function marcarFormularioSujo() {
     _formularioSujo = true;
-    const titulo = document.getElementById("tituloLancamento");
-    if (titulo && !titulo.textContent.includes("●")) titulo.textContent = "● " + titulo.textContent;
+    _aplicarMarcadorSujo();
 }
 
 function limparFormularioSujo() {
     _formularioSujo = false;
-    const titulo = document.getElementById("tituloLancamento");
-    if (titulo) titulo.textContent = titulo.textContent.replace("● ", "");
+    _aplicarMarcadorSujo();
 }
 
 /**
@@ -1126,7 +1141,11 @@ async function mostrarTela(id) {
     if (id === "fretes")       carregarFretes();
     if (id === "conferencia")  { if (typeof _conferenciaInicializar === "function") _conferenciaInicializar(); }
     if (id === "lancamentos") {
-        limparFormularioSujo();
+        // Não limpar o marcador ao ENTRAR na tela. Ele era zerado aqui, então
+        // quem preenchia a nota, saía para conferir o relatório e voltava
+        // perdia a flag: na segunda saída o aviso de lançamento em andamento
+        // não aparecia mais. Quem zera é `limparFormulario`, ao descartar ou
+        // depois de salvar.
         const empresaInput = document.getElementById('empresaInput');
         if (empresaInput) {
             empresaInput.disabled = (empresaFiltroGlobal !== null);

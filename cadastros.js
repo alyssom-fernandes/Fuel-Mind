@@ -192,7 +192,9 @@ function confirmarEdicao() {
     }
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
-    const duplicado = db[lista].some(i => String(i.id) !== String(id) && i.nome.toLowerCase() === novoValor.toLowerCase());
+    // normalizarTexto e não toLowerCase: com toLowerCase, "José" e "Jose"
+    // passavam como cadastros distintos e o relatório os agrupava separado.
+    const duplicado = db[lista].some(i => String(i.id) !== String(id) && normalizarTexto(i.nome) === normalizarTexto(novoValor));
     if (duplicado) {
         mostrarToast("Já existe um cadastro com esse nome.", "erro", 4000);
         return;
@@ -274,7 +276,7 @@ function salvarMotorista() {
         mostrarToast("Digite o nome do motorista.", "erro", 4000);
         return;
     }
-    if (db.motoristas.some(m => m.nome.toLowerCase() === nome.toLowerCase())) {
+    if (db.motoristas.some(m => normalizarTexto(m.nome) === normalizarTexto(nome))) {
         mostrarToast("Esse motorista já está cadastrado.", "erro", 4000);
         return;
     }
@@ -406,7 +408,7 @@ function salvarEmpresa() {
         mostrarToast("Digite o nome da empresa.", "erro", 4000);
         return;
     }
-    if (db.empresas.some(e => e.nome.toLowerCase() === nome.toLowerCase())) {
+    if (db.empresas.some(e => normalizarTexto(e.nome) === normalizarTexto(nome))) {
         mostrarToast("Essa empresa já está cadastrada.", "erro", 4000);
         return;
     }
@@ -439,7 +441,7 @@ function salvarCombustivel() {
         mostrarToast("Digite o tipo de combustível.", "erro", 4000);
         return;
     }
-    if (db.combustiveis.some(c => c.nome.toLowerCase() === nome.toLowerCase())) {
+    if (db.combustiveis.some(c => normalizarTexto(c.nome) === normalizarTexto(nome))) {
         mostrarToast("Esse combustível já está cadastrado.", "erro", 4000);
         return;
     }
@@ -476,7 +478,7 @@ function salvarBase() {
         mostrarToast("Digite o nome da base.", "erro", 4000);
         return;
     }
-    if (db.bases.some(b => b.nome.toLowerCase() === nome.toLowerCase())) {
+    if (db.bases.some(b => normalizarTexto(b.nome) === normalizarTexto(nome))) {
         mostrarToast("Essa base já está cadastrada.", "erro", 4000);
         return;
     }
@@ -893,13 +895,15 @@ function atualizarListas() {
 =================================================*/
 
 /**
- * Verifica se o valor digitado existe (case-insensitive) na lista
- * fornecida. Retorna o item encontrado ou null.
+ * Verifica se o valor digitado existe na lista fornecida, ignorando caixa
+ * e acento. Retorna o item encontrado ou null.
  */
 function _buscarCadastro(lista, valor) {
     if (!valor) return null;
-    const v = valor.trim().toLowerCase();
-    return lista.find(i => i.ativo !== false && i.nome.toLowerCase() === v) || null;
+    // Sem acento: digitar "jose silva" encontra "José Silva" e o aviso de
+    // "não encontrado no cadastro" deixa de disparar por causa de um acento.
+    const v = normalizarTexto(valor);
+    return lista.find(i => i.ativo !== false && normalizarTexto(i.nome) === v) || null;
 }
 
 /**
