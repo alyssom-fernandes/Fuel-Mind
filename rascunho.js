@@ -39,6 +39,13 @@ function _fmChaveRascunho() {
     return 'fm_rascunho_lanc_' + uid;
 }
 
+function _fmTemDescarga(itens) {
+    return (itens || []).some(i => {
+        const v = parseNumeroBR(i.qtdDescargada);
+        return v !== null && v > 0;
+    });
+}
+
 /** Lê o formulário inteiro, incluindo as linhas de combustível. */
 function _fmRascunhoCapturar() {
     const val = id => (document.getElementById(id) || {}).value || '';
@@ -56,6 +63,7 @@ function _fmRascunhoCapturar() {
         editandoId: (typeof lancamentoEditandoId !== 'undefined' && lancamentoEditandoId) || null,
         isClonando: (typeof isClonando !== 'undefined' && isClonando) || false,
         chaveAcesso: (typeof _chaveAcessoAtual !== 'undefined' && _chaveAcessoAtual) || null,
+        descargaVisivel: !!(document.getElementById('informarDescarga') || {}).checked,
         campos: {
             dataNota:     val('dataNota'),
             dataDescarga: val('dataDescarga'),
@@ -203,6 +211,9 @@ function fmRascunhoRestaurar() {
     set('placaSelect', c.placa);
 
     document.getElementById('combustiveisNota').innerHTML = '';
+    if (typeof alternarCampoDescarga === 'function') {
+        alternarCampoDescarga(!!r.descargaVisivel || _fmTemDescarga(r.itens));
+    }
     (r.itens || []).forEach(i => adicionarCombustivelNota({
         tipo: i.tipo, qtd: i.qtd, qtdDescargada: i.qtdDescargada, valor: i.valor
     }));

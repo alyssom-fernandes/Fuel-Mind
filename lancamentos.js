@@ -248,6 +248,73 @@ function atualizarTotalizadorNota() {
 /*=================================================
   ADICIONAR LINHA DE COMBUSTÍVEL
 =================================================*/
+/*=================================================
+  QUANTIDADE DESCARREGADA — FORA DO CAMINHO
+=================================================*/
+/**
+ * A descarga quase sempre é igual à carga, e o sistema inteiro já trata
+ * "não informada" como igual: `_litrosItem` usa a carga quando a descarga
+ * é zero, e esse é o critério único de litros do relatório, do dashboard
+ * e do analítico. Por isso o campo pode sair da frente sem alterar nenhum
+ * total de nenhuma tela.
+ *
+ * Ele não foi removido porque é o único lugar onde uma diferença real
+ * pode ser registrada, e existe uma tela inteira — Conferências — cujo
+ * trabalho é encontrar essas diferenças contra a medição do tanque. Sem
+ * o campo, achar a diferença não teria onde virar registro. Some também
+ * a perda calculada contra a tolerância cadastrada por combustível.
+ *
+ * O interruptor não é lembrado entre notas de propósito: ele marca a
+ * exceção, e exceção que fica ligada sozinha deixa de ser exceção.
+ */
+function _descargaVisivel() {
+    const chk = document.getElementById("informarDescarga");
+    return !!(chk && chk.checked);
+}
+
+function alternarCampoDescarga(mostrar) {
+    const marcado = mostrar !== undefined ? !!mostrar : _descargaVisivel();
+    const chk = document.getElementById("informarDescarga");
+    if (chk) chk.checked = marcado;
+
+    document.querySelectorAll(".linha-combustivel").forEach(linha => {
+        linha.classList.toggle("mostra-descarga", marcado);
+        if (!marcado) {
+            // Limpa ao esconder: valor guardado em campo invisível entraria
+            // no lançamento sem ninguém ver.
+            const campo = linha.querySelector(".qtdDescargada");
+            if (campo && campo.value !== "") {
+                campo.value = "";
+                marcarFormularioSujo();
+            }
+            const tipo = linha.querySelector(".tipo");
+            if (tipo) atualizarBadgePerda(tipo);
+        }
+    });
+    if (marcado) {
+        const primeiro = document.querySelector(".linha-combustivel .qtdDescargada");
+        if (primeiro) primeiro.focus();
+    }
+    if (typeof validarLancamento === "function") validarLancamento();
+}
+
+/**
+ * Liga o interruptor quando os itens que chegam trazem descarga informada
+ * — ao editar, ao clonar e ao restaurar rascunho. Sem isto, abrir uma nota
+ * antiga com diferença registrada esconderia justamente o número que
+ * motivou o registro.
+ */
+function _ajustarDescargaPorItens(itens) {
+    const tem = (itens || []).some(i => {
+        const v = typeof i.qtdDescargada === "number"
+            ? i.qtdDescargada
+            : parseNumeroBR(i.qtdDescargada);
+        return v !== null && v > 0;
+    });
+    if (tem) alternarCampoDescarga(true);
+    return tem;
+}
+
 /**
  * Formata o valor que vai no atributo `value` de um campo numérico da
  * linha de combustível.
@@ -283,7 +350,7 @@ function adicionarCombustivelNota(dadosIniciais = null) {
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtd, 3))}"
                oninput="atualizarTotalizadorNota(); marcarFormularioSujo();"
                onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))">
-        <input type="text" inputmode="decimal" autocomplete="off" class="qtdDescargada fm-numero" placeholder="Qtd descarga (L)"
+        <input type="text" inputmode="decimal" autocomplete="off" class="qtdDescargada fm-numero celula-descarga" placeholder="Qtd descarga (L)"
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtdDescargada, 3))}"
                oninput="marcarFormularioSujo();"
                onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))">
@@ -296,6 +363,9 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     // A linha nasce depois da carga da página, então precisa ser preparada
     // aqui: é o que aplica teclado decimal, formatação e bloqueio da roda.
     if (typeof fmNumericoAtivar === 'function') fmNumericoAtivar(div);
+    // A linha nasce já no estado do interruptor; sem isto, uma linha
+    // acrescentada com o campo visível nasceria escondida.
+    div.classList.toggle("mostra-descarga", _descargaVisivel());
     if (dadosIniciais?.tipo) atualizarBadgePerda(div.querySelector(".tipo"));
     atualizarTotalizadorNota();
     marcarFormularioSujo();
@@ -663,6 +733,7 @@ function limparFormularioParcial() {
     // A chave pertencia à nota que acabou de ser gravada; a próxima começa
     // sem ela, mesmo que o contexto do lote continue.
     _chaveAcessoAtual = null;
+    alternarCampoDescarga(false);
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
     atualizarTotalizadorNota();
@@ -791,6 +862,7 @@ function editarLancamento(id) {
         document.getElementById("placaInput").value      = l.placa || "";
         document.getElementById("placaSelect").value     = l.placa || "";
         document.getElementById("combustiveisNota").innerHTML = "";
+        _ajustarDescargaPorItens(l.itens);
         l.itens.forEach(item => adicionarCombustivelNota(item));
 
         const banner = document.getElementById("bannerEdicao");
@@ -844,6 +916,7 @@ function clonarLancamento(id) {
     document.getElementById("placaInput").value      = l.placa || "";
     document.getElementById("placaSelect").value     = l.placa || "";
     document.getElementById("combustiveisNota").innerHTML = "";
+    _ajustarDescargaPorItens(l.itens);
     l.itens.forEach(item => adicionarCombustivelNota(item));
     document.getElementById("tituloLancamentos").textContent  = "Novo Lançamento (Clonado)";
     _aplicarMarcadorSujo();   // idem: o clone já nasce sujo
@@ -890,6 +963,7 @@ function limparFormulario() {
     const marca = document.getElementById("marcaHerdada");
     if (marca) marca.style.display = "none";
     _chaveAcessoAtual = null;
+    alternarCampoDescarga(false);
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
     if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();

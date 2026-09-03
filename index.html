@@ -220,7 +220,16 @@
     </div>
     <div class="campo"><label for="observacoes">Observações</label><textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea></div>
   </div>
-  <h3>Combustíveis desta Nota</h3>
+  <h3 class="titulo-com-opcao">
+    Combustíveis desta Nota
+    <!-- A quantidade descarregada quase sempre é igual à carregada, e o
+         sistema já trata "não informada" como igual. O campo fica fora do
+         caminho e só aparece quando houve diferença de verdade. -->
+    <label class="opcao-descarga" title="Marque só quando a descarga foi diferente da carga">
+      <input type="checkbox" id="informarDescarga" onchange="alternarCampoDescarga(this.checked)">
+      Informar quantidade descarregada
+    </label>
+  </h3>
   <div id="combustiveisNota"></div>
   <button class="btn-secundario" onclick="adicionarCombustivelNota()">Adicionar Combustível</button>
   <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>

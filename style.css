@@ -1762,3 +1762,27 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
    alinhamento e as setas do tipo nativo. Número alinhado à direita é
    mais fácil de comparar de uma linha para a outra. */
 .fm-numero { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ══ QUANTIDADE DESCARREGADA, FORA DO CAMINHO ════════════════════════
+   O campo só aparece quando a descarga foi diferente da carga, que é a
+   exceção. Escondido, ele sai do grid e a linha fica com uma coluna a
+   menos — daí os dois modelos de colunas. */
+.celula-descarga { display: none; }
+.linha-combustivel { grid-template-columns: 2fr 1fr 1fr auto auto; }
+.linha-combustivel.mostra-descarga { grid-template-columns: 2fr 1fr 1fr 1fr auto auto; }
+.linha-combustivel.mostra-descarga .celula-descarga { display: block; }
+
+.titulo-com-opcao {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+}
+.opcao-descarga {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.78rem; font-weight: 400; color: var(--text-muted);
+    text-transform: none; letter-spacing: 0; cursor: pointer;
+}
+.opcao-descarga input { width: auto; margin: 0; cursor: pointer; }
+@media (max-width: 640px) {
+    .linha-combustivel,
+    .linha-combustivel.mostra-descarga { grid-template-columns: 1fr; }
+}
