@@ -8,6 +8,13 @@
 let lancamentoEditandoId = null;
 let isClonando = false;
 
+/**
+ * Chave de acesso da NF-e (44 dígitos) do lançamento em tela, quando ele
+ * veio de um XML. Nunca é digitada nem exibida como campo: sai do atributo
+ * `Id` de `infNFe` e serve só para reconhecer a mesma nota depois.
+ */
+let _chaveAcessoAtual = null;
+
 /*=================================================
   IMPORTAÇÃO DE XML DA NF-e
 =================================================*/
@@ -38,6 +45,13 @@ function importarXMLNFe(input) {
             const xml = parser.parseFromString(e.target.result, "text/xml");
             const infNFe = xml.querySelector("infNFe");
             if (!infNFe) throw new Error("Arquivo não parece ser uma NF-e válida.");
+
+            // A chave de acesso está no atributo `Id`, no formato "NFe" + 44
+            // dígitos. É o identificador fiscal da nota; guardá-la não é
+            // guardar o XML, e é o que permite bloquear a mesma NF-e lançada
+            // duas vezes sem depender de número mais empresa mais data.
+            const chaveBruta = (infNFe.getAttribute("Id") || "").replace(/^NFe/i, "").replace(/\D/g, "");
+            _chaveAcessoAtual = chaveBruta.length === 44 ? chaveBruta : null;
             const get = (tag) => xml.querySelector(tag)?.textContent?.trim() || "";
             const nNF         = get("nNF");
             const dhEmi       = get("dhEmi") || get("dEmi");
@@ -171,6 +185,12 @@ function importarXMLNFe(input) {
             const banner = document.getElementById("bannerXML");
             banner.style.display = "block";
             banner.innerHTML = `XML importado — campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoEmpresaDivergente}${avisoNaoCruzados}${avisoTipos}`;
+
+            // O XML preenche seis campos por script, e preenchimento por
+            // script não dispara `change`. Sem esta chamada, uma nota com
+            // data ou chave repetida vinda de arquivo ficaria muda até o
+            // operador tocar em algum campo.
+            if (typeof validarLancamento === 'function') validarLancamento();
         } catch (err) {
             mostrarToast("Erro ao ler o XML da NF-e: " + err.message, "erro", 5000);
         }
@@ -372,66 +392,58 @@ async function salvarOuAtualizar(modo = 'proxima') {
         mostrarToast(`Placa convertida para o formato Mercosul: ${placaDigitada} → ${placaConv}`, "info", 5000);
     }
 
-    if (!dataNota) { esconderSpinner(btn); mostrarToast("Data da nota fiscal é obrigatória.", "aviso"); return; }
+    // ── Validação ──
+    // Os cinco `fmConfirm` de julgamento que existiam aqui — data futura na
+    // nota, na descarga, descarga antes da nota, nota duplicada e preço fora
+    // da média, este por linha — saíram. Uma nota com três combustíveis fora
+    // da média e uma data errada abria seis janelas em fila, e o operador
+    // aprendia a apertar Enter sem ler. Agora cada julgamento aparece no
+    // campo que o produz, assim que há dado para julgá-lo, e este ponto só
+    // consolida: bloqueio impede, alerta entra na conferência.
+    _tentouSalvar = true;
+    const { bloqueios, alertas } = validarLancamento();
 
-    // ── Validação de datas futuras ──
-    const hoje   = new Date(); hoje.setHours(0,0,0,0);
-    const dtNota = new Date(dataNota + "T00:00:00");
-    const dtDesc = dataDescarga ? new Date(dataDescarga + "T00:00:00") : null;
-    if (dtNota > hoje) {
-        if (!await fmConfirm({ titulo: "Data da Nota no futuro", msg: `A Data da Nota (${formatarData(dataNota)}) é uma data futura.\nHoje é ${hoje.toLocaleDateString("pt-BR")}.\n\nIsso pode ser um erro de digitação.`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" }))
-            { esconderSpinner(btn); return; }
-    }
-    if (dtDesc && dtDesc > hoje) {
-        if (!await fmConfirm({ titulo: "Data de Descarga no futuro", msg: `A Data de Descarga (${formatarData(dataDescarga)}) é uma data futura.`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" }))
-            { esconderSpinner(btn); return; }
-    }
-    if (dtDesc && dtNota && dtDesc < dtNota) {
-        if (!await fmConfirm({ titulo: "Data de Descarga anterior à Nota", msg: `Descarga: ${formatarData(dataDescarga)}\nNota: ${formatarData(dataNota)}\n\nA descarga não pode ocorrer antes da emissão da nota.`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" }))
-            { esconderSpinner(btn); return; }
-    }
-
-    if (!empresa)   { esconderSpinner(btn); mostrarToast("Digite ou selecione a empresa.", "aviso"); return; }
-    if (!motorista) { esconderSpinner(btn); mostrarToast("Digite ou selecione o motorista.", "aviso"); return; }
-    if (!placa)     { esconderSpinner(btn); mostrarToast("Digite ou selecione a placa.", "aviso"); return; }
-
-    if (verificarDuplicidadeNota(numeroNota, empresa, dataNota, lancamentoEditandoId)) {
-        if (!await fmConfirm({ titulo: "Nota possivelmente duplicada", msg: `Já existe um lançamento com a nota ${numeroNota} de ${empresa} na data ${formatarData(dataNota)}.\n\nDeseja salvar mesmo assim?`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" }))
-            { esconderSpinner(btn); return; }
+    if (bloqueios.length) {
+        esconderSpinner(btn);
+        const primeiro = bloqueios.find(b => b.campo);
+        if (primeiro) _focarCampoValidacao(primeiro.campo);
+        else document.getElementById("faixaValidacao")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
     }
 
     const itens = [];
-    let total = 0, confirmouMedia = true;
+    let total = 0;
     for (const linha of document.querySelectorAll(".linha-combustivel")) {
         const tipo          = linha.querySelector(".tipo").value;
         const qtd           = parseFloat(linha.querySelector(".qtd").value) || 0;
         const qtdDescargada = parseFloat(linha.querySelector(".qtdDescargada").value) || 0;
         const valor         = parseFloat(linha.querySelector(".valor").value) || 0;
         if (tipo && qtd > 0) {
-            const media = calcularMediaPreco(tipo);
-            if (media > 0 && Math.abs(valor - media) / media > 0.1) {
-                if (!await fmConfirm({ titulo: "Valor fora da média", msg: `O valor unitário de ${tipo} está mais de 10% acima/abaixo da média histórica.\n\nDeseja continuar?`, confirmTxt: "Continuar", tipo: "aviso" }))
-                    { confirmouMedia = false; }
-            }
             const itemTotal = qtd * valor;
             itens.push({ tipo, qtd, qtdDescargada, valor, total: itemTotal });
             total += itemTotal;
         }
     }
 
-    if (!confirmouMedia) { esconderSpinner(btn); return; }
-    if (itens.length === 0) { esconderSpinner(btn); mostrarToast("Adicione pelo menos um combustível.", "aviso"); return; }
-
     // ── Conferência final ──
-    // Só no caminho "salvar e lançar próxima", e só para nota nova. É o
-    // preço do trade-off declarado pelo dono, segurança primeiro: quem
-    // continua na tela não passa pelo relatório, então esta é a única
-    // oportunidade de olhar a nota inteira antes de ela existir. Quem
-    // escolhe "salvar e sair" cai no relatório e confere lá.
-    if (modo === 'proxima' && !lancamentoEditandoId) {
+    // É o único modal do caminho de salvar, e agora é também o lugar onde os
+    // alertas são consolidados: em vez de uma janela por julgamento, uma
+    // lista com todos, cada um com o valor concreto que o gerou.
+    //
+    // Em "lançar próxima" ela aparece sempre, porque o operador não passa
+    // pelo relatório e esta é a única chance de olhar a nota inteira antes
+    // de ela existir — é o trade-off de segurança escolhido pelo dono. Em
+    // "salvar e sair" só aparece quando há alerta: quem sai cai no relatório
+    // e confere lá, então perguntar por rotina seria um clique sem retorno.
+    const precisaConferir = (modo === 'proxima' && !lancamentoEditandoId) || alertas.length > 0;
+    if (precisaConferir) {
         const litros = itens.reduce((s, i) => s + (parseFloat(i.qtd) || 0), 0);
-        const resumo =
-            `Empresa: ${empresa}\n`
+        const cabecalho = alertas.length
+            ? (alertas.length === 1 ? "1 ponto para conferir:\n" : `${alertas.length} pontos para conferir:\n`)
+              + alertas.map(a => `  • ${a.texto}`).join("\n") + "\n\n"
+            : "";
+        const resumo = cabecalho
+            + `Empresa: ${empresa}\n`
             + `Base: ${base || "—"}\n`
             + `Data da nota: ${formatarData(dataNota)}${dataDescarga ? `   Descarga: ${formatarData(dataDescarga)}` : ""}\n`
             + `Nota: ${numeroNota || "—"}\n`
@@ -439,16 +451,16 @@ async function salvarOuAtualizar(modo = 'proxima') {
             + `${itens.length} combustível(is), ${fmtL3(litros)}\n`
             + `Total: ${fmtR(total)}`;
         if (!await fmConfirm({
-            titulo: "Confirmar lançamento",
+            titulo: alertas.length ? "Confirmar apesar dos alertas" : "Confirmar lançamento",
             msg: resumo,
-            confirmTxt: "Confirmar e lançar próxima",
+            confirmTxt: modo === 'sair' ? "Confirmar e sair" : "Confirmar e lançar próxima",
             cancelTxt: "Voltar e corrigir",
-            tipo: "info"
+            tipo: alertas.length ? "aviso" : "info"
         })) { esconderSpinner(btn); return; }
     }
 
     salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa,
-                          motorista, placa, itens, total, observacoes, [], undefined, modo);
+                          motorista, placa, itens, total, observacoes, [], undefined, modo, alertas);
     esconderSpinner(btn);
 }
 
@@ -480,8 +492,10 @@ async function salvarOuAtualizar(modo = 'proxima') {
  * @param {Array}  arquivos           - Sempre `[]`; anexo de nota foi descontinuado
  * @param {string} [lancamentoIdPreGerado] - ID pré-gerado quando há upload de anexos
  * @param {'proxima'|'sair'} [modo='proxima'] - destino depois de gravar
+ * @param {Array} [alertas=[]] - alertas que o operador aceitou na conferência;
+ *   viram uma linha de log, não um estado no lançamento
  */
-function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoIdPreGerado, modo = 'proxima') {
+function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoIdPreGerado, modo = 'proxima', alertas = []) {
     // Detecta se é edição ou novo/clone — para decidir como recarregar o relatório
     const eraEdicao = !!(lancamentoEditandoId && !isClonando);
 
@@ -499,6 +513,26 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         ts:      new Date().toISOString(),
         usuario: window._usuarioAtual?.nome || '—'
     });
+
+    // Chave de acesso da NF-e, quando a nota veio de XML. Nunca digitada:
+    // é o identificador fiscal que permite dizer "esta nota já foi lançada"
+    // com certeza, em vez de deduzir por número mais empresa mais data, que
+    // é só coincidência forte — número de nota se repete entre emitentes.
+    if (typeof _chaveAcessoAtual !== 'undefined' && _chaveAcessoAtual) {
+        lancamento.chaveAcesso = _chaveAcessoAtual;
+    }
+
+    // Alertas aceitos viram log, não estado. Um campo `revisao` no lançamento
+    // ficaria obsoleto assim que outra pessoa editasse a nota, e criaria um
+    // estado distribuído para resolver. O log já é o lugar da auditoria.
+    if (alertas && alertas.length) {
+        lancamento.logs.push({
+            acao:    "Salvo com alertas",
+            ts:      new Date().toISOString(),
+            usuario: window._usuarioAtual?.nome || '—',
+            alertas: alertas.map(a => a.texto)
+        });
+    }
 
     if (lancamentoEditandoId && !isClonando) {
         const idx = db.lancamentos.findIndex(l => l.id === lancamentoEditandoId);
@@ -600,6 +634,10 @@ function limparFormularioParcial() {
     const marca = document.getElementById("marcaHerdada");
     if (marca) marca.style.display = document.getElementById("dataDescarga").value ? "inline-block" : "none";
 
+    // A chave pertencia à nota que acabou de ser gravada; a próxima começa
+    // sem ela, mesmo que o contexto do lote continue.
+    _chaveAcessoAtual = null;
+    if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
     atualizarTotalizadorNota();
     _sessaoRenderizar();
@@ -744,6 +782,8 @@ function editarLancamento(id) {
         if (btnSairEd) btnSairEd.textContent = "Salvar e voltar";
         const marcaEd = document.getElementById("marcaHerdada");
         if (marcaEd) marcaEd.style.display = "none";
+        _chaveAcessoAtual = l.chaveAcesso || null;
+        if (typeof validarLancamento === 'function') validarLancamento();
     }, 0);
 }
 
@@ -785,7 +825,11 @@ function clonarLancamento(id) {
     const btnSairCl = document.getElementById("btnSalvarSair");
     if (btnSairCl) btnSairCl.textContent = "Salvar e sair";
     document.getElementById("bannerEdicao").style.display = "none";
+    // O clone é outra nota: herdar a chave do original faria o sistema
+    // acusar duplicidade da própria cópia, e ela nem é a mesma NF-e.
+    _chaveAcessoAtual = null;
     mostrarTela("lancamentos");
+    if (typeof validarLancamento === 'function') setTimeout(validarLancamento, 0);
 }
 
 /*=================================================
@@ -819,6 +863,8 @@ function limparFormulario() {
     if (bannerXML) bannerXML.style.display = "none";
     const marca = document.getElementById("marcaHerdada");
     if (marca) marca.style.display = "none";
+    _chaveAcessoAtual = null;
+    if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
     if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
     atualizarTotalizadorNota();

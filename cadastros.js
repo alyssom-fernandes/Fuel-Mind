@@ -971,69 +971,47 @@ function _buscarCadastro(lista, valor) {
  * Chamado uma única vez após o DOM estar pronto.
  */
 function _registrarValidacaoBlurLancamentos() {
-    // ── Empresa ──
-    const empresaInput = document.getElementById("empresaInput");
-    if (empresaInput) {
-        empresaInput.addEventListener("blur", function() {
-            const val = this.value.trim();
-            if (!val) return;
-            if (!_buscarCadastro(db.empresas, val)) {
-                mostrarToast(
-                    `Empresa "${val}" não encontrada no cadastro. Verifique ou cadastre em Cadastros → Empresas.`,
-                    "aviso", 5000
-                );
-            }
-        });
-    }
+    // Antes, cada um destes avisos era um `mostrarToast` que sumia em cinco
+    // segundos, longe do campo. Agora usam a mesma mensagem inline da
+    // validação do lançamento: fica visível junto do campo até ser resolvida,
+    // e some sozinha quando o valor passa a existir no cadastro.
+    const avisar = (id, texto) => {
+        if (typeof _msgCampo === 'function') _msgCampo(id, texto, 'alerta');
+        else mostrarToast(texto, 'aviso', 5000);
+    };
+    const limpar = id => { if (typeof _limparMsgCampo === 'function') _limparMsgCampo(id); };
 
-    // ── Motorista ──
-    const motoristaInput = document.getElementById("motoristaInput");
-    if (motoristaInput) {
-        motoristaInput.addEventListener("blur", function() {
+    const ligar = (id, lista, rotulo, aba) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener('blur', function () {
             const val = this.value.trim();
-            if (!val) return;
-            if (!_buscarCadastro(db.motoristas, val)) {
-                mostrarToast(
-                    `Motorista "${val}" não encontrado no cadastro. Verifique ou cadastre em Cadastros → Motoristas.`,
-                    "aviso", 5000
-                );
-            }
+            // Não limpa mensagem de bloqueio posta pela validação do lançamento.
+            const msg = this.closest('.campo')?.querySelector('.msg-validacao');
+            if (msg && msg.dataset.tipo === 'bloqueio' && msg.style.display !== 'none') return;
+            if (!val) { limpar(id); return; }
+            if (_buscarCadastro(db[lista], val)) limpar(id);
+            else avisar(id, `${rotulo} "${val}" não está no cadastro. Use a lista para cadastrar, ou confira em Cadastros → ${aba}.`);
         });
-    }
+    };
 
-    // ── Placa ──
-    const placaInput = document.getElementById("placaInput");
+    ligar('empresaInput',      'empresas',  'Empresa',   'Empresas');
+    ligar('motoristaInput',    'motoristas','Motorista', 'Motoristas');
+    ligar('baseEntradaInput',  'bases',     'Base',      'Bases');
+
+    // Placa tem regra própria: compara já no formato Mercosul, para
+    // ABC-1234 e ABC1D23 não parecerem cadastros diferentes.
+    const placaInput = document.getElementById('placaInput');
     if (placaInput) {
-        placaInput.addEventListener("blur", function() {
-            const val = this.value.trim().toUpperCase().replace(/[-\s]/g, "");
-            if (!val) return;
-            // Tenta normalizar para Mercosul antes de buscar
+        placaInput.addEventListener('blur', function () {
+            const val = this.value.trim().toUpperCase().replace(/[-\s]/g, '');
+            const msg = this.closest('.campo')?.querySelector('.msg-validacao');
+            if (msg && msg.dataset.tipo === 'bloqueio' && msg.style.display !== 'none') return;
+            if (!val) { limpar('placaInput'); return; }
             const placaNorm = normalizarPlaca(val);
-            const encontrou = db.veiculos.some(v =>
-                v.ativo !== false &&
-                normalizarPlaca(v.nome) === placaNorm
-            );
-            if (!encontrou) {
-                mostrarToast(
-                    `Placa "${val}" não encontrada no cadastro. Verifique ou cadastre em Cadastros → Veículos.`,
-                    "aviso", 5000
-                );
-            }
-        });
-    }
-
-    // ── Base ──
-    const baseInput = document.getElementById("baseEntradaInput");
-    if (baseInput) {
-        baseInput.addEventListener("blur", function() {
-            const val = this.value.trim();
-            if (!val) return;
-            if (!_buscarCadastro(db.bases, val)) {
-                mostrarToast(
-                    `Base "${val}" não encontrada no cadastro. Verifique ou cadastre em Cadastros → Bases.`,
-                    "aviso", 5000
-                );
-            }
+            const encontrou = db.veiculos.some(v => v.ativo !== false && normalizarPlaca(v.nome) === placaNorm);
+            if (encontrou) limpar('placaInput');
+            else avisar('placaInput', `Placa "${val}" não está no cadastro. Use a lista para cadastrar, ou confira em Cadastros → Veículos.`);
         });
     }
 }

@@ -224,6 +224,9 @@
   <div id="combustiveisNota"></div>
   <button class="btn-secundario" onclick="adicionarCombustivelNota()">Adicionar Combustível</button>
   <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
+  <!-- Faixa de validação: fica junto dos botões, e não no topo da tela,
+       porque é para o botão que o operador olha na hora de salvar. -->
+  <div id="faixaValidacao" class="faixa-validacao" style="display:none"></div>
   <div class="acoes-lancamento">
     <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar('proxima')">Salvar e lançar próxima</button>
     <button class="btn-secundario" id="btnSalvarSair" onclick="salvarOuAtualizar('sair')">Salvar e sair</button>
@@ -889,6 +892,7 @@
 <script src="cadastros.js"></script>
 <script src="combobox.js"></script>
 <script src="rascunho.js"></script>
+<script src="validacao.js"></script>
 <script src="lancamentos.js"></script>
 <script src="relatorios.js"></script>
 <script src="analitico.js"></script>

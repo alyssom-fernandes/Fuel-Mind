@@ -55,6 +55,7 @@ function _fmRascunhoCapturar() {
         empresaAtiva: empresaFiltroGlobal || '',
         editandoId: (typeof lancamentoEditandoId !== 'undefined' && lancamentoEditandoId) || null,
         isClonando: (typeof isClonando !== 'undefined' && isClonando) || false,
+        chaveAcesso: (typeof _chaveAcessoAtual !== 'undefined' && _chaveAcessoAtual) || null,
         campos: {
             dataNota:     val('dataNota'),
             dataDescarga: val('dataDescarga'),
@@ -209,11 +210,15 @@ function fmRascunhoRestaurar() {
 
     const bx = document.getElementById('bannerXML');
     if (bx && r.bannerXML) { bx.innerHTML = r.bannerXML; bx.style.display = 'block'; }
+    _chaveAcessoAtual = r.chaveAcesso || null;
 
     document.getElementById('bannerRascunho').style.display = 'none';
     _fmRascunhoPendente = null;
     atualizarTotalizadorNota();
     marcarFormularioSujo();
+    // Restaurar preenche por script, e script não dispara `change`: sem esta
+    // chamada os alertas do que foi recuperado só apareceriam ao tocar num campo.
+    if (typeof validarLancamento === 'function') validarLancamento();
     mostrarToast('Lançamento recuperado. Confira os dados antes de salvar.', 'info', 5000);
     const foco = document.getElementById(c.numeroNota ? 'dataNota' : 'numeroNota');
     if (foco) foco.focus();
