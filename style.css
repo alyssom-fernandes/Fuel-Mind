@@ -1698,6 +1698,15 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .campo-bloqueio { border-color: var(--danger) !important; }
 .campo-alerta   { border-color: var(--warning) !important; }
 
+/* Referência de preço: a régua que o alerta usa, mostrada antes do erro.
+   Discreta de propósito — é informação, não julgamento, e por isso não
+   usa a cor de aviso nem ícone. */
+.ref-preco {
+    display: block; margin-top: 4px;
+    font-size: 0.68rem; line-height: 1.35; color: var(--text-muted);
+    max-width: 240px;
+}
+
 /* Alerta de preço, dentro da célula de badge que a linha já tem. */
 .aviso-preco {
     display: block; margin-top: 4px;

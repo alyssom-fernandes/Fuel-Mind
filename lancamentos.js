@@ -371,51 +371,36 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     marcarFormularioSujo();
 }
 
+/**
+ * Redesenha só o badge de perda, e não a célula inteira.
+ *
+ * A `.badge-wrapper` hospeda três coisas: o badge de perda, a referência
+ * de preço e o aviso de preço fora dela. Enquanto esta função zerava o
+ * `innerHTML` do wrapper, ela apagava as outras duas — e como ela é
+ * chamada no `blur` da quantidade, sem nada revalidar depois, corrigir a
+ * quantidade depois de ver o aviso de preço fazia o aviso sumir da linha
+ * enquanto a faixa e a conferência continuavam listando-o.
+ */
 function atualizarBadgePerda(selectTipo) {
-    const linha = selectTipo.closest(".linha-combustivel");
-    linha.querySelector(".badge-wrapper").innerHTML = calcularPerdaBadge(
+    const linha   = selectTipo.closest(".linha-combustivel");
+    const wrapper = linha.querySelector(".badge-wrapper");
+    if (!wrapper) return;
+
+    const antigo = wrapper.querySelector(".badge-perda");
+    if (antigo) antigo.remove();
+
+    const html = calcularPerdaBadge(
         selectTipo.value,
         parseNumeroBR(linha.querySelector(".qtd").value),
         parseNumeroBR(linha.querySelector(".qtdDescargada").value)
     );
-}
+    if (!html) return;
 
-/*=================================================
-  CÁLCULO DE MÉDIA DE PREÇO
-=================================================*/
-/**
- * Calcula o preço médio por litro de um combustível nos últimos 30 dias,
- * com base nos lançamentos da empresa ativa (`empresaFiltroGlobal`).
- *
- * Exclui o lançamento atualmente em edição (`lancamentoEditandoId`) para não
- * contaminar a própria média com o valor que está sendo validado.
- *
- * Usado para alertar quando um novo valor está mais de 10% fora da média.
- *
- * @param {string} nomeCombustivel - Nome do tipo de combustível
- * @returns {number} Preço médio em R$/L, ou `0` se não houver histórico nos últimos 30 dias
- */
-function calcularMediaPreco(nomeCombustivel) {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - 30);
-    const limiteStr = limite.toISOString().slice(0, 10);
-
-    const precos = db.lancamentos
-        .filter(l => {
-            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-            // Ignora o próprio lançamento em edição para não distorcer a média
-            if (lancamentoEditandoId && l.id === lancamentoEditandoId) return false;
-            // Considera apenas os últimos 30 dias pela data de referência
-            const dataRef = l.dataDescarga || l.dataNota || '';
-            return dataRef >= limiteStr;
-        })
-        .flatMap(l => l.itens
-            .filter(i => i.tipo === nomeCombustivel && i.valor > 0)
-            .map(i => i.valor)
-        );
-
-    if (precos.length === 0) return 0;
-    return precos.reduce((sum, p) => sum + p, 0) / precos.length;
+    // O badge de perda é o primeiro da célula; a referência de preço e o
+    // aviso vêm depois, nessa ordem.
+    const molde = document.createElement("div");
+    molde.innerHTML = html;
+    wrapper.insertBefore(molde.firstElementChild, wrapper.firstChild);
 }
 
 /*=================================================

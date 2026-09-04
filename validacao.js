@@ -44,23 +44,33 @@ const _CAMPOS_VALIDADOS = [
 ];
 
 /* ── REFERÊNCIA DE PREÇO ─────────────────────────────────────────────
-   Mediana, não média, e com amostra mínima.
+   Mediana, não média.
 
    A média aritmética é contaminada pelo próprio valor extremo que se
    quer detectar: em 5,70 · 5,72 · 5,71 · 5,73 · 5,70 · 9,90 a média já
    sobe o bastante para achar que 9,90 é quase normal. A mediana ignora
    o extremo.
 
-   E, abaixo de cinco observações, o sistema não fala. A regra anterior
-   alertava com um único preço no histórico, o que é fabricar precisão:
-   qualquer segunda nota do combustível saía como anomalia.
+   Janela de sete dias, e não de trinta (decisão do dono, tema 06).
+   Combustível reajusta na refinaria: com trinta dias, uma alta de 15%
+   deixa a régua velha por semanas e o sistema passa a repreender
+   lançamento correto — que é o caminho mais curto para o operador
+   aprender a ignorar o aviso.
+
+   E o sistema nunca cala: basta uma nota no histórico (também decisão
+   do dono). O custo conhecido é que a segunda nota de um combustível
+   novo tende a sair com aviso, porque a régua se apoia num valor só.
+   Por isso o badge da linha mostra em quantas notas ela se apoia: é
+   quem está olhando a nota que decide o peso de "1 nota" contra
+   "14 notas", não o sistema.
    ────────────────────────────────────────────────────────────────── */
-const PRECO_AMOSTRA_MINIMA = 5;
+const PRECO_AMOSTRA_MINIMA = 1;
 const PRECO_TOLERANCIA     = 0.10;
+const PRECO_JANELA_DIAS    = 7;
 
 function referenciaPreco(nomeCombustivel) {
     const limite = new Date();
-    limite.setDate(limite.getDate() - 30);
+    limite.setDate(limite.getDate() - PRECO_JANELA_DIAS);
     const limiteStr = limite.toISOString().slice(0, 10);
 
     const precos = (db.lancamentos || [])
@@ -83,6 +93,41 @@ function referenciaPreco(nomeCombustivel) {
         ? precos[meio]
         : (precos[meio - 1] + precos[meio]) / 2;
     return { mediana, amostras: precos.length };
+}
+
+function _plural(n, singular, plural) {
+    return `${n} ${n === 1 ? singular : plural}`;
+}
+
+/* ── A RÉGUA, VISÍVEL ANTES DO ERRO ─────────────────────────────────
+   Até o tema 06 o sistema calculava a referência, julgava por ela e
+   nunca a mostrava: o operador só descobria que ela existia quando era
+   repreendido. O badge aparece assim que o combustível é escolhido,
+   antes de haver preço digitado, e traz sempre a janela e o número de
+   notas — "R$ 5,90 · 1 nota" e "R$ 5,90 · 14 notas" são o mesmo número
+   e não valem a mesma coisa.
+
+   Fica na `.badge-wrapper`, que já é a célula do grid da linha: não
+   desloca nada e convive com o badge de perda e com o aviso de preço.
+   É informação, não julgamento — daí a classe própria e o tom discreto.
+   ────────────────────────────────────────────────────────────────── */
+function _desenharReferenciaPreco(linha, tipo) {
+    const wrapper = linha.querySelector(".badge-wrapper");
+    if (!wrapper) return;
+
+    const antigo = wrapper.querySelector(".ref-preco");
+    if (antigo) antigo.remove();
+    if (!tipo) return;
+
+    const { mediana, amostras } = referenciaPreco(tipo);
+    const ref = document.createElement("span");
+    ref.className = "ref-preco";
+    ref.textContent = mediana
+        ? `referência ${fmtR4(mediana)}/L · ${PRECO_JANELA_DIAS} dias · ${_plural(amostras, "nota", "notas")}`
+        : `sem histórico nos últimos ${PRECO_JANELA_DIAS} dias`;
+    // Antes do aviso de preço, quando os dois estiverem na célula: a
+    // régua vem primeiro, o julgamento depois.
+    wrapper.insertBefore(ref, wrapper.querySelector(".aviso-preco"));
 }
 
 /* ── MENSAGEM JUNTO DO CAMPO ────────────────────────────────────────
@@ -261,19 +306,21 @@ function validarLancamento() {
 
         if (tipo && qtd > 0) temItemValido = true;
 
+        _desenharReferenciaPreco(linha, tipo);
+
         const antigo = linha.querySelector(".aviso-preco");
         if (antigo) antigo.remove();
         if (!tipo || !valor) return;
 
         const { mediana, amostras } = referenciaPreco(tipo);
-        if (!mediana) return;   // histórico curto demais: o sistema cala
+        if (!mediana) return;   // sem nenhuma nota na janela: não há o que comparar
         const desvio = (valor - mediana) / mediana;
         if (Math.abs(desvio) <= PRECO_TOLERANCIA) return;
 
         const pct = Math.round(Math.abs(desvio) * 100);
         const acima = desvio > 0 ? "acima" : "abaixo";
-        const texto = `${fmtR4(valor)}/L está ${pct}% ${acima} da mediana de 30 dias `
-                    + `(${fmtR4(mediana)}, ${amostras} notas)`;
+        const texto = `${fmtR4(valor)}/L está ${pct}% ${acima} da referência `
+                    + `(${fmtR4(mediana)}, ${_plural(amostras, "nota", "notas")})`;
         const aviso = document.createElement("span");
         aviso.className = "aviso-preco";
         aviso.textContent = texto;

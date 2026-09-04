@@ -148,13 +148,12 @@ function _demoGerarBase() {
     //
     // O volume por mês é alto de propósito. Com a dúzia de notas que havia
     // antes, cada combinação de empresa e combustível ficava com uma ou duas
-    // notas nos últimos 30 dias, e o alerta de preço — que exige cinco
-    // observações para não inventar anomalia — nunca falava. O modo demo
-    // existe para mostrar o sistema inteiro, então precisa de histórico que
-    // sustente os avisos. Cem notas por mês, divididas por três empresas e
-    // quatro combustíveis, dão cerca de oito observações por combinação em
-    // trinta dias. Também é mais fiel à operação real, de 10 a 30 notas por
-    // dia.
+    // notas de histórico e a referência de preço não tinha o que mostrar. O
+    // modo demo existe para mostrar o sistema inteiro, então precisa de
+    // histórico que sustente os avisos. Cem notas por mês, divididas por três
+    // empresas e quatro combustíveis, dão cerca de duas observações por
+    // combinação na janela de sete dias da referência de preço. Também é mais
+    // fiel à operação real, de 10 a 30 notas por dia.
     const lancamentos = [];
     let contador = 1000;
 
@@ -429,7 +428,7 @@ function _demoDicaLancamento() {
         <ul>
             <li>Ponha uma <strong>data de descarga anterior à da nota</strong>: vira erro e impede salvar.</li>
             <li>Ponha uma <strong>data no futuro</strong>: vira alerta e deixa salvar.</li>
-            <li>Digite um <strong>preço bem acima do normal</strong>, tipo o dobro: o sistema compara com a mediana dos últimos 30 dias.</li>
+            <li>Digite um <strong>preço bem acima do normal</strong>, tipo o dobro: o sistema compara com a referência dos últimos 7 dias, que aparece ao lado da linha.</li>
             <li>Repita o <strong>número de uma nota já lançada</strong>, na mesma data e empresa: aparece o aviso de duplicidade.</li>
             <li>Digite um <strong>motorista que não existe</strong>: a lista oferece cadastrar na hora.</li>
         </ul>
