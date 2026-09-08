@@ -91,11 +91,53 @@ service cloud.firestore {
         && antes.get('empresaIds', []) == depois.get('empresaIds', []);
     }
 
+    // Uma lista do documento compartilhado não pode encolher.
+    function listaNaoEncolheu(campo) {
+      return request.resource.data.get(campo, []).size()
+          >= resource.data.get(campo, []).size();
+    }
+
+    // O que o papel operacional pode fazer no documento de cadastros:
+    // acrescentar, nunca remover, e não tocar na configuração do PDF — que
+    // é de todo mundo. Cobre o "Cadastrar X" do combobox, que é a única
+    // razão pela qual quem só lança nota precisa escrever aqui.
+    function cadastroSoCresce() {
+      return listaNaoEncolheu('motoristas')
+        && listaNaoEncolheu('veiculos')
+        && listaNaoEncolheu('empresas')
+        && listaNaoEncolheu('combustiveis')
+        && listaNaoEncolheu('bases')
+        && listaNaoEncolheu('conjuntosVeiculos')
+        && request.resource.data.get('configRelatorio', {})
+        == resource.data.get('configRelatorio', {});
+    }
+
     // ── Cadastros compartilhados ─────────────────────────────────────────
     // Motoristas, veículos, empresas, combustíveis, bases e conjuntos não
-    // têm vínculo com empresa — servem todas. Todo usuário ativo lê e grava.
+    // têm vínculo com empresa — servem todas.
+    //
+    // Até 08/09/2026 esta regra era `allow read, write: if ativo()`, e o
+    // papel operacional — que existe justamente para só lançar nota — podia
+    // apagar a lista de empresas, os conjuntos de veículos com a composição
+    // histórica, as taxas de frete e a configuração do PDF de todo mundo,
+    // tudo de um documento só. Não é hipótese: o cliente grava o documento
+    // inteiro com `setDoc` a cada salvamento, então basta a memória dele
+    // estar errada.
+    //
+    // Fechar para admin e supremo teria quebrado o "Cadastrar X" do
+    // combobox: o operador que encontra um motorista novo no meio de um
+    // lote precisa cadastrá-lo sem sair da tela. Por isso a regra não é por
+    // papel, é por efeito — quem administra faz o que quiser, e os demais
+    // só conseguem gravar um documento que não perdeu nada.
+    //
+    // O que esta regra ainda NÃO impede: renomear um cadastro existente,
+    // que mantém o tamanho da lista. É correção legítima na maior parte das
+    // vezes e propaga para os lançamentos; fica registrado como limite.
     match /dados/compartilhado {
-      allow read, write: if ativo();
+      allow read:   if ativo();
+      allow create: if gerenciaUsuarios();
+      allow update: if gerenciaUsuarios() || (ativo() && cadastroSoCresce());
+      allow delete: if ehSupremo();
     }
 
     // ── Layout antigo ────────────────────────────────────────────────────

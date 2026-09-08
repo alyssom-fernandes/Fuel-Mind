@@ -125,6 +125,70 @@ async function fazerLogin() {
 }
 
 
+/**
+ * Envia o e-mail de redefinição de senha.
+ *
+ * `authEnviarResetSenha` existia em `firebase.js`, estava exportada e não
+ * era chamada por ninguém: quem esquecia a senha dependia do supremo, e o
+ * supremo não tinha botão nenhum — a única saída dele era o Console do
+ * Firebase. Esta função é só a ligação que faltava.
+ *
+ * Aceita e-mail ou @usuario, porque o login aceita os dois. E a mensagem de
+ * sucesso é a mesma quando o usuário não existe: dizer "esse e-mail não
+ * está cadastrado" numa tela pública entrega quem tem conta.
+ */
+async function esqueciMinhaSenha() {
+    const identificador = document.getElementById("loginEmail")?.value.trim();
+    const erroEl  = document.getElementById("loginErro");
+    const avisoEl = document.getElementById("loginAviso");
+    if (erroEl)  erroEl.style.display  = "none";
+    if (avisoEl) avisoEl.style.display = "none";
+
+    if (!identificador) {
+        if (erroEl) {
+            erroEl.textContent = "Escreva seu e-mail ou usuário acima e clique de novo.";
+            erroEl.style.display = "block";
+        }
+        document.getElementById("loginEmail")?.focus();
+        return;
+    }
+    if (!window._firestore) {
+        if (erroEl) {
+            erroEl.textContent = "Sem conexão com a nuvem. Tente de novo em instantes.";
+            erroEl.style.display = "block";
+        }
+        return;
+    }
+
+    const sucesso = () => {
+        if (!avisoEl) return;
+        avisoEl.textContent = "Se houver conta com esse cadastro, o e-mail de "
+            + "redefinição já foi enviado. Confira a caixa de entrada e o spam.";
+        avisoEl.style.display = "block";
+    };
+
+    try {
+        let email = identificador;
+        const ehUsername = !identificador.includes("@") || identificador.startsWith("@");
+        if (ehUsername) {
+            const perfil = await window._firestore.usuarioBuscarPorUsername(
+                identificador.replace(/^@/, "").toLowerCase().trim());
+            if (!perfil?.email) return sucesso();   // não revela se existe
+            email = perfil.email;
+        }
+        await window._firestore.authEnviarResetSenha(email);
+        sucesso();
+    } catch (e) {
+        // `user-not-found` e `invalid-email` também respondem sucesso, pelo
+        // mesmo motivo. Só falha de verdade aparece como falha.
+        if (e?.code === "auth/user-not-found" || e?.code === "auth/invalid-email") return sucesso();
+        if (erroEl) {
+            erroEl.textContent = "Não consegui enviar o e-mail: " + (e?.message || e);
+            erroEl.style.display = "block";
+        }
+    }
+}
+
 document.addEventListener("keydown", e => {
     if (e.key === "Enter") {
         const loginOverlay = document.getElementById("loginOverlay");
@@ -172,9 +236,20 @@ function _mostrarSelecaoEmpresa(perfil) {
     const nomeEl  = document.getElementById("selecaoEmpresaNome");
     if (nomeEl) nomeEl.textContent = (perfil.nome || '').split(" ")[0];
 
+    // `setEmpresaFiltro` grava `ultimaEmpresa` desde sempre, com um
+    // comentário prometendo restaurar a escolha na sessão seguinte — e
+    // ninguém lia a chave. Quem trabalha o dia inteiro na mesma empresa
+    // reescolhia a mesma opção todo login. A escolha continua sendo do
+    // operador: a última só sobe para o topo, marcada.
+    const ultima = localStorage.getItem("ultimaEmpresa");
+    if (ultima && empresasDisponiveis.includes(ultima)) {
+        empresasDisponiveis = [ultima, ...empresasDisponiveis.filter(e => e !== ultima)];
+    }
+
     lista.innerHTML = empresasDisponiveis.map(emp => `
         <button class="btn-empresa-troca" onclick="confirmarSelecaoEmpresa('${escapeJsAttr(emp)}')">
-            <span>${escapeHtml(emp)}</span>
+            <span>${escapeHtml(emp)}${emp === ultima
+                ? ' <small style="opacity:0.6;font-weight:400">· última usada</small>' : ''}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;opacity:0.5"><polyline points="9,18 15,12 9,6"/></svg>
         </button>`).join("");
 
@@ -330,11 +405,12 @@ document.addEventListener('keydown', (e) => {
     const tecla   = (e.key || '').toLowerCase();
     const telaVisivel = id => document.getElementById(id)?.style.display === 'block';
 
-    if (comando && tecla === 's') {
+    // O `preventDefault` fica DENTRO da checagem de tela, como no Ctrl+F
+    // logo abaixo. Solto lá fora, ele engolia o "salvar página" do
+    // navegador em todas as outras oito telas sem colocar nada no lugar.
+    if (comando && tecla === 's' && telaVisivel('lancamentos')) {
         e.preventDefault();
-        if (telaVisivel('lancamentos')) {
-            document.getElementById('btnSalvarLancamento')?.click();
-        }
+        document.getElementById('btnSalvarLancamento')?.click();
     }
     // Ctrl+Enter é o atalho do botão primário — "salvar e lançar próxima" numa
     // nota nova, "salvar" numa correção. É o que permite atravessar um bolo de

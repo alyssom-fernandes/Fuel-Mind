@@ -8,6 +8,25 @@
 /* ─── ESTADO ─── */
 let _usuariosCache = [];
 
+/**
+ * Senha temporária sorteada para um usuário novo.
+ *
+ * O campo vinha pré-preenchido com o literal `123456`, e a troca era
+ * voluntária — então toda conta criada nascia com a mesma senha conhecida,
+ * e continuava com ela até alguém se lembrar de mudar. Sortear não resolve
+ * o problema inteiro (a troca continua voluntária, e isso é assunto de uma
+ * rodada própria), mas acaba com a senha única e previsível.
+ *
+ * Sem `l`, `I`, `O`, `0` e `1`: a senha vai ser lida em voz alta ou copiada
+ * à mão, e esses cinco são os que se confundem.
+ */
+function _senhaTemporaria() {
+    const alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const bytes = new Uint32Array(10);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => alfabeto[b % alfabeto.length]).join("");
+}
+
 /* ─── ROLES ─── */
 const ROLES = {
     supremo: { label: "Supremo",  desc: "Acesso total, gerencia usuários e configurações" },
@@ -398,8 +417,9 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
             ${isNovo ? `
             <div class="campo">
                 <label for="usuarioSenhaInput">Senha temporária *</label>
-                <input type="text" id="usuarioSenhaInput" value="123456" placeholder="Mínimo 6 caracteres">
-                <p class="dica" style="margin-top:4px">O usuário poderá alterar a senha após o primeiro acesso.</p>
+                <input type="text" id="usuarioSenhaInput" value="${_senhaTemporaria()}" placeholder="Mínimo 6 caracteres">
+                <p class="dica" style="margin-top:4px">Sorteada agora. Passe ao usuário por um canal
+                seguro e peça que troque no primeiro acesso, em Usuários &rsaquo; Alterar senha.</p>
             </div>` : ''}
             <div class="campo">
                 <label>Usuário <span style="font-weight:400;opacity:0.65;font-size:0.78rem">(opcional — para login sem e-mail)</span></label>
@@ -620,15 +640,37 @@ async function toggleAtivoUsuario(uid) {
 }
 
 /* ─── EXCLUIR ─── */
+/**
+ * Exclui o PERFIL do usuário. A conta de autenticação continua existindo.
+ *
+ * Apagar a conta no Firebase Authentication exige o Admin SDK, num
+ * servidor, ou que a própria pessoa esteja logada — nenhum dos dois existe
+ * aqui. Quem barra o desligado é a aplicação: sem perfil, o login cai em
+ * "Acesso negado" logo depois de autenticar.
+ *
+ * Antes, o diálogo não dizia nada disso e prometia uma exclusão que não
+ * acontecia. Agora ele diz o que de fato vai acontecer, e aponta o caminho
+ * seguro — inativar bloqueia igual e preserva o registro de quem lançou o
+ * quê.
+ */
 async function excluirUsuario(uid) {
     const u = _usuariosCache.find(u => u.uid === uid);
     if (!u) return;
-    if (!await fmConfirm({ titulo: `Excluir "${u.nome}"?`, msg: `E-mail: ${u.email}\n\nEsta ação não pode ser desfeita.`, confirmTxt: "Excluir", tipo: "perigo" })) return;
+    if (!await fmConfirm({
+        titulo: `Excluir o perfil de "${u.nome}"?`,
+        msg: `E-mail: ${u.email}\n\n`
+           + `A conta de acesso NÃO é apagada — isso só o Console do Firebase faz. `
+           + `O que acontece aqui é que a pessoa perde o perfil e passa a ser recusada no login.\n\n`
+           + `Se a intenção é só tirar o acesso, prefira INATIVAR: bloqueia igual e `
+           + `preserva o registro de quem lançou o quê.`,
+        confirmTxt: "Excluir o perfil", cancelTxt: "Voltar", tipo: "perigo" })) return;
 
     try {
         await window._firestore.usuarioExcluirFirestore(uid);
         if (u.username) await window._firestore.usernameMapaRemover(u.username);
-        mostrarToast(`Usuário "${u.nome}" excluído.`, "sucesso");
+        mostrarToast(
+            `Perfil de "${u.nome}" excluído. A conta de acesso continua no Firebase — `
+            + `apague-a pelo Console se a pessoa saiu da empresa.`, "aviso", 9000);
         await _recarregarListaUsuarios();
     } catch (e) {
         mostrarToast("Erro ao excluir: " + e.message, "erro", 6000);

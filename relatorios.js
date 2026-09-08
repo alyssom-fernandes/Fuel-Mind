@@ -846,11 +846,43 @@ function compartilharEmail(contexto) {
     const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
     const assunto    = `Controle de Combustível — ${dataHoje}`;
-    let corpo = `Controle de Entradas de Combustível\nData: ${dataHoje}\nRegistros: ${lista.length}\nTotal: ${fmtR(totalGeral)}\n\n${"=".repeat(60)}\n\n`;
-    lista.forEach(l => {
-        corpo += `Data: ${formatarData(l.dataNota)}\nNota: ${l.numeroNota} | Base: ${l.base || "—"}\nEmpresa: ${l.empresa || "—"} | Motorista: ${l.motorista || "—"} | Placa: ${l.placa || "—"}\nTotal: ${fmtR(l.total)}\n${"-".repeat(40)}\n`;
-    });
-    window.location.href = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    // Um `mailto:` não é canal de transporte: o Windows e o Chrome truncam
+    // a URL na casa dos 2.000 caracteres, **sem erro nenhum**. Um filtro de
+    // mês com algumas centenas de notas passava de 70 mil, e o cliente de
+    // e-mail abria com a mensagem cortada no meio — ou não abria.
+    //
+    // O corte é por tamanho medido, não por contagem de notas: linha de
+    // nota varia muito (nome de motorista, base, observação), e um número
+    // fixo ora desperdiça espaço, ora estoura. Quem quer a lista inteira
+    // tem Excel, PDF e CSV ao lado.
+    const LIMITE_URL = 1900;
+
+    const cabecalho = `Controle de Entradas de Combustível\nData: ${dataHoje}\n`
+                    + `Registros: ${lista.length}\nTotal: ${fmtR(totalGeral)}\n\n${"=".repeat(60)}\n\n`;
+    const rodape = n => n > 0
+        ? `\n(+ ${n} nota(s) não cabem num e-mail. O total acima considera todas as `
+          + `${lista.length}. Para a lista completa, use Excel, PDF ou CSV.)\n`
+        : "";
+    const montarURL = c => `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(c)}`;
+
+    let corpo = cabecalho, cabem = 0;
+    for (const l of lista) {
+        const linha = `Data: ${formatarData(l.dataNota)}\nNota: ${l.numeroNota} | Base: ${l.base || "—"}\n`
+                    + `Empresa: ${l.empresa || "—"} | Motorista: ${l.motorista || "—"} | Placa: ${l.placa || "—"}\n`
+                    + `Total: ${fmtR(l.total)}\n${"-".repeat(40)}\n`;
+        if (montarURL(corpo + linha + rodape(lista.length - cabem - 1)).length > LIMITE_URL) break;
+        corpo += linha;
+        cabem++;
+    }
+
+    const cortadas = lista.length - cabem;
+    corpo += rodape(cortadas);
+    if (cortadas > 0) {
+        mostrarToast(
+            `O e-mail leva ${cabem} de ${lista.length} notas — o resto não cabe num link `
+            + `de e-mail. Para mandar tudo, anexe o Excel ou o PDF.`, "aviso", 7000);
+    }
+    window.location.href = montarURL(corpo);
 }
 
 /*=================================================
