@@ -643,7 +643,14 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         db.lancamentos.push(lancamento);
         mostrarToast("Lançamento salvo com sucesso!", "sucesso");
     }
-    salvarDB();
+    // Marca antes de gravar: se a aba morrer entre o clique e a resposta
+    // do Firestore, é esta marca que permite ao próximo carregamento
+    // reconhecer a nota como não enviada, em vez de apagá-la.
+    // E `imediato` porque um clique em "Salvar" não pode esperar o
+    // debounce — quem fechava a aba dentro dos 600 ms nunca chegava a
+    // tentar.
+    _pendenteMarcar(lancamento.id);
+    salvarDB({ imediato: true });
 
     // O rascunho é apagado AQUI, depois de o lançamento entrar na memória e
     // no backup local, e não depois da confirmação do Firestore. `salvarDB`
@@ -826,7 +833,10 @@ async function _sessaoDesfazer(id) {
     })) return;
     db.lancamentos = db.lancamentos.filter(x => x.id !== id);
     _idsSessao = _idsSessao.filter(x => x.id !== id);
-    salvarDB();
+    // Exclusão não é marcada como pendente: a nota já saiu da cópia local,
+    // então não é candidata a voltar. `imediato` pelo mesmo motivo do
+    // salvamento.
+    salvarDB({ imediato: true });
     _sessaoRenderizar();
     mostrarToast("Lançamento desfeito.", "info");
 }
@@ -1025,6 +1035,6 @@ async function excluirLancamento(id, contexto = 'relatorio') {
     if (!await fmConfirm({ titulo: `Excluir lançamento?`, msg: `${descricao}\n\nEsta ação não pode ser desfeita.`, confirmTxt: "Excluir", tipo: "perigo" })) return;
 
     db.lancamentos = db.lancamentos.filter(x => x.id !== id);
-    salvarDB();
+    salvarDB({ imediato: true });
     recarregarRelatorioSemZerarFiltros();
 }

@@ -568,6 +568,55 @@ function _empresaIdDoLancamento(l) {
     return (db.empresas || []).find(e => e.nome === l.empresa)?.id || null;
 }
 
+/* ── O QUE FOI SALVO MAS AINDA NÃO SUBIU ────────────────────────────
+   Registro dos lançamentos que entraram na memória e cuja gravação na
+   nuvem ainda não foi confirmada. Vive no `localStorage`, e é por isso
+   que existe: precisa sobreviver ao fechamento da aba.
+
+   Sem ele, a nota salva e perdida na janela entre o clique e a resposta
+   do Firestore era DESTRUÍDA, não apenas atrasada. A sequência era esta:
+   `salvarDB` gravava a cópia local e agendava a nuvem; fechar a aba antes
+   matava o agendamento; na sessão seguinte `carregarDB` trocava a memória
+   pelo que veio do servidor e logo depois gravava isso por cima do
+   `db_backup`. A nota sumia dos dois lugares, e a pílula dizia
+   "sincronizado".
+
+   Este registro guarda só ids. O lançamento em si continua no
+   `db_backup`; é o cruzamento dos dois, em `_reconciliarNaoEnviados`, que
+   traz a nota de volta. Guardar ids e não o objeto evita ter duas versões
+   do mesmo lançamento em lugares diferentes.
+
+   Exclusões não entram aqui de propósito: quem apaga uma nota também a
+   tira do `db_backup`, então ela não é candidata a voltar. O preço é que
+   uma exclusão perdida na mesma janela é desfeita pelo servidor — e
+   ressuscitar dado é muito menos grave do que destruí-lo. */
+function _chavePendentes() {
+    return "fm_pendentes_" + (window._usuarioAtual?.uid || "anon");
+}
+
+function _pendentesLer() {
+    try { return JSON.parse(localStorage.getItem(_chavePendentes()) || "[]"); }
+    catch (_) { return []; }
+}
+
+function _pendenteMarcar(id) {
+    if (!id) return;
+    try {
+        const ids = _pendentesLer();
+        if (!ids.includes(id)) {
+            ids.push(id);
+            localStorage.setItem(_chavePendentes(), JSON.stringify(ids));
+        }
+    } catch (_) {}
+}
+
+/* Chamado só quando TODAS as gravações da rodada deram certo. Aí tudo o
+   que está em memória está no servidor, porque `_montarPayloads` sempre
+   monta o vetor inteiro de cada empresa permitida. */
+function _pendentesLimpar() {
+    try { localStorage.removeItem(_chavePendentes()); } catch (_) {}
+}
+
 /* A cópia local é a rede de segurança de tudo: é ela que sobrevive ao F5 e
    à queda de conexão. Falhar aqui em silêncio — como acontecia, num
    `catch(_) {}` mudo — deixava o operador achando que estava protegido.
@@ -641,7 +690,7 @@ function _absorverLancamentos(empresaId, lista) {
                                    .concat(lista || []);
 }
 
-function salvarDB() {
+function salvarDB(opcoes) {
     // Modo demonstração: nada sai da máquina. Esta é a trava — se ela
     // falhar, dados fictícios acabam na base real. Vem antes de tudo.
     if (typeof demoAtivo === 'function' && demoAtivo()) {
@@ -657,9 +706,17 @@ function salvarDB() {
         return;
     }
 
-    // Debounce: chamadas rápidas em sequência resultam em um único setDoc.
     clearTimeout(_timerDebounce);
     _setStatusConexao("salvando");
+
+    // `imediato` existe para o salvamento fiscal. O debounce agrupa
+    // chamadas seguidas num `setDoc` só, o que é ótimo para cadastro e
+    // configuração — e péssimo para uma nota: quem clica em "Salvar" e
+    // fecha a aba meio segundo depois nunca chegou a tentar. O clique
+    // explícito do operador merece uma tentativa explícita imediata.
+    if (opcoes && opcoes.imediato) return _executarSave();
+
+    // Debounce: chamadas rápidas em sequência resultam em um único setDoc.
     _timerDebounce = setTimeout(() => _executarSave(), _DEBOUNCE_MS);
 }
 
@@ -694,6 +751,9 @@ function _executarSave() {
     if (mudaram.length === 0) {
         _salvandoDB = Math.max(0, _salvandoDB - 1);
         _pendentesSincronizacao = false;
+        // Nada mudou porque os payloads são idênticos aos últimos gravados
+        // com sucesso: o servidor já tem tudo.
+        _pendentesLimpar();
         _setStatusConexao("sincronizado");
         return;
     }
@@ -708,10 +768,15 @@ function _executarSave() {
             .catch(err => { delete _hashPorDoc[nome]; throw err; });
     });
 
-    Promise.all(gravacoes)
+    return Promise.all(gravacoes)
         .then(() => {
             _salvandoDB = Math.max(0, _salvandoDB - 1);
             _pendentesSincronizacao = false;
+            // Tudo o que está em memória está no servidor: `_montarPayloads`
+            // monta o vetor inteiro de cada empresa permitida, e os
+            // documentos que não foram enviados são os que já estavam
+            // idênticos lá.
+            _pendentesLimpar();
             _setStatusConexao("sincronizado");
             setTimeout(() => {
                 const el = document.getElementById("_statusConexao");
@@ -763,11 +828,50 @@ function sincronizarAgora() {
  * antigo (documento único `dados/principal`); nesse caso ele é carregado
  * como sempre foi, e a tela de Sistema oferece a migração.
  */
+/**
+ * Devolve os lançamentos que ficaram só no navegador, para voltarem à
+ * memória antes que a cópia local seja sobrescrita.
+ *
+ * Uma nota entra aqui quando as três coisas valem ao mesmo tempo:
+ *   1. o id está na lista de pendentes (foi salvo e não teve confirmação);
+ *   2. a nota existe na cópia local (`db_backup`);
+ *   3. a nota NÃO existe no que o servidor devolveu agora.
+ *
+ * As três juntas é que dão certeza. Só o item 3 acusaria como "não
+ * enviada" qualquer nota que um colega apagou legitimamente enquanto esta
+ * máquina estava fechada — e o sistema a ressuscitaria. Só o item 1 não
+ * basta porque o envio pode ter dado certo com a aba morrendo antes do
+ * `.then()`.
+ *
+ * A empresa da nota precisa estar entre as permitidas: reviver lançamento
+ * de uma empresa que o usuário deixou de acessar poluiria os relatórios e
+ * seria descartado por `_montarPayloads` de qualquer forma.
+ */
+function _reconciliarNaoEnviados(doServidor) {
+    const ids = _pendentesLer();
+    if (!ids.length) return [];
+
+    let local = null;
+    try { local = JSON.parse(localStorage.getItem("db_backup") || "null"); }
+    catch (_) { return []; }
+    if (!local || !Array.isArray(local.lancamentos)) return [];
+
+    const noServidor = new Set(doServidor.map(l => l.id));
+    const permitidos = _empresaIdsPermitidos();
+
+    return local.lancamentos.filter(l =>
+        ids.includes(l.id) &&
+        !noServidor.has(l.id) &&
+        permitidos.includes(_empresaIdDoLancamento(l))
+    );
+}
+
 async function carregarDB() {
     // Em demo os dados já foram postos em memória por entrarModoDemo().
     if (typeof demoAtivo === 'function' && demoAtivo()) return;
 
     _mostrarLoading(true);
+    let naoEnviados = [];
     try {
         if (!window._firestore) {
             const local = localStorage.getItem("db_backup") || localStorage.getItem("db");
@@ -786,8 +890,10 @@ async function carregarDB() {
             const docs = await Promise.all(ids.map(id =>
                 window._firestore.firestoreCarregarDoc(_nomeDocLanc(id)).catch(() => null)));
 
-            db.lancamentos = docs.flatMap(d => (d && d.lancamentos) || []);
-            _pendentesSincronizacao = false;
+            const doServidor = docs.flatMap(d => (d && d.lancamentos) || []);
+            naoEnviados = _reconciliarNaoEnviados(doServidor);
+            db.lancamentos = doServidor.concat(naoEnviados);
+            _pendentesSincronizacao = naoEnviados.length > 0;
         } else {
             // ── Layout antigo, ainda não migrado ──
             _layoutNovo = false;
@@ -802,7 +908,23 @@ async function carregarDB() {
             }
         }
 
+        // A cópia local é gravada DEPOIS da reconciliação. Antes, ela era
+        // escrita logo em seguida ao `db.lancamentos = …` do servidor, e
+        // era essa linha que apagava a última prova de que a nota não
+        // enviada existiu.
         _gravarCopiaLocal();
+
+        // O reenvio acontece ANTES de ligar o listener. Se o listener
+        // subisse primeiro, o snapshot inicial traria o estado do servidor
+        // — sem estas notas — e `_absorverLancamentos` as tiraria da
+        // memória de novo, desfazendo a reconciliação.
+        if (naoEnviados.length) {
+            mostrarToast(
+                `${naoEnviados.length} lançamento(s) do último acesso não tinham `
+                + `chegado à nuvem. Enviando agora.`, "aviso", 7000);
+            try { await salvarDB({ imediato: true }); } catch (_) {}
+        }
+
         _ligarListenerTempoReal();
 
     } catch(e) {
