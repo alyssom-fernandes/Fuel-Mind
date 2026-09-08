@@ -58,8 +58,17 @@ function importarXMLNFe(input) {
             const dataNota    = dhEmi ? dhEmi.slice(0, 10) : "";
             const xNomeEmit   = get("emit > xNome") || get("emit xNome");
             const xNomeDest   = get("dest > xNome") || get("dest xNome");
-            const xNomeTransp = get("transporta xNome") || get("xNome") || "";
-            const placaTransp = get("veicTransp placa") || get("placa") || "";
+            // Sem o `|| get("xNome")` e o `|| get("placa")`, que pareciam
+            // um fallback prestativo e não eram:
+            //   `querySelector("xNome")` devolve o PRIMEIRO xNome do
+            //   documento, que na NF-e é o do EMITENTE. Toda nota sem grupo
+            //   `transporta` fazia o sistema procurar um motorista com o
+            //   nome da distribuidora.
+            //   `querySelector("placa")` sem `veicTransp` acha a placa do
+            //   `reboque` — a carreta entrava no lugar do cavalo.
+            // Ausente é ausente: o banner já avisa o que não veio.
+            const xNomeTransp = get("transporta xNome");
+            const placaTransp = get("veicTransp placa");
 
             const EQUIV_COMBUSTIVEL = [
                 { termos: ["s-10","s10","diesel s10","diesel b s10","oleo diesel b s10","diesel s-10"], nome: "Diesel S-10" },
@@ -140,10 +149,21 @@ function importarXMLNFe(input) {
                 }
             }
             if (xNomeTransp) {
-                const motorCadastrado = db.motoristas.find(m =>
-                    m.ativo !== false &&
-                    normalizarTexto(xNomeTransp).includes(normalizarTexto(m.nome).split(" ")[0])
-                );
+                // Casa por palavra inteira, não por pedaço de palavra. Com
+                // `includes` do primeiro nome, o motorista "Ana" casava com
+                // "TRANSPORTES CAMPANA LTDA" — e o lançamento saía com o
+                // motorista errado, sem ninguém ver.
+                const palavrasTransp = normalizarTexto(xNomeTransp).split(/\s+/);
+                const motorCadastrado = db.motoristas.find(m => {
+                    if (m.ativo === false) return false;
+                    const partes = normalizarTexto(m.nome).split(/\s+/).filter(Boolean);
+                    if (!partes.length) return false;
+                    // Nome completo dentro do transportador, ou primeiro e
+                    // último nome presentes como palavras inteiras.
+                    const primeiro = partes[0], ultimo = partes[partes.length - 1];
+                    return palavrasTransp.includes(primeiro)
+                        && (partes.length === 1 || palavrasTransp.includes(ultimo));
+                });
                 if (motorCadastrado) {
                     document.getElementById("motoristaInput").value  = motorCadastrado.nome;
                     document.getElementById("motoristaSelect").value = motorCadastrado.nome;
@@ -901,8 +921,15 @@ function clonarLancamento(id) {
     document.getElementById("placaInput").value      = l.placa || "";
     document.getElementById("placaSelect").value     = l.placa || "";
     document.getElementById("combustiveisNota").innerHTML = "";
-    _ajustarDescargaPorItens(l.itens);
-    l.itens.forEach(item => adicionarCombustivelNota(item));
+    // A quantidade descarregada NÃO é clonada. Ela é a medição de uma
+    // descarga que já aconteceu, e a nota nova é outra descarga: copiá-la
+    // fazia a cópia nascer com uma medição que ninguém fez — e ainda ligava
+    // sozinho o interruptor do campo, mostrando o número como se fosse dado
+    // desta nota. Carga, tipo e valor são o que se repete numa nota
+    // parecida; a medição, não.
+    const itensClonados = (l.itens || []).map(({ qtdDescargada, ...resto }) => resto);
+    _ajustarDescargaPorItens(itensClonados);
+    itensClonados.forEach(item => adicionarCombustivelNota(item));
     document.getElementById("tituloLancamentos").textContent  = "Novo Lançamento (Clonado)";
     _aplicarMarcadorSujo();   // idem: o clone já nasce sujo
     document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";

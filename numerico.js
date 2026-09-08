@@ -150,6 +150,18 @@ document.addEventListener("paste", function (e) {
     if (!_fmEhNumerico(el)) return;
     const texto = (e.clipboardData || window.clipboardData).getData("text");
     if (!texto) return;
+
+    // Tabulação ou quebra de linha significam mais de uma célula. Um campo
+    // guarda um número; colar duas células aqui não tem leitura possível, e
+    // adivinhar qual delas o operador queria seria pior. Recusa e explica —
+    // antes, "60000" ⇥ "5,234" virava 600.005,234 no campo, formatado e
+    // plausível.
+    if (/[\t\r\n]/.test(texto.trim())) {
+        e.preventDefault();
+        mostrarToast("Isso são várias células. Cole um valor de cada vez.", "aviso", 4000);
+        return;
+    }
+
     const n = parseNumeroBR(texto);
     if (n === null) return;   // deixa colar cru; a validação acusa depois
     e.preventDefault();

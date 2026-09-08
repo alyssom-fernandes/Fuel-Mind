@@ -146,7 +146,14 @@ function parseNumeroBR(valor) {
 
     let s = String(valor ?? "")
         .replace(/R\$/gi, "")
-        .replace(/\s| /g, "")
+        // Tira espaço, espaço inquebrável e espaço fino — que aparecem como
+        // separador de milhar. **Não** tira tabulação nem quebra de linha:
+        // essas são separador de CÉLULA. Enquanto `\s` levava as duas
+        // embora, colar duas células do Excel ("60000" + tab + "5,234")
+        // virava "600005,234", passava no teste de número válido logo
+        // abaixo e era escrito no campo já formatado como 600.005,234 —
+        // plausível e cem vezes errado.
+        .replace(/[ \u00A0\u202F]/g, "")
         .trim();
 
     if (!s || s === "-") return null;

@@ -302,17 +302,88 @@ function renderBackupsAuto() {
 }
 
 /* ========== INFORMAÇÕES DO SISTEMA ========== */
+/* ── ESPAÇO: OS DOIS TETOS ──────────────────────────────────────────
+   O sistema tem duas paredes, e nenhuma delas avisava que estava perto.
+
+   A do Firestore: os lançamentos de cada empresa vivem num documento só,
+   e documento não passa de 1 MiB. A ~440 bytes por nota, isso dá umas
+   2.400 notas POR EMPRESA. Quando estourar, o salvamento passa a falhar
+   para aquela empresa inteira.
+
+   A do navegador: o `localStorage` guarda QUATRO cópias do banco —
+   `db_backup` a cada salvamento, mais até três `backupAuto_*`. Os ~5 MB
+   típicos acabam em torno de três mil notas SOMANDO todas as empresas,
+   ou seja, essa parede chega primeiro.
+
+   Medido em 08/09/2026 sobre a base do modo demonstração, com 717 notas.
+   Enquanto o histórico não for repartido em um documento por lançamento,
+   este bloco é o único aviso que existe.
+   ────────────────────────────────────────────────────────────────── */
+const _LIMITE_DOC_FIRESTORE = 1048576;   // 1 MiB
+const _LIMITE_LOCALSTORAGE  = 5 * 1024 * 1024;
+const _COPIAS_NO_NAVEGADOR  = 1 + BACKUP_AUTO_MAX;
+
+function _ocupacaoEspaco() {
+    const bytes = s => new TextEncoder().encode(s).length;
+
+    // Maior documento de empresa: é ele que encosta no teto primeiro.
+    const porEmpresa = {};
+    (db.lancamentos || []).forEach(l => {
+        (porEmpresa[l.empresa] = porEmpresa[l.empresa] || []).push(l);
+    });
+    let maiorNome = "", maiorBytes = 0, maiorNotas = 0;
+    for (const [nome, lista] of Object.entries(porEmpresa)) {
+        const b = bytes(JSON.stringify({ lancamentos: lista }));
+        if (b > maiorBytes) { maiorBytes = b; maiorNome = nome; maiorNotas = lista.length; }
+    }
+
+    const bancoBytes = bytes(JSON.stringify(db));
+    return {
+        maiorNome, maiorNotas, maiorBytes,
+        pctFirestore: Math.round(maiorBytes / _LIMITE_DOC_FIRESTORE * 100),
+        navegadorBytes: bancoBytes * _COPIAS_NO_NAVEGADOR,
+        pctNavegador: Math.round(bancoBytes * _COPIAS_NO_NAVEGADOR / _LIMITE_LOCALSTORAGE * 100)
+    };
+}
+
+function _faixaEspaco() {
+    const o = _ocupacaoEspaco();
+    const pior = Math.max(o.pctFirestore, o.pctNavegador);
+    if (pior < 60) return "";
+
+    const grave = pior >= 85;
+    const linhas = [];
+    if (o.pctFirestore >= 60) {
+        linhas.push(`<li><strong>${o.pctFirestore}%</strong> do limite do documento da empresa `
+            + `<strong>${escapeHtml(o.maiorNome)}</strong> (${o.maiorNotas} lançamentos). `
+            + `Ao chegar a 100%, essa empresa para de salvar na nuvem.</li>`);
+    }
+    if (o.pctNavegador >= 60) {
+        linhas.push(`<li><strong>${o.pctNavegador}%</strong> do espaço do navegador, contando as `
+            + `${_COPIAS_NO_NAVEGADOR} cópias do banco. Ao chegar a 100%, o backup local para.</li>`);
+    }
+    return `<div class="faixa-validacao ${grave ? 'faixa-bloqueio' : 'faixa-alerta'}" style="margin:0 0 16px">
+        <strong>${grave ? 'O espaço está no fim' : 'O espaço está ficando curto'}</strong>
+        <ul>${linhas.join("")}</ul>
+        <small>É a hora de repartir o histórico em um documento por lançamento.
+        Enquanto isso não acontece, baixe um backup em Sistema › Backup.</small>
+    </div>`;
+}
+
 function atualizarInfoSistema() {
     const el = document.getElementById("infoSistema");
     if (!el) return;
     const tamanhoKB = (JSON.stringify(db).length / 1024).toFixed(1);
-    el.innerHTML = `
+    const o = _ocupacaoEspaco();
+    el.innerHTML = _faixaEspaco() + `
         <div class="info-card"><div class="info-card-valor">${db.lancamentos.length}</div><div class="info-card-label">Lançamentos</div></div>
         <div class="info-card"><div class="info-card-valor">${db.motoristas.length}</div><div class="info-card-label">Motoristas</div></div>
         <div class="info-card"><div class="info-card-valor">${db.veiculos.length}</div><div class="info-card-label">Veículos</div></div>
         <div class="info-card"><div class="info-card-valor">${db.empresas.length}</div><div class="info-card-label">Empresas</div></div>
         <div class="info-card"><div class="info-card-valor">${db.combustiveis.length}</div><div class="info-card-label">Combustíveis</div></div>
         <div class="info-card"><div class="info-card-valor">${tamanhoKB} KB</div><div class="info-card-label">Tamanho dos Dados</div></div>
+        <div class="info-card"><div class="info-card-valor">${o.pctFirestore}%</div><div class="info-card-label">Maior empresa, do limite de 1 MiB</div></div>
+        <div class="info-card"><div class="info-card-valor">${o.pctNavegador}%</div><div class="info-card-label">Espaço usado no navegador</div></div>
     `;
     renderBackupsAuto();
 }

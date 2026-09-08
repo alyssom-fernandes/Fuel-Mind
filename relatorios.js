@@ -155,7 +155,10 @@ function _aplicarFiltroRelatorio() {
         }
     });
 
-    const totalGeral  = dadosRelatorioAtual.reduce((soma, l) => soma + l.total, 0);
+    // `|| 0` porque um `total` ausente ou nulo contaminava a soma inteira:
+    // o resumo passava a exibir "R$ NaN" e o preço médio junto, sem nada
+    // indicando de onde veio.
+    const totalGeral  = dadosRelatorioAtual.reduce((soma, l) => soma + (l.total || 0), 0);
     const totalLitros = dadosRelatorioAtual.reduce((soma, l) =>
         soma + l.itens.reduce((s, i) => s + _litrosItem(i), 0), 0);
     const resumo = document.getElementById("resumoRelatorio");
@@ -284,7 +287,13 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
     const fim          = Math.min(inicio + ITENS_POR_PAGINA, total);
     const fatia        = dados.slice(inicio, fim);
 
-    const fmtL = n => n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    // Litros com TRÊS casas, como em todo o resto do sistema. Esta linha
+    // declarava um `fmtL` local, sombreando o de utils.js, e arredondava
+    // para inteiro — só aqui. A mesma nota lia 3.501 nesta tabela e
+    // 3.500,700 no resumo acima dela, no detalhe que abre embaixo, no
+    // Excel, no CSV e na impressão. É a tela onde o operador confere
+    // antes de exportar, e era a única que mostrava outro número.
+    const fmtL = n => Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
     const idInlineAberto = _detalheInlineAberto.contexto === contexto ? _detalheInlineAberto.id : null;
 
     tbody.innerHTML = fatia.flatMap(l => {
@@ -644,7 +653,7 @@ async function exportarPDF(contexto) {
         [head.length - 1]: { halign: 'right' }
     };
 
-    const totalGeral  = dados.reduce((s, l) => s + l.total, 0);
+    const totalGeral  = dados.reduce((s, l) => s + (l.total || 0), 0);
     const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
 
     if (!cfg.quebrarPorMes) {
@@ -694,7 +703,7 @@ async function exportarPDF(contexto) {
 
             let startY = desenharCabecalho(`${tituloCtx} — ${nomeMes(mes)}`);
             const subTotLitros = lans.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
-            const subTotGeral  = lans.reduce((s, l) => s + l.total, 0);
+            const subTotGeral  = lans.reduce((s, l) => s + (l.total || 0), 0);
 
             doc.setTextColor(...corRGB);
             doc.setFontSize(9);
@@ -780,7 +789,7 @@ function imprimirRelatorio() {
 
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para imprimir.", "aviso", 4000); return; }
 
-    const totalGeral  = dados.reduce((s, l) => s + l.total, 0);
+    const totalGeral  = dados.reduce((s, l) => s + (l.total || 0), 0);
     const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
     const dataHoje    = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
 
@@ -820,7 +829,7 @@ function imprimirRelatorio() {
 function compartilharWhatsApp(contexto) {
     const lista = dadosRelatorioAtual;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
-    const totalGeral = lista.reduce((s, l) => s + l.total, 0);
+    const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
     let mensagem = `⛽ *Controle de Combustível*\n📅 ${dataHoje}\n📋 ${lista.length} lançamento(s)\n💰 Total: ${fmtR(totalGeral)}\n\n`;
     lista.slice(-5).forEach(l => {
@@ -834,7 +843,7 @@ function compartilharWhatsApp(contexto) {
 function compartilharEmail(contexto) {
     const lista = dadosRelatorioAtual;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
-    const totalGeral = lista.reduce((s, l) => s + l.total, 0);
+    const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
     const assunto    = `Controle de Combustível — ${dataHoje}`;
     let corpo = `Controle de Entradas de Combustível\nData: ${dataHoje}\nRegistros: ${lista.length}\nTotal: ${fmtR(totalGeral)}\n\n${"=".repeat(60)}\n\n`;
@@ -915,10 +924,10 @@ function _executarRelatorioMensal() {
 
     const totalNotas  = lansMes.length;
     const totalLitros = lansMes.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
-    const totalGasto  = lansMes.reduce((s,l) => s + l.total, 0);
+    const totalGasto  = lansMes.reduce((s,l) => s + (l.total || 0), 0);
     const custoMedio  = totalLitros > 0 ? totalGasto/totalLitros : 0;
     const totLitrosAnt = lansAnterior.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
-    const totGastoAnt  = lansAnterior.reduce((s,l) => s + l.total, 0);
+    const totGastoAnt  = lansAnterior.reduce((s,l) => s + (l.total || 0), 0);
 
     doc.setFillColor(...azul);
     doc.rect(0, 0, W, 28, 'F');
