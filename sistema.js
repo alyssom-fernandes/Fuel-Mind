@@ -787,23 +787,69 @@ function autosystemLerArquivo(input) {
     else reader.readAsBinaryString(file);
 }
 
+/**
+ * Acha a coluna do cabe\u00e7alho que corresponde a um r\u00f3tulo.
+ *
+ * Vai do mais espec\u00edfico para o mais frouxo: igual, come\u00e7a com, cont\u00e9m.
+ * Antes s\u00f3 a igualdade exata valia, e um cabe\u00e7alho escrito "Data " com
+ * espa\u00e7o, "DATA", "Entrada (L)" ou "Entrada Litros" n\u00e3o casava com nada.
+ *
+ * @returns {number} \u00edndice da coluna, ou `-1` se n\u00e3o achou
+ */
+function _autoAcharColuna(cabecalho, rotulo) {
+    let i = cabecalho.indexOf(rotulo);
+    if (i >= 0) return i;
+    i = cabecalho.findIndex(c => c.startsWith(rotulo));
+    if (i >= 0) return i;
+    return cabecalho.findIndex(c => c.includes(rotulo));
+}
+
+/**
+ * L\u00ea o arquivo de medi\u00e7\u00e3o do AutoSystem e monta as linhas de confer\u00eancia.
+ *
+ * **N\u00e3o adivinha coluna.** Antes, os \u00edndices nasciam em `0` e `3` e s\u00f3
+ * eram substitu\u00eddos quando a c\u00e9lula do cabe\u00e7alho fosse exatamente `data` e
+ * exatamente `entrada`. Com qualquer varia\u00e7\u00e3o de r\u00f3tulo, o sistema
+ * comparava os lan\u00e7amentos contra a quarta coluna do arquivo sem nunca ter
+ * confirmado que ela era a coluna de litros \u2014 e sem dizer nada. Agora,
+ * quando n\u00e3o d\u00e1 para identificar as duas colunas, o processamento para e o
+ * operador \u00e9 avisado.
+ */
 function _autosystemDetectarEProcessar() {
-    let idxData = 0, idxEntrada = 3;
+    let idxData = -1, idxEntrada = -1;
     let cabIdx = -1;
+    let rotuloData = '', rotuloEntrada = '';
     for (let i = 0; i < Math.min(_autoLinhas.length, 15); i++) {
         const row = _autoLinhas[i];
-        const txt = row.map(c => String(c||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+        const txt = row.map(c => String(c||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
         if (txt.some(c => c.includes('entrada')) && txt.some(c => c.includes('data'))) {
             cabIdx = i;
-            txt.forEach((c, idx) => {
-                if (c === 'data')    idxData    = idx;
-                if (c === 'entrada') idxEntrada = idx;
-            });
+            idxData    = _autoAcharColuna(txt, 'data');
+            idxEntrada = _autoAcharColuna(txt, 'entrada');
+            rotuloData    = String(row[idxData]    ?? '').trim();
+            rotuloEntrada = String(row[idxEntrada] ?? '').trim();
             break;
         }
     }
 
-    const linhasParaProcessar = cabIdx >= 0 ? _autoLinhas.slice(cabIdx + 1) : _autoLinhas.slice(1);
+    if (cabIdx < 0) {
+        mostrarToast(
+            'N\u00e3o achei o cabe\u00e7alho do arquivo. Ele precisa ter uma linha com uma '
+            + 'coluna de data e uma de entrada, nas 15 primeiras linhas.', 'erro', 8000);
+        return;
+    }
+    if (idxData < 0 || idxEntrada < 0) {
+        const falta = idxData < 0 ? 'data' : 'entrada';
+        mostrarToast(`Achei o cabe\u00e7alho, mas n\u00e3o a coluna de ${falta}. Confira o arquivo.`, 'erro', 8000);
+        return;
+    }
+    if (idxData === idxEntrada) {
+        mostrarToast('A mesma coluna casou com data e com entrada. Confira o arquivo.', 'erro', 8000);
+        return;
+    }
+    _autoColunas = { data: rotuloData, entrada: rotuloEntrada };
+
+    const linhasParaProcessar = _autoLinhas.slice(cabIdx + 1);
     const linhasDados = [];
     // Converte serial numérico de data SOMENTE na coluna de data (não afeta colunas de litros)
     const _serialParaData = (v) => {
@@ -834,6 +880,9 @@ function _autosystemDetectarEProcessar() {
 }
 
 let _autoLinhasDados = [];
+/** Rótulos das colunas que a leitura usou. Mostrados na tela: o operador
+ *  precisa poder conferir contra que coluna o sistema comparou. */
+let _autoColunas = { data: '', entrada: '' };
 
 function _autosystemRenderizarConferencia() {
     const container = document.getElementById('_confAutoResultado');
@@ -856,6 +905,11 @@ function _autosystemRenderizarConferencia() {
                     ${combustiveis.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
                 </select>
             </div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin:-6px 0 14px">
+            Lendo a data da coluna <strong>${escapeHtml(_autoColunas.data || '?')}</strong>
+            e os litros da coluna <strong>${escapeHtml(_autoColunas.entrada || '?')}</strong>
+            do arquivo — ${_autoLinhasDados.length} linha(s).
         </div>
         <div id="_autoTabelaContainer"></div>`;
 

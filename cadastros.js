@@ -321,6 +321,7 @@ function confirmarEdicao() {
 
     const nomeNovo = item.nome;
     let propagados = 0;
+    let conjuntosTocados = 0;
     if (nomeAntigo !== nomeNovo) {
         db.lancamentos.forEach(l => {
             if (lista === "empresas"   && l.empresa   === nomeAntigo) { l.empresa   = nomeNovo; propagados++; }
@@ -333,14 +334,34 @@ function confirmarEdicao() {
                 });
             }
         });
+
+        // A placa também vive nos conjuntos de veículos, na composição
+        // atual e em todo o histórico de vigências. Renomear só nos
+        // lançamentos deixava o veículo fora do conjunto, e a tela de
+        // fretes — que resolve o conjunto pela placa, na data de cada
+        // lançamento — passava a mostrar todos os meses anteriores errados.
+        // `converterTodasPlacasMercosul` já fazia certo; esta função, não.
+        if (lista === "veiculos" && db.conjuntosVeiculos) {
+            db.conjuntosVeiculos.forEach(conj => {
+                const antes = JSON.stringify([conj.composicaoAtual, conj.historico]);
+                conj.composicaoAtual = (conj.composicaoAtual || []).map(p => p === nomeAntigo ? nomeNovo : p);
+                (conj.historico || []).forEach(h => {
+                    h.placas = (h.placas || []).map(p => p === nomeAntigo ? nomeNovo : p);
+                });
+                if (JSON.stringify([conj.composicaoAtual, conj.historico]) !== antes) conjuntosTocados++;
+            });
+        }
     }
 
     salvarDB();
     fecharModal();
     atualizarListas();
 
-    if (propagados > 0) {
-        mostrarToast(`Renomeado e atualizado em ${propagados} lançamento(s).`, "sucesso", 5000);
+    if (propagados > 0 || conjuntosTocados > 0) {
+        const partes = [];
+        if (propagados > 0)       partes.push(`${propagados} lançamento(s)`);
+        if (conjuntosTocados > 0) partes.push(`${conjuntosTocados} conjunto(s)`);
+        mostrarToast(`Renomeado e atualizado em ${partes.join(" e ")}.`, "sucesso", 5000);
     }
 }
 

@@ -62,6 +62,29 @@ const SINONIMOS_IMPORTACAO = {
 };
 
 /*─────────────────────────────────────────────
+  IDENTIDADE DE UMA NOTA NA IMPORTAÇÃO
+─────────────────────────────────────────────*/
+/**
+ * Chave que diz se duas notas são a mesma nota, para a importação.
+ *
+ * **A empresa faz parte da identidade.** Sem ela, uma nota legítima de
+ * outra empresa com o mesmo número e a mesma placa era classificada como
+ * duplicata — e, ao ser marcada para reimportar, o filtro que remove as
+ * duplicatas varria o `db.lancamentos` inteiro (que tem em memória os
+ * lançamentos de todas as empresas que o usuário enxerga) e apagava a
+ * nota da outra empresa junto, de forma permanente e silenciosa.
+ *
+ * Usa `normalizarTexto` pelo mesmo motivo que a checagem de duplicata de
+ * cadastro passou a usar: "José" e "Jose" são a mesma pessoa, e "abc1d23"
+ * é a mesma placa que "ABC1D23".
+ */
+function _chaveNotaImportacao(n) {
+    return [n.empresa, n.numeroNota, n.dataNota, n.placa]
+        .map(v => normalizarTexto(String(v ?? "")))
+        .join("||");
+}
+
+/*─────────────────────────────────────────────
   NORMALIZAR NOME DE COLUNA
 ─────────────────────────────────────────────*/
 function _normCol(str) {
@@ -609,7 +632,10 @@ function importacaoProcessar() {
         if (qtd === null || qtd <= 0)     { erros.push(`Linha ${linhaNum}: Quantidade inválida ("${qtdStr}")`); return; }
         if (valor === null || valor <= 0)  { erros.push(`Linha ${linhaNum}: Valor unitário inválido ("${valorStr}")`); return; }
 
-        const chave = `${dataNota}||${numeroNota}||${motorista}||${placa}`;
+        // A empresa entra na chave de agrupamento pelo mesmo motivo que
+        // entra na de duplicidade: sem ela, duas notas de mesmo número e
+        // placa em empresas diferentes viravam uma só linha importada.
+        const chave = `${empresa}||${dataNota}||${numeroNota}||${motorista}||${placa}`;
 
         if (!notas[chave]) {
             notas[chave] = {
@@ -634,11 +660,8 @@ function importacaoProcessar() {
     const duplicatas = [];
     const novasNotas = [];
     notasParaAnalisar.forEach(nota => {
-        const jaExiste = db.lancamentos.some(l =>
-            l.numeroNota === nota.numeroNota &&
-            l.dataNota   === nota.dataNota   &&
-            l.placa      === nota.placa
-        );
+        const chaveNota = _chaveNotaImportacao(nota);
+        const jaExiste = db.lancamentos.some(l => _chaveNotaImportacao(l) === chaveNota);
         if (jaExiste) duplicatas.push(nota);
         else novasNotas.push(nota);
     });
@@ -834,21 +857,18 @@ function importacaoConfirmar() {
         return;
     }
 
-    // Remove duplicatas selecionadas em operação atômica única
+    // Remove duplicatas selecionadas em operação atômica única.
+    //
+    // A chave inclui a empresa. Sem ela, este filtro rodava sobre o
+    // `db.lancamentos` inteiro — que tem em memória os lançamentos de
+    // TODAS as empresas que o usuário enxerga — e apagava a nota homônima
+    // de outra empresa junto. `_montarPayloads` gravava então o documento
+    // daquela outra empresa já sem ela: perda permanente e silenciosa.
     if (dupSelecionadas.length > 0) {
-        const chavesDup = new Set(
-            dupSelecionadas.map(n =>
-                String(n.numeroNota).trim() + "||" +
-                String(n.dataNota).trim()   + "||" +
-                String(n.placa).trim().toUpperCase()
-            )
+        const chavesDup = new Set(dupSelecionadas.map(_chaveNotaImportacao));
+        db.lancamentos = db.lancamentos.filter(
+            l => !chavesDup.has(_chaveNotaImportacao(l))
         );
-        db.lancamentos = db.lancamentos.filter(l => {
-            const chave = String(l.numeroNota).trim() + "||" +
-                          String(l.dataNota).trim()   + "||" +
-                          String(l.placa).trim().toUpperCase();
-            return !chavesDup.has(chave);
-        });
     }
 
     const todasParaSalvar = [...novas, ...dupSelecionadas];

@@ -492,6 +492,33 @@ function _empresaIdDoLancamento(l) {
     return (db.empresas || []).find(e => e.nome === l.empresa)?.id || null;
 }
 
+/* A cópia local é a rede de segurança de tudo: é ela que sobrevive ao F5 e
+   à queda de conexão. Falhar aqui em silêncio — como acontecia, num
+   `catch(_) {}` mudo — deixava o operador achando que estava protegido.
+   O caminho da falha na prática é a quota do navegador: são quatro cópias
+   do banco vivendo lá (esta, mais até três `backupAuto_*`), e a ~440 bytes
+   por lançamento os ~5 MB acabam em torno de três mil notas somando todas
+   as empresas. Avisa uma vez por sessão, para não virar um toast a cada
+   salvamento. */
+let _avisouQuotaLocal = false;
+
+function _gravarCopiaLocal() {
+    try {
+        localStorage.setItem("db_backup", JSON.stringify(db));
+        _avisouQuotaLocal = false;
+    } catch (e) {
+        console.warn("[db_backup] Falhou:", e.message);
+        if (!_avisouQuotaLocal) {
+            _avisouQuotaLocal = true;
+            mostrarToast(
+                "Não consegui guardar a cópia local: o armazenamento do navegador está cheio. "
+                + "Os lançamentos continuam indo para a nuvem, mas a proteção contra F5 parou. "
+                + "Baixe um backup em Sistema › Backup.",
+                "erro", 10000);
+        }
+    }
+}
+
 /** Nome do documento de lançamentos de uma empresa. */
 function _nomeDocLanc(empresaId) {
     return window._firestore ? window._firestore.docLancamentosNome(empresaId)
@@ -546,7 +573,7 @@ function salvarDB() {
         return;
     }
 
-    try { localStorage.setItem("db_backup", JSON.stringify(db)); } catch(_) {}
+    _gravarCopiaLocal();
 
     if (!window._firestore) {
         _setStatusConexao("offline");
@@ -699,7 +726,7 @@ async function carregarDB() {
             }
         }
 
-        try { localStorage.setItem("db_backup", JSON.stringify(db)); } catch(_) {}
+        _gravarCopiaLocal();
         _ligarListenerTempoReal();
 
     } catch(e) {
@@ -1194,15 +1221,53 @@ function verificarBackupAutomatico() {
     if (dias >= BACKUP_AUTO_INTERVALO_DIAS) fazerBackupAutomatico();
 }
 
+/**
+ * Grava a cópia periódica do banco no `localStorage`.
+ *
+ * A falha aqui não pode ser silenciosa. O caminho que ela toma na prática
+ * é a quota do navegador: são quatro cópias do banco vivendo lá dentro
+ * (`db_backup` a cada salvamento, mais até três `backupAuto_*`), e a
+ * ~440 bytes por lançamento os ~5 MB acabam em torno de três mil notas
+ * somando todas as empresas. Quando isso acontecer, o backup para —
+ * enquanto a tela de Sistema continua prometendo uma cópia a cada três
+ * dias. Um `console.warn` não avisa ninguém.
+ *
+ * A tentativa de liberar espaço apagando a cópia mais antiga vem antes do
+ * aviso: na maior parte das vezes ela resolve, e o operador não precisa
+ * saber de nada.
+ */
 function fazerBackupAutomatico() {
-    try {
-        const chave = `backupAuto_${new Date().toISOString().slice(0,10)}`;
-        const dados = JSON.stringify(db);
+    const chave = `backupAuto_${new Date().toISOString().slice(0,10)}`;
+    const dados = JSON.stringify(db);
+
+    const gravar = () => {
         const chaves = Object.keys(localStorage).filter(k => k.startsWith("backupAuto_")).sort();
         while (chaves.length >= BACKUP_AUTO_MAX) localStorage.removeItem(chaves.shift());
         localStorage.setItem(chave, dados);
         localStorage.setItem("backupAutoData", Date.now().toString());
-    } catch(e) { console.warn("[Backup automático] Falhou:", e.message); }
+    };
+
+    try {
+        gravar();
+        return;
+    } catch (e) {
+        console.warn("[Backup automático] Primeira tentativa falhou:", e.message);
+    }
+
+    // Segunda tentativa, com uma cópia a menos.
+    try {
+        const antigas = Object.keys(localStorage).filter(k => k.startsWith("backupAuto_")).sort();
+        if (antigas.length) localStorage.removeItem(antigas[0]);
+        gravar();
+        return;
+    } catch (e) {
+        console.warn("[Backup automático] Falhou mesmo após liberar espaço:", e.message);
+    }
+
+    mostrarToast(
+        "Não consegui gravar o backup automático: o armazenamento do navegador está cheio. "
+        + "Baixe um backup em Sistema › Backup e avise o responsável.",
+        "erro", 10000);
 }
 
 function listarBackupsAutomaticos() {
