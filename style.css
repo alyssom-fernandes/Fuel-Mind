@@ -1266,6 +1266,41 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 .linha-inativo td { opacity:0.55; }
 
+/* O estado de um lançamento vem colado no número da nota, e não numa
+   coluna própria: uma décima primeira coluna, vazia em quase todas as
+   linhas, empurrava a de Ações para fora da área visível e cobrava uma
+   rolagem lateral no dia normal por causa de uma exceção rara. O badge é
+   o mesmo que a tela de Usuários usa no usuário desativado. */
+.linha-inativo .badge-inativo-user { text-decoration: none; opacity: 1; }
+
+/* O diff de uma edição, dentro do histórico do lançamento. */
+.log-diff { margin: 4px 0 0 14px; padding: 0; list-style: none; }
+.log-diff li { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+.log-diff s { opacity: 0.7; }
+.log-motivo { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+/* O caminho de "cancelada na origem" mora no painel de detalhe, longe da
+   linha de todo dia: é operação rara e não pode competir com Editar. */
+.detalhe-acoes-estado {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.detalhe-acoes-estado small { color: var(--text-light); font-size: 0.75rem; }
+/* O risco pula a célula da nota (senão o badge sairia riscado junto) e a
+   de Ações, onde ficam os botões. */
+.linha-inativo td:not(:nth-child(3)):not(.no-print) { text-decoration: line-through; }
+
+/* A caixa "Mostrar excluídas" fica na grade de filtros do relatório, no
+   mesmo lugar em que as seis abas de Cadastros põem "Mostrar inativos". */
+.filtros .campo-checkbox { justify-content: flex-end; }
+.filtros .campo-checkbox label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.82rem; color: var(--text-muted); cursor: pointer;
+    white-space: nowrap;
+}
+.filtros .campo-checkbox input { width: auto; margin: 0; }
+
 /* ══════════════════════════════════════════════
    CABEÇALHOS ORDENÁVEIS (relatorios.js)
 ══════════════════════════════════════════════ */
@@ -1672,7 +1707,18 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .sessao-base    { color: var(--text-light); min-width: 90px; }
 .sessao-litros  { min-width: 100px; text-align: right; }
 .sessao-total   { min-width: 100px; text-align: right; font-weight: 600; }
-.sessao-item .btn-excluir { margin-left: auto; }
+.sessao-item .btn-excluir,
+.sessao-item .btn-editar { margin-left: auto; }
+
+/* A nota desfeita continua na lista da sessão, riscada, com o Refazer ao
+   lado. Sumir seria a mesma mentira de antes, só que do outro lado. */
+.sessao-item-desfeita {
+    opacity: 0.6;
+    border-style: dashed;
+}
+.sessao-item-desfeita .sessao-nota,
+.sessao-item-desfeita .sessao-litros,
+.sessao-item-desfeita .sessao-total { text-decoration: line-through; }
 
 .dica-atalho {
     font-size: 0.72rem; color: var(--text-light);

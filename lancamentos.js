@@ -628,11 +628,19 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     const logAcao = lancamentoEditandoId ? (isClonando ? "Clonado" : "Editado") : "Criado";
     // Log estruturado: objeto {acao, ts, usuario} — compatível com logs antigos (string)
     // que são exibidos normalmente em _buildConteudoDetalhe via typeof check
-    lancamento.logs.push({
+    const entradaLog = {
         acao:    logAcao,
         ts:      new Date().toISOString(),
         usuario: window._usuarioAtual?.nome || '—'
-    });
+    };
+    // Numa edição, o log passa a dizer O QUE mudou. Antes ele registrava
+    // "Editado" e parava aí: quem abrisse o histórico atrás de uma
+    // divergência ficava sabendo que alguém tinha mexido, e nada mais.
+    if (anterior && !isClonando) {
+        const alteracoes = _diffLancamento(anterior, lancamento);
+        if (alteracoes.length) entradaLog.alteracoes = alteracoes;
+    }
+    lancamento.logs.push(entradaLog);
 
     // Chave de acesso da NF-e, quando a nota veio de XML. Nunca digitada:
     // é o identificador fiscal que permite dizer "esta nota já foi lançada"
@@ -828,36 +836,145 @@ function _sessaoRenderizar() {
 
     lista.innerHTML = presentes.map(({ l, hora }) => {
         const litros = (l.itens || []).reduce((s, i) => s + (Number(i.qtd) || 0), 0);
-        return `<div class="sessao-item">
+        // A nota desfeita não sai da lista: ela fica, riscada, com o
+        // caminho de volta ao lado. Sumir seria a mesma mentira de antes,
+        // agora do outro lado — o operador precisa ver o que fez.
+        const desfeita = l.estado === 'excluido';
+        return `<div class="sessao-item${desfeita ? " sessao-item-desfeita" : ""}">
             <span class="sessao-hora">${escapeHtml(hora)}</span>
             <span class="sessao-nota">${escapeHtml(l.numeroNota || "sem número")}</span>
             <span class="sessao-empresa">${escapeHtml(l.empresa || "")}</span>
             <span class="sessao-base">${escapeHtml(l.base || "—")}</span>
             <span class="sessao-litros">${fmtL3(litros)}</span>
             <span class="sessao-total">${fmtR(l.total || 0)}</span>
-            <button class="btn-excluir" title="Desfazer este lançamento"
-                    onclick="_sessaoDesfazer('${l.id}')">Desfazer</button>
+            ${desfeita
+                ? `<button class="btn-editar" title="Refazer este lançamento"
+                        onclick="_sessaoRefazer('${escapeJsAttr(l.id)}')">Refazer</button>`
+                : `<button class="btn-excluir" title="Desfazer este lançamento"
+                        onclick="_sessaoDesfazer('${escapeJsAttr(l.id)}')">Desfazer</button>`}
         </div>`;
     }).join("");
 }
 
+/*=================================================
+  O QUE MUDOU NUMA EDIÇÃO
+=================================================*/
+/* Campos escalares que valem a pena no histórico. `anexos` fica de fora
+   (não é dado fiscal) e `total` entra porque é o número que alguém vai
+   querer explicar depois. */
+const _CAMPOS_LOG = ['dataNota', 'dataDescarga', 'numeroNota', 'base',
+                     'empresa', 'motorista', 'placa', 'observacoes', 'total'];
+
+/**
+ * Diferença entre dois lançamentos, campo a campo.
+ *
+ * Guarda o que mudou, e só. Nunca a cópia inteira do lançamento: o
+ * documento já carrega o estado corrente, e duplicá-lo dentro de cada log
+ * faria o histórico crescer mais rápido que o próprio dado — num vetor
+ * que tem teto de 1 MiB por empresa.
+ *
+ * Os itens não entram como lista: entram por combustível e por
+ * propriedade, para o histórico continuar legível por uma pessoa
+ * ("Diesel S10 · valor: 6,1200 → 6,1800") em vez de virar um despejo de
+ * objeto.
+ */
+function _diffLancamento(antes, depois) {
+    const mudou = _CAMPOS_LOG
+        .filter(c => (antes[c] ?? '') !== (depois[c] ?? ''))
+        .map(c => ({ campo: c, de: antes[c] ?? '', para: depois[c] ?? '' }));
+
+    const porTipo = lista => {
+        const m = {};
+        (lista || []).forEach(i => { if (i && i.tipo) m[i.tipo] = i; });
+        return m;
+    };
+    const a = porTipo(antes.itens);
+    const d = porTipo(depois.itens);
+
+    new Set([...Object.keys(a), ...Object.keys(d)]).forEach(tipo => {
+        if (!a[tipo]) { mudou.push({ campo: tipo, de: '—', para: 'acrescentado' }); return; }
+        if (!d[tipo]) { mudou.push({ campo: tipo, de: 'existia', para: 'removido' }); return; }
+        ['qtd', 'qtdDescargada', 'valor'].forEach(p => {
+            if ((a[tipo][p] ?? '') !== (d[tipo][p] ?? '')) {
+                mudou.push({ campo: `${tipo} · ${p}`, de: a[tipo][p] ?? '—', para: d[tipo][p] ?? '—' });
+            }
+        });
+    });
+
+    return mudou;
+}
+
+/*=================================================
+  ESTADO DO LANÇAMENTO — A LÁPIDE
+=================================================*/
+/**
+ * Muda o estado de um lançamento e registra a transição no histórico dele.
+ *
+ * Este é o único lugar do sistema que escreve `estado`. Antes, "este
+ * lançamento não vale mais" era resolvido tirando o objeto do vetor — o
+ * registro sumia, e o histórico dele junto. Agora o registro fica: sai de
+ * toda conta (o critério é `lancamentoAtivo`, em utils.js) e continua
+ * existindo para quem for entender o que aconteceu.
+ *
+ * `estado` ausente é o lançamento ativo, e é assim que os registros
+ * antigos continuam valendo sem migração nenhuma.
+ *
+ * @param {object} l       - o lançamento, já encontrado no vetor
+ * @param {string|null} novoEstado - `'excluido'`, `'cancelado'` ou `null` para reativar
+ * @param {string} acao    - o que vai escrito no histórico
+ * @param {string} [motivo] - obrigatório no cancelamento; é uma afirmação
+ *   sobre um fato de fora do sistema, e precisa de autor e razão
+ */
+function _marcarEstadoLancamento(l, novoEstado, acao, motivo) {
+    if (!l) return;
+    if (novoEstado) l.estado = novoEstado;
+    else delete l.estado;
+
+    if (!Array.isArray(l.logs)) l.logs = [];
+    const entrada = {
+        acao,
+        ts:      new Date().toISOString(),
+        usuario: window._usuarioAtual?.nome || '—'
+    };
+    if (motivo) entrada.motivo = motivo;
+    l.logs.push(entrada);
+
+    // `imediato` pelo mesmo motivo do salvamento: um clique explícito do
+    // operador merece uma tentativa explícita imediata, sem debounce.
+    //
+    // A mudança de estado NÃO entra no registro de pendentes. Ele foi
+    // feito para trazer de volta uma nota que não chegou ao servidor, e o
+    // teste dele é a ausência do id lá — uma lápide que não subiu continua
+    // existindo dos dois lados, com o campo diferente, e passaria batido.
+    // Recuperar conteúdo, e não só existência, precisa do campo de versão
+    // que a migração dos temas 14+15 vai trazer.
+    salvarDB({ imediato: true });
+}
+
 async function _sessaoDesfazer(id) {
     const l = (db.lancamentos || []).find(x => x.id === id);
-    if (!l) return;
+    if (!l || l.estado) return;
     if (!await fmConfirm({
         titulo: "Desfazer o lançamento?",
-        msg: `${l.numeroNota ? `Nota ${l.numeroNota}` : "Lançamento"} de ${l.empresa}.\n\nEle será apagado.`,
+        msg: `${l.numeroNota ? `Nota ${l.numeroNota}` : "Lançamento"} de ${l.empresa}.\n\n`
+           + `Ele sai dos relatórios, dos litros e do frete. O registro continua no `
+           + `histórico, e dá para refazer aqui mesmo.`,
         confirmTxt: "Desfazer",
         tipo: "perigo"
     })) return;
-    db.lancamentos = db.lancamentos.filter(x => x.id !== id);
-    _idsSessao = _idsSessao.filter(x => x.id !== id);
-    // Exclusão não é marcada como pendente: a nota já saiu da cópia local,
-    // então não é candidata a voltar. `imediato` pelo mesmo motivo do
-    // salvamento.
-    salvarDB({ imediato: true });
+
+    _marcarEstadoLancamento(l, 'excluido', 'Desfeito na sessão');
     _sessaoRenderizar();
-    mostrarToast("Lançamento desfeito.", "info");
+    mostrarToast("Lançamento desfeito. Ele saiu dos relatórios.", "info", 5000);
+}
+
+/** O caminho de volta do Desfazer, na própria linha da sessão. */
+async function _sessaoRefazer(id) {
+    const l = (db.lancamentos || []).find(x => x.id === id);
+    if (!l || l.estado !== 'excluido') return;
+    _marcarEstadoLancamento(l, null, 'Refeito na sessão');
+    _sessaoRenderizar();
+    mostrarToast("Lançamento refeito. Ele voltou aos relatórios.", "sucesso", 4000);
 }
 
 /*=================================================
@@ -872,6 +989,15 @@ async function _sessaoDesfazer(id) {
 function editarLancamento(id) {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) { console.warn('[editarLancamento] não encontrou id:', id); return; }
+    // Editar um lançamento que não vale mais o traria de volta pela porta
+    // dos fundos: salvar monta um objeto novo por cima do antigo. Quem
+    // quer mexer numa nota excluída restaura primeiro, e aí edita.
+    if (!lancamentoAtivo(l)) {
+        mostrarToast(l.estado === 'cancelado'
+            ? "Esta nota está cancelada na origem e não pode ser editada."
+            : "Este lançamento está excluído. Restaure antes de editar.", "aviso", 5000);
+        return;
+    }
 
     lancamentoEditandoId = id;
     isClonando = false;
@@ -932,6 +1058,12 @@ function editarLancamento(id) {
 function clonarLancamento(id) {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) return;
+    // Clonar uma nota morta produziria uma nota nova a partir de dados que
+    // alguém já deu por inválidos. O caminho é restaurar e clonar.
+    if (!lancamentoAtivo(l)) {
+        mostrarToast("Este lançamento não vale mais e não pode ser clonado.", "aviso", 4000);
+        return;
+    }
     lancamentoEditandoId = null;
     isClonando = true;
     document.getElementById("dataNota").value     = "";
@@ -1051,9 +1183,93 @@ async function excluirLancamento(id, contexto = 'relatorio') {
         l.dataNota   ? `(${formatarData(l.dataNota)})` : null
     ].filter(Boolean).join(" ");
 
-    if (!await fmConfirm({ titulo: `Excluir lançamento?`, msg: `${descricao}\n\nEsta ação não pode ser desfeita.`, confirmTxt: "Excluir", tipo: "perigo" })) return;
+    if (!await fmConfirm({
+        titulo: "Excluir lançamento?",
+        msg: `${descricao}\n\n`
+           + `Ele sai dos relatórios, dos litros, do custo médio e do frete. `
+           + `O registro continua no histórico e pode ser restaurado: marque `
+           + `"Mostrar excluídas" nos filtros do relatório.`,
+        confirmTxt: "Excluir",
+        tipo: "perigo"
+    })) return;
 
-    db.lancamentos = db.lancamentos.filter(x => x.id !== id);
-    salvarDB({ imediato: true });
+    _marcarEstadoLancamento(l, 'excluido', 'Excluído');
     recarregarRelatorioSemZerarFiltros();
+    mostrarToast("Lançamento excluído. Ele saiu dos relatórios.", "info", 5000);
+}
+
+/**
+ * O caminho de volta, no próprio relatório.
+ *
+ * Fica na linha da nota excluída, no lugar em que o botão Excluir estava —
+ * e não numa tela de Lixeira. O sistema já resolve isto assim seis vezes,
+ * nas abas de Cadastros: caixa "Mostrar inativos" mais Inativar/Reativar
+ * na linha. Uma área nova da aplicação para uma exceção rara transformaria
+ * o acidente em lugar permanente.
+ */
+async function restaurarLancamento(id, contexto = 'relatorio') {
+    const l = db.lancamentos.find(x => x.id === id);
+    if (!l || l.estado !== 'excluido') return;
+
+    const descricao = [
+        l.numeroNota ? `Nota ${l.numeroNota}` : null,
+        l.empresa    ? `de ${l.empresa}`       : null,
+        l.dataNota   ? `(${formatarData(l.dataNota)})` : null
+    ].filter(Boolean).join(" ");
+
+    if (!await fmConfirm({
+        titulo: "Restaurar lançamento?",
+        msg: `${descricao}\n\n`
+           + `Ele volta a contar nos relatórios, nos litros, no custo médio e `
+           + `no frete — inclusive em meses que já foram fechados.`,
+        confirmTxt: "Restaurar",
+        cancelTxt: "Cancelar",
+        tipo: "aviso"
+    })) return;
+
+    _marcarEstadoLancamento(l, null, 'Restaurado');
+    recarregarRelatorioSemZerarFiltros();
+    mostrarToast("Lançamento restaurado.", "sucesso", 4000);
+}
+
+/**
+ * Marca uma nota como cancelada na origem — a NF-e foi cancelada pelo
+ * emissor depois de ela já ter sido lançada aqui.
+ *
+ * O sistema não tem como saber isso sozinho: o XML é descartado depois do
+ * parse, não há consulta à SEFAZ e não há servidor. É uma afirmação de uma
+ * pessoa sobre um fato de fora, e por isso o motivo é obrigatório e vai
+ * para o histórico junto de quem afirmou. O mínimo de quinze caracteres é
+ * o mesmo que a SEFAZ exige na justificativa de cancelamento.
+ *
+ * Cancelado não volta a ativo pelo operador: o fato que o invalidou é
+ * externo, e desfazê-lo com um clique seria fingir que o sistema manda
+ * nele. Se foi engano da marcação, o caminho é excluir e relançar.
+ */
+async function cancelarNaOrigem(id) {
+    const l = db.lancamentos.find(x => x.id === id);
+    if (!l || !lancamentoAtivo(l)) return;
+
+    const descricao = [
+        l.numeroNota ? `Nota ${l.numeroNota}` : null,
+        l.empresa    ? `de ${l.empresa}`       : null
+    ].filter(Boolean).join(" ");
+
+    const motivo = await fmPrompt({
+        titulo: "Marcar como cancelada na origem?",
+        msg: `${descricao}\n\n`
+           + `Use isto quando o emissor cancelou a NF-e depois de ela já ter `
+           + `sido lançada. A nota continua visível no relatório, riscada, e `
+           + `sai dos litros, do custo médio e do frete.\n\n`
+           + `Esta marcação não é revertida pelo botão de restaurar.`,
+        label: "Motivo do cancelamento",
+        minimo: 15,
+        confirmTxt: "Marcar como cancelada",
+        tipo: "perigo"
+    });
+    if (motivo === null) return;
+
+    _marcarEstadoLancamento(l, 'cancelado', 'Cancelado na origem', motivo);
+    recarregarRelatorioSemZerarFiltros();
+    mostrarToast("Nota marcada como cancelada na origem.", "info", 5000);
 }

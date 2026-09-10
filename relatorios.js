@@ -9,7 +9,15 @@
 =================================================*/
 
 // ========== VARIÁVEIS GLOBAIS ==========
-let dadosRelatorioAtual = [];
+/* Dois conjuntos, e a diferença entre eles é o tema 11+19 inteiro.
+   `dadosRelatorioAtual` é o que a TABELA mostra — inclui as notas
+   canceladas, sempre, e as excluídas quando a caixa está marcada.
+   `dadosRelatorioValidos` é o que CONTA: resumo, totais, preço médio,
+   agrupamento por combustível, top de motoristas e os seis formatos de
+   exportação leem daqui. Um registro que deixou de valer pode ser visto;
+   não pode ser somado. */
+let dadosRelatorioAtual   = [];
+let dadosRelatorioValidos = [];
 
 /* `_litrosItem()` — critério único de litros — vive em utils.js, para que
    Dashboard, Analítico e Relatórios compartilhem exatamente a mesma regra. */
@@ -95,13 +103,24 @@ function _aplicarFiltroRelatorio() {
     const base        = document.getElementById("filtroBase").value.trim().toLowerCase();
     const busca       = document.getElementById("filtroBusca").value.trim().toLowerCase();
 
+    const mostrarInativos = document.getElementById("filtroMostrarInativos")?.checked;
+
     dadosRelatorioAtual = db.lancamentos.filter(l => {
-        // Primeiro de todos: um lançamento excluído ou cancelado não entra
-        // na tabela nem em nada que sai dela. `dadosRelatorioAtual` é o
-        // funil único desta tela — resumo, ordenação, paginação e os seis
-        // formatos de exportação leem só daqui —, então este é o ponto em
-        // que a decisão vale para a tela inteira de uma vez.
-        if (!lancamentoAtivo(l)) return false;
+        // Os dois estados não têm a mesma visibilidade, e é de propósito.
+        //
+        // A CANCELADA aparece sempre: ela é um fato do mundo, e esconder
+        // uma nota que o emissor cancelou é o caminho mais curto para
+        // alguém lançá-la de novo. Ela entra na tabela riscada.
+        //
+        // A EXCLUÍDA some por padrão — foi um erro de digitação, não um
+        // acontecimento — e volta com a caixa "Mostrar excluídas e
+        // canceladas", no mesmo espírito do "Mostrar inativos" que as seis
+        // abas de Cadastros já têm.
+        //
+        // Nenhuma das duas entra em conta nenhuma: `dadosRelatorioAtual` é
+        // o que a TABELA mostra, e quem soma lê `dadosRelatorioValidos`,
+        // logo abaixo.
+        if (l.estado === 'excluido' && !mostrarInativos) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
 
         // Usa dataDescarga como referência principal, com fallback para dataNota.
@@ -146,6 +165,8 @@ function _aplicarFiltroRelatorio() {
         return 0;
     });
 
+    dadosRelatorioValidos = dadosRelatorioAtual.filter(lancamentoAtivo);
+
     renderTabelaLancamentos("tabelaRelatorio", dadosRelatorioAtual, paginaRelatorio, "relatorio");
 
     // Atualiza ícones de ordenação nos cabeçalhos clicáveis
@@ -164,19 +185,24 @@ function _aplicarFiltroRelatorio() {
     // `|| 0` porque um `total` ausente ou nulo contaminava a soma inteira:
     // o resumo passava a exibir "R$ NaN" e o preço médio junto, sem nada
     // indicando de onde veio.
-    const totalGeral  = dadosRelatorioAtual.reduce((soma, l) => soma + (l.total || 0), 0);
-    const totalLitros = dadosRelatorioAtual.reduce((soma, l) =>
+    const totalGeral  = dadosRelatorioValidos.reduce((soma, l) => soma + (l.total || 0), 0);
+    const totalLitros = dadosRelatorioValidos.reduce((soma, l) =>
         soma + l.itens.reduce((s, i) => s + _litrosItem(i), 0), 0);
     const resumo = document.getElementById("resumoRelatorio");
     const barra  = document.getElementById("barraExportacaoRelatorio");
 
-    if (dadosRelatorioAtual.length === 0) {
+    // O que está na tela e não conta: é isto que o resumo declara, para o
+    // operador não precisar subtrair de cabeça a linha riscada que ele
+    // está vendo.
+    const foraDaConta = dadosRelatorioAtual.length - dadosRelatorioValidos.length;
+
+    if (dadosRelatorioValidos.length === 0) {
         resumo.style.display = "none";
         if (barra) barra.style.display = "none";
     } else {
         // Agrupamento por combustível
         const porComb = {};
-        dadosRelatorioAtual.forEach(l => {
+        dadosRelatorioValidos.forEach(l => {
             l.itens.forEach(i => {
                 if (!i.tipo) return;
                 if (!porComb[i.tipo]) porComb[i.tipo] = { litros: 0, total: 0 };
@@ -187,7 +213,7 @@ function _aplicarFiltroRelatorio() {
 
         // Top 3 motoristas por litros
         const porMotorista = {};
-        dadosRelatorioAtual.forEach(l => {
+        dadosRelatorioValidos.forEach(l => {
             if (!l.motorista) return;
             const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
             porMotorista[l.motorista] = (porMotorista[l.motorista] || 0) + litros;
@@ -232,8 +258,11 @@ function _aplicarFiltroRelatorio() {
         resumo.innerHTML = `
             <div style="margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
                 <span style="font-size:0.85rem;color:var(--text-muted)">
-                    <strong style="color:var(--text)">${dadosRelatorioAtual.length}</strong> lançamento(s)
+                    <strong style="color:var(--text)">${dadosRelatorioValidos.length}</strong> lançamento(s)
                 </span>
+                ${foraDaConta > 0 ? `<span style="font-size:0.8rem;color:var(--text-muted)">
+                    · ${foraDaConta} na tela fora dos totais
+                </span>` : ''}
                 <span style="font-size:0.85rem;color:var(--text-muted)">
                     Total: <strong style="color:var(--text)">${fmtR(totalGeral)}</strong>
                 </span>
@@ -306,11 +335,23 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
         const totalLitros = (l.itens || []).reduce((s, item) => s + _litrosItem(item), 0);
         const estaAberto  = idInlineAberto === l.id;
 
+        // A linha de um lançamento que não vale mais fica riscada, e o
+        // estado vem colado no número da nota — não numa coluna própria.
+        // Uma décima primeira coluna, vazia em 99% das linhas, empurrava a
+        // de Ações para fora da área visível e cobrava uma rolagem lateral
+        // em todo dia normal por causa de uma exceção rara.
+        //
+        // O badge é o mesmo que a tela de Usuários já usa no usuário
+        // desativado: mesmo significado, nenhum vocabulário novo.
+        const morto  = !lancamentoAtivo(l);
+        const rotulo = l.estado === 'cancelado' ? 'cancelada' : 'excluída';
+
         const linhaLanc = `
-        <tr class="${estaAberto ? 'linha-com-detalhe-aberto' : ''}">
+        <tr class="${estaAberto ? 'linha-com-detalhe-aberto' : ''}${morto ? ' linha-inativo' : ''}">
             <td>${formatarData(l.dataNota)}</td>
             <td>${formatarData(l.dataDescarga)}</td>
-            <td>${escapeHtml(l.numeroNota)}</td>
+            <td>${escapeHtml(l.numeroNota)}${morto
+                ? ` <span class="badge-inativo-user">${rotulo}</span>` : ''}</td>
             <td>${escapeHtml(l.base) || '—'}</td>
             <td>${escapeHtml(l.empresa) || '—'}</td>
             <td>${escapeHtml(l.motorista) || '—'}</td>
@@ -318,9 +359,15 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
             <td style="text-align:right">${fmtL(totalLitros)}</td>
             <td>${fmtR(l.total)}</td>
             <td class="no-print">
-                <button class="btn-editar"    onclick="editarLancamento('${l.id}')">Editar</button>
-                <button class="btn-clonar"    onclick="clonarLancamento('${l.id}')">Clonar</button>
-                <button class="btn-excluir"   onclick="excluirLancamento('${l.id}', '${contexto}')">Excluir</button>
+                ${morto ? '' : `
+                <button class="btn-editar"    onclick="editarLancamento('${escapeJsAttr(l.id)}')">Editar</button>
+                <button class="btn-clonar"    onclick="clonarLancamento('${escapeJsAttr(l.id)}')">Clonar</button>`}
+                ${l.estado === 'excluido'
+                    ? `<button class="btn-editar" title="Devolver este lançamento aos relatórios"
+                            onclick="restaurarLancamento('${escapeJsAttr(l.id)}', '${escapeJsAttr(contexto)}')">Restaurar</button>`
+                    : l.estado === 'cancelado'
+                        ? ''
+                        : `<button class="btn-excluir" onclick="excluirLancamento('${escapeJsAttr(l.id)}', '${escapeJsAttr(contexto)}')">Excluir</button>`}
                 <button class="btn-secundario btn-ver-inline ${estaAberto ? 'btn-ver-ativo' : ''}"
                         onclick="toggleDetalheInline('${l.id}', '${contexto}')">
                     ${estaAberto ? '▲ Fechar' : '▼ Ver'}
@@ -389,8 +436,34 @@ function _buildConteudoDetalhe(l) {
         anexosHtml = '<span style="color:var(--text-muted)">—</span>';
     }
 
+    // A faixa de estado, quando existe, é a primeira coisa do painel: o
+    // detalhe é onde o operador vem entender por que aquela linha está
+    // riscada. É também de onde sai o caminho de "cancelada na origem",
+    // que é raro demais para virar um quarto botão na linha de todo dia.
+    const ultimoEstado = [...(l.logs || [])].reverse().find(g =>
+        typeof g === 'object' && g && ['Excluído', 'Cancelado na origem', 'Desfeito na sessão'].includes(g.acao));
+    const quandoEstado = ultimoEstado
+        ? `${new Date(ultimoEstado.ts).toLocaleString('pt-BR')}`
+          + (ultimoEstado.usuario && ultimoEstado.usuario !== '—' ? ` por ${escapeHtml(ultimoEstado.usuario)}` : '')
+        : '';
+
+    let faixaEstado = '';
+    if (l.estado === 'cancelado') {
+        faixaEstado = `<div class="faixa-validacao faixa-bloqueio" style="margin:0 0 12px">
+            <strong>Cancelada na origem.</strong> Fora dos litros, do custo médio e do frete.
+            ${quandoEstado ? `<br><small>Marcada em ${quandoEstado}.</small>` : ''}
+            ${ultimoEstado && ultimoEstado.motivo ? `<br><small>Motivo: ${escapeHtml(ultimoEstado.motivo)}</small>` : ''}
+        </div>`;
+    } else if (l.estado === 'excluido') {
+        faixaEstado = `<div class="faixa-validacao faixa-alerta" style="margin:0 0 12px">
+            <strong>Excluída.</strong> Fora dos relatórios e de todos os totais, e pode ser restaurada.
+            ${quandoEstado ? `<br><small>Excluída em ${quandoEstado}.</small>` : ''}
+        </div>`;
+    }
+
     return `
         <div class="detalhe-inline-inner">
+            ${faixaEstado}
             <div class="detalhe-info">
                 <div><span>Data Nota</span><strong>${formatarData(l.dataNota)}</strong></div>
                 <div><span>Data Descarga</span><strong>${l.dataDescarga ? formatarData(l.dataDescarga) : "—"}</strong></div>
@@ -426,10 +499,33 @@ function _buildConteudoDetalhe(l) {
                     if (typeof log === 'object' && log !== null) {
                         const data = new Date(log.ts).toLocaleString('pt-BR');
                         const usuario = log.usuario && log.usuario !== '—' ? ` — ${escapeHtml(log.usuario)}` : '';
-                        return `<li><strong>${escapeHtml(log.acao)}</strong> em ${data}${usuario}</li>`;
+                        // O que mudou, e não só que mudou. Até aqui o log
+                        // dizia "Editado" e ficava nisso: quem abrisse o
+                        // histórico para entender uma divergência não
+                        // encontrava nada.
+                        const alteracoes = Array.isArray(log.alteracoes) && log.alteracoes.length
+                            ? `<ul class="log-diff">${log.alteracoes.map(a =>
+                                `<li>${escapeHtml(a.campo)}: <s>${escapeHtml(String(a.de ?? '—'))}</s> → <strong>${escapeHtml(String(a.para ?? '—'))}</strong></li>`
+                              ).join('')}</ul>`
+                            : '';
+                        const motivo = log.motivo
+                            ? `<div class="log-motivo">Motivo: ${escapeHtml(log.motivo)}</div>` : '';
+                        const alertas = Array.isArray(log.alertas) && log.alertas.length
+                            ? `<ul class="log-diff">${log.alertas.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>`
+                            : '';
+                        return `<li><strong>${escapeHtml(log.acao)}</strong> em ${data}${usuario}${motivo}${alteracoes}${alertas}</li>`;
                     }
                     return `<li>${escapeHtml(log)}</li>`;
                 }).join('')}</ul>
+            </div>` : ''}
+
+            ${lancamentoAtivo(l) ? `
+            <div class="detalhe-acoes-estado">
+                <button class="btn-secundario"
+                        onclick="cancelarNaOrigem('${escapeJsAttr(l.id)}')">
+                    Marcar como cancelada na origem
+                </button>
+                <small>Use quando o emissor cancelou a NF-e depois de ela já ter sido lançada.</small>
             </div>` : ''}
         </div>
     `;
@@ -508,7 +604,10 @@ function _irParaPagina(pagina, contexto) {
  * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  */
 function exportarExcel(contexto) {
-    const dados = dadosRelatorioAtual;
+    // Exportação leva só o que conta: um Excel não tem "riscado"
+    // confiável, e uma linha morta numa planilha vira soma errada na
+    // primeira vez que alguém arrastar o mouse por cima dela.
+    const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const linhas = dados.map(l => {
@@ -543,7 +642,7 @@ function exportarExcel(contexto) {
  * @returns {Promise<void>}
  */
 async function exportarPDF(contexto) {
-    const dados = dadosRelatorioAtual;
+    const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const cfg = Object.assign({
@@ -762,7 +861,7 @@ async function exportarPDF(contexto) {
  * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  */
 function exportarCSV(contexto) {
-    const dados = dadosRelatorioAtual;
+    const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
     const linhas = dados.map(l => {
@@ -790,7 +889,7 @@ function exportarCSV(contexto) {
 
 // ========== IMPRIMIR ==========
 function imprimirRelatorio() {
-    const dados  = dadosRelatorioAtual;
+    const dados  = dadosRelatorioValidos;
     const titulo = "Relatório de Entradas";
 
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para imprimir.", "aviso", 4000); return; }
@@ -833,7 +932,7 @@ function imprimirRelatorio() {
 
 // ========== WHATSAPP ==========
 function compartilharWhatsApp(contexto) {
-    const lista = dadosRelatorioAtual;
+    const lista = dadosRelatorioValidos;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
     const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
@@ -847,7 +946,7 @@ function compartilharWhatsApp(contexto) {
 
 // ========== E-MAIL ==========
 function compartilharEmail(contexto) {
-    const lista = dadosRelatorioAtual;
+    const lista = dadosRelatorioValidos;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
     const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
@@ -1175,7 +1274,7 @@ function exportarPeriodoRapido(periodo) {
     filtroRapido('relatorio', periodo);
     // Aguarda o carregarRelatorio terminar de popular dadosRelatorioAtual
     setTimeout(() => {
-        if (!dadosRelatorioAtual || dadosRelatorioAtual.length === 0) {
+        if (!dadosRelatorioValidos || dadosRelatorioValidos.length === 0) {
             mostrarToast('Nenhum lançamento no período para exportar.', 'aviso', 4000);
             return;
         }

@@ -868,11 +868,28 @@ function importacaoConfirmar() {
     // TODAS as empresas que o usuário enxerga — e apagava a nota homônima
     // de outra empresa junto. `_montarPayloads` gravava então o documento
     // daquela outra empresa já sem ela: perda permanente e silenciosa.
+    //
+    // A nota substituída vira lápide, não some. Este era o terceiro
+    // caminho de destruição do sistema, e o mais silencioso dos três:
+    // reimportar uma planilha apagava o lançamento antigo com o histórico
+    // dele e criava outro no lugar, com id novo — quem tivesse o id
+    // anterior (a lista da sessão, um detalhe aberto, um rascunho em
+    // edição) passava a apontar para nada. Agora a substituída fica,
+    // marcada, fora de todas as contas, e o histórico dela diz o que
+    // aconteceu.
     if (dupSelecionadas.length > 0) {
         const chavesDup = new Set(dupSelecionadas.map(_chaveNotaImportacao));
-        db.lancamentos = db.lancamentos.filter(
-            l => !chavesDup.has(_chaveNotaImportacao(l))
-        );
+        db.lancamentos.forEach(l => {
+            if (!lancamentoAtivo(l)) return;
+            if (!chavesDup.has(_chaveNotaImportacao(l))) return;
+            l.estado = 'excluido';
+            if (!Array.isArray(l.logs)) l.logs = [];
+            l.logs.push({
+                acao:    'Substituído por reimportação de planilha',
+                ts:      new Date().toISOString(),
+                usuario: window._usuarioAtual?.nome || '—'
+            });
+        });
     }
 
     const todasParaSalvar = [...novas, ...dupSelecionadas];

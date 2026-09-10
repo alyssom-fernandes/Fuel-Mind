@@ -272,6 +272,10 @@ function _realizarBusca() {
     }
 
     // ── Lançamentos ──
+    // A busca acha tudo, inclusive o que não vale mais — ela existe para
+    // responder "onde está aquela nota?", e a resposta "não existe" seria
+    // falsa. O que muda é que o resultado diz o estado, para ninguém sair
+    // daqui achando que encontrou um lançamento que conta.
     const lancamentos = db.lancamentos.filter(l => {
         const s = normalizarTexto(`${l.numeroNota} ${l.empresa || ''} ${l.motorista || ''} ${l.placa || ''} ${l.base || ''} ${l.observacoes || ''}`);
         return s.includes(termo);
@@ -322,6 +326,7 @@ function _realizarBusca() {
                         <div style="font-weight:600;font-size:0.85rem;color:var(--text)">
                             Nota ${escapeHtml(l.numeroNota) || '—'}
                             <span style="font-weight:400;color:var(--text-muted);font-size:0.78rem;margin-left:6px">${formatarData(l.dataNota)}</span>
+                            ${lancamentoAtivo(l) ? '' : `<span class="badge-inativo-user" style="margin-left:6px">${l.estado === 'cancelado' ? 'cancelada' : 'excluída'}</span>`}
                         </div>
                         <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;
                              white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
@@ -632,6 +637,82 @@ function fmAlert({ titulo = 'Atenção', msg = '', tipo = 'info', btnTxt = 'OK' 
         });
         document.body.appendChild(overlay);
         setTimeout(() => overlay.querySelector('.fm-ok').focus(), 40);
+    });
+}
+
+/**
+ * fmPrompt(opcoes) → Promise<string|null>
+ *
+ * O terceiro modal da família, ao lado de `fmConfirm` e `fmAlert`: pede
+ * um texto obrigatório antes de deixar seguir. Nasceu para o motivo do
+ * cancelamento na origem, que é uma afirmação sobre um fato de fora do
+ * sistema e não pode ser feita sem autor e sem razão.
+ *
+ * Devolve o texto, ou `null` se o operador desistiu — e desistir é sempre
+ * possível, pelo botão, pelo Escape ou pelo clique fora. Isso não é
+ * detalhe: um diálogo em que as duas saídas fazem alguma coisa é um
+ * diálogo do qual não se sai.
+ *
+ * Opções: `titulo`, `msg`, `label`, `minimo` (caracteres, padrão 1),
+ * `placeholder`, `confirmTxt`, `cancelTxt`, `tipo` ('perigo'|'aviso'|'info').
+ */
+function fmPrompt({ titulo = 'Confirmar', msg = '', label = '', minimo = 1,
+                    placeholder = '', confirmTxt = 'Confirmar',
+                    cancelTxt = 'Cancelar', tipo = 'perigo' } = {}) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = 'z-index:2000';
+
+        const corMap = { perigo: 'var(--danger)', aviso: 'var(--warning)', info: 'var(--primary)' };
+        const cor = corMap[tipo] || corMap.perigo;
+
+        overlay.innerHTML = `
+            <div class="modal" style="max-width:460px">
+                <h3 style="margin-bottom:${msg ? '12px' : '20px'}">${escapeHtml(titulo)}</h3>
+                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:16px;white-space:pre-wrap">${escapeHtml(msg)}</p>` : ''}
+                <label class="fm-prompt-label" style="display:block;font-size:0.85rem;margin-bottom:6px">${escapeHtml(label)}</label>
+                <textarea class="fm-prompt-input" rows="2" placeholder="${escapeHtml(placeholder)}"
+                          style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+                <div class="fm-prompt-erro" style="display:none;color:var(--danger);font-size:0.8rem;margin-top:6px"></div>
+                <div class="modal-acoes" style="margin-top:16px">
+                    <button class="btn-secundario fm-cancel">${escapeHtml(cancelTxt)}</button>
+                    <button class="btn-primario fm-ok" style="background:${cor};border-color:${cor}">${escapeHtml(confirmTxt)}</button>
+                </div>
+            </div>`;
+
+        const campo = overlay.querySelector('.fm-prompt-input');
+        const erro  = overlay.querySelector('.fm-prompt-erro');
+        const fechar = r => { overlay.remove(); resolve(r); };
+
+        const confirmar = () => {
+            const txt = campo.value.trim();
+            if (txt.length < minimo) {
+                // Mensagem junto do campo, não toast: desde o tema 04, o
+                // que impede de seguir tem de ficar onde se conserta.
+                erro.textContent = minimo > 1
+                    ? `Escreva pelo menos ${minimo} caracteres — faltam ${minimo - txt.length}.`
+                    : 'Este campo não pode ficar vazio.';
+                erro.style.display = 'block';
+                campo.focus();
+                return;
+            }
+            fechar(txt);
+        };
+
+        campo.addEventListener('input', () => { erro.style.display = 'none'; });
+        overlay.querySelector('.fm-ok').onclick     = confirmar;
+        overlay.querySelector('.fm-cancel').onclick = () => fechar(null);
+        overlay.addEventListener('click', e => { if (e.target === overlay) fechar(null); });
+        overlay.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); fechar(null); }
+            // Enter confirma; Shift+Enter continua quebrando linha, porque
+            // o motivo é texto livre e pode ter mais de uma frase.
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmar(); }
+        });
+
+        document.body.appendChild(overlay);
+        setTimeout(() => campo.focus(), 40);
     });
 }
 

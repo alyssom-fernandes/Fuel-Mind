@@ -311,6 +311,11 @@
       <div class="campo"><label for="filtroNota">Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota" oninput="carregarRelatorio()"></div>
       <div class="campo"><label for="filtroBase">Base</label><input id="filtroBase" placeholder="Base" oninput="carregarRelatorio()"></div>
       <div class="campo"><label for="filtroBusca">Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorio()"></div>
+      <div class="campo campo-checkbox">
+        <label for="filtroMostrarInativos" title="As canceladas aparecem sempre; as excluídas, só com esta caixa marcada. Nenhuma das duas entra nos totais.">
+          <input type="checkbox" id="filtroMostrarInativos" onchange="carregarRelatorio()"> Mostrar excluídas
+        </label>
+      </div>
     </div>
     <div class="filtros-acoes">
       <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
