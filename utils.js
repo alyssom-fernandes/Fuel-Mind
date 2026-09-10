@@ -73,16 +73,6 @@ function lancamentoAtivo(l) {
     return !!l && !l.estado;
 }
 
-/**
- * O mesmo teste, com uma escapatória para as telas que precisam mostrar o
- * que não vale — hoje só o Relatório, pela caixa "Mostrar excluídas".
- * Auditoria, backup e persistência não usam nenhum dos dois: para elas o
- * registro morto é tão obrigatório quanto o vivo.
- */
-function lancamentoVale(l, incluirInativos) {
-    return incluirInativos ? !!l : lancamentoAtivo(l);
-}
-
 // ========== TAXA DE FRETE DA EMPRESA ==========
 /**
  * Taxa de frete (R$/litro) de um registro de empresa, normalizada.
