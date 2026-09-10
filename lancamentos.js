@@ -438,7 +438,12 @@ function atualizarBadgePerda(selectTipo) {
  * @returns {boolean} `true` se houver duplicata
  */
 function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = null) {
+    // Lançamento excluído não conta como duplicata: relançar a nota é
+    // justamente o caminho de correção de quem excluiu por engano. Um
+    // cancelado, sim — ele avisa que alguém já deu aquela nota por
+    // inválida, e relançar em cima disso quase nunca é o que se quer.
     return db.lancamentos.some(l =>
+        l.estado !== 'excluido' &&
         l.numeroNota === numeroNota && l.empresa === empresa && l.dataNota === dataNota &&
         (idIgnorar === null || l.id !== idIgnorar)
     );
@@ -600,12 +605,26 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     // Detecta se é edição ou novo/clone — para decidir como recarregar o relatório
     const eraEdicao = !!(lancamentoEditandoId && !isClonando);
 
+    // O lançamento anterior, quando isto é uma edição. Dele vêm duas
+    // coisas que a tela não tem: o histórico e o estado.
+    const anterior = lancamentoEditandoId
+        ? db.lancamentos.find(l => l.id === lancamentoEditandoId)
+        : null;
+
     const lancamento = {
         id: lancamentoIdPreGerado || lancamentoEditandoId || gerarId(),
         dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes,
         anexos: arquivos,
-        logs: lancamentoEditandoId ? (db.lancamentos.find(l => l.id === lancamentoEditandoId)?.logs || []) : []
+        logs: (anterior && anterior.logs) || []
     };
+
+    // Salvar monta um objeto NOVO e o põe no lugar do antigo. Sem esta
+    // linha, editar um lançamento excluído o traria de volta à vida em
+    // silêncio, porque o campo de estado simplesmente não seria copiado.
+    // Não vale para o clone: uma cópia de uma nota morta nasce viva.
+    if (anterior && anterior.estado && !isClonando) {
+        lancamento.estado = anterior.estado;
+    }
     const logAcao = lancamentoEditandoId ? (isClonando ? "Clonado" : "Editado") : "Criado";
     // Log estruturado: objeto {acao, ts, usuario} — compatível com logs antigos (string)
     // que são exibidos normalmente em _buildConteudoDetalhe via typeof check

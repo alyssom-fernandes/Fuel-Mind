@@ -48,6 +48,41 @@ function _litrosItem(i) {
     return (i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0;
 }
 
+// ========== CRITÉRIO ÚNICO DE LANÇAMENTO VÁLIDO ==========
+/**
+ * Um lançamento que deixou de valer continua no vetor e sai de toda conta.
+ *
+ * `estado` é opcional e a AUSÊNCIA dele significa ativo. Isso não é
+ * detalhe de estilo: os lançamentos gravados antes desta mudança não têm
+ * o campo, e escrever `l.estado === 'ativo'` faria a base histórica
+ * inteira desaparecer dos relatórios de uma vez. É a mesma convenção
+ * permissiva que o projeto já usa nos cadastros (`ativo !== false`) e que
+ * as regras do Firestore repetem no servidor com `get('ativo', true)`.
+ *
+ * Valores: ausente (ativo), `'excluido'` (o operador apagou; reversível
+ * pelo botão Restaurar) e `'cancelado'` (a NF-e foi cancelada na origem;
+ * não é revertida pelo operador). Os dois saem de litros, custo médio,
+ * frete, KPIs, referência de preço e exportações — a diferença está na
+ * visibilidade e no caminho de volta, não na aritmética.
+ *
+ * Vive em utils.js, ao lado de `_litrosItem`, pelo mesmo motivo: é
+ * carregado antes de todos os módulos, e nenhuma tela pode ter a sua
+ * própria opinião sobre o que conta.
+ */
+function lancamentoAtivo(l) {
+    return !!l && !l.estado;
+}
+
+/**
+ * O mesmo teste, com uma escapatória para as telas que precisam mostrar o
+ * que não vale — hoje só o Relatório, pela caixa "Mostrar excluídas".
+ * Auditoria, backup e persistência não usam nenhum dos dois: para elas o
+ * registro morto é tão obrigatório quanto o vivo.
+ */
+function lancamentoVale(l, incluirInativos) {
+    return incluirInativos ? !!l : lancamentoAtivo(l);
+}
+
 // ========== TAXA DE FRETE DA EMPRESA ==========
 /**
  * Taxa de frete (R$/litro) de um registro de empresa, normalizada.

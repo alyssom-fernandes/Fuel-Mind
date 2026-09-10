@@ -159,10 +159,15 @@ function fmRascunhoVerificar() {
 
     let aviso = '';
     if (r.editandoId) {
-        const existe = (db.lancamentos || []).some(l => l.id === r.editandoId);
+        // "Existe" aqui quer dizer "ainda vale". O rascunho dura 30 dias, e
+        // sem o teste de estado um rascunho de edição sobre uma nota que
+        // foi excluída nesse meio-tempo reentraria em modo edição e a
+        // regravaria por cima — ressuscitando a nota com um clique em
+        // Continuar.
+        const existe = (db.lancamentos || []).some(l => l.id === r.editandoId && lancamentoAtivo(l));
         aviso = existe
             ? '<br><small>Era uma <strong>edição</strong> de lançamento existente.</small>'
-            : '<br><small>Era a edição de um lançamento que <strong>não existe mais</strong>. Só é possível descartar.</small>';
+            : '<br><small>Era a edição de um lançamento que <strong>não vale mais</strong>. Só é possível descartar.</small>';
         if (!existe) r.__orfao = true;
     }
     if (r.empresaAtiva && empresaFiltroGlobal && r.empresaAtiva !== empresaFiltroGlobal) {
@@ -186,7 +191,7 @@ function fmRascunhoRestaurar() {
     const c = r.campos;
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
 
-    if (r.editandoId && (db.lancamentos || []).some(l => l.id === r.editandoId)) {
+    if (r.editandoId && (db.lancamentos || []).some(l => l.id === r.editandoId && lancamentoAtivo(l))) {
         lancamentoEditandoId = r.editandoId;
         isClonando = false;
         document.getElementById('tituloLancamentos').textContent = 'Editando Lançamento';

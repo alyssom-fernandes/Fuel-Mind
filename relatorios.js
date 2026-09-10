@@ -96,6 +96,12 @@ function _aplicarFiltroRelatorio() {
     const busca       = document.getElementById("filtroBusca").value.trim().toLowerCase();
 
     dadosRelatorioAtual = db.lancamentos.filter(l => {
+        // Primeiro de todos: um lançamento excluído ou cancelado não entra
+        // na tabela nem em nada que sai dela. `dadosRelatorioAtual` é o
+        // funil único desta tela — resumo, ordenação, paginação e os seis
+        // formatos de exportação leem só daqui —, então este é o ponto em
+        // que a decisão vale para a tela inteira de uma vez.
+        if (!lancamentoAtivo(l)) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
 
         // Usa dataDescarga como referência principal, com fallback para dataNota.
@@ -949,7 +955,13 @@ function _executarRelatorioMensal() {
     const [ano, m] = mes.split('-').map(Number);
     const mesAnterior = m === 1 ? `${ano-1}-12` : `${ano}-${String(m-1).padStart(2,'0')}`;
 
-    const lancamentosFiltrados = db.lancamentos.filter(l => (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal));
+    // O Relatório Mensal Gerencial monta o próprio conjunto e é o único
+    // ponto desta tela que não passa por `dadosRelatorioAtual` — por isso
+    // repete o teste de estado. É também onde vive o custo médio
+    // (totalGasto/totalLitros, logo abaixo), que é o número que uma nota
+    // sem validade mais distorce.
+    const lancamentosFiltrados = db.lancamentos.filter(l => lancamentoAtivo(l)
+        && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal));
     const lansMes      = lancamentosFiltrados.filter(l => (l.dataDescarga||l.dataNota).startsWith(mes));
     const lansAnterior = lancamentosFiltrados.filter(l => (l.dataDescarga||l.dataNota).startsWith(mesAnterior));
     const combustiveis = db.combustiveis.filter(c => c.ativo !== false);

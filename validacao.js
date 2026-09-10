@@ -75,6 +75,11 @@ function referenciaPreco(nomeCombustivel) {
 
     const precos = (db.lancamentos || [])
         .filter(l => {
+            // A régua é uma estatística do que aconteceu de verdade. Nota
+            // excluída não aconteceu; nota cancelada foi desfeita. E com
+            // PRECO_AMOSTRA_MINIMA valendo 1, uma única nota morta basta
+            // para o sistema declarar que tem referência e julgar por ela.
+            if (!lancamentoAtivo(l)) return false;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
             if (lancamentoEditandoId && l.id === lancamentoEditandoId) return false;
             const dataRef = l.dataDescarga || l.dataNota || "";
@@ -260,11 +265,23 @@ function validarLancamento() {
     // e não há "salvar mesmo assim". Já número mais empresa mais data é
     // só coincidência forte — número de nota se repete entre emitentes —
     // e por isso continua sendo alerta.
+    //
+    // O estado do lançamento encontrado muda a resposta, e aqui isso não é
+    // refinamento: se a chave de uma nota EXCLUÍDA continuasse bloqueando,
+    // quem lançou a NF-e errada e a excluiu nunca mais conseguiria lançá-la
+    // do jeito certo — o bloqueio impediria a correção do próprio engano,
+    // apontando para uma nota que não aparece em relatório nenhum. Já a
+    // chave de uma nota CANCELADA continua bloqueando, e a mensagem diz por
+    // quê: aquela NF-e não vale mais, e relançá-la não é o caminho.
     const chave = (typeof _chaveAcessoAtual !== "undefined" && _chaveAcessoAtual) || null;
     if (chave) {
-        const jaExiste = (db.lancamentos || []).some(l =>
-            l.chaveAcesso === chave && l.id !== lancamentoEditandoId);
-        if (jaExiste) {
+        const jaLancada = (db.lancamentos || []).find(l =>
+            l.chaveAcesso === chave && l.id !== lancamentoEditandoId && l.estado !== 'excluido');
+        if (jaLancada && jaLancada.estado === 'cancelado') {
+            marcar("numeroNota",
+                "Esta NF-e já foi lançada e está marcada como cancelada na origem.",
+                "bloqueio");
+        } else if (jaLancada) {
             marcar("numeroNota", "Esta NF-e já foi lançada. A chave de acesso é a mesma.", "bloqueio");
         }
     } else if (numeroNota && empresa && dataNota &&

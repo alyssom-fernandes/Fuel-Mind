@@ -108,6 +108,9 @@ function carregarAnalitico() {
     }
 
     const lancamentos = db.lancamentos.filter(l => {
+        // Funil único das sete abas: quem não está ativo não entra em
+        // nenhuma delas, nem nos KPIs, nem na evolução de preços.
+        if (!lancamentoAtivo(l)) return false;
         // Filtro global por empresa (se ativo)
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
         if (inicio && l.dataNota < inicio) return false;

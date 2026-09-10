@@ -80,6 +80,10 @@ function calcularEExibirFretes() {
     if (typeof garantirConjuntos === 'function') garantirConjuntos();
 
     const lancamentosMes = db.lancamentos.filter(l => {
+        // Funil único das quatro abas. Nota excluída ou cancelada não gera
+        // frete: o valor sai de `item.qtd` da própria nota, e sem nota
+        // válida não há quantidade a faturar. Decisão do dono, 08/09/2026.
+        if (!lancamentoAtivo(l)) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
         const d = l.dataDescarga || l.dataNota;
         return d && d.startsWith(mes);

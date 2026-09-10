@@ -44,7 +44,7 @@ function _mediaPrecoPeriodo(nomeCombustivel, dias) {
     limite.setDate(limite.getDate() - dias);
     const limitStr = limite.toISOString().slice(0, 10);
     const precos = db.lancamentos
-        .filter(l => (l.dataNota||'') >= limitStr && ((!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)))
+        .filter(l => lancamentoAtivo(l) && (l.dataNota||'') >= limitStr && ((!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)))
         .flatMap(l => l.itens.filter(i => i.tipo === nomeCombustivel && i.valor > 0))
         .map(i => i.valor);
     if (precos.length === 0) return 0;
@@ -53,7 +53,7 @@ function _mediaPrecoPeriodo(nomeCombustivel, dias) {
 
 function _mediaVolumePorNota(nomeCombustivel) {
     const volumes = db.lancamentos
-        .filter(l => (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal))
+        .filter(l => lancamentoAtivo(l) && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal))
         .flatMap(l => l.itens.filter(i => i.tipo === nomeCombustivel && i.qtd > 0))
         .map(i => i.qtd);
     if (volumes.length === 0) return 0;
@@ -129,6 +129,11 @@ function carregarDashboard() {
 
     // FIX: usa dataDescarga como referência principal, fallback para dataNota
     const lancamentosMes = db.lancamentos.filter(l => {
+        // Alimenta KPIs, alertas rápidos, blocos por combustível e pizza.
+        // O Dashboard não tem funil único como as outras telas: são nove
+        // leituras independentes de db.lancamentos, e cada uma repete
+        // este teste.
+        if (!lancamentoAtivo(l)) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
         const dRef = l.dataDescarga || l.dataNota || '';
         return dRef >= inicio && dRef <= fim;
@@ -168,7 +173,7 @@ function carregarDashboard() {
     renderGraficoPizzaDashboard(lancamentosMes);
 
     const ultimas = [...db.lancamentos]
-        .filter(l => (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal))
+        .filter(l => lancamentoAtivo(l) && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal))
         .sort((a, b) => (b.dataDescarga || b.dataNota).localeCompare(a.dataDescarga || a.dataNota))
         .slice(0, 5);
 
@@ -400,6 +405,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
     const dtMesAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
     const mesAntStr = `${dtMesAnt.getFullYear()}-${String(dtMesAnt.getMonth() + 1).padStart(2, '0')}`;
     const lancMesAnt = db.lancamentos.filter(l => {
+        if (!lancamentoAtivo(l)) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
         return l.dataNota && l.dataNota.startsWith(mesAntStr);
     });
@@ -483,6 +489,7 @@ function renderComparativoMeses() {
 
     const dadosMeses = meses.map(mes => {
         const lans = db.lancamentos.filter(l => {
+            if (!lancamentoAtivo(l)) return false;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
             return l.dataNota && l.dataNota.startsWith(mes);
         });
@@ -537,6 +544,7 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
         const hoje = new Date();
         const inicioMesStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
         lancamentosMes = db.lancamentos.filter(l => {
+            if (!lancamentoAtivo(l)) return false;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
             return (l.dataNota || '') >= inicioMesStr;
         });

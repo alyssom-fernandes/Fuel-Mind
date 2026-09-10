@@ -413,6 +413,9 @@ function _fmParMaisFrequente(campoBusca, valor, campoAlvo) {
     const alvoNorm = normalizarTexto(valor);
     const contagem = {};
     for (const l of db.lancamentos) {
+        // Nota excluída ou cancelada não é evidência de que aquele
+        // motorista rodou com aquela placa.
+        if (!lancamentoAtivo(l)) continue;
         if (normalizarTexto(l[campoBusca] || '') !== alvoNorm) continue;
         const par = l[campoAlvo];
         if (!par) continue;

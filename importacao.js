@@ -661,7 +661,11 @@ function importacaoProcessar() {
     const novasNotas = [];
     notasParaAnalisar.forEach(nota => {
         const chaveNota = _chaveNotaImportacao(nota);
-        const jaExiste = db.lancamentos.some(l => _chaveNotaImportacao(l) === chaveNota);
+        // Nota excluída não conta como duplicata: reimportar a planilha é
+        // um dos caminhos de correção de quem excluiu por engano. Uma
+        // cancelada conta, e o operador decide na tela de duplicatas.
+        const jaExiste = db.lancamentos.some(l =>
+            l.estado !== 'excluido' && _chaveNotaImportacao(l) === chaveNota);
         if (jaExiste) duplicatas.push(nota);
         else novasNotas.push(nota);
     });

@@ -376,7 +376,7 @@ function atualizarInfoSistema() {
     const tamanhoKB = (JSON.stringify(db).length / 1024).toFixed(1);
     const o = _ocupacaoEspaco();
     el.innerHTML = _faixaEspaco() + `
-        <div class="info-card"><div class="info-card-valor">${db.lancamentos.length}</div><div class="info-card-label">Lançamentos</div></div>
+        <div class="info-card"><div class="info-card-valor">${db.lancamentos.filter(lancamentoAtivo).length}</div><div class="info-card-label">Lançamentos</div></div>
         <div class="info-card"><div class="info-card-valor">${db.motoristas.length}</div><div class="info-card-label">Motoristas</div></div>
         <div class="info-card"><div class="info-card-valor">${db.veiculos.length}</div><div class="info-card-label">Veículos</div></div>
         <div class="info-card"><div class="info-card-valor">${db.empresas.length}</div><div class="info-card-label">Empresas</div></div>
@@ -392,6 +392,9 @@ function atualizarInfoSistema() {
 function auditarDatas() {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const suspeitos = db.lancamentos.filter(l => {
+        // Não faz sentido mandar o operador corrigir a data de uma nota
+        // que ele já tirou do ar.
+        if (!lancamentoAtivo(l)) return false;
         const dtNota = new Date(l.dataNota + 'T00:00:00');
         const dtDesc = l.dataDescarga ? new Date(l.dataDescarga + 'T00:00:00') : null;
         const diffDias = (dtDesc && dtNota) ? Math.round((dtDesc - dtNota) / 86400000) : 0;
@@ -509,6 +512,14 @@ function fecharModalCorrecaoMassa() {
     if (modalCorrecaoMassa) { modalCorrecaoMassa.remove(); modalCorrecaoMassa = null; }
 }
 
+/* Esta correção em massa toca TODOS os lançamentos, inclusive os
+   excluídos e os cancelados, e isso é de propósito. Ela é uma
+   renomeação, não uma conta: pular uma lápide a deixaria com o nome
+   antigo da empresa, e aí `_empresaIdDoLancamento` não a resolveria mais,
+   `_montarPayloads` a descartaria em silêncio e ela sumiria da nuvem —
+   ou seja, filtrar aqui não esconderia a lápide, destruiria a lápide.
+   O preço é o contador: o número anunciado no toast inclui os registros
+   que não aparecem no relatório, e por isso o texto diz "no histórico". */
 function executarCorrecaoMassa() {
     const select = document.getElementById('correcaoMassaSelect');
     const antigo = document.getElementById('correcaoMassaAntigo')?.value.trim() || '';
@@ -521,7 +532,7 @@ function executarCorrecaoMassa() {
         db.lancamentos.forEach(l => { const v = l[campoCorrecaoAtual]; if ((!antigo || v === antigo) && v !== novo) { l[campoCorrecaoAtual] = novo; count++; } });
     }
     salvarDB(); fecharModalCorrecaoMassa();
-    mostrarToast(`${count} lançamento(s) atualizados com ${campoCorrecaoAtual} = "${novo}".`, 'sucesso', 6000);
+    mostrarToast(`${count} lançamento(s) do histórico atualizados com ${campoCorrecaoAtual} = "${novo}".`, 'sucesso', 6000);
 }
 
 /* ========================================
@@ -1011,7 +1022,7 @@ function _autosystemAtualizarTabela() {
 
     const entradasSistema = {};
     db.lancamentos
-        .filter(l => l.empresa === empresa && l.itens.some(i => i.tipo === comb))
+        .filter(l => lancamentoAtivo(l) && l.empresa === empresa && l.itens.some(i => i.tipo === comb))
         .forEach(l => {
             const dRef = l.dataDescarga || l.dataNota;
             if (!dRef) return;
@@ -1084,7 +1095,7 @@ function _autosystemAtualizarTabela() {
 function _autoExportarExcel(comb) {
     const empresa = empresaFiltroGlobal || '';
     const entradasSistema = {};
-    db.lancamentos.filter(l => l.empresa===empresa && l.itens.some(i=>i.tipo===comb))
+    db.lancamentos.filter(l => lancamentoAtivo(l) && l.empresa===empresa && l.itens.some(i=>i.tipo===comb))
         .forEach(l => {
             const dRef = l.dataDescarga||l.dataNota;
             if (!dRef) return;

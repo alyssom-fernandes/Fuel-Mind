@@ -323,6 +323,13 @@ function confirmarEdicao() {
     let propagados = 0;
     let conjuntosTocados = 0;
     if (nomeAntigo !== nomeNovo) {
+        // Toca TODOS os lançamentos, inclusive os excluídos e os
+        // cancelados, e isto é de propósito: renomear é reescrever uma
+        // referência, não somar. Pular uma lápide a deixaria com o nome
+        // antigo da empresa — e aí `_empresaIdDoLancamento` (app.js) não a
+        // resolve mais, `_montarPayloads` a descarta em silêncio e ela
+        // some da nuvem no próximo salvamento. Filtrar aqui não esconde a
+        // lápide, destrói a lápide.
         db.lancamentos.forEach(l => {
             if (lista === "empresas"   && l.empresa   === nomeAntigo) { l.empresa   = nomeNovo; propagados++; }
             if (lista === "motoristas" && l.motorista === nomeAntigo) { l.motorista = nomeNovo; propagados++; }
@@ -461,6 +468,9 @@ async function converterTodasPlacasMercosul() {
         veiculo.logs.push(`Placa convertida de "${antiga}" para "${nova}" (Mercosul) em ${new Date().toLocaleString('pt-BR')}`);
         veiculo.nome = nova;
 
+        // Todos os lançamentos, inclusive os que não estão ativos — pelo
+        // mesmo motivo de `confirmarEdicao`: uma placa não convertida
+        // deixa a nota fora de qualquer conjunto em `resolverConjuntoPorPlaca`.
         db.lancamentos.forEach(l => {
             if (l.placa === antiga) { l.placa = nova; propagados++; }
         });
@@ -612,11 +622,21 @@ async function toggleAtivo(lista, id) {
 }
 
 // ========== VERIFICAÇÃO DE VÍNCULOS ==========
+/* Este é o único lugar do projeto em que o CADASTRO consulta o
+   lançamento, e não o contrário — e é por isso que ele inverteria de
+   comportamento sozinho quando a exclusão deixou de apagar o registro.
+   Antes, "sumiu do vetor" significava "não há vínculo", e por isso
+   excluir um motorista funcionava depois que as notas dele tinham sido
+   apagadas. Sem o teste de estado, todo cadastro que um dia apareceu em
+   qualquer nota apagada viraria ineliminável para sempre, com a tela
+   dizendo "existem lançamentos vinculados" e o operador não achando
+   nenhum no relatório. */
 function temVinculoEmLancamentos(lista, item) {
-    if (lista === "motoristas")   return db.lancamentos.some(l => l.motorista === item.nome);
-    if (lista === "veiculos")     return db.lancamentos.some(l => l.placa === item.nome);
-    if (lista === "empresas")     return db.lancamentos.some(l => l.empresa === item.nome);
-    if (lista === "combustiveis") return db.lancamentos.some(l => l.itens.some(i => i.tipo === item.nome));
+    const ativos = db.lancamentos.filter(lancamentoAtivo);
+    if (lista === "motoristas")   return ativos.some(l => l.motorista === item.nome);
+    if (lista === "veiculos")     return ativos.some(l => l.placa === item.nome);
+    if (lista === "empresas")     return ativos.some(l => l.empresa === item.nome);
+    if (lista === "combustiveis") return ativos.some(l => (l.itens || []).some(i => i.tipo === item.nome));
     return false;
 }
 
