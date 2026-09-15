@@ -18,6 +18,10 @@ let importacaoMapeamento  = {};
 let importacaoArquivoNome = "";
 let _importacaoNovasPendentes      = [];
 let _importacaoDuplicatasPendentes = [];
+// A empresa ativa no momento do processamento. As notas sem coluna de
+// empresa recebem essa, e uma troca entre Processar e Confirmar as gravaria
+// numa empresa que a tela já não mostrava.
+let _importacaoEmpresa = null;
 
 /*─────────────────────────────────────────────
   CAMPOS DO SISTEMA (para mapeamento manual)
@@ -713,6 +717,7 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
 
     _importacaoNovasPendentes      = novas;
     _importacaoDuplicatasPendentes = duplicatas;
+    _importacaoEmpresa             = empresaFiltroGlobal || null;
 
     const empresasNovas     = [...new Set(novas.map(n => n.empresa).filter(Boolean))].filter(e => !db.empresas.some(x => x.nome.toLowerCase() === e.toLowerCase()));
     const motoristasNovos   = [...new Set(novas.map(n => n.motorista))].filter(m => !db.motoristas.some(x => x.nome.toLowerCase() === m.toLowerCase()));
@@ -845,6 +850,11 @@ function importacaoSelecionarTodasDuplicatas(marcar) {
 function importacaoConfirmar() {
     const btnConfirmar = document.querySelector('#importacaoResultado .btn-primario[onclick="importacaoConfirmar()"]')
                       || document.querySelector('button[onclick="importacaoConfirmar()"]');
+    if (_importacaoEmpresa !== (empresaFiltroGlobal || null)) {
+        mostrarToast(`A empresa ativa mudou desde o processamento (era ${_importacaoEmpresa || 'nenhuma'}). `
+            + `Processe o arquivo de novo para importar em ${empresaFiltroGlobal || 'nenhuma'}.`, "erro", 8000);
+        return;
+    }
     if (btnConfirmar) mostrarSpinner(btnConfirmar, btnConfirmar.innerText);
 
     const novas = [..._importacaoNovasPendentes];

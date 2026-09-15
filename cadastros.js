@@ -363,6 +363,9 @@ function confirmarEdicao() {
     salvarDB();
     fecharModal();
     atualizarListas();
+    // Renomear a empresa que está ativa é uma troca de empresa que ninguém
+    // pediu: sem isto a global ficava com o nome velho.
+    if (lista === "empresas" && typeof _reconciliarEmpresaAtiva === "function") _reconciliarEmpresaAtiva();
 
     if (propagados > 0 || conjuntosTocados > 0) {
         const partes = [];
@@ -619,6 +622,7 @@ async function toggleAtivo(lista, id) {
     item.logs.push(`${acao === 'inativar' ? 'Inativado' : 'Reativado'} em ${new Date().toLocaleString('pt-BR')}`);
     salvarDB();
     atualizarListas();
+    if (lista === "empresas" && typeof _reconciliarEmpresaAtiva === "function") _reconciliarEmpresaAtiva();
 }
 
 // ========== VERIFICAÇÃO DE VÍNCULOS ==========
@@ -654,6 +658,7 @@ async function excluirCadastro(lista, id) {
     db[lista] = db[lista].filter(i => String(i.id) !== String(id));
     salvarDB();
     atualizarListas();
+    if (lista === "empresas" && typeof _reconciliarEmpresaAtiva === "function") _reconciliarEmpresaAtiva();
 }
 
 /*=================================================

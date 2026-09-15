@@ -97,7 +97,17 @@ function fmRascunhoGravarAgora() {
     // aqui tornaria a proteção contra F5 impossível de ver e de testar, que é
     // justamente onde o modo demo serve.
     const r = _fmRascunhoCapturar();
-    if (!_fmRascunhoTemConteudo(r)) { fmRascunhoApagar(); return; }
+    if (!_fmRascunhoTemConteudo(r)) {
+        // Formulário vazio só apaga o rascunho guardado se foi ESTA página
+        // que o gravou — o operador digitou e depois apagou tudo. Se a
+        // página nunca gravou nada, o formulário vazio não diz nada sobre
+        // um rascunho de sessão anterior, que ainda está esperando o
+        // Continuar ou o Descartar. Antes, fechar a aba com a faixa na tela,
+        // ou dar F5 no Dashboard sem passar por Lançamentos, destruía esse
+        // rascunho — que o tema 02 prometeu guardar por trinta dias.
+        if (_fmRascunhoUltimo !== null) fmRascunhoApagar();
+        return;
+    }
 
     const json = JSON.stringify(r);
     // Comparação sem o carimbo de tempo: só o conteúdo decide se regrava.
@@ -171,7 +181,12 @@ function fmRascunhoVerificar() {
         if (!existe) r.__orfao = true;
     }
     if (r.empresaAtiva && empresaFiltroGlobal && r.empresaAtiva !== empresaFiltroGlobal) {
-        aviso += `<br><small>Foi começado com a empresa <strong>${escapeHtml(r.empresaAtiva)}</strong>, e a empresa ativa agora é <strong>${escapeHtml(empresaFiltroGlobal)}</strong>.</small>`;
+        // Um rascunho só volta na empresa em que nasceu. Antes, Continuar
+        // punha a empresa do rascunho num campo travado, sob o badge de
+        // outra — e a nota era salva numa empresa diferente da que a tela
+        // inteira dizia. O operador troca de empresa e continua, ou descarta.
+        aviso += `<br><small>Foi começado na empresa <strong>${escapeHtml(r.empresaAtiva)}</strong>, e a empresa ativa agora é <strong>${escapeHtml(empresaFiltroGlobal)}</strong>. Para continuar, troque para ${escapeHtml(r.empresaAtiva)} no cabeçalho.</small>`;
+        r.__outraEmpresa = true;
     }
 
     faixa.style.display = 'block';
@@ -179,7 +194,7 @@ function fmRascunhoVerificar() {
         `Há um lançamento não salvo de <strong>${escapeHtml(quando)}</strong>`
         + (resumo ? ` — ${escapeHtml(resumo)}` : '')
         + `.${aviso}<div class="banner-acoes">`
-        + (r.__orfao ? '' : `<button class="btn-primario" onclick="fmRascunhoRestaurar()">Continuar</button>`)
+        + (r.__orfao || r.__outraEmpresa ? '' : `<button class="btn-primario" onclick="fmRascunhoRestaurar()">Continuar</button>`)
         + `<button class="btn-cancelar" onclick="fmRascunhoDescartar()">Descartar</button></div>`;
 }
 
@@ -187,6 +202,12 @@ function fmRascunhoVerificar() {
 function fmRascunhoRestaurar() {
     const r = _fmRascunhoPendente;
     if (!r) return;
+    // A faixa já esconde o Continuar nesse caso; a guarda repete aqui porque
+    // a empresa ativa pode ter mudado entre desenhar a faixa e o clique.
+    if (r.empresaAtiva && empresaFiltroGlobal && r.empresaAtiva !== empresaFiltroGlobal) {
+        mostrarToast(`Este lançamento foi começado em ${r.empresaAtiva}. Troque para essa empresa para continuar.`, 'aviso', 6000);
+        return;
+    }
 
     const c = r.campos;
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };

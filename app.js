@@ -8,6 +8,11 @@
 window._usuarioAtual = null; // { uid, nome, email, role, empresas[] }
 let empresaFiltroGlobal = null;
 let empresaFiltroNome   = "";
+// O id da empresa ativa, ao lado do nome. As duas globais acima guardam o
+// NOME, e o nome muda num rename; o id não. É ele que permite reconhecer a
+// empresa ativa depois de um rename feito aqui ou por um colega — ver
+// `_reconciliarEmpresaAtiva`.
+let empresaFiltroId     = null;
 
 /* ─── INICIALIZAÇÃO DO AUTH ─── */
 let _authJaProcessado = false;
@@ -286,8 +291,14 @@ async function fazerLogout() {
     // O rascunho é apagado no logout: a chave é por usuário, mas deixar
     // trabalho de um turno esperando o próximo login não ajuda ninguém.
     if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
+    // `authLogout` não recarrega a página: sem isto, o próximo login nesta
+    // aba — talvez de outra pessoa — herdava o formulário e a lista da
+    // sessão do turno anterior.
+    if (typeof limparFormulario === 'function') limparFormulario();
+    if (typeof _idsSessao !== 'undefined') { _idsSessao = []; if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar(); }
     empresaFiltroGlobal = null;
     empresaFiltroNome   = "";
+    empresaFiltroId     = null;
     window._usuarioAtual = null;
     await window._firestore.authLogout();
 }
@@ -297,6 +308,7 @@ async function fazerLogout() {
 function _aplicarEmpresaAtiva(nome) {
     empresaFiltroGlobal = nome || null;
     empresaFiltroNome   = nome || "";
+    empresaFiltroId     = nome ? ((db.empresas || []).find(e => e.nome === nome)?.id || null) : null;
 
     const label = document.getElementById("empresaAtivaLabel");
     if (label) label.textContent = nome || "—";
@@ -310,9 +322,69 @@ function _aplicarEmpresaAtiva(nome) {
     if (typeof atualizarTituloHeader === "function") atualizarTituloHeader(telaAtualId);
 
     const ei = document.getElementById("empresaInput");
-    if (ei) { ei.value = nome || ""; ei.disabled = !!nome; }
+    if (ei) {
+        ei.value = nome || ""; ei.disabled = !!nome;
+        ei.title = nome ? "Definida pela empresa ativa, no cabeçalho" : "";
+    }
     const es = document.getElementById("empresaSelect");
     if (es && nome) es.value = nome;
+}
+
+/**
+ * Reconcilia a empresa ativa com o cadastro, depois de qualquer coisa que
+ * possa ter mudado o cadastro: rename, inativação, exclusão, snapshot de um
+ * colega, restauração de backup.
+ *
+ * A empresa ativa é guardada pelo NOME, e as notas também. Um rename
+ * propagava o nome novo para todas as notas e deixava a global com o velho:
+ * os relatórios ficavam vazios, e uma nota lançada nesse estado não entrava
+ * em documento nenhum — sumia no carregamento seguinte com a pílula dizendo
+ * sincronizado. Testado na rodada 10. O id é o que não muda.
+ */
+let _avisouEmpresaAtivaInativa = false;
+
+function _reconciliarEmpresaAtiva() {
+    if (!empresaFiltroGlobal) return;
+    const empresas = db.empresas || [];
+    const emp = (empresaFiltroId && empresas.find(e => e.id === empresaFiltroId))
+             || empresas.find(e => e.nome === empresaFiltroGlobal);
+
+    if (!emp) {
+        mostrarToast(`A empresa ativa, ${empresaFiltroGlobal}, não existe mais no cadastro. `
+            + `Escolha outra no cabeçalho antes de lançar.`, "erro", 10000);
+        return;
+    }
+
+    if (emp.nome !== empresaFiltroGlobal) {
+        const antigo = empresaFiltroGlobal;
+        // O rascunho guardado com o nome velho continuaria preso a uma
+        // empresa que não existe mais, e só poderia ser descartado.
+        try {
+            const chave = typeof _fmChaveRascunho === "function" ? _fmChaveRascunho() : null;
+            const bruto = chave && localStorage.getItem(chave);
+            if (bruto) {
+                const r = JSON.parse(bruto);
+                if (r.empresaAtiva === antigo) {
+                    r.empresaAtiva = emp.nome;
+                    if (r.campos && r.campos.empresa === antigo) r.campos.empresa = emp.nome;
+                    localStorage.setItem(chave, JSON.stringify(r));
+                }
+            }
+        } catch (_) {}
+        setEmpresaFiltro(emp.nome);
+        mostrarToast(`A empresa ativa foi renomeada: ${antigo} agora se chama ${emp.nome}.`, "info", 6000);
+    } else {
+        empresaFiltroId = emp.id;
+    }
+
+    if (emp.ativo === false) {
+        if (!_avisouEmpresaAtivaInativa) {
+            _avisouEmpresaAtivaInativa = true;
+            mostrarToast(`A empresa ativa, ${emp.nome}, foi inativada no cadastro.`, "aviso", 8000);
+        }
+    } else {
+        _avisouEmpresaAtivaInativa = false;
+    }
 }
 
 /**
@@ -325,7 +397,8 @@ function _aplicarEmpresaAtiva(nome) {
  */
 function setEmpresaFiltro(nome) {
     _aplicarEmpresaAtiva(nome);
-    localStorage.setItem("ultimaEmpresa", nome);
+    try { localStorage.setItem("ultimaEmpresa", nome); } catch (_) {}
+    if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar();
     const telaAtualId = document.querySelector(".tela[style*='block']")?.id;
     if (telaAtualId) {
         switch (telaAtualId) {
@@ -373,7 +446,76 @@ function abrirTrocarEmpresa() {
 
 function selecionarEmpresaModal(nome) {
     fecharTrocarEmpresa();
+    trocarEmpresaAtiva(nome);
+}
+
+/* ─── A PORTA ÚNICA DA TROCA DE EMPRESA (rodada 10) ───
+   A empresa ativa é o contexto, e o formulário pertence a ela. Quando o
+   contexto muda, o que estava na tela para a empresa anterior sai: com
+   pergunta se havia trabalho, em silêncio se era só a herança do lote.
+
+   Antes a troca não perguntava nada, reescrevia o campo Empresa e deixava
+   o resto — e uma nota em EDIÇÃO mudava de empresa e de documento ao ser
+   salva, sem modal nenhum. Testado na rodada 10.
+
+   Não é (c), guardar como rascunho da empresa anterior: o rascunho tem uma
+   chave por usuário e grava a empresa ativa no momento da gravação, então
+   o que (c) prometesse guardar seria reetiquetado ou sobrescrito meio
+   segundo depois. */
+
+/** Há trabalho na tela além do que "Salvar e lançar próxima" deixa? */
+function _formularioTemAlemDaHeranca() {
+    if (typeof _fmRascunhoCapturar !== 'function') return false;
+    const r = _fmRascunhoCapturar();
+    const c = r.campos || {};
+    if (c.dataNota || c.numeroNota || c.motorista || c.placa || c.observacoes) return true;
+    return (r.itens || []).some(i => i.tipo || i.qtd || i.qtdDescargada || i.valor);
+}
+
+async function trocarEmpresaAtiva(nome) {
+    if (!nome) return false;
+    if (nome === empresaFiltroGlobal) return true;
+
+    // O marcador de sujo não basta: edição, clone e XML preenchem por script
+    // e só marcam quando criam uma linha de combustível. Base e Data da
+    // Descarga sozinhas não contam — são a herança do lote, e saem sem
+    // pergunta.
+    const clonando  = typeof isClonando !== 'undefined' && isClonando;
+    const editando  = typeof lancamentoEditandoId !== 'undefined' && !!lancamentoEditandoId && !clonando;
+    const perguntar = _formularioSujo || editando || clonando || _formularioTemAlemDaHeranca();
+    const atual     = empresaFiltroGlobal || 'a empresa atual';
+
+    if (perguntar) {
+        const nota = (document.getElementById('numeroNota')?.value || '').trim();
+        const msg = editando
+            ? `Você está editando a nota ${nota || 'sem número'} de ${atual}.\n\n`
+              + `Trocar para ${nome} abandona a edição. A nota continua gravada como estava.`
+            : `Há um lançamento preenchido para ${atual}.\n\n`
+              + `Trocar para ${nome} descarta o que está na tela.`;
+        // Cancelar não muda nada: nem a empresa, nem o campo, nem o rascunho.
+        if (!await fmConfirm({
+            titulo: 'Trocar de empresa?',
+            msg,
+            confirmTxt: 'Descartar e trocar',
+            cancelTxt: `Continuar em ${atual}`,
+            tipo: 'perigo'
+        })) return false;
+    }
+
+    // Limpeza completa e sem segundo modal. Não é `descartarFormulario`, que
+    // abre a própria pergunta, nem `limparFormularioParcial`, que mantém a
+    // Base e a Data da Descarga da empresa anterior.
+    if (typeof limparFormulario === 'function') {
+        limparFormulario({ preservarRascunhoPendente: !perguntar });
+    }
+    if (typeof _limparConferenciaCarregada === 'function') _limparConferenciaCarregada();
+
     setEmpresaFiltro(nome);
+
+    const tela = document.querySelector(".tela[style*='block']")?.id;
+    if (tela === 'lancamentos' && typeof fmRascunhoVerificar === 'function') fmRascunhoVerificar();
+    mostrarToast(`Empresa ativa: ${nome}`, 'info', 3000);
+    return true;
 }
 
 function fecharTrocarEmpresa() {
@@ -1026,6 +1168,8 @@ function _aoReceberDoc(nome, dados, empresaId) {
     } else if (nome === _NOME_COMPARTILHADO) {
         const lancamentos = db.lancamentos;
         db = _mesclarComPadrao(Object.assign({}, dados, { lancamentos }));
+        // Um colega pode ter renomeado ou inativado a empresa ativa daqui.
+        _reconciliarEmpresaAtiva();
     } else {
         _absorverLancamentos(empresaId, dados.lancamentos);
     }
@@ -1310,9 +1454,18 @@ let _formularioSujo = false;
  */
 function _aplicarMarcadorSujo() {
     const titulo = document.getElementById("tituloLancamentos");
-    if (!titulo) return;
-    const base = titulo.textContent.replace(/^●\s*/, "");
-    titulo.textContent = _formularioSujo ? "● " + base : base;
+    if (titulo) {
+        const base = titulo.textContent.replace(/^●\s*/, "");
+        titulo.textContent = _formularioSujo ? "● " + base : base;
+    }
+    // O `h2` da tela fica oculto de propósito — `atualizarTitulosInternos`
+    // esconde todos, porque o título mora no cabeçalho. Por isso o `●` que
+    // o conserto de 03/09 "fez aparecer" nunca foi visto: ele era escrito
+    // num elemento com display:none. O marcador vai para onde se vê.
+    const telaAtual = document.querySelector(".tela[style*='block']")?.id;
+    if (telaAtual === "lancamentos" && typeof atualizarTituloHeader === "function") {
+        atualizarTituloHeader("lancamentos");
+    }
 }
 
 function marcarFormularioSujo() {
@@ -1485,6 +1638,7 @@ async function restaurarBackupAutomatico(chave) {
         salvarDB();
         migrarDados();
         atualizarListas();
+        _reconciliarEmpresaAtiva();
         atualizarInfoSistema();
         if (window._firestore) _ligarListenerTempoReal();
         mostrarToast("Backup restaurado e sincronizado com a nuvem!", "sucesso");

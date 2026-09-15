@@ -66,7 +66,10 @@ function marcarNavAtivo(telaId) {
 function atualizarTituloHeader(telaId) {
     const titulo = TITULOS_TELAS[telaId] || telaId;
     const el = document.getElementById("headerPageTitle");
-    if (el) el.textContent = titulo;
+    // Na tela de lançamento, o título do cabeçalho carrega o marcador de
+    // formulário sujo: é o único título visível da tela.
+    const sujo = telaId === "lancamentos" && typeof _formularioSujo !== "undefined" && _formularioSujo;
+    if (el) el.textContent = sujo ? "● " + titulo : titulo;
 }
 
 /* ========== RELÓGIO NO HEADER ========== */

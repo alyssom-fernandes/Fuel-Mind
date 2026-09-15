@@ -723,7 +723,10 @@ ul li.inativo { opacity: 0.45; }
 .modal { background: var(--surface-raised); border-radius: var(--radius-xl); padding: 28px 30px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1); }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.93) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 .modal h3 { color: var(--text); margin-bottom: 20px; font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; text-transform: none; letter-spacing: 0; }
-.modal-acoes { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+.modal-acoes { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
+/* Botão com nome de empresa no rótulo pode passar da largura do modal:
+   quebra a linha em vez de vazar pela borda. */
+.modal-acoes button { max-width: 100%; white-space: normal; }
 
 /* ══ BADGES ══════════════════════════════════ */
 .badge-var { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
@@ -1221,6 +1224,25 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     transition:background 0.15s; white-space:nowrap;
 }
 .empresa-ativa-badge:hover { background: var(--primary-subtle4); }
+/* O badge virou <button> para ser alcançável por Tab: era um <div onclick>
+   sem tabindex, e quem trabalha só com teclado não conseguia trocar de
+   empresa. Estas linhas desfazem o estilo nativo do botão. */
+button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
+.empresa-ativa-badge:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* O campo Empresa travado pela empresa ativa era idêntico a um campo
+   editável — mesmo fundo, mesma cor, mesma borda. Não havia regra para
+   input desabilitado no projeto. */
+#empresaInput:disabled {
+    border-style: dashed;
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+/* O nome da empresa ao lado do título da lista da sessão: é ali que fica o
+   Desfazer, e é ali que importa saber de que empresa são as notas. */
+.sessao-empresa-titulo { font-weight: 600; color: var(--text-muted); }
 
 .btn-empresa-troca {
     width:100%; padding:12px 16px; text-align:left;

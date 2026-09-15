@@ -248,6 +248,7 @@ async function restaurarBackup(input) {
         salvarDB(); 
         migrarDados(); 
         atualizarListas(); 
+        if (typeof _reconciliarEmpresaAtiva === 'function') _reconciliarEmpresaAtiva();
         atualizarInfoSistema(); 
         carregarConfiguracoesTela();
         if (window._firestore && typeof _ligarListenerTempoReal === 'function') _ligarListenerTempoReal();
@@ -962,6 +963,22 @@ function _autosystemDetectarEProcessar() {
 }
 
 let _autoLinhasDados = [];
+
+/* Chamada na troca de empresa. O relatório do AutoSystem é da medição de
+   tanque de uma empresa, e a comparação é feita contra os lançamentos da
+   ativa: depois de uma troca, a tela mostrava a empresa anterior e o Excel
+   exportava a nova. Nada da conferência é gravado, então limpar não perde
+   dado. (Sair da tela não a desfaz, ao contrário do que o prompt dizia.) */
+function _limparConferenciaCarregada() {
+    if (!_autoLinhasDados.length && !_autoLinhas.length) return;
+    _autoLinhas = [];
+    _autoLinhasDados = [];
+    _autoCombustivel = '';
+    const c = document.getElementById('_confAutoResultado');
+    if (c) c.innerHTML = '';
+    const inp = document.querySelector('input[onchange="autosystemLerArquivo(this)"]');
+    if (inp) inp.value = '';
+}
 /** Rótulos das colunas que a leitura usou. Mostrados na tela: o operador
  *  precisa poder conferir contra que coluna o sistema comparou. */
 let _autoColunas = { data: '', entrada: '' };

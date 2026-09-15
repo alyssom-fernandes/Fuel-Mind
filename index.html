@@ -139,10 +139,10 @@
   <div class="header-actions">
     <div style="display:flex; align-items:center; gap:8px;">
       <span style="font-size:0.8rem; color:var(--text-light);">Empresa:</span>
-      <div id="empresaAtivaHeader" class="empresa-ativa-badge" onclick="abrirTrocarEmpresa()" title="Clique para trocar de empresa">
+      <button type="button" id="empresaAtivaHeader" class="empresa-ativa-badge" onclick="abrirTrocarEmpresa()" title="Clique para trocar de empresa">
         <span id="empresaAtivaLabel">—</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;opacity:0.6"><polyline points="6,9 12,15 18,9"/></svg>
-      </div>
+      </button>
     </div>
     <button class="btn-busca-global" onclick="abrirBuscaGlobal()" title="Busca global (Ctrl+K)" id="btnBuscaGlobal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -252,7 +252,7 @@
        desfazer à mão. É o que torna ficar na tela confiável, em vez de
        ir ao relatório conferir depois de cada nota. -->
   <div id="sessaoBloco" class="sessao-bloco" style="display:none">
-    <h3>Lançadas nesta sessão <span id="sessaoContador" class="sessao-contador"></span></h3>
+    <h3>Lançadas nesta sessão <span id="sessaoEmpresa" class="sessao-empresa-titulo"></span> <span id="sessaoContador" class="sessao-contador"></span></h3>
     <div id="sessaoLista"></div>
   </div>
 </div>

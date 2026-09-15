@@ -241,6 +241,38 @@ function validarLancamento() {
         if (!placa)     marcar("placaInput",     "Informe a placa.",               "bloqueio");
     }
 
+    // ── Empresa que não vira documento ──
+    // O lançamento guarda o NOME da empresa, e o documento de destino é
+    // resolvido por nome EXATO (`_empresaIdDoLancamento`). Um nome que não
+    // bate — a empresa ativa que foi renomeada, ou "transportadora aurora"
+    // digitado numa edição — fazia a nota não entrar em documento nenhum:
+    // ela sumia no próximo carregamento, com o toast dizendo que salvou e a
+    // pílula dizendo sincronizado. Testado na rodada 10. Agora é bloqueio.
+    if (empresa && typeof _empresaIdDoLancamento === "function") {
+        const idEmpresa  = _empresaIdDoLancamento({ empresa });
+        const permitidas = typeof _empresaIdsPermitidos === "function" ? _empresaIdsPermitidos() : null;
+        if (!idEmpresa) {
+            const parecida = (db.empresas || []).find(e =>
+                normalizarTexto(e.nome) === normalizarTexto(empresa));
+            marcar("empresaInput", parecida
+                ? `A empresa está cadastrada como "${parecida.nome}". Escreva o nome exatamente assim.`
+                : `"${empresa}" não é uma empresa cadastrada. A nota não teria onde ser gravada.`,
+                "bloqueio");
+        } else if (permitidas && !permitidas.includes(idEmpresa)) {
+            marcar("empresaInput", `Você não tem acesso à empresa "${empresa}".`, "bloqueio");
+        }
+    }
+
+    // ── Edição de uma nota que não está mais aqui ──
+    // Um restore de backup, por exemplo, pode tirar do vetor a nota que
+    // está aberta em edição. Salvar gravava em `db.lancamentos[-1]` — uma
+    // propriedade solta, fora do vetor — e mostrava "Lançamento atualizado".
+    if (typeof lancamentoEditandoId !== "undefined" && lancamentoEditandoId
+        && !(typeof isClonando !== "undefined" && isClonando)
+        && !(db.lancamentos || []).some(l => l.id === lancamentoEditandoId)) {
+        marcar(null, "A nota em edição não existe mais neste computador. Cancele a edição e abra a nota de novo pelo relatório.", "bloqueio");
+    }
+
     // ── Datas ──
     // Futuro é alerta: pode ser engano de digitação, pode ser relógio da
     // máquina, e a nota é de terceiro. Bloquear seria caro se errado.

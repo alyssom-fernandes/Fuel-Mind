@@ -664,6 +664,13 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
 
     if (lancamentoEditandoId && !isClonando) {
         const idx = db.lancamentos.findIndex(l => l.id === lancamentoEditandoId);
+        // A validação já bloqueia este caso; a guarda fica aqui porque
+        // `db.lancamentos[-1] = …` não falha — cria uma propriedade solta,
+        // fora do vetor, e a nota se perde com o toast dizendo que salvou.
+        if (idx === -1) {
+            mostrarToast("A nota em edição não existe mais. Nada foi gravado.", "erro", 8000);
+            return;
+        }
         db.lancamentos[idx] = lancamento;
         mostrarToast("Lançamento atualizado com sucesso!", "sucesso");
     } else {
@@ -821,12 +828,21 @@ function _sessaoRenderizar() {
     const lista = document.getElementById("sessaoLista");
     if (!bloco || !lista) return;
 
+    // A lista é da empresa ativa. `_idsSessao` continua guardando as notas
+    // de todas as empresas da sessão — voltar a uma empresa traz as dela de
+    // volta —, mas a tela só mostra as da ativa. Numa lista misturada, o
+    // Desfazer agia sobre uma nota que não era do contexto em que o
+    // operador estava.
     const presentes = _idsSessao
         .map(reg => {
             const l = (db.lancamentos || []).find(x => x.id === reg.id);
             return l ? { l, hora: reg.hora } : null;
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter(({ l }) => !empresaFiltroGlobal || l.empresa === empresaFiltroGlobal);
+
+    const nomeEmpresa = document.getElementById("sessaoEmpresa");
+    if (nomeEmpresa) nomeEmpresa.textContent = empresaFiltroGlobal ? `· ${empresaFiltroGlobal}` : "";
 
     if (!presentes.length) { bloco.style.display = "none"; lista.innerHTML = ""; return; }
 
@@ -879,8 +895,21 @@ const _CAMPOS_LOG = ['dataNota', 'dataDescarga', 'numeroNota', 'base',
  * objeto.
  */
 function _diffLancamento(antes, depois) {
+    // Número se compara pelo valor, não pela representação. O total é
+    // recalculado a cada salvamento como soma de quantidade vezes preço, e
+    // o ponto flutuante devolve 37902.600000000006 para o que estava gravado
+    // como 37902.6 — sem esta guarda, toda edição registrava no histórico
+    // uma alteração de total que ninguém fez. Seis casas cobrem com folga
+    // as três da quantidade e as quatro do preço.
+    const igual = (x, y) => {
+        if (typeof x === 'number' && typeof y === 'number') {
+            return Number(x.toFixed(6)) === Number(y.toFixed(6));
+        }
+        return (x ?? '') === (y ?? '');
+    };
+
     const mudou = _CAMPOS_LOG
-        .filter(c => (antes[c] ?? '') !== (depois[c] ?? ''))
+        .filter(c => !igual(antes[c], depois[c]))
         .map(c => ({ campo: c, de: antes[c] ?? '', para: depois[c] ?? '' }));
 
     const porTipo = lista => {
@@ -895,7 +924,7 @@ function _diffLancamento(antes, depois) {
         if (!a[tipo]) { mudou.push({ campo: tipo, de: '—', para: 'acrescentado' }); return; }
         if (!d[tipo]) { mudou.push({ campo: tipo, de: 'existia', para: 'removido' }); return; }
         ['qtd', 'qtdDescargada', 'valor'].forEach(p => {
-            if ((a[tipo][p] ?? '') !== (d[tipo][p] ?? '')) {
+            if (!igual(a[tipo][p], d[tipo][p])) {
                 mudou.push({ campo: `${tipo} · ${p}`, de: a[tipo][p] ?? '—', para: d[tipo][p] ?? '—' });
             }
         });
@@ -986,7 +1015,7 @@ async function _sessaoRefazer(id) {
  *
  * @param {string} id - ID do lançamento a editar
  */
-function editarLancamento(id) {
+async function editarLancamento(id) {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) { console.warn('[editarLancamento] não encontrou id:', id); return; }
     // Editar um lançamento que não vale mais o traria de volta pela porta
@@ -997,6 +1026,14 @@ function editarLancamento(id) {
             ? "Esta nota está cancelada na origem e não pode ser editada."
             : "Este lançamento está excluído. Restaure antes de editar.", "aviso", 5000);
         return;
+    }
+    // Uma nota só é editada sob a própria empresa. A busca global, a
+    // auditoria de datas e o Dashboard abrem notas de qualquer empresa, e a
+    // edição sob outra empresa ativa acabava movendo a nota na primeira
+    // reentrada na tela. Trocar passa pela mesma porta — e pela mesma
+    // pergunta, se houver trabalho na tela.
+    if (empresaFiltroGlobal && l.empresa && l.empresa !== empresaFiltroGlobal) {
+        if (typeof trocarEmpresaAtiva !== 'function' || !await trocarEmpresaAtiva(l.empresa)) return;
     }
 
     lancamentoEditandoId = id;
@@ -1107,7 +1144,10 @@ function clonarLancamento(id) {
 /*=================================================
   LIMPAR FORMULÁRIO
 =================================================*/
-function limparFormulario() {
+function limparFormulario(opcoes) {
+    // `opcoes` pode chegar como Event quando a função é usada direto num
+    // onclick; só um objeto com a propriedade conta.
+    const preservarRascunho = !!(opcoes && opcoes.preservarRascunhoPendente);
     lancamentoEditandoId = null;
     isClonando = false;
     ["dataNota","dataDescarga","numeroNota","observacoes"].forEach(id => {
@@ -1139,7 +1179,15 @@ function limparFormulario() {
     alternarCampoDescarga(false);
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
-    if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
+    if (preservarRascunho) {
+        // A troca de empresa limpa a tela sem ter perguntado nada — só havia
+        // a herança do lote, ou nada. O rascunho guardado, se houver, é de
+        // uma sessão anterior e ainda espera o operador decidir; não pode
+        // sumir por causa de uma troca.
+        if (typeof _fmRascunhoTimer !== 'undefined') clearTimeout(_fmRascunhoTimer);
+    } else if (typeof fmRascunhoApagar === 'function') {
+        fmRascunhoApagar();
+    }
     atualizarTotalizadorNota();
 }
 
