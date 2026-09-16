@@ -28,7 +28,7 @@ let _importacaoEmpresa = null;
 ─────────────────────────────────────────────*/
 const CAMPOS_IMPORTACAO = [
     { id: "dataNota",      label: "Data da Nota *",          obrigatorio: true  },
-    { id: "dataDescarga",  label: "Data da Descarga",        obrigatorio: false },
+    { id: "dataDescarga",  label: "Data da Descarga *",      obrigatorio: true  },
     { id: "numeroNota",    label: "Número da Nota *",        obrigatorio: true  },
     { id: "base",          label: "Base (Distribuidora)",    obrigatorio: false },
     { id: "empresa",       label: "Empresa / Fornecedor",    obrigatorio: false },
@@ -622,6 +622,12 @@ function importacaoProcessar() {
         const observacoes  = get("observacoes");
 
         if (!dataNota)    { erros.push(`Linha ${linhaNum}: Data da Nota inválida ("${get("dataNota")}")`); return; }
+        // A descarga é obrigatória, como no lançamento (rodada 11, decisão do
+        // dono): o lançamento só existe depois que o combustível entrou nos
+        // tanques. Antes, a linha sem descarga recebia a data da nota, e a
+        // entrada ficava com uma data que ninguém informou.
+        if (!dataDescarga) { erros.push(`Linha ${linhaNum}: Data da Descarga ${get("dataDescarga") ? `inválida ("${get("dataDescarga")}")` : "vazia"}`); return; }
+        if (dataDescarga < dataNota) { erros.push(`Linha ${linhaNum}: Data da Descarga (${formatarData(dataDescarga)}) anterior à Data da Nota (${formatarData(dataNota)})`); return; }
         if (!numeroNota)  { erros.push(`Linha ${linhaNum}: Número da Nota vazio`); return; }
         if (!motorista)   { erros.push(`Linha ${linhaNum}: Motorista vazio`); return; }
         if (!placa)       { erros.push(`Linha ${linhaNum}: Placa vazia`); return; }
@@ -925,7 +931,7 @@ function importacaoConfirmar() {
         db.lancamentos.push({
             id:           gerarId(),
             dataNota:     nota.dataNota,
-            dataDescarga: nota.dataDescarga || nota.dataNota,
+            dataDescarga: nota.dataDescarga,
             numeroNota:   nota.numeroNota,
             base:         nota.base,
             empresa:      nota.empresa,

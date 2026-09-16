@@ -640,6 +640,17 @@ function _irParaPagina(pagina, contexto) {
  *
  * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  */
+/** O período do Relatório em texto, com a base: vai no cabeçalho do PDF e
+ *  do Excel. O período desta tela é pela data de emissão (rodada 11). */
+function _descricaoPeriodoRelatorio() {
+    const ini = document.getElementById("filtroDataInicio")?.value || "";
+    const fim = document.getElementById("filtroDataFim")?.value || "";
+    return ini && fim ? `emissão de ${formatarData(ini)} a ${formatarData(fim)}`
+         : ini ? `emissão a partir de ${formatarData(ini)}`
+         : fim ? `emissão até ${formatarData(fim)}`
+         : "todas as datas de emissão";
+}
+
 function exportarExcel(contexto) {
     // Exportação leva só o que conta: um Excel não tem "riscado"
     // confiável, e uma linha morta numa planilha vira soma errada na
@@ -658,6 +669,13 @@ function exportarExcel(contexto) {
         ];
     });
     linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
+    // Cabeçalho do período, como no PDF: sem ele, a planilha não dizia de
+    // que intervalo nem de que data eram as notas (rodada 11).
+    linhas.unshift(
+        [`Relatório — ${_descricaoPeriodoRelatorio()}`],
+        [`${empresaFiltroGlobal ? empresaFiltroGlobal + " · " : ""}Gerado em ${formatarData(_hojeISO())}`],
+        []
+    );
     const ws = XLSX.utils.aoa_to_sheet(linhas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
@@ -769,13 +787,7 @@ async function exportarPDF(contexto) {
     // O cabeçalho diz o período e de que data ele é. Antes dizia só
     // "Relatório — Gerado em", e quem recebia o PDF — o contador — não sabia
     // se aquilo era o mês inteiro, parte dele ou tudo (rodada 11).
-    const _pIni = document.getElementById("filtroDataInicio")?.value || "";
-    const _pFim = document.getElementById("filtroDataFim")?.value || "";
-    const _periodoPDF = _pIni && _pFim ? `emissão de ${formatarData(_pIni)} a ${formatarData(_pFim)}`
-                      : _pIni ? `emissão a partir de ${formatarData(_pIni)}`
-                      : _pFim ? `emissão até ${formatarData(_pFim)}`
-                      : "todas as datas de emissão";
-    const tituloCtx = `${contexto === 'relatorio' ? 'Relatório' : 'Histórico'} — ${_periodoPDF}`;
+    const tituloCtx = `${contexto === 'relatorio' ? 'Relatório' : 'Histórico'} — ${_descricaoPeriodoRelatorio()}`;
 
     // ── Monta colunas dinamicamente ──
     const head = ["Data Nota", "Data Desc.", "Nota"];

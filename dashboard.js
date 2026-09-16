@@ -45,13 +45,16 @@ function dispararNotificacao(titulo, corpo, tag, id) {
    setembro era comparada com os preços de setembro (rodada 11). Continua
    sendo média, e não a mediana da tela de lançamento — as duas réguas são
    assunto do tema 28. */
-function _mediaPrecoPeriodo(nomeCombustivel, dias, ateISO) {
+function _mediaPrecoPeriodo(nomeCombustivel, dias, ateISO, idIgnorar) {
     const fim    = ateISO || _hojeISO();
     const inicio = _somarDiasISO(fim, -dias);
     const precos = db.lancamentos
         .filter(l => {
             if (!lancamentoAtivo(l)) return false;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
+            // A nota julgada não entra na régua que a julga: com ela dentro, a
+            // média se aproxima do próprio preço e o alerta cala.
+            if (idIgnorar && l.id === idIgnorar) return false;
             const e = dataEmissaoDe(l);
             return e >= inicio && e <= fim;
         })
@@ -61,9 +64,10 @@ function _mediaPrecoPeriodo(nomeCombustivel, dias, ateISO) {
     return precos.reduce((s, v) => s + v, 0) / precos.length;
 }
 
-function _mediaVolumePorNota(nomeCombustivel) {
+function _mediaVolumePorNota(nomeCombustivel, idIgnorar) {
     const volumes = db.lancamentos
-        .filter(l => lancamentoAtivo(l) && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal))
+        .filter(l => lancamentoAtivo(l) && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
+                  && (!idIgnorar || l.id !== idIgnorar))
         .flatMap(l => l.itens.filter(i => i.tipo === nomeCombustivel && i.qtd > 0))
         .map(i => i.qtd);
     if (volumes.length === 0) return 0;
@@ -251,7 +255,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
         l.itens.forEach(i => {
             const chavePreco = `preco|${l.numeroNota}|${i.tipo}`;
             if (cfg.precoAtivo && i.valor > 0 && !ignorados[chavePreco]) {
-                const media = _mediaPrecoPeriodo(i.tipo, cfg.precoPeriodoDias, dataEmissaoDe(l));
+                const media = _mediaPrecoPeriodo(i.tipo, cfg.precoPeriodoDias, dataEmissaoDe(l), l.id);
                 const diff  = i.valor - media;
                 if (media > 0 && diff >= cfg['precoDiferencaR$']) {
                     alertas.push({
@@ -260,10 +264,10 @@ function _renderAlertas(lancDescarga, lancEmissao) {
                         titulo: `Preço alto — ${escapeHtml(i.tipo)}`,
                         msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
                              `<strong>${fmtR4(i.valor)}/L</strong> — ` +
-                             `R$&nbsp;${diff.toFixed(2)} acima da média dos ${cfg.precoPeriodoDias} dias até a emissão ` +
+                             `${fmtR(diff).replace(' ', '&nbsp;')} acima da média dos ${cfg.precoPeriodoDias} dias até a emissão ` +
                              `(média: ${fmtR4(media)}/L)`,
                         id: l.id,
-                        notificacao: `Preço alto em ${l.numeroNota}: ${fmtR4(i.valor)}/L (R$ ${diff.toFixed(2)} acima da média)`
+                        notificacao: `Preço alto em ${l.numeroNota}: ${fmtR4(i.valor)}/L (${fmtR(diff)} acima da média)`
                     });
                 }
             }
@@ -274,7 +278,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
         l.itens.forEach(i => {
             const chaveVol   = `vol|${l.numeroNota}|${i.tipo}`;
             if (cfg.volumeAtivo && i.qtd > 0 && !ignorados[chaveVol]) {
-                const mediaVol = _mediaVolumePorNota(i.tipo);
+                const mediaVol = _mediaVolumePorNota(i.tipo, l.id);
                 if (mediaVol > 0) {
                     const varPerc = ((i.qtd - mediaVol) / mediaVol) * 100;
                     if (varPerc >= cfg.volumeAcimaPerc) {
