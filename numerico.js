@@ -33,7 +33,8 @@ const FM_CASAS = {
     taxaFreteEmpresa:     4,
     perdaCombustivel:     2,
     modalInputTaxaFrete:  4,
-    modalInputPerda:      2
+    modalInputPerda:      2,
+    _cfgPrecoDif:         2
 };
 
 function _fmCasasDe(el) {

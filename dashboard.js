@@ -40,30 +40,6 @@ function dispararNotificacao(titulo, corpo, tag, id) {
     };
 }
 
-/* Média dos preços de um combustível nos `dias` que terminam em `ateISO`,
-   pela data de emissão. A âncora era hoje: uma nota de agosto vista em
-   setembro era comparada com os preços de setembro (rodada 11). Continua
-   sendo média, e não a mediana da tela de lançamento — as duas réguas são
-   assunto do tema 28. */
-function _mediaPrecoPeriodo(nomeCombustivel, dias, ateISO, idIgnorar) {
-    const fim    = ateISO || _hojeISO();
-    const inicio = _somarDiasISO(fim, -dias);
-    const precos = db.lancamentos
-        .filter(l => {
-            if (!lancamentoAtivo(l)) return false;
-            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-            // A nota julgada não entra na régua que a julga: com ela dentro, a
-            // média se aproxima do próprio preço e o alerta cala.
-            if (idIgnorar && l.id === idIgnorar) return false;
-            const e = dataEmissaoDe(l);
-            return e >= inicio && e <= fim;
-        })
-        .flatMap(l => l.itens.filter(i => i.tipo === nomeCombustivel && i.valor > 0))
-        .map(i => i.valor);
-    if (precos.length === 0) return 0;
-    return precos.reduce((s, v) => s + v, 0) / precos.length;
-}
-
 function _mediaVolumePorNota(nomeCombustivel, idIgnorar) {
     const volumes = db.lancamentos
         .filter(l => lancamentoAtivo(l) && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
@@ -248,29 +224,31 @@ function _renderAlertas(lancDescarga, lancEmissao) {
     const hoje      = new Date(); hoje.setHours(0,0,0,0);
     const alertas   = [];
 
-    // Preço alto: notas EMITIDAS no período, cada uma comparada com a média
-    // dos dias que terminam na emissão dela. Volume e data suspeita: notas
+    // Preço: notas EMITIDAS no período, cada uma julgada pela mesma régua do
+    // lançamento — mediana dos dias que terminam na emissão dela, sem ela
+    // mesma, para cima ou para baixo (`referenciaPrecoCombustivel` e
+    // `julgarPreco`, em utils.js). Volume e data suspeita: notas
     // DESCARREGADAS no período.
     lancEmissao.forEach(l => {
         l.itens.forEach(i => {
             const chavePreco = `preco|${l.numeroNota}|${i.tipo}`;
-            if (cfg.precoAtivo && i.valor > 0 && !ignorados[chavePreco]) {
-                const media = _mediaPrecoPeriodo(i.tipo, cfg.precoPeriodoDias, dataEmissaoDe(l), l.id);
-                const diff  = i.valor - media;
-                if (media > 0 && diff >= cfg['precoDiferencaR$']) {
-                    alertas.push({
-                        tipo: 'preco', chave: chavePreco,
-                        icone: '', cor: 'laranja',
-                        titulo: `Preço alto — ${escapeHtml(i.tipo)}`,
-                        msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
-                             `<strong>${fmtR4(i.valor)}/L</strong> — ` +
-                             `${fmtR(diff).replace(' ', '&nbsp;')} acima da média dos ${cfg.precoPeriodoDias} dias até a emissão ` +
-                             `(média: ${fmtR4(media)}/L)`,
-                        id: l.id,
-                        notificacao: `Preço alto em ${l.numeroNota}: ${fmtR4(i.valor)}/L (${fmtR(diff)} acima da média)`
-                    });
-                }
-            }
+            if (!cfg.precoAtivo || !(i.valor > 0) || ignorados[chavePreco]) return;
+            const ref   = referenciaPrecoCombustivel(i.tipo, dataEmissaoDe(l), l.id);
+            const juizo = julgarPreco(i.valor, ref.mediana);
+            if (!juizo) return;
+            const sentido = juizo.acima ? 'acima' : 'abaixo';
+            const difTxt  = fmtR4(Math.abs(juizo.diferenca));
+            alertas.push({
+                tipo: 'preco', chave: chavePreco,
+                icone: '', cor: 'laranja',
+                titulo: `Preço ${juizo.acima ? 'alto' : 'baixo'} — ${escapeHtml(i.tipo)}`,
+                msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
+                     `<strong>${fmtR4(i.valor)}/L</strong> — ` +
+                     `${difTxt.replace(' ', '&nbsp;')}/L ${sentido} da referência dos ${ref.dias} dias até a emissão ` +
+                     `(${fmtR4(ref.mediana)}/L, ${ref.amostras} ${ref.amostras === 1 ? 'nota' : 'notas'})`,
+                id: l.id,
+                notificacao: `Preço ${juizo.acima ? 'alto' : 'baixo'} em ${l.numeroNota}: ${fmtR4(i.valor)}/L (${difTxt}/L ${sentido} da referência)`
+            });
         });
     });
 

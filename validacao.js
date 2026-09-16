@@ -51,11 +51,12 @@ const _CAMPOS_VALIDADOS = [
    sobe o bastante para achar que 9,90 é quase normal. A mediana ignora
    o extremo.
 
-   Janela de sete dias, e não de trinta (decisão do dono, tema 06).
-   Combustível reajusta na refinaria: com trinta dias, uma alta de 15%
-   deixa a régua velha por semanas e o sistema passa a repreender
-   lançamento correto — que é o caminho mais curto para o operador
-   aprender a ignorar o aviso.
+   Janela padrão de sete dias, e não de trinta (decisão do dono, tema 06,
+   confirmada em 16/09). Combustível reajusta na refinaria: com trinta
+   dias, uma alta de 15% deixa a régua velha por semanas e o sistema passa
+   a repreender lançamento correto — que é o caminho mais curto para o
+   operador aprender a ignorar o aviso. Os dias e a diferença (em R$/L,
+   padrão R$ 0,25) são configuráveis, iguais para todos.
 
    E o sistema nunca cala: basta uma nota no histórico (também decisão
    do dono). O custo conhecido é que a segunda nota de um combustível
@@ -70,10 +71,11 @@ const _CAMPOS_VALIDADOS = [
    de três meses atrás, de um período de crise do petróleo, era comparada
    com os preços desta semana. Sem data da nota ainda, a janela termina
    hoje. Nota posterior à data da nota não entra.
+
+   A conta em si mora em `utils.js` (`referenciaPrecoCombustivel` e
+   `julgarPreco`), porque o Dashboard usa a mesma: uma régua só, com janela
+   e diferença em R$/L configuradas em Sistema › Ajustar Alertas.
    ────────────────────────────────────────────────────────────────── */
-const PRECO_AMOSTRA_MINIMA = 1;
-const PRECO_TOLERANCIA     = 0.10;
-const PRECO_JANELA_DIAS    = 7;
 
 /** Último dia da janela da referência: a data da nota no formulário, ou hoje. */
 function _fimJanelaPreco() {
@@ -81,35 +83,9 @@ function _fimJanelaPreco() {
     return (el && el.value) || _hojeISO();
 }
 
+/** A referência da nota que está no formulário, sem ela mesma numa edição. */
 function referenciaPreco(nomeCombustivel) {
-    const fimStr    = _fimJanelaPreco();
-    const limiteStr = _somarDiasISO(fimStr, -PRECO_JANELA_DIAS);
-
-    const precos = (db.lancamentos || [])
-        .filter(l => {
-            // A régua é uma estatística do que aconteceu de verdade. Nota
-            // excluída não aconteceu; nota cancelada foi desfeita. E com
-            // PRECO_AMOSTRA_MINIMA valendo 1, uma única nota morta basta
-            // para o sistema declarar que tem referência e julgar por ela.
-            if (!lancamentoAtivo(l)) return false;
-            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-            if (lancamentoEditandoId && l.id === lancamentoEditandoId) return false;
-            const emissao = dataEmissaoDe(l);
-            return emissao >= limiteStr && emissao <= fimStr;
-        })
-        .flatMap(l => (l.itens || [])
-            .filter(i => i.tipo === nomeCombustivel && i.valor > 0)
-            .map(i => i.valor))
-        .sort((a, b) => a - b);
-
-    if (precos.length < PRECO_AMOSTRA_MINIMA) {
-        return { mediana: 0, amostras: precos.length };
-    }
-    const meio = Math.floor(precos.length / 2);
-    const mediana = precos.length % 2
-        ? precos[meio]
-        : (precos[meio - 1] + precos[meio]) / 2;
-    return { mediana, amostras: precos.length };
+    return referenciaPrecoCombustivel(nomeCombustivel, _fimJanelaPreco(), lancamentoEditandoId);
 }
 
 function _plural(n, singular, plural) {
@@ -136,16 +112,15 @@ function _desenharReferenciaPreco(linha, tipo) {
     if (antigo) antigo.remove();
     if (!tipo) return;
 
-    const { mediana, amostras } = referenciaPreco(tipo);
+    const { mediana, amostras, dias, fim } = referenciaPreco(tipo);
     const ref = document.createElement("span");
     ref.className = "ref-preco";
     // Quando a janela não termina hoje, o badge diz onde ela termina: sem
     // isso, "7 dias" numa nota antiga seria lido como a última semana.
-    const fim = _fimJanelaPreco();
     const ate = fim === _hojeISO() ? "" : ` até ${formatarData(fim).slice(0, 5)}`;
     ref.textContent = mediana
-        ? `referência ${fmtR4(mediana)}/L · ${PRECO_JANELA_DIAS} dias${ate} · ${_plural(amostras, "nota", "notas")}`
-        : `sem histórico nos ${PRECO_JANELA_DIAS} dias${ate || " anteriores"}`;
+        ? `referência ${fmtR4(mediana)}/L · ${dias} dias${ate} · ${_plural(amostras, "nota", "notas")}`
+        : `sem histórico nos ${dias} dias${ate || " anteriores"}`;
     // Antes do aviso de preço, quando os dois estiverem na célula: a
     // régua vem primeiro, o julgamento depois.
     wrapper.insertBefore(ref, wrapper.querySelector(".aviso-preco"));
@@ -380,13 +355,12 @@ function validarLancamento() {
         if (!tipo || !valor) return;
 
         const { mediana, amostras } = referenciaPreco(tipo);
-        if (!mediana) return;   // sem nenhuma nota na janela: não há o que comparar
-        const desvio = (valor - mediana) / mediana;
-        if (Math.abs(desvio) <= PRECO_TOLERANCIA) return;
+        // Sem nota na janela, ou alerta de preço desligado: nada a julgar.
+        const juizo = julgarPreco(valor, mediana);
+        if (!juizo) return;
 
-        const pct = Math.round(Math.abs(desvio) * 100);
-        const acima = desvio > 0 ? "acima" : "abaixo";
-        const texto = `${fmtR4(valor)}/L está ${pct}% ${acima} da referência `
+        const texto = `${fmtR4(valor)}/L está ${fmtR4(Math.abs(juizo.diferenca))}/L `
+                    + `${juizo.acima ? "acima" : "abaixo"} da referência `
                     + `(${fmtR4(mediana)}, ${_plural(amostras, "nota", "notas")})`;
         const aviso = document.createElement("span");
         aviso.className = "aviso-preco";

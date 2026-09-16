@@ -616,7 +616,8 @@ const DB_PADRAO = {
         mostrarMotorista: true,
         mostrarPlaca: true,
         orientacao: "landscape"
-    }
+    },
+    configAlertas: {}
 };
 
 let db = JSON.parse(JSON.stringify(DB_PADRAO));
@@ -809,7 +810,10 @@ function _montarPayloads() {
         combustiveis:      db.combustiveis,
         bases:             db.bases,
         conjuntosVeiculos: db.conjuntosVeiculos || [],
-        configRelatorio:   db.configRelatorio
+        configRelatorio:   db.configRelatorio,
+        // Vazio quando ninguém ajustou: os padrões ficam no código
+        // (ALERTAS_CONFIG_PADRAO), e `undefined` o Firestore recusaria.
+        configAlertas:     db.configAlertas || {}
     };
 
     const permitidos = _empresaIdsPermitidos();
@@ -1239,6 +1243,13 @@ function _mesclarComPadrao(dados) {
 
     if (dados.configRelatorio && typeof dados.configRelatorio === 'object') {
         resultado.configRelatorio = Object.assign({}, DB_PADRAO.configRelatorio, dados.configRelatorio);
+    }
+
+    // Guarda só o que foi ajustado; `configAlertas()` completa com os padrões
+    // na leitura, para que mudar um padrão no código valha para quem nunca
+    // ajustou nada.
+    if (dados.configAlertas && typeof dados.configAlertas === 'object') {
+        resultado.configAlertas = dados.configAlertas;
     }
 
     return resultado;

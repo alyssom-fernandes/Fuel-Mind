@@ -460,7 +460,8 @@ function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = nul
  * 2. Converte placa para formato Mercosul se necessário
  * 3. Valida datas (futuras, descarga anterior à nota)
  * 4. Verifica duplicidade de nota
- * 5. Valida preço médio por combustível (alerta se > 10% da média)
+ * 5. Compara o preço de cada combustível com a referência (a régua de
+ *    `julgarPreco`, configurada em Sistema › Ajustar Alertas)
  * 6. Mostra a conferência final, quando o operador vai continuar lançando
  * 7. Chama `salvarLancamentoFinal` com todos os dados validados
  *

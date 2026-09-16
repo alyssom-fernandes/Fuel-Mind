@@ -371,10 +371,15 @@ function preencherSelect(idSelect, itens, textoPadrao) {
 }
 
 // ========== CONFIGURAÇÕES DE ALERTAS (compartilhado) ==========
+/* A configuração é do sistema, igual para todos: vive em `db.configAlertas`,
+   que vai para o documento compartilhado junto dos cadastros. Até 16/09/2026
+   ela ficava no `localStorage` de cada navegador — duas pessoas olhando o
+   mesmo Dashboard podiam ver alertas diferentes, e o lançamento nem a lia.
+   Só admin e supremo alteram (a regra do Firestore garante no servidor). */
 const ALERTAS_CONFIG_PADRAO = {
     precoAtivo:       true,
-    precoDiferencaR$: 0.10,
-    precoPeriodoDias: 30,
+    precoDiferencaR$: 0.25,
+    precoPeriodoDias: 7,
     volumeAtivo:      true,
     volumeAcimaPerc:  50,
     volumeAbaixoPerc: 50,
@@ -384,14 +389,70 @@ const ALERTAS_CONFIG_PADRAO = {
 };
 
 function configAlertas() {
-    try {
-        const salvo = JSON.parse(localStorage.getItem("configAlertas") || "{}");
-        return Object.assign({}, ALERTAS_CONFIG_PADRAO, salvo);
-    } catch(_) { return { ...ALERTAS_CONFIG_PADRAO }; }
+    const salvo = (typeof db !== "undefined" && db && db.configAlertas) || {};
+    return Object.assign({}, ALERTAS_CONFIG_PADRAO, salvo);
 }
 
 function salvarConfigAlertas(cfg) {
-    localStorage.setItem("configAlertas", JSON.stringify(cfg));
+    db.configAlertas = Object.assign({}, cfg);
+    // A cópia antiga, por navegador, não vale mais nada e não deve confundir.
+    try { localStorage.removeItem("configAlertas"); } catch (_) {}
+    salvarDB();
+}
+
+/* ── A RÉGUA DO PREÇO ───────────────────────────────────────────────
+   Uma régua só, para o lançamento e para o Dashboard (decisão do dono,
+   16/09/2026). Antes eram duas: o lançamento usava mediana de 7 dias com
+   10 %, fixa no código; o Dashboard, média de 30 dias com R$ 0,10/L, no
+   navegador. A mesma nota podia ser alerta numa tela e não na outra.
+
+   - Mediana, não média: uma nota com preço fora puxaria a média para
+     perto de si e calaria o alerta das vizinhas.
+   - Janela de N dias (configurável, padrão 7) terminando em `fimISO`, pela
+     data de emissão: preço é fato da compra (rodada 11). A nota julgada
+     não entra na régua que a julga.
+   - Basta uma nota para haver referência (decisão do dono, tema 06).
+   - Diferença em reais por litro, para cima ou para baixo (configurável,
+     padrão R$ 0,25/L). Alerta quando a diferença é maior ou igual ao
+     limite, comparada em quatro casas — a precisão do preço — para que
+     R$ 6,25 contra R$ 6,00 seja 0,25 e não 0,2499999. */
+function referenciaPrecoCombustivel(nomeCombustivel, fimISO, idIgnorar) {
+    const cfg    = configAlertas();
+    const dias   = cfg.precoPeriodoDias;
+    const fim    = fimISO || _hojeISO();
+    const inicio = _somarDiasISO(fim, -dias);
+
+    const precos = (db.lancamentos || [])
+        .filter(l => {
+            // Excluída não aconteceu; cancelada foi desfeita. Com uma nota
+            // bastando, uma só nota morta viraria régua.
+            if (!lancamentoAtivo(l)) return false;
+            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
+            if (idIgnorar && l.id === idIgnorar) return false;
+            const e = dataEmissaoDe(l);
+            return e >= inicio && e <= fim;
+        })
+        .flatMap(l => (l.itens || [])
+            .filter(i => i.tipo === nomeCombustivel && i.valor > 0)
+            .map(i => i.valor))
+        .sort((a, b) => a - b);
+
+    if (precos.length === 0) return { mediana: 0, amostras: 0, dias, fim };
+    const meio = Math.floor(precos.length / 2);
+    const mediana = precos.length % 2
+        ? precos[meio]
+        : (precos[meio - 1] + precos[meio]) / 2;
+    return { mediana, amostras: precos.length, dias, fim };
+}
+
+/** Julga um preço contra a referência. `null` quando não há alerta. */
+function julgarPreco(valor, mediana) {
+    const cfg = configAlertas();
+    if (!cfg.precoAtivo || !(valor > 0) || !(mediana > 0)) return null;
+    const diferenca = Math.round((valor - mediana) * 10000) / 10000;
+    const limite    = Math.round(Number(cfg["precoDiferencaR$"]) * 10000) / 10000;
+    if (Math.abs(diferenca) < limite) return null;
+    return { diferenca, acima: diferenca > 0, limite };
 }
 
 // ========== ALERTAS IGNORADOS ==========

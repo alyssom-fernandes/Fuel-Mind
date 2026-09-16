@@ -269,7 +269,8 @@ async function resetSeguro() {
     }
     db = {
         motoristas: [], veiculos: [], empresas: [], combustiveis: [],
-        lancamentos: [], bases: [], configRelatorio: db.configRelatorio
+        lancamentos: [], bases: [], configRelatorio: db.configRelatorio,
+        configAlertas: db.configAlertas || {}
     };
     salvarDB(); atualizarListas(); atualizarInfoSistema();
     if (window._firestore && typeof _ligarListenerTempoReal === 'function') _ligarListenerTempoReal();
@@ -1147,31 +1148,43 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ========== CONFIGURAÇÕES DE ALERTAS ========== */
+/* Quem pode mudar a régua: admin e supremo (decisão de 16/09/2026). A
+   configuração é do sistema e vale para todos; os demais veem os valores
+   em vigor, sem poder salvar. A regra do Firestore confere o mesmo no
+   servidor. */
+const _CFG_PERIODOS_PRECO = [3, 5, 7, 10, 15, 30, 60, 90];
+
 function abrirConfigAlertas() {
     const cfg = configAlertas();
+    const podeAlterar = typeof podeGerenciarUsuarios === 'function' && podeGerenciarUsuarios();
     const modal = document.createElement('div');
     modal.id = '_modalConfigAlertas';
     modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px`;
 
-    const periodOpts = [7,15,30,60,90].map(d=>`<option value="${d}" ${cfg.precoPeriodoDias==d?'selected':''}>${d} dias</option>`).join('');
+    const periodos = _CFG_PERIODOS_PRECO.includes(Number(cfg.precoPeriodoDias))
+        ? _CFG_PERIODOS_PRECO
+        : [..._CFG_PERIODOS_PRECO, Number(cfg.precoPeriodoDias)].sort((a, b) => a - b);
+    const periodOpts = periodos.map(d=>`<option value="${d}" ${cfg.precoPeriodoDias==d?'selected':''}>${d} dias</option>`).join('');
 
     modal.innerHTML = `
         <div style="background:var(--surface);border-radius:12px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
                 <h3 style="margin:0">Configurações de Alertas</h3>
-                <button onclick="document.getElementById('_modalConfigAlertas').remove()" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
+                <button onclick="document.getElementById('_modalConfigAlertas').remove()" aria-label="Fechar" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
             </div>
+            <p style="margin:-8px 0 18px;font-size:0.82rem;color:var(--text-muted)">Valem para todos os usuários, no lançamento e no Dashboard.${podeAlterar ? '' : ' <strong>Só administradores alteram.</strong>'}</p>
 
+            <fieldset id="_cfgCampos" ${podeAlterar ? '' : 'disabled'} style="border:none;margin:0;padding:0;min-width:0">
             <div class="_cfg-bloco">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <div><strong>Alerta de Preço Alto</strong>
-                    <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Avisa quando o preço/L está muito acima da média recente.</p></div>
+                    <div><strong>Alerta de Preço</strong>
+                    <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Compara o preço/L de cada nota com a mediana das notas emitidas nos dias anteriores. Avisa acima ou abaixo.</p></div>
                     <label class="_cfg-toggle"><input type="checkbox" id="_cfgPrecoAtivo" ${cfg.precoAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
                 </div>
                 <div id="_cfgPrecoOpts" style="${cfg.precoAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                         <div class="campo"><label for="_cfgPrecoDif">Diferença mínima (R$/L)</label>
-                        <input type="number" id="_cfgPrecoDif" value="${cfg['precoDiferencaR$']}" min="0.01" max="5" step="0.01" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
+                        <input type="text" class="fm-numero" id="_cfgPrecoDif" value="${escapeHtml(fmtNumeroExibicao(cfg['precoDiferencaR$'], 2))}" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
                         <div class="campo"><label for="_cfgPrecoPer">Período de referência</label>
                         <select id="_cfgPrecoPer" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" onchange="_cfgPreview()">${periodOpts}</select></div>
                     </div>
@@ -1210,15 +1223,21 @@ function abrirConfigAlertas() {
                 </div>
             </div>
 
+            </fieldset>
+
             <div id="_cfgPreviewTxt" style="margin-top:16px;padding:10px 14px;border-radius:8px;background:var(--surface-alt);font-size:0.82rem;color:var(--text-muted);min-height:36px"></div>
 
-            <div style="display:flex;gap:10px;justify-content:space-between;margin-top:20px">
+            ${podeAlterar ? `
+            <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:20px">
                 <button onclick="_cfgRestaurarPadrao()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text-muted);cursor:pointer;font-size:0.82rem">Restaurar padrões</button>
                 <div style="display:flex;gap:10px">
                     <button onclick="document.getElementById('_modalConfigAlertas').remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">Cancelar</button>
                     <button onclick="_cfgSalvar()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:600">Salvar configurações</button>
                 </div>
-            </div>
+            </div>` : `
+            <div style="display:flex;justify-content:flex-end;margin-top:20px">
+                <button onclick="document.getElementById('_modalConfigAlertas').remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">Fechar</button>
+            </div>`}
         </div>
     `;
     document.body.appendChild(modal);
@@ -1235,9 +1254,11 @@ function _cfgPreview() {
     if(!el)return;
     const partes=[];
     if(document.getElementById('_cfgPrecoAtivo')?.checked) {
-        const dif=parseFloat(document.getElementById('_cfgPrecoDif')?.value)||0.10;
-        const per=document.getElementById('_cfgPrecoPer')?.value||30;
-        partes.push(`Preço: avisa se R$${dif.toFixed(2)}/L acima da média dos últimos ${per} dias`);
+        const dif=parseNumeroBR(document.getElementById('_cfgPrecoDif')?.value);
+        const per=document.getElementById('_cfgPrecoPer')?.value||7;
+        partes.push(dif !== null && dif > 0
+            ? `Preço: avisa se o preço/L ficar ${escapeHtml(Math.round(dif*100) === dif*100 ? fmtR(dif) : fmtR4(dif))} ou mais acima ou abaixo da mediana dos ${escapeHtml(per)} dias anteriores à emissão da nota`
+            : `Preço: informe uma diferença maior que zero, em reais por litro (ex.: 0,25)`);
     }
     if(document.getElementById('_cfgVolAtivo')?.checked) {
         const ac=document.getElementById('_cfgVolAcima')?.value||50;
@@ -1255,7 +1276,7 @@ function _cfgPreview() {
 function _cfgRestaurarPadrao() {
     const p=ALERTAS_CONFIG_PADRAO;
     const f=(id,val)=>{const el=document.getElementById(id);if(el)el[typeof val==='boolean'?'checked':'value']=val;};
-    f('_cfgPrecoAtivo',p.precoAtivo); f('_cfgPrecoDif',p['precoDiferencaR$']); f('_cfgPrecoPer',p.precoPeriodoDias);
+    f('_cfgPrecoAtivo',p.precoAtivo); f('_cfgPrecoDif',fmtNumeroExibicao(p['precoDiferencaR$'],2)); f('_cfgPrecoPer',p.precoPeriodoDias);
     f('_cfgVolAtivo',p.volumeAtivo); f('_cfgVolAcima',p.volumeAcimaPerc); f('_cfgVolAbaixo',p.volumeAbaixoPerc);
     f('_cfgDataAtivo',p.dataAtivo); f('_cfgDataToler',p.dataTolerDias); f('_cfgDataMaxDiff',p.dataMaxDescNota);
     ['Preco','Vol','Data'].forEach(nome=>{
@@ -1267,11 +1288,23 @@ function _cfgRestaurarPadrao() {
 }
 
 function _cfgSalvar() {
+    if (!(typeof podeGerenciarUsuarios === 'function' && podeGerenciarUsuarios())) {
+        mostrarToast('Só administradores alteram as configurações de alertas.', 'aviso', 4000);
+        return;
+    }
     const g=(id)=>document.getElementById(id);
+    // Diferença lida em pt-BR ("0,25"). Antes o campo era type="number", que
+    // esvazia com vírgula, e o `|| 0.10` gravava o padrão em silêncio.
+    const dif = parseNumeroBR(g('_cfgPrecoDif')?.value);
+    if (dif === null || dif <= 0) {
+        mostrarToast('Diferença mínima do alerta de preço: informe um valor maior que zero, em R$/L (ex.: 0,25).', 'aviso', 5000);
+        g('_cfgPrecoDif')?.focus();
+        return;
+    }
     const cfg={
         precoAtivo:g('_cfgPrecoAtivo')?.checked??true,
-        'precoDiferencaR$':parseFloat(g('_cfgPrecoDif')?.value)||0.10,
-        precoPeriodoDias:parseInt(g('_cfgPrecoPer')?.value)||30,
+        'precoDiferencaR$':Math.round(dif*10000)/10000,
+        precoPeriodoDias:parseInt(g('_cfgPrecoPer')?.value)||ALERTAS_CONFIG_PADRAO.precoPeriodoDias,
         volumeAtivo:g('_cfgVolAtivo')?.checked??true,
         volumeAcimaPerc:parseInt(g('_cfgVolAcima')?.value)||50,
         volumeAbaixoPerc:parseInt(g('_cfgVolAbaixo')?.value)||50,
@@ -1282,5 +1315,10 @@ function _cfgSalvar() {
     salvarConfigAlertas(cfg);
     document.getElementById('_modalConfigAlertas')?.remove();
     if(typeof carregarDashboard==='function') carregarDashboard();
+    // Uma nota pela metade na tela de lançamento passa a ser julgada pela
+    // régua nova já, e não só na próxima alteração de campo.
+    if (typeof validarLancamento === 'function' && document.querySelector('#combustiveisNota .linha-combustivel')) {
+        validarLancamento();
+    }
     mostrarToast('Configurações de alertas salvas!','sucesso',3000);
 }

@@ -98,9 +98,11 @@ service cloud.firestore {
     }
 
     // O que o papel operacional pode fazer no documento de cadastros:
-    // acrescentar, nunca remover, e não tocar na configuração do PDF — que
-    // é de todo mundo. Cobre o "Cadastrar X" do combobox, que é a única
-    // razão pela qual quem só lança nota precisa escrever aqui.
+    // acrescentar, nunca remover, e não tocar na configuração do PDF nem na
+    // dos alertas — que são de todo mundo (a régua do preço vale para o
+    // lançamento e o Dashboard de todos; só admin e supremo a alteram,
+    // decisão de 16/09/2026). Cobre o "Cadastrar X" do combobox, que é a
+    // única razão pela qual quem só lança nota precisa escrever aqui.
     function cadastroSoCresce() {
       return listaNaoEncolheu('motoristas')
         && listaNaoEncolheu('veiculos')
@@ -109,7 +111,9 @@ service cloud.firestore {
         && listaNaoEncolheu('bases')
         && listaNaoEncolheu('conjuntosVeiculos')
         && request.resource.data.get('configRelatorio', {})
-        == resource.data.get('configRelatorio', {});
+        == resource.data.get('configRelatorio', {})
+        && request.resource.data.get('configAlertas', {})
+        == resource.data.get('configAlertas', {});
     }
 
     // ── Cadastros compartilhados ─────────────────────────────────────────
