@@ -1,7 +1,8 @@
 /*=================================================
   DASHBOARD v3.2
   - KPIs com filtro de período (inputs + botões rápidos)
-  - Usa dataDescarga como referência (fallback dataNota)
+  - Duas bases, cada bloco com a sua (rodada 11): volume pela descarga,
+    compra pela emissão
   - Por combustível com abas
   - Comparativo mês a mês (últimos 6 meses)
   - Alertas clicáveis com opção de ignorar
@@ -39,12 +40,21 @@ function dispararNotificacao(titulo, corpo, tag, id) {
     };
 }
 
-function _mediaPrecoPeriodo(nomeCombustivel, dias) {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - dias);
-    const limitStr = limite.toISOString().slice(0, 10);
+/* Média dos preços de um combustível nos `dias` que terminam em `ateISO`,
+   pela data de emissão. A âncora era hoje: uma nota de agosto vista em
+   setembro era comparada com os preços de setembro (rodada 11). Continua
+   sendo média, e não a mediana da tela de lançamento — as duas réguas são
+   assunto do tema 28. */
+function _mediaPrecoPeriodo(nomeCombustivel, dias, ateISO) {
+    const fim    = ateISO || _hojeISO();
+    const inicio = _somarDiasISO(fim, -dias);
     const precos = db.lancamentos
-        .filter(l => lancamentoAtivo(l) && (l.dataNota||'') >= limitStr && ((!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)))
+        .filter(l => {
+            if (!lancamentoAtivo(l)) return false;
+            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
+            const e = dataEmissaoDe(l);
+            return e >= inicio && e <= fim;
+        })
         .flatMap(l => l.itens.filter(i => i.tipo === nomeCombustivel && i.valor > 0))
         .map(i => i.valor);
     if (precos.length === 0) return 0;
@@ -61,18 +71,20 @@ function _mediaVolumePorNota(nomeCombustivel) {
 }
 
 // ─── Filtros rápidos do Dashboard ───────────────────────────────────────────
+// Datas pelo relógio do computador: `toISOString` é UTC e, no horário de
+// Brasília, vira o dia seguinte a partir das 21h.
 function dashFiltroRapido(periodo) {
     const hoje = new Date();
     let inicio, fim;
     if (periodo === 'mes') {
-        inicio = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
-        fim    = hoje.toISOString().slice(0,10);
+        inicio = _isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+        fim    = _hojeISO();
     } else if (periodo === 'mes_anterior') {
-        inicio = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1).toISOString().slice(0,10);
-        fim    = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0,10);
+        inicio = _isoLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
+        fim    = _isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 0));
     } else if (periodo === 'ano') {
         inicio = `${hoje.getFullYear()}-01-01`;
-        fim    = hoje.toISOString().slice(0,10);
+        fim    = _hojeISO();
     }
     const i = document.getElementById('dashInicio');
     const f = document.getElementById('dashFim');
@@ -86,12 +98,12 @@ function _garantirFiltrosDashboard() {
     if (document.getElementById('dashFiltrosPeriodo')) return;
 
     const hoje = new Date();
-    const inicioMesStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
-    const fimHojeStr   = hoje.toISOString().slice(0,10);
+    const inicioMesStr = _isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    const fimHojeStr   = _hojeISO();
 
     const filtrosDiv = document.createElement('div');
     filtrosDiv.id = 'dashFiltrosPeriodo';
-    filtrosDiv.style.cssText = 'display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;';
+    filtrosDiv.style.cssText = 'display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;';
     filtrosDiv.innerHTML = `
         <div class="campo" style="min-width:140px">
             <label for="dashInicio">Período — início</label>
@@ -108,12 +120,43 @@ function _garantirFiltrosDashboard() {
             <button class="btn-filtro-rapido" onclick="dashFiltroRapido('ano')">Este ano</button>
         </div>
     `;
+    // A tela mostra as duas bases, e diz qual é qual logo abaixo do período.
+    const dica = document.createElement('p');
+    dica.id = 'dashBaseDica';
+    dica.className = 'dica';
+    dica.style.cssText = 'margin:0 0 20px;font-size:0.8rem;';
+    dica.innerHTML = 'Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong> — '
+        + 'é o que entrou nos tanques. Gasto e custo médio contam pela <strong>data de emissão</strong> — '
+        + 'é o valor da compra naquela data.';
 
     const dashEl = document.getElementById('dashboard');
     const kpiEl  = document.getElementById('kpiDashboard');
     if (dashEl && kpiEl) {
         dashEl.insertBefore(filtrosDiv, kpiEl);
+        dashEl.insertBefore(dica, kpiEl);
     }
+}
+
+/* O Dashboard mostra as duas bases, cada bloco com a sua (rodada 11, decisão
+   do dono). A regra é não misturar dentro de um número: o custo médio divide
+   o gasto pelos litros DAS MESMAS notas, as emitidas no período. Com os reais
+   da emissão e os litros da descarga, agosto no modo demo dava R$ 5,7232/L —
+   um preço que não é de nota nenhuma. */
+function _lancamentosDoPeriodo(inicio, fim, dataDe) {
+    return db.lancamentos.filter(l => {
+        if (!lancamentoAtivo(l)) return false;
+        if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
+        const d = dataDe(l);
+        return d >= inicio && d <= fim;
+    });
+}
+
+function _totaisCompra(lancs, nomeComb) {
+    const itens = lancs.flatMap(l => l.itens.filter(i => !nomeComb || i.tipo === nomeComb));
+    const gasto  = itens.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0);
+    const litros = itens.reduce((s, i) => s + _litrosItem(i), 0);
+    const notas  = nomeComb ? lancs.filter(l => l.itens.some(i => i.tipo === nomeComb)).length : lancs.length;
+    return { gasto, litros, notas, custo: litros > 0 ? gasto / litros : 0 };
 }
 
 function carregarDashboard() {
@@ -122,59 +165,55 @@ function carregarDashboard() {
     const hoje = new Date();
     const inputI = document.getElementById('dashInicio');
     const inputF = document.getElementById('dashFim');
-    const inicioMesStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
-    const fimHojeStr   = hoje.toISOString().slice(0,10);
-    const inicio = inputI?.value || inicioMesStr;
-    const fim    = inputF?.value || fimHojeStr;
+    const inicio = inputI?.value || _isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    const fim    = inputF?.value || _hojeISO();
 
-    // FIX: usa dataDescarga como referência principal, fallback para dataNota
-    const lancamentosMes = db.lancamentos.filter(l => {
-        // Alimenta KPIs, alertas rápidos, blocos por combustível e pizza.
-        // O Dashboard não tem funil único como as outras telas: são nove
-        // leituras independentes de db.lancamentos, e cada uma repete
-        // este teste.
-        if (!lancamentoAtivo(l)) return false;
-        if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-        const dRef = l.dataDescarga || l.dataNota || '';
-        return dRef >= inicio && dRef <= fim;
-    });
+    // O Dashboard não tem funil único como as outras telas: são várias
+    // leituras independentes de db.lancamentos, e cada uma repete o teste de
+    // estado. Aqui são dois conjuntos, um por base.
+    const lancDescarga = _lancamentosDoPeriodo(inicio, fim, dataDescargaDe);
+    const lancEmissao  = _lancamentosDoPeriodo(inicio, fim, dataEmissaoDe);
 
-    const totalNotas  = lancamentosMes.length;
-    const totalLitros = lancamentosMes.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
-    const totalGasto  = lancamentosMes.reduce((s, l) => s + l.total, 0);
-    const custoMedio  = totalLitros > 0 ? totalGasto / totalLitros : 0;
+    const totalNotas  = lancDescarga.length;
+    const totalLitros = lancDescarga.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
+    const compra      = _totaisCompra(lancEmissao);
 
     document.getElementById("kpiDashboard").innerHTML = `
         <div class="kpi-card">
             <div class="kpi-valor">${totalNotas}</div>
-            <div class="kpi-label">Notas no Período</div>
+            <div class="kpi-label">Notas Descarregadas</div>
+            <div class="kpi-base">pela data da descarga</div>
         </div>
         <div class="kpi-card verde">
             <div class="kpi-valor">${fmtL(totalLitros)}</div>
-            <div class="kpi-label">Litros no Período</div>
+            <div class="kpi-label">Litros Descarregados</div>
+            <div class="kpi-base">pela data da descarga</div>
         </div>
         <div class="kpi-card laranja">
-            <div class="kpi-valor">${fmtR(totalGasto)}</div>
-            <div class="kpi-label">Gasto no Período</div>
+            <div class="kpi-valor">${fmtR(compra.gasto)}</div>
+            <div class="kpi-label">Gasto em Compras</div>
+            <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
         </div>
         <div class="kpi-card roxo">
-            <div class="kpi-valor">${fmtR4(custoMedio)}</div>
+            <div class="kpi-valor">${fmtR4(compra.custo)}</div>
             <div class="kpi-label">Custo Médio / L</div>
+            <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)}</div>
         </div>
     `;
 
     if (typeof injetarIconesKPI === 'function') injetarIconesKPI();
-    _renderAlertas(lancamentosMes);
-    renderDashCombustiveis(lancamentosMes);
+    _renderAlertas(lancDescarga, lancEmissao);
+    renderDashCombustiveis(lancDescarga, lancEmissao, inicio, fim);
     renderComparativoMeses();
     // Destrói pizza anterior para redesenhar com período correto
     const pizzaAnterior = document.getElementById('graficoPizzaDashboard');
     if (pizzaAnterior) pizzaAnterior.remove();
-    renderGraficoPizzaDashboard(lancamentosMes);
+    renderGraficoPizzaDashboard(lancEmissao);
 
+    // "Últimas Entradas": o que entrou nos tanques por último, pela descarga.
     const ultimas = [...db.lancamentos]
         .filter(l => lancamentoAtivo(l) && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal))
-        .sort((a, b) => (b.dataDescarga || b.dataNota).localeCompare(a.dataDescarga || a.dataNota))
+        .sort((a, b) => dataDescargaDe(b).localeCompare(dataDescargaDe(a)))
         .slice(0, 5);
 
     document.getElementById("ultimasEntradasBody").innerHTML = ultimas.length === 0
@@ -199,19 +238,20 @@ function carregarDashboard() {
         }).join('');
 }
 
-function _renderAlertas(lancamentosMes) {
+function _renderAlertas(lancDescarga, lancEmissao) {
     const cfg       = configAlertas();
     const ignorados = alertasIgnorados();
     const hoje      = new Date(); hoje.setHours(0,0,0,0);
     const alertas   = [];
 
-    lancamentosMes.forEach(l => {
+    // Preço alto: notas EMITIDAS no período, cada uma comparada com a média
+    // dos dias que terminam na emissão dela. Volume e data suspeita: notas
+    // DESCARREGADAS no período.
+    lancEmissao.forEach(l => {
         l.itens.forEach(i => {
             const chavePreco = `preco|${l.numeroNota}|${i.tipo}`;
-            const chaveVol   = `vol|${l.numeroNota}|${i.tipo}`;
-
             if (cfg.precoAtivo && i.valor > 0 && !ignorados[chavePreco]) {
-                const media = _mediaPrecoPeriodo(i.tipo, cfg.precoPeriodoDias);
+                const media = _mediaPrecoPeriodo(i.tipo, cfg.precoPeriodoDias, dataEmissaoDe(l));
                 const diff  = i.valor - media;
                 if (media > 0 && diff >= cfg['precoDiferencaR$']) {
                     alertas.push({
@@ -220,14 +260,19 @@ function _renderAlertas(lancamentosMes) {
                         titulo: `Preço alto — ${escapeHtml(i.tipo)}`,
                         msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
                              `<strong>${fmtR4(i.valor)}/L</strong> — ` +
-                             `R$&nbsp;${diff.toFixed(2)} acima da média dos últimos ${cfg.precoPeriodoDias} dias ` +
+                             `R$&nbsp;${diff.toFixed(2)} acima da média dos ${cfg.precoPeriodoDias} dias até a emissão ` +
                              `(média: ${fmtR4(media)}/L)`,
                         id: l.id,
                         notificacao: `Preço alto em ${l.numeroNota}: ${fmtR4(i.valor)}/L (R$ ${diff.toFixed(2)} acima da média)`
                     });
                 }
             }
+        });
+    });
 
+    lancDescarga.forEach(l => {
+        l.itens.forEach(i => {
+            const chaveVol   = `vol|${l.numeroNota}|${i.tipo}`;
             if (cfg.volumeAtivo && i.qtd > 0 && !ignorados[chaveVol]) {
                 const mediaVol = _mediaVolumePorNota(i.tipo);
                 if (mediaVol > 0) {
@@ -336,7 +381,7 @@ function _renderAlertas(lancamentosMes) {
     }).join('');
 }
 
-function renderDashCombustiveis(lancamentosMes) {
+function renderDashCombustiveis(lancDescarga, lancEmissao, inicio, fim) {
     const container = document.getElementById("dashCombustiveisContainer");
     if (!container) return;
 
@@ -346,7 +391,7 @@ function renderDashCombustiveis(lancamentosMes) {
         return;
     }
 
-    if (lancamentosMes.length === 0) {
+    if (lancDescarga.length === 0 && lancEmissao.length === 0) {
         container.innerHTML = '<p class="dica">Nenhum lançamento no período selecionado.</p>';
         return;
     }
@@ -355,13 +400,20 @@ function renderDashCombustiveis(lancamentosMes) {
         dashAbaAtiva = combustiveis[0].nome;
     }
 
+    // A variação compara com o período anterior ao ESCOLHIDO, e não com o
+    // mês anterior a hoje: com agosto escolhido em setembro, comparava agosto
+    // com agosto e mostrava "▲ 0.1%" onde a variação real era +1,4 %.
+    const anterior     = _periodoAnterior(inicio, fim);
+    const lancAnterior = _lancamentosDoPeriodo(anterior.inicio, anterior.fim, dataEmissaoDe);
+
     const resumo = {};
     combustiveis.forEach(c => {
-        const itens = lancamentosMes.flatMap(l => l.itens.filter(i => i.tipo === c.nome));
+        const itensDesc = lancDescarga.flatMap(l => l.itens.filter(i => i.tipo === c.nome));
         resumo[c.nome] = {
-            litros: itens.reduce((s, i) => s + _litrosItem(i), 0),
-            gasto:  itens.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0),
-            notas:  lancamentosMes.filter(l => l.itens.some(i => i.tipo === c.nome)).length,
+            notasDescarga: lancDescarga.filter(l => l.itens.some(i => i.tipo === c.nome)).length,
+            litros:        itensDesc.reduce((s, i) => s + _litrosItem(i), 0),
+            compra:        _totaisCompra(lancEmissao, c.nome),
+            compraAnt:     _totaisCompra(lancAnterior, c.nome),
         };
     });
 
@@ -372,12 +424,11 @@ function renderDashCombustiveis(lancamentosMes) {
         </button>
     `).join('');
 
-    // Guarda referência global para re-render ao trocar aba
-    window._dashLancMes = lancamentosMes;
+    const desenhar = () => _renderConteudoCombustivel(dashAbaAtiva, resumo[dashAbaAtiva], lancDescarga, anterior);
 
     container.innerHTML = `
         <div class="analitico-abas" style="margin-bottom:12px">${abas}</div>
-        <div id="dashCombConteudo">${_renderConteudoCombustivel(dashAbaAtiva, resumo[dashAbaAtiva], lancamentosMes)}</div>
+        <div id="dashCombConteudo">${desenhar()}</div>
     `;
 
     // Liga o clique de cada aba pelo índice (evita ambiguidade entre nomes de
@@ -387,55 +438,40 @@ function renderDashCombustiveis(lancamentosMes) {
             dashAbaAtiva = combustiveis[idx].nome;
             container.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativa'));
             this.classList.add('ativa');
-            document.getElementById('dashCombConteudo').innerHTML =
-                _renderConteudoCombustivel(dashAbaAtiva, resumo[dashAbaAtiva], lancamentosMes);
+            document.getElementById('dashCombConteudo').innerHTML = desenhar();
         };
     });
 }
 
-function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
-    if (!r || r.litros === 0) {
+function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
+    if (!r || (r.litros === 0 && r.compra.notas === 0)) {
         return `<p class="dica">Nenhum lançamento de <strong>${escapeHtml(nomeComb)}</strong> no período.</p>`;
     }
 
-    const custoMedio = r.litros > 0 ? r.gasto / r.litros : 0;
-
-    // Variação vs mês anterior — calcula corretamente usando Date para evitar "YYYY-00" em janeiro
-    const hoje = new Date();
-    const dtMesAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
-    const mesAntStr = `${dtMesAnt.getFullYear()}-${String(dtMesAnt.getMonth() + 1).padStart(2, '0')}`;
-    const lancMesAnt = db.lancamentos.filter(l => {
-        if (!lancamentoAtivo(l)) return false;
-        if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-        return l.dataNota && l.dataNota.startsWith(mesAntStr);
-    });
-    const itensMesAnt = lancMesAnt.flatMap(l => l.itens.filter(i => i.tipo === nomeComb));
-    const gastMesAnt  = itensMesAnt.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0);
-    const litMesAnt   = itensMesAnt.reduce((s, i) => s + _litrosItem(i), 0);
-    const custoAnt    = litMesAnt > 0 ? gastMesAnt / litMesAnt : 0;
-    let variacaoHTML  = '';
-    if (custoAnt > 0) {
-        const vp  = ((custoMedio - custoAnt) / custoAnt) * 100;
+    let variacaoHTML = '';
+    if (r.compra.custo > 0 && r.compraAnt.custo > 0) {
+        const vp    = ((r.compra.custo - r.compraAnt.custo) / r.compraAnt.custo) * 100;
         const sinal = vp > 0 ? '▲' : '▼';
         const cls   = vp > 0 ? 'danger' : 'success';
-        variacaoHTML = `<span style="font-size:0.7rem; color:var(--${cls}); margin-left:4px">${sinal} ${Math.abs(vp).toFixed(1)}% vs mês ant.</span>`;
+        const ref   = `${formatarData(anterior.inicio).slice(0, 5)} a ${formatarData(anterior.fim).slice(0, 5)}`;
+        variacaoHTML = `<span style="font-size:0.7rem; color:var(--${cls}); margin-left:4px" title="Custo médio das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtR4(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
     }
 
-    const lancsComb = lancamentosMes
+    const lancsComb = lancDescarga
         .filter(l => l.itens.some(i => i.tipo === nomeComb))
-        .sort((a, b) => (b.dataDescarga || b.dataNota).localeCompare(a.dataDescarga || a.dataNota))
+        .sort((a, b) => dataDescargaDe(b).localeCompare(dataDescargaDe(a)))
         .slice(0, 10);
 
-    const tabelaHTML = `
+    const tabelaHTML = lancsComb.length === 0 ? '' : `
         <div class="tabela-container" style="margin-top:12px">
             <table><thead><tr>
-                <th>Data</th><th>Nota</th><th>Motorista</th>
+                <th>Descarga</th><th>Nota</th><th>Motorista</th>
                 <th>Qtd (L)</th><th>R$/L</th><th>Total</th>
             </tr></thead><tbody>
             ${lancsComb.map(l => {
                 const item = l.itens.find(i => i.tipo === nomeComb);
                 return `<tr>
-                    <td>${formatarData(l.dataDescarga || l.dataNota)}</td>
+                    <td>${formatarData(dataDescargaDe(l))}</td>
                     <td>${escapeHtml(l.numeroNota)}</td>
                     <td>${escapeHtml(l.motorista) || '—'}</td>
                     <td>${fmtL3(item.qtd)}</td>
@@ -449,30 +485,34 @@ function _renderConteudoCombustivel(nomeComb, r, lancamentosMes) {
     return `
         <div class="dash-comb-kpis">
             <div class="dash-comb-kpi">
-                <div class="dash-comb-kpi-val">${r.notas}</div>
-                <div class="dash-comb-kpi-label">Notas</div>
+                <div class="dash-comb-kpi-val">${r.notasDescarga}</div>
+                <div class="dash-comb-kpi-label">Notas descarregadas</div>
             </div>
             <div class="dash-comb-kpi verde">
                 <div class="dash-comb-kpi-val">${fmtL(r.litros)}</div>
-                <div class="dash-comb-kpi-label">Litros</div>
+                <div class="dash-comb-kpi-label">Litros descarregados</div>
             </div>
             <div class="dash-comb-kpi laranja">
-                <div class="dash-comb-kpi-val">${fmtR(r.gasto)}</div>
-                <div class="dash-comb-kpi-label">Gasto</div>
+                <div class="dash-comb-kpi-val">${fmtR(r.compra.gasto)}</div>
+                <div class="dash-comb-kpi-label">Gasto · pela emissão</div>
             </div>
             <div class="dash-comb-kpi roxo">
-                <div class="dash-comb-kpi-val">${fmtR4(custoMedio)}</div>
-                <div class="dash-comb-kpi-label">Custo Médio/L ${variacaoHTML}</div>
+                <div class="dash-comb-kpi-val">${fmtR4(r.compra.custo)}</div>
+                <div class="dash-comb-kpi-label">Custo médio/L · pela emissão ${variacaoHTML}</div>
             </div>
         </div>
-        <div style="margin-top:4px">
+        ${lancsComb.length ? `<div style="margin-top:4px">
             <span class="dica" style="font-size:0.78rem">
-                Últimas entradas de <strong>${escapeHtml(nomeComb)}</strong> no período · ordenadas por descarga
+                Últimas descargas de <strong>${escapeHtml(nomeComb)}</strong> no período
             </span>
-        </div>
+        </div>` : ''}
         ${tabelaHTML}`;
 }
 
+/* Duas tabelas, uma por base. Numa só — litros pela descarga e custo pela
+   emissão na mesma linha — quem dividisse o gasto pelos litros da linha
+   chegaria a um custo diferente do que está ao lado. Na tabela de compras,
+   os litros são os das notas emitidas no mês, e o custo é essa divisão. */
 function renderComparativoMeses() {
     const container = document.getElementById("dashComparativoContainer");
     if (!container) return;
@@ -487,53 +527,52 @@ function renderComparativoMeses() {
     const combustiveis = db.combustiveis.filter(c => c.ativo !== false);
     if (combustiveis.length === 0) { container.innerHTML = ''; return; }
 
-    const dadosMeses = meses.map(mes => {
-        const lans = db.lancamentos.filter(l => {
-            if (!lancamentoAtivo(l)) return false;
-            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-            return l.dataNota && l.dataNota.startsWith(mes);
-        });
-        const porComb = {};
-        combustiveis.forEach(c => {
-            const itens = lans.flatMap(l => l.itens.filter(i => i.tipo === c.nome));
-            porComb[c.nome] = {
-                litros: itens.reduce((s, i) => s + _litrosItem(i), 0),
-                gasto:  itens.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0),
-            };
-        });
-        const totalLitros = Object.values(porComb).reduce((s, v) => s + v.litros, 0);
-        const totalGasto  = Object.values(porComb).reduce((s, v) => s + v.gasto,  0);
-        return { mes, porComb, totalLitros, totalGasto };
+    const doMes = (mes, dataDe) => db.lancamentos.filter(l => {
+        if (!lancamentoAtivo(l)) return false;
+        if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
+        return dataDe(l).startsWith(mes);
     });
 
-    const tbody = dadosMeses.map(d => {
-        const custMedio = d.totalLitros > 0 ? d.totalGasto / d.totalLitros : 0;
-        const combCells = combustiveis.map(c =>
-            `<td>${d.porComb[c.nome].litros > 0 ? fmtL(d.porComb[c.nome].litros) : '—'}</td>`
-        ).join('');
-        const isAtual = d.mes === meses[meses.length - 1];
-        return `<tr ${isAtual ? 'class="linha-mes-atual"' : ''}>
-            <td><strong>${nomeMes(d.mes)}</strong></td>
-            ${combCells}
-            <td><strong>${fmtL(d.totalLitros)}</strong></td>
-            <td>${fmtR(d.totalGasto)}</td>
-            <td>${custMedio > 0 ? fmtR4(custMedio) : '—'}</td>
+    const mesAtual = meses[meses.length - 1];
+
+    const linhasDescarga = meses.map(mes => {
+        const lans = doMes(mes, dataDescargaDe);
+        const porComb = combustiveis.map(c =>
+            lans.flatMap(l => l.itens.filter(i => i.tipo === c.nome)).reduce((s, i) => s + _litrosItem(i), 0));
+        const total = porComb.reduce((s, v) => s + v, 0);
+        return `<tr ${mes === mesAtual ? 'class="linha-mes-atual"' : ''}>
+            <td><strong>${nomeMes(mes)}</strong></td>
+            ${porComb.map(v => `<td>${v > 0 ? fmtL(v) : '—'}</td>`).join('')}
+            <td><strong>${fmtL(total)}</strong></td>
+        </tr>`;
+    }).join('');
+
+    const linhasCompra = meses.map(mes => {
+        const c = _totaisCompra(doMes(mes, dataEmissaoDe));
+        return `<tr ${mes === mesAtual ? 'class="linha-mes-atual"' : ''}>
+            <td><strong>${nomeMes(mes)}</strong></td>
+            <td>${c.notas}</td>
+            <td>${c.litros > 0 ? fmtL(c.litros) : '—'}</td>
+            <td>${fmtR(c.gasto)}</td>
+            <td>${c.custo > 0 ? fmtR4(c.custo) : '—'}</td>
         </tr>`;
     }).join('');
 
     const combHeaders = combustiveis.map(c => `<th>${escapeHtml(c.nome)}</th>`).join('');
 
     container.innerHTML = `
+        <p class="dica" style="margin:0 0 6px;font-size:0.8rem">Litros descarregados — pela <strong>data da descarga</strong></p>
+        <div class="tabela-container" style="overflow-x:auto;margin-bottom:18px">
+            <table>
+                <thead><tr><th>Mês</th>${combHeaders}<th>Total Litros</th></tr></thead>
+                <tbody>${linhasDescarga}</tbody>
+            </table>
+        </div>
+        <p class="dica" style="margin:0 0 6px;font-size:0.8rem">Compras — pela <strong>data de emissão</strong></p>
         <div class="tabela-container" style="overflow-x:auto">
             <table>
-                <thead><tr>
-                    <th>Mês</th>
-                    ${combHeaders}
-                    <th>Total Litros</th>
-                    <th>Total Gasto</th>
-                    <th>Custo Médio/L</th>
-                </tr></thead>
-                <tbody>${tbody}</tbody>
+                <thead><tr><th>Mês</th><th>Notas</th><th>Litros das Notas</th><th>Total Gasto</th><th>Custo Médio/L</th></tr></thead>
+                <tbody>${linhasCompra}</tbody>
             </table>
         </div>`;
 }
@@ -546,7 +585,7 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
         lancamentosMes = db.lancamentos.filter(l => {
             if (!lancamentoAtivo(l)) return false;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-            return (l.dataNota || '') >= inicioMesStr;
+            return dataEmissaoDe(l) >= inicioMesStr;
         });
     }
 
@@ -567,7 +606,7 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
     pizzaContainer.id = 'graficoPizzaDashboard';
     pizzaContainer.style.marginTop = '28px';
     pizzaContainer.innerHTML = `
-        <h3>Distribuição de Gastos no Período</h3>
+        <h3>Distribuição de Gastos no Período <small style="font-weight:400;font-size:0.72rem;color:var(--text-muted)">· pela data de emissão</small></h3>
         <div class="grafico-wrapper" style="max-width:400px; margin:0 auto">
             <canvas id="canvasPizzaDash" height="220"></canvas>
         </div>`;

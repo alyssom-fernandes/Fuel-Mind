@@ -845,7 +845,7 @@ async function salvarConjunto() {
             composicaoAtual: placas,
             historico: [{
                 placas: placas.slice(),
-                vigenciaDe: dataVigencia || new Date().toISOString().slice(0, 10),
+                vigenciaDe: dataVigencia || _hojeISO(),
                 vigenciaAte: null
             }],
             ativo: true,

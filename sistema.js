@@ -208,7 +208,7 @@ function baixarBackup() {
     const blob = new Blob([json], { type: "application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    const data = new Date().toISOString().slice(0, 10);
+    const data = _hojeISO();
     a.href = url; a.download = `backup-combustivel-${data}.json`;
     a.click(); URL.revokeObjectURL(url);
     mostrarToast("Backup baixado com sucesso!", "sucesso");
@@ -1041,7 +1041,7 @@ function _autosystemAtualizarTabela() {
     db.lancamentos
         .filter(l => lancamentoAtivo(l) && l.empresa === empresa && l.itens.some(i => i.tipo === comb))
         .forEach(l => {
-            const dRef = l.dataDescarga || l.dataNota;
+            const dRef = dataDescargaDe(l);   // o tanque recebe na descarga (rodada 11)
             if (!dRef) return;
             const litros = l.itens.filter(i => i.tipo === comb)
                 .reduce((s,i) => s + ((i.qtdDescargada && i.qtdDescargada > 0) ? i.qtdDescargada : (i.qtd||0)), 0);
@@ -1079,7 +1079,7 @@ function _autosystemAtualizarTabela() {
     container.innerHTML = `
         ${resumo}
         <p class="dica" style="margin-bottom:10px">
-            Comparação entre as entradas registradas no AutoSystem e os lançamentos do sistema.
+            Comparação entre as entradas registradas no AutoSystem e os lançamentos do sistema, dia a dia pela <strong>data da descarga</strong>.
             ${Math.abs(diffTotal)>1
                 ? `<strong style="color:var(--danger)">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
                 : `<strong style="color:var(--success)">Total do período confere.</strong>`}
@@ -1114,7 +1114,7 @@ function _autoExportarExcel(comb) {
     const entradasSistema = {};
     db.lancamentos.filter(l => lancamentoAtivo(l) && l.empresa===empresa && l.itens.some(i=>i.tipo===comb))
         .forEach(l => {
-            const dRef = l.dataDescarga||l.dataNota;
+            const dRef = dataDescargaDe(l);
             if (!dRef) return;
             const litros = l.itens.filter(i=>i.tipo===comb).reduce((s,i)=>s+((i.qtdDescargada&&i.qtdDescargada>0)?i.qtdDescargada:(i.qtd||0)),0);
             entradasSistema[dRef] = (entradasSistema[dRef]||0)+litros;
@@ -1125,7 +1125,7 @@ function _autoExportarExcel(comb) {
         ..._autoLinhasDados.map(l => { const s=entradasSistema[l.data]||0; return [l.data,l.entrada,s,s-l.entrada]; })
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'AutoSystem');
-    XLSX.writeFile(wb, `conferencia-autosystem-${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, `conferencia-autosystem-${_hojeISO()}.xlsx`);
     mostrarToast('Excel exportado!', 'sucesso');
 }
 

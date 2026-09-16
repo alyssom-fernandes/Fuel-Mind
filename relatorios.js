@@ -29,7 +29,8 @@ let paginaRelatorio = 1;
 // Ordenação por clique nos cabeçalhos: { campo, dir }
 // campo: 'dataNota' | 'dataDesc' | 'litros' | 'total'
 // dir: 'desc' | 'asc'
-let _ordemClique = { campo: 'dataDesc', dir: 'desc' };
+// Padrão pela emissão, que é a data do período desta tela (rodada 11).
+let _ordemClique = { campo: 'dataNota', dir: 'desc' };
 
 // Controla qual linha está com detalhe inline aberto
 // { contexto: string, id: string }
@@ -105,6 +106,21 @@ function _aplicarFiltroRelatorio() {
 
     const mostrarInativos = document.getElementById("filtroMostrarInativos")?.checked;
 
+    const dentroDoIntervalo = (d) => !!d && (!dataInicio || d >= dataInicio) && (!dataFim || d <= dataFim);
+    const temPeriodo = !!(dataInicio || dataFim);
+
+    // Todos os filtros menos o de data. Serve à tabela e à conta das notas
+    // da fronteira, logo abaixo.
+    const passaSemData = l => {
+        if (motorista   && l.motorista !== motorista) return false;
+        if (placa       && l.placa !== placa)         return false;
+        if (nota        && !l.numeroNota.toLowerCase().includes(nota)) return false;
+        if (base        && !(l.base || "").toLowerCase().includes(base)) return false;
+        if (combustivel && !l.itens.some(i => i.tipo === combustivel)) return false;
+        if (busca       && !_textoBuscavel(l).includes(busca)) return false;
+        return true;
+    };
+
     dadosRelatorioAtual = db.lancamentos.filter(l => {
         // Os dois estados não têm a mesma visibilidade, e é de propósito.
         //
@@ -123,27 +139,36 @@ function _aplicarFiltroRelatorio() {
         if (l.estado === 'excluido' && !mostrarInativos) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
 
-        // Usa dataDescarga como referência principal, com fallback para dataNota.
-        // Um lançamento passa no filtro se QUALQUER das duas datas estiver dentro do intervalo,
-        // garantindo que registros com nota fora do período mas descarga dentro (ou vice-versa)
-        // sejam exibidos corretamente.
-        const dataRef  = l.dataDescarga || l.dataNota || "";
-        const dataNota = l.dataNota || "";
-        const dentroDoIntervalo = (d) => (!dataInicio || d >= dataInicio) && (!dataFim || d <= dataFim);
+        // O período do Relatório é pela EMISSÃO (rodada 11, decisão do dono):
+        // é um relatório de valores, e o valor é da compra na data em que a
+        // nota foi emitida. Antes a nota entrava se QUALQUER das duas datas
+        // caísse no intervalo — e uma nota emitida em 31/07 e descarregada em
+        // 01/08 aparecia em julho e em agosto: consultados separadamente, os
+        // dois meses somavam 29.500 L a mais que o intervalo inteiro no modo
+        // demo. A intenção de não esconder nota ficou no resumo, que diz
+        // quantas notas da fronteira ficaram de fora.
+        if (temPeriodo && !dentroDoIntervalo(dataEmissaoDe(l))) return false;
 
-        if ((dataInicio || dataFim) && !dentroDoIntervalo(dataRef) && !dentroDoIntervalo(dataNota)) return false;
-
-        if (motorista   && l.motorista !== motorista) return false;
-        if (placa       && l.placa !== placa)         return false;
-        if (nota        && !l.numeroNota.toLowerCase().includes(nota)) return false;
-        if (base        && !(l.base || "").toLowerCase().includes(base)) return false;
-        if (combustivel && !l.itens.some(i => i.tipo === combustivel)) return false;
-        if (busca       && !_textoBuscavel(l).includes(busca)) return false;
-        return true;
+        return passaSemData(l);
     });
 
-    // Ordenação: cabeçalhos clicáveis; padrão = data de descarga decrescente
-    const campo = _ordemClique.campo || 'dataDesc';
+    // As notas da fronteira: emitidas no período e descarregadas fora dele, e
+    // descarregadas no período e emitidas fora dele. Só as que valem.
+    let emitidasDescarregadasFora = 0, descarregadasEmitidasFora = 0;
+    if (temPeriodo) {
+        db.lancamentos.forEach(l => {
+            if (!lancamentoAtivo(l)) return;
+            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return;
+            const emissaoDentro  = dentroDoIntervalo(dataEmissaoDe(l));
+            const descargaDentro = dentroDoIntervalo(dataDescargaDe(l));
+            if (emissaoDentro === descargaDentro || !passaSemData(l)) return;
+            if (emissaoDentro) emitidasDescarregadasFora++;
+            else descarregadasEmitidasFora++;
+        });
+    }
+
+    // Ordenação: cabeçalhos clicáveis; padrão = data de emissão decrescente
+    const campo = _ordemClique.campo || 'dataNota';
     const dir   = _ordemClique.dir   || 'desc';
     dadosRelatorioAtual.sort((a, b) => {
         let va, vb;
@@ -273,6 +298,7 @@ function _aplicarFiltroRelatorio() {
                     Preço médio: <strong style="color:var(--text)">${fmtR4(precoMedio)}/L</strong>
                 </span>` : ''}
             </div>
+            ${_textoFronteiraRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora)}
             <div style="display:flex;gap:10px;flex-wrap:wrap">
                 ${cardsComb}
                 ${topMotHtml}
@@ -281,9 +307,20 @@ function _aplicarFiltroRelatorio() {
     }
 }
 
+/** A linha do resumo que diz de que data é o período e quem ficou na fronteira. */
+function _textoFronteiraRelatorio(temPeriodo, emitidasFora, descarregadasFora) {
+    if (!temPeriodo) return '';
+    const partes = [];
+    if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele (incluída${emitidasFora > 1 ? 's' : ''})`);
+    if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele (não incluída${descarregadasFora > 1 ? 's' : ''})`);
+    return `<div class="dica" style="font-size:0.78rem;margin:-4px 0 10px">
+        Período pela <strong>data de emissão</strong>.${partes.length ? ' Notas da fronteira: ' + partes.join(' · ') + '.' : ''}
+    </div>`;
+}
+
 function limparFiltros(contexto) {
     if (!contexto || contexto === "relatorio") {
-        ["filtroDataInicio","filtroDataFim","filtroDataDescInicio","filtroDataDescFim",
+        ["filtroDataInicio","filtroDataFim",
          "filtroMotorista","filtroPlaca","filtroCombustivel","filtroNota","filtroBase","filtroBusca"].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = "";
@@ -624,7 +661,7 @@ function exportarExcel(contexto) {
     const ws = XLSX.utils.aoa_to_sheet(linhas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
-    XLSX.writeFile(wb, `controle-combustivel-${contexto}-${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, `controle-combustivel-${contexto}-${_hojeISO()}.xlsx`);
 }
 
 // ========== PDF EXPANDIDO ==========
@@ -729,7 +766,16 @@ async function exportarPDF(contexto) {
         doc.text(`Página ${pageNum} de ${totalPages}`, W - mR, H - mRod, { align: 'right' });
     }
 
-    const tituloCtx = contexto === 'relatorio' ? 'Relatório' : 'Histórico';
+    // O cabeçalho diz o período e de que data ele é. Antes dizia só
+    // "Relatório — Gerado em", e quem recebia o PDF — o contador — não sabia
+    // se aquilo era o mês inteiro, parte dele ou tudo (rodada 11).
+    const _pIni = document.getElementById("filtroDataInicio")?.value || "";
+    const _pFim = document.getElementById("filtroDataFim")?.value || "";
+    const _periodoPDF = _pIni && _pFim ? `emissão de ${formatarData(_pIni)} a ${formatarData(_pFim)}`
+                      : _pIni ? `emissão a partir de ${formatarData(_pIni)}`
+                      : _pFim ? `emissão até ${formatarData(_pFim)}`
+                      : "todas as datas de emissão";
+    const tituloCtx = `${contexto === 'relatorio' ? 'Relatório' : 'Histórico'} — ${_periodoPDF}`;
 
     // ── Monta colunas dinamicamente ──
     const head = ["Data Nota", "Data Desc.", "Nota"];
@@ -789,8 +835,10 @@ async function exportarPDF(contexto) {
 
     } else {
         // ── Modo quebrar por mês ──
-        // Agrupa sempre por dataDescarga (com fallback para dataNota)
-        const _dataRef = l => l.dataDescarga || l.dataNota || '';
+        // Agrupa pela mesma data que filtrou: a emissão. Agrupar pela descarga
+        // abria, no PDF de agosto, uma seção de setembro com a nota emitida
+        // em 30/08 e descarregada em 01/09.
+        const _dataRef = dataEmissaoDe;
         const porMes = {};
         dados.forEach(l => {
             const mes = _dataRef(l).slice(0, 7);
@@ -806,7 +854,7 @@ async function exportarPDF(contexto) {
             if (!primeiraSecao) doc.addPage();
             primeiraSecao = false;
 
-            let startY = desenharCabecalho(`${tituloCtx} — ${nomeMes(mes)}`);
+            let startY = desenharCabecalho(`${tituloCtx} — ${nomeMes(mes)}, pela emissão`);
             const subTotLitros = lans.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
             const subTotGeral  = lans.reduce((s, l) => s + (l.total || 0), 0);
 
@@ -849,7 +897,7 @@ async function exportarPDF(contexto) {
         doc.text(`Página ${p} de ${totalPages}`, W - mR, H - mRod, { align: 'right' });
     }
 
-    doc.save(`controle-combustivel-${contexto}-${new Date().toISOString().slice(0,10)}.pdf`);
+    doc.save(`controle-combustivel-${contexto}-${_hojeISO()}.pdf`);
     mostrarToast('PDF gerado com sucesso!', 'sucesso', 3000);
 }
 
@@ -882,7 +930,7 @@ function exportarCSV(contexto) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `controle-combustivel-${contexto}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `controle-combustivel-${contexto}-${_hojeISO()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1011,6 +1059,7 @@ function gerarRelatorioMensalPDF() {
             <h3 style="margin:0 0 8px">Relatório Mensal Gerencial</h3>
             <p style="color:var(--text-muted);font-size:0.88rem;margin:0 0 20px">
                 Gera um PDF formatado com resumo executivo, detalhamento por combustível e comparativo com o mês anterior.
+                O mês é o da <strong>data de emissão</strong> das notas.
             </p>
             <div class="campo" style="margin-bottom:8px">
                 <label for="_selMesRelMensal">Mês de referência</label>
@@ -1061,8 +1110,11 @@ function _executarRelatorioMensal() {
     // sem validade mais distorce.
     const lancamentosFiltrados = db.lancamentos.filter(l => lancamentoAtivo(l)
         && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal));
-    const lansMes      = lancamentosFiltrados.filter(l => (l.dataDescarga||l.dataNota).startsWith(mes));
-    const lansAnterior = lancamentosFiltrados.filter(l => (l.dataDescarga||l.dataNota).startsWith(mesAnterior));
+    // Pela emissão (rodada 11): é o relatório de gasto, custo médio e
+    // variação de preço, e o valor é da compra na data em que a nota foi
+    // emitida.
+    const lansMes      = lancamentosFiltrados.filter(l => dataEmissaoDe(l).startsWith(mes));
+    const lansAnterior = lancamentosFiltrados.filter(l => dataEmissaoDe(l).startsWith(mesAnterior));
     const combustiveis = db.combustiveis.filter(c => c.ativo !== false);
 
     const totalNotas  = lansMes.length;
@@ -1080,7 +1132,7 @@ function _executarRelatorioMensal() {
     doc.setFontSize(10); doc.setFont('helvetica','normal');
     doc.text('Relatório Mensal de Entradas de Combustível', 14, 18);
     doc.setFontSize(9);
-    doc.text(`Período: ${nomeMes(mes)}   |   Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 24);
+    doc.text(`Período: ${nomeMes(mes)}, pela data de emissão   |   Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 24);
 
     let y = 36;
     doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
@@ -1150,13 +1202,13 @@ function _executarRelatorioMensal() {
     if (lansMes.length > 0) {
         doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
         doc.text('LANÇAMENTOS DO PERÍODO', 14, y); y += 2;
-        const sorted = [...lansMes].sort((a,b) => (a.dataDescarga||a.dataNota).localeCompare(b.dataDescarga||b.dataNota));
+        const sorted = [...lansMes].sort((a,b) => dataEmissaoDe(a).localeCompare(dataEmissaoDe(b)));
         doc.autoTable({
-            head: [['Descarga','NF','Base','Empresa','Motorista','Placa','Litros','Total']],
+            head: [['Emissão','NF','Base','Empresa','Motorista','Placa','Litros','Total']],
             body: sorted.map(l => {
                 const litros = l.itens.reduce((s,i) => s+_litrosItem(i), 0);
                 return [
-                    formatarData(l.dataDescarga||l.dataNota), l.numeroNota,
+                    formatarData(dataEmissaoDe(l)), l.numeroNota,
                     l.base||'—', l.empresa||'—', l.motorista||'—', l.placa||'—',
                     litros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}),
                     'R$ '+l.total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
@@ -1233,7 +1285,7 @@ function filtroRapido(arg1, arg2) {
     else { contexto = arg1; periodo = arg2; }
 
     const hoje = new Date();
-    const toISO = d => d.toISOString().slice(0, 10);
+    const toISO = _isoLocal;   // relógio do computador; toISOString é UTC e vira o dia seguinte às 21h
     let inicio, fim = toISO(hoje);
 
     switch (periodo) {

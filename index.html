@@ -166,7 +166,7 @@
   <div id="kpiDashboard" class="kpi-container"></div>
   <h3>Alertas Rápidos</h3>
   <div id="alertasDashboard" class="alertas-container"></div>
-  <h3 style="margin-top:28px">Por Combustível — Mês Atual</h3>
+  <h3 style="margin-top:28px">Por Combustível — no Período</h3>
   <div id="dashCombustiveisContainer" class="dash-combs-wrapper"></div>
   <h3 style="margin-top:28px">Comparativo Mês a Mês — Últimos 6 Meses</h3>
   <div id="dashComparativoContainer"></div>
@@ -198,7 +198,7 @@
   <div class="form-grid">
     <div class="campo"><label for="dataNota">Data da Nota Fiscal <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label><input type="date" id="dataNota" oninput="marcarFormularioSujo()"></div>
     <div class="campo">
-      <label for="dataDescarga">Data da Descarga <span id="marcaHerdada" class="marca-herdada" style="display:none" title="Veio da nota anterior. Confira.">herdada</span></label>
+      <label for="dataDescarga">Data da Descarga <span class="campo-obrigatorio" title="Campo obrigatório">*</span> <span id="marcaHerdada" class="marca-herdada" style="display:none" title="Veio da nota anterior. Confira.">herdada</span></label>
       <input type="date" id="dataDescarga" oninput="marcarFormularioSujo(); _limparMarcaHerdada()">
     </div>
     <div class="campo"><label for="numeroNota">Número da Nota</label><input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()"></div>
@@ -260,9 +260,9 @@
 <!-- FRETES -->
 <div id="fretes" class="tela">
   <h2 id="tituloFretes" style="display:block;">Resumo de Fretes</h2>
-  <p class="dica">Dados calculados automaticamente a partir dos lançamentos do mês selecionado. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
+  <p class="dica">Dados calculados automaticamente a partir das notas <strong>descarregadas</strong> no mês selecionado: o frete é do que foi transportado na competência, pela data da descarga. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
   <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
-    <label for="fretesSelectMes" style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês:</label>
+    <label for="fretesSelectMes" style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês da descarga:</label>
     <input type="month" id="fretesSelectMes" onchange="calcularEExibirFretes()" style="max-width:180px">
     <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
   </div>
@@ -303,8 +303,8 @@
 <div id="relatorios" class="tela">
   <h2 id="tituloRelatorios" style="display:block;">Relatórios</h2>
   <div class="filtros">
-      <div class="campo"><label for="filtroDataInicio">Data início</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
-      <div class="campo"><label for="filtroDataFim">Data fim</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDataInicio" title="O período do relatório é pela data de emissão da nota: é o valor da compra naquela data.">Emissão de</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDataFim" title="O período do relatório é pela data de emissão da nota: é o valor da compra naquela data.">Emissão até</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
       <div class="campo"><label for="filtroMotorista">Motorista</label><select id="filtroMotorista" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
       <div class="campo"><label for="filtroPlaca">Placa</label><select id="filtroPlaca" onchange="carregarRelatorio()"><option value="">Todas</option></select></div>
       <div class="campo"><label for="filtroCombustivel">Combustível</label><select id="filtroCombustivel" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
@@ -346,8 +346,8 @@
     <div class="tabela-container">
       <table id="tabelaRelatorioEl">
         <thead><tr>
-          <th class="th-sortable" onclick="_ordenarPorColuna('dataNota')" title="Ordenar por data da nota">Data Nota <span id="sort-dataNota" class="th-sort-icon">↕</span></th>
-          <th class="th-sortable" onclick="_ordenarPorColuna('dataDesc')" title="Ordenar por data de descarga">Data Descarga <span id="sort-dataDesc" class="th-sort-icon ativo">↓</span></th>
+          <th class="th-sortable" onclick="_ordenarPorColuna('dataNota')" title="Ordenar por data da nota">Data Nota <span id="sort-dataNota" class="th-sort-icon ativo">↓</span></th>
+          <th class="th-sortable" onclick="_ordenarPorColuna('dataDesc')" title="Ordenar por data de descarga">Data Descarga <span id="sort-dataDesc" class="th-sort-icon">↕</span></th>
           <th>Nota</th><th>Base</th><th>Empresa</th><th>Motorista</th><th>Placa</th>
           <th class="th-sortable" onclick="_ordenarPorColuna('litros')" title="Ordenar por litros">Litros (L) <span id="sort-litros" class="th-sort-icon">↕</span></th>
           <th class="th-sortable" onclick="_ordenarPorColuna('total')" title="Ordenar por valor total">Total (R$) <span id="sort-total" class="th-sort-icon">↕</span></th>
@@ -367,8 +367,8 @@
 <div id="analitico" class="tela">
   <h2 id="tituloAnalitico" style="display:block;">Analítico</h2>
     <div class="analitico-filtros">
-      <div class="campo"><label for="analiticoInicio">Período inicial</label><input type="date" id="analiticoInicio"></div>
-      <div class="campo"><label for="analiticoFim">Período final</label><input type="date" id="analiticoFim"></div>
+      <div class="campo"><label for="analiticoInicio" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão de</label><input type="date" id="analiticoInicio"></div>
+      <div class="campo"><label for="analiticoFim" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão até</label><input type="date" id="analiticoFim"></div>
       <div class="campo"><label for="analiticoCombustivel">Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
       <div class="campo" style="justify-content:flex-end; padding-top:18px"><button class="btn-primario" onclick="carregarAnalitico()">Atualizar</button></div>
     </div>

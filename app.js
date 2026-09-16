@@ -1588,7 +1588,7 @@ function verificarBackupAutomatico() {
  * saber de nada.
  */
 function fazerBackupAutomatico() {
-    const chave = `backupAuto_${new Date().toISOString().slice(0,10)}`;
+    const chave = `backupAuto_${_hojeISO()}`;
     const dados = JSON.stringify(db);
 
     const gravar = () => {

@@ -73,6 +73,82 @@ function lancamentoAtivo(l) {
     return !!l && !l.estado;
 }
 
+// ========== AS DUAS DATAS DE UM LANÇAMENTO ==========
+/**
+ * Uma nota tem duas datas, e cada uma responde a uma pergunta diferente.
+ * Rodada 11, decisão do dono (16/09/2026): não dá para pôr uma só como base
+ * de tudo — depende do contexto.
+ *
+ * - DESCARGA: quando o combustível entrou nos tanques. É a base de VOLUME:
+ *   Fretes (pagos pelo que foi transportado na competência), Conferência com
+ *   o tanque, e os blocos de litros do Dashboard.
+ * - EMISSÃO: quando a compra foi faturada. É a base de VALOR: Relatórios e
+ *   o PDF, o Relatório Mensal Gerencial, o Analítico, a referência de preço,
+ *   a duplicidade, e os blocos de compra do Dashboard.
+ *
+ * A regra que organiza as telas: uma tela ou um bloco usa UMA base só, e diz
+ * qual. Misturar as duas no mesmo número produz coisa que não é de nota
+ * nenhuma — o custo médio de agosto com os reais da emissão e os litros da
+ * descarga dava R$ 5,7232/L no modo demo, contra R$ 5,8102 e R$ 5,8256 das
+ * bases puras.
+ *
+ * A descarga é obrigatória no lançamento desde a rodada 11. O recurso à data
+ * da nota fica só como defesa para registro antigo que não a tenha.
+ */
+function dataDescargaDe(l) {
+    return (l && (l.dataDescarga || l.dataNota)) || "";
+}
+
+function dataEmissaoDe(l) {
+    return (l && l.dataNota) || "";
+}
+
+/** `"YYYY-MM-DD"` de uma data pelo relógio do computador.
+ *  Nunca `toISOString().slice(0, 10)`: é a data em UTC, e no horário de
+ *  Brasília ela já é o dia seguinte a partir das 21h. */
+function _isoLocal(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function _hojeISO() {
+    return _isoLocal(new Date());
+}
+
+/** Soma dias a uma data `"YYYY-MM-DD"` e devolve outra, sem passar por UTC. */
+function _somarDiasISO(iso, dias) {
+    const [a, m, d] = iso.split("-").map(Number);
+    return _isoLocal(new Date(a, m - 1, d + dias));
+}
+
+/** Último dia do mês de uma data `"YYYY-MM-DD"`. */
+function _ultimoDiaDoMesISO(iso) {
+    const [a, m] = iso.split("-").map(Number);
+    return _isoLocal(new Date(a, m, 0));
+}
+
+/**
+ * O período imediatamente anterior a [inicio, fim], para comparação.
+ *
+ * Se o período começa no dia 1, é o mesmo trecho do mês anterior: de 01/09 a
+ * 16/09 compara com 01/08 a 16/08, e o mês inteiro com o mês inteiro (o dia
+ * final é limitado ao tamanho do mês). Fora isso, o mesmo número de dias
+ * logo antes do início. Antes, a variação dos blocos por combustível
+ * comparava sempre com o mês anterior a HOJE — com agosto escolhido em
+ * setembro, comparava agosto com agosto.
+ */
+function _periodoAnterior(inicio, fim) {
+    const [ai, mi, di] = inicio.split("-").map(Number);
+    const [af, mf, df] = fim.split("-").map(Number);
+    if (di === 1 && ai === af && mi === mf) {
+        const ini = _isoLocal(new Date(ai, mi - 2, 1));
+        const ultimo = Number(_ultimoDiaDoMesISO(ini).slice(8, 10));
+        const diaFim = fim === _ultimoDiaDoMesISO(fim) ? ultimo : Math.min(df, ultimo);
+        return { inicio: ini, fim: _isoLocal(new Date(ai, mi - 2, diaFim)) };
+    }
+    const dias = Math.round((new Date(af, mf - 1, df) - new Date(ai, mi - 1, di)) / 86400000) + 1;
+    return { inicio: _somarDiasISO(inicio, -dias), fim: _somarDiasISO(inicio, -1) };
+}
+
 // ========== TAXA DE FRETE DA EMPRESA ==========
 /**
  * Taxa de frete (R$/litro) de um registro de empresa, normalizada.

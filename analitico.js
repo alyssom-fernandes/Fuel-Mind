@@ -30,7 +30,7 @@ function baixarGrafico(nomeGrafico) {
     if (!chart) { mostrarToast('Gráfico ainda não carregado.', 'aviso'); return; }
     const link = document.createElement('a');
     link.href = chart.toBase64Image('image/png', 1);
-    link.download = `${nomeGrafico}-${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `${nomeGrafico}-${_hojeISO()}.png`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -113,8 +113,11 @@ function carregarAnalitico() {
         if (!lancamentoAtivo(l)) return false;
         // Filtro global por empresa (se ativo)
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-        if (inicio && l.dataNota < inicio) return false;
-        if (fim    && l.dataNota > fim)    return false;
+        // Pela emissão (rodada 11, decisão do dono): o Analítico é de gasto e
+        // preço, e o valor é da compra na data em que a nota foi emitida.
+        const emissao = dataEmissaoDe(l);
+        if (inicio && emissao < inicio) return false;
+        if (fim    && emissao > fim)    return false;
         return true;
     });
 
@@ -139,7 +142,7 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
     const precosPorMes = {};
 
     lancamentos.forEach(l => {
-        const mesKey = l.dataNota ? l.dataNota.slice(0, 7) : "desconhecido";
+        const mesKey = dataEmissaoDe(l) ? dataEmissaoDe(l).slice(0, 7) : "desconhecido";
         if (!mensal[mesKey]) mensal[mesKey] = { mes: mesKey, notas: 0, litros: 0, gasto: 0 };
         mensal[mesKey].notas++;
 

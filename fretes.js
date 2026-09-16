@@ -85,7 +85,9 @@ function calcularEExibirFretes() {
         // válida não há quantidade a faturar. Decisão do dono, 08/09/2026.
         if (!lancamentoAtivo(l)) return false;
         if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
-        const d = l.dataDescarga || l.dataNota;
+        // Pela descarga (rodada 11, decisão do dono): o frete é pago pelo que
+        // foi transportado na competência.
+        const d = dataDescargaDe(l);
         return d && d.startsWith(mes);
     });
 
@@ -98,7 +100,7 @@ function calcularEExibirFretes() {
         const placa     = l.placa     || "(sem placa)";
         const motorista = l.motorista || "(sem motorista)";
         const empresa   = l.empresa   || "(sem empresa)";
-        const dataRef   = l.dataDescarga || l.dataNota || mes + "-01";
+        const dataRef   = dataDescargaDe(l) || mes + "-01";
         const taxaEmpresa = _taxaFreteEmpresa(empresa);
 
         // Resolver conjunto vigente para esta placa e data

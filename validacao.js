@@ -63,15 +63,27 @@ const _CAMPOS_VALIDADOS = [
    Por isso o badge da linha mostra em quantas notas ela se apoia: é
    quem está olhando a nota que decide o peso de "1 nota" contra
    "14 notas", não o sistema.
+
+   A semana é a DA NOTA, pela data de emissão (rodada 11, decisão do dono).
+   Preço é fato da compra, e a compra é datada pela emissão. E a janela
+   termina na data da nota que está no formulário, não em hoje: uma nota
+   de três meses atrás, de um período de crise do petróleo, era comparada
+   com os preços desta semana. Sem data da nota ainda, a janela termina
+   hoje. Nota posterior à data da nota não entra.
    ────────────────────────────────────────────────────────────────── */
 const PRECO_AMOSTRA_MINIMA = 1;
 const PRECO_TOLERANCIA     = 0.10;
 const PRECO_JANELA_DIAS    = 7;
 
+/** Último dia da janela da referência: a data da nota no formulário, ou hoje. */
+function _fimJanelaPreco() {
+    const el = document.getElementById("dataNota");
+    return (el && el.value) || _hojeISO();
+}
+
 function referenciaPreco(nomeCombustivel) {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - PRECO_JANELA_DIAS);
-    const limiteStr = limite.toISOString().slice(0, 10);
+    const fimStr    = _fimJanelaPreco();
+    const limiteStr = _somarDiasISO(fimStr, -PRECO_JANELA_DIAS);
 
     const precos = (db.lancamentos || [])
         .filter(l => {
@@ -82,8 +94,8 @@ function referenciaPreco(nomeCombustivel) {
             if (!lancamentoAtivo(l)) return false;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
             if (lancamentoEditandoId && l.id === lancamentoEditandoId) return false;
-            const dataRef = l.dataDescarga || l.dataNota || "";
-            return dataRef >= limiteStr;
+            const emissao = dataEmissaoDe(l);
+            return emissao >= limiteStr && emissao <= fimStr;
         })
         .flatMap(l => (l.itens || [])
             .filter(i => i.tipo === nomeCombustivel && i.valor > 0)
@@ -127,9 +139,13 @@ function _desenharReferenciaPreco(linha, tipo) {
     const { mediana, amostras } = referenciaPreco(tipo);
     const ref = document.createElement("span");
     ref.className = "ref-preco";
+    // Quando a janela não termina hoje, o badge diz onde ela termina: sem
+    // isso, "7 dias" numa nota antiga seria lido como a última semana.
+    const fim = _fimJanelaPreco();
+    const ate = fim === _hojeISO() ? "" : ` até ${formatarData(fim).slice(0, 5)}`;
     ref.textContent = mediana
-        ? `referência ${fmtR4(mediana)}/L · ${PRECO_JANELA_DIAS} dias · ${_plural(amostras, "nota", "notas")}`
-        : `sem histórico nos últimos ${PRECO_JANELA_DIAS} dias`;
+        ? `referência ${fmtR4(mediana)}/L · ${PRECO_JANELA_DIAS} dias${ate} · ${_plural(amostras, "nota", "notas")}`
+        : `sem histórico nos ${PRECO_JANELA_DIAS} dias${ate || " anteriores"}`;
     // Antes do aviso de preço, quando os dois estiverem na célula: a
     // régua vem primeiro, o julgamento depois.
     wrapper.insertBefore(ref, wrapper.querySelector(".aviso-preco"));
@@ -193,11 +209,8 @@ function limparValidacao() {
 }
 
 /* ── AS REGRAS ──────────────────────────────────────────────────────*/
-
-function _hojeISO() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+/* `_hojeISO()` mudou para utils.js na rodada 11: o Dashboard e o Relatório
+   passaram a usá-la nos períodos rápidos. */
 
 /**
  * Recalcula tudo e redesenha as mensagens. É chamada no `change` de cada
@@ -236,6 +249,11 @@ function validarLancamento() {
     // ── Obrigatórios: só depois de tentar salvar ──
     if (_tentouSalvar) {
         if (!dataNota)  marcar("dataNota",       "Informe a data da nota fiscal.", "bloqueio");
+        // Obrigatória desde a rodada 11 (decisão do dono): a descarga é o dia
+        // em que o combustível entrou nos tanques, e controlar essa entrada é
+        // o objetivo da ferramenta. Fretes, Conferência e os litros do
+        // Dashboard se apoiam nela.
+        if (!dataDescarga) marcar("dataDescarga", "Informe a data da descarga.",  "bloqueio");
         if (!empresa)   marcar("empresaInput",   "Informe a empresa.",             "bloqueio");
         if (!motorista) marcar("motoristaInput", "Informe o motorista.",           "bloqueio");
         if (!placa)     marcar("placaInput",     "Informe a placa.",               "bloqueio");

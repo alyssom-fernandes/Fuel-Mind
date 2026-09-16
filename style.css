@@ -438,6 +438,11 @@ body {
     font-size: 0.7rem; text-transform: uppercase;
     letter-spacing: 0.09em; color: var(--text-light); font-weight: 700;
 }
+/* De que data é o número (rodada 11): o Dashboard mostra volume pela
+   descarga e compra pela emissão, e cada card diz qual. */
+.kpi-base {
+    font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;
+}
 .kpi-delta {
     display: inline-flex; align-items: center; gap: 3px;
     font-size: 0.75rem; font-weight: 700;
