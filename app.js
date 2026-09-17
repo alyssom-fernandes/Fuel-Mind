@@ -2097,6 +2097,7 @@ async function mostrarTela(id) {
     if (id === "dashboard")    carregarDashboard();
     if (id === "relatorios")   carregarRelatorio();
     if (id === "fretes")       carregarFretes();
+    if (id === "grupo")        { if (typeof carregarGrupo === 'function') carregarGrupo(); }
     if (id === "conferencia")  { if (typeof _conferenciaInicializar === "function") _conferenciaInicializar(); }
     if (id === "lancamentos") {
         // Não limpar o marcador ao ENTRAR na tela. Ele era zerado aqui, então
