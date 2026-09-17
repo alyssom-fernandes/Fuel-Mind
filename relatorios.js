@@ -39,6 +39,45 @@ let _detalheInlineAberto = { contexto: null, id: null };
 /*=================================================
   MANTER ESTADO DE FILTROS APÓS EDIÇÃO
 =================================================*/
+/* ── IR AO RELATÓRIO JÁ FILTRADO ────────────────────────────────────
+   O padrão mais elogiado nas ferramentas de painel (o "drill-through" do
+   Metabase, o clique no número do Stripe) é o mesmo: quem vê um total
+   estranho clica nele e cai na lista que o formou. Aqui não havia nada
+   clicável no Dashboard, no Analítico nem nos Fretes — era remontar o
+   filtro à mão (17/09/2026).
+
+   O período do Relatório é pela EMISSÃO (rodada 11). Quando o número
+   clicado nasce da descarga — os litros do Dashboard, o mês dos Fretes —
+   a função avisa, em vez de fingir que os dois recortes são o mesmo. */
+function irParaRelatorioFiltrado(filtros, aviso) {
+    const f = filtros || {};
+    const por = (id, valor) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = valor == null ? "" : valor;
+    };
+    // Campos não citados voltam ao vazio: filtro pela metade engana mais
+    // do que filtro nenhum.
+    por("filtroDataInicio", f.inicio);
+    por("filtroDataFim",    f.fim);
+    por("filtroMotorista",  f.motorista);
+    por("filtroPlaca",      f.placa);
+    por("filtroCombustivel", f.combustivel);
+    por("filtroNota",       f.nota);
+    por("filtroBase",       f.base);
+    por("filtroBusca",      f.busca);
+    const caixa = document.getElementById("filtroMostrarInativos");
+    if (caixa) caixa.checked = false;
+    mostrarTela("relatorios");
+    carregarRelatorio();
+    if (aviso) mostrarToast(aviso, "info", 6000);
+}
+
+/** Mês "YYYY-MM" para o par de datas do filtro. */
+function _mesParaPeriodo(mes) {
+    return { inicio: `${mes}-01`, fim: _ultimoDiaDoMesISO(`${mes}-01`) };
+}
+
 function recarregarRelatorioSemZerarFiltros() {
     _aplicarFiltroRelatorio();
 }

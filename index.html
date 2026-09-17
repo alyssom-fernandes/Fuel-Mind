@@ -275,6 +275,9 @@
     <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
   </div>
   <div id="fretesResumoMes" class="resumo" style="margin-bottom:16px"></div>
+  <h3 style="margin-top:4px">Frete mês a mês — últimos 6 meses</h3>
+  <p class="dica">Pela data da descarga, com a taxa que valia em cada mês. Clique numa barra ou numa linha para abrir aquele mês.</p>
+  <div id="freteHistoricoContainer" style="margin-bottom:22px"></div>
   <div class="barra-exportacao" id="fretesBarraExportacao">
     <span class="exportacao-titulo">Exportar:</span>
     <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
@@ -387,6 +390,7 @@
       <button class="btn-secundario" id="btnMetricaGasto" style="background:var(--primary); color:white;">Valor (R$)</button>
       <button class="btn-secundario" id="btnMetricaLitros">Litros (L)</button>
     </div>
+    <p class="dica">Clique numa barra dos gráficos para abrir o Relatório já filtrado por aquele mês, motorista, veículo ou combustível.</p>
     <div id="analiticoPeriodoLabel" style="display:none"></div>
     <div id="kpiContainer" class="kpi-container"></div>
     <div class="analitico-abas" id="analiticoAbas">

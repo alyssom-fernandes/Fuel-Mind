@@ -148,6 +148,29 @@ function _totaisCompra(lancs, nomeComb) {
     };
 }
 
+/* ── FRETE NO DASHBOARD (17/09/2026) ────────────────────────────────
+   O objetivo da ferramenta é controle de frete, e nem a palavra "frete"
+   aparecia nas duas telas de número. O cálculo é o mesmo da tela de
+   Fretes: quantidade da nota (a carga, decisão do dono) vezes a taxa que
+   valia na data da descarga. */
+function _freteDoPeriodo(lancsPorDescarga) {
+    let total = 0, litros = 0, semTaxa = 0;
+    (lancsPorDescarga || []).forEach(l => {
+        const emp  = db.empresas.find(e => e.id === (typeof _empresaIdDoLancamento === 'function' ? _empresaIdDoLancamento(l) : null))
+                  || db.empresas.find(e => e.nome === l.empresa) || null;
+        const taxa = typeof _taxaFreteDaEmpresaNaData === 'function'
+            ? _taxaFreteDaEmpresaNaData(emp, dataDescargaDe(l))
+            : 0;
+        if (!(taxa > 0)) semTaxa++;
+        (l.itens || []).forEach(i => {
+            const q = Number(i.qtd) || 0;
+            litros += q;
+            total  += q * taxa;
+        });
+    });
+    return { total, litros, semTaxa, porLitro: litros > 0 ? total / litros : 0 };
+}
+
 function carregarDashboard() {
     _garantirFiltrosDashboard();
 
@@ -166,28 +189,35 @@ function carregarDashboard() {
     const totalNotas  = lancDescarga.length;
     const totalLitros = lancDescarga.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
     const compra      = _totaisCompra(lancEmissao);
+    const frete       = _freteDoPeriodo(lancDescarga);
 
     document.getElementById("kpiDashboard").innerHTML = `
-        <div class="kpi-card">
+        <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre o Resumo de Fretes, que também conta pela data da descarga.">
             <div class="kpi-valor">${totalNotas}</div>
             <div class="kpi-label">Notas Descarregadas</div>
             <div class="kpi-base">pela data da descarga</div>
         </div>
-        <div class="kpi-card verde">
+        <div class="kpi-card verde kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre o Resumo de Fretes, que também conta pela data da descarga.">
             <div class="kpi-valor">${fmtL(totalLitros)}</div>
             <div class="kpi-label">Litros Descarregados</div>
             <div class="kpi-base">pela data da descarga</div>
         </div>
-        <div class="kpi-card laranja">
+        <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Relatório com este mesmo período — que lá também é pela emissão.">
             <div class="kpi-valor">${fmtR(compra.gasto)}</div>
             <div class="kpi-label">Gasto em Compras</div>
             <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
         </div>
-        <div class="kpi-card roxo" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
+        <div class="kpi-card roxo kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
             <div class="kpi-valor">${fmtR4(compra.custo)}</div>
             <div class="kpi-label">Preço Médio de Compra / L</div>
             <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)} faturados</div>
             ${compra.custoRecebido > 0 ? `<div class="kpi-base" title="Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebido(compra.metricas))}</div>` : ''}
+        </div>
+        <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
+            <div class="kpi-valor">${fmtR(frete.total)}</div>
+            <div class="kpi-label">Frete do Período</div>
+            <div class="kpi-base">pela data da descarga · ${fmtR4(frete.porLitro)}/L</div>
+            ${frete.semTaxa ? `<div class="kpi-base" style="color:var(--danger)">${frete.semTaxa} nota(s) sem taxa</div>` : ''}
         </div>
     `;
 

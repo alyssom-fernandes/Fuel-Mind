@@ -249,6 +249,7 @@ function calcularEExibirFretes() {
     };
 
     renderFreteResumo();
+    renderFreteHistorico();
     renderAbaPlacas();
     renderAbaMotoristasFrete();
     renderAbaEmpresasFrete();
@@ -306,7 +307,8 @@ function renderAbaPlacas() {
     }
 
     tbody.innerHTML = lista.map(p => `
-        <tr>
+        <tr class="linha-clicavel" onclick="_freteAbreRelatorio('placa', '${escapeJsAttr(p.nome)}')"
+            title="Ver as notas desta placa no Relatório">
             <td><strong>${escapeHtml(p.nome)}</strong></td>
             <td style="font-size:0.78rem;color:var(--text-muted)">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
@@ -329,7 +331,8 @@ function renderAbaMotoristasFrete() {
     }
 
     tbody.innerHTML = lista.map(m => `
-        <tr>
+        <tr class="linha-clicavel" onclick="_freteAbreRelatorio('motorista', '${escapeJsAttr(m.nome)}')"
+            title="Ver as notas deste motorista no Relatório">
             <td><strong>${escapeHtml(m.nome)}</strong></td>
             <td>${m.viagens}</td>
             <td>${fmtL3(m.litros)}</td>
@@ -409,6 +412,106 @@ function trocarAbaFretes(nomeAba, botao) {
     document.querySelectorAll("#fretesAbas .aba-btn").forEach(b => b.classList.remove("ativa"));
     document.getElementById("frete-aba-" + nomeAba).style.display = "block";
     botao.classList.add("ativa");
+}
+
+/* ── DA LINHA DE FRETE PARA AS NOTAS ────────────────────────────────
+   O frete conta pela data da DESCARGA e o Relatório filtra pela EMISSÃO
+   (rodada 11). O período vai como o mês da descarga, e o aviso diz que
+   uma nota da virada do mês pode não aparecer — melhor dizer do que
+   deixar o operador achar que os dois recortes são o mesmo. */
+function _freteAbreRelatorio(campo, valor) {
+    if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
+    const filtros = { ..._mesParaPeriodo(dadosFretesAtual.mes) };
+    filtros[campo] = valor;
+    irParaRelatorioFiltrado(filtros,
+        `Relatório filtrado por ${campo} "${valor}", ${nomeMes(dadosFretesAtual.mes)}. `
+        + `O frete conta pela descarga e o Relatório pela emissão: nota da virada do mês pode não aparecer.`);
+}
+
+/* ── FRETE MÊS A MÊS (17/09/2026) ───────────────────────────────────
+   A tela respondia por um mês só: para saber se o frete de um
+   transportador subiu, era abrir mês a mês. São seis meses terminando no
+   mês escolhido, cada um com a taxa que valia nele. */
+function renderFreteHistorico() {
+    const alvo = document.getElementById("freteHistoricoContainer");
+    if (!alvo || !dadosFretesAtual) return;
+    const [ano, mes] = dadosFretesAtual.mes.split("-").map(Number);
+    const meses = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(ano, mes - 1 - i, 1);
+        meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    const serie = meses.map(m => {
+        const lancs = db.lancamentos.filter(l => lancamentoAtivo(l)
+            && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
+            && dataDescargaDe(l).startsWith(m));
+        let frete = 0, litros = 0;
+        lancs.forEach(l => {
+            const taxa = _taxaFreteDaEmpresaNaData(_empresaDoLancamentoFrete(l), dataDescargaDe(l));
+            (l.itens || []).forEach(i => { const q = Number(i.qtd) || 0; litros += q; frete += q * taxa; });
+        });
+        return { mes: m, frete, litros, porLitro: litros > 0 ? frete / litros : 0 };
+    });
+
+    if (!serie.some(x => x.frete > 0)) {
+        alvo.innerHTML = `<p class="grafico-vazio">Sem frete nos últimos seis meses.</p>`;
+        return;
+    }
+
+    alvo.innerHTML = `
+        <div class="grafico-wrapper" style="height:220px"><canvas id="graficoFreteMeses"></canvas></div>
+        <div class="tabela-container" style="margin-top:10px">
+            <table><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
+            <tbody>${serie.map(x => `<tr class="linha-clicavel" onclick="_freteAbrirMes('${x.mes}')" title="Ver o detalhe deste mês">
+                <td><strong>${nomeMes(x.mes)}</strong></td>
+                <td>${fmtL3(x.litros)}</td>
+                <td><strong>${fmtR(x.frete)}</strong></td>
+                <td>${x.porLitro > 0 ? fmtR4(x.porLitro) : "—"}</td>
+            </tr>`).join("")}</tbody></table>
+        </div>`;
+
+    if (typeof Chart === "undefined") return;
+    const cores = getChartColors();
+    if (window._chartFreteMeses) window._chartFreteMeses.destroy();
+    window._chartFreteMeses = new Chart(document.getElementById("graficoFreteMeses").getContext("2d"), {
+        type: "bar",
+        data: {
+            labels: serie.map(x => nomeMes(x.mes)),
+            datasets: [{
+                label: "Frete (R$)",
+                data: serie.map(x => x.frete),
+                backgroundColor: cores.primary + "80",
+                borderColor: cores.primary,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            onClick: (evento, elementos) => {
+                if (!elementos || !elementos.length) return;
+                _freteAbrirMes(serie[elementos[0].index].mes);
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    label: ctx => `${fmtR(ctx.raw)} · ${fmtR4(serie[ctx.dataIndex].porLitro)}/L`,
+                    afterLabel: () => "Clique para abrir este mês"
+                } }
+            },
+            scales: {
+                x: { ticks: { color: cores.text }, grid: { color: cores.grid } },
+                y: { ticks: { color: cores.text, callback: v => fmtR(v) }, grid: { color: cores.grid } }
+            }
+        }
+    });
+}
+
+/** Troca o mês do seletor e recalcula — usado pelo gráfico e pela tabela. */
+function _freteAbrirMes(mes) {
+    const sel = document.getElementById("fretesSelectMes");
+    if (!sel) return;
+    sel.value = mes;
+    calcularEExibirFretes();
 }
 
 /*=================================================

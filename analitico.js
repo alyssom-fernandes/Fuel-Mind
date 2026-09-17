@@ -300,6 +300,27 @@ function _graficoVazio(idCanvas, msg) {
     aviso.style.display = "";
 }
 
+/* ── CLICAR NA BARRA ────────────────────────────────────────────────
+   O gráfico responde "quanto", e a pergunta seguinte é sempre "quais
+   notas". Até 17/09/2026 não havia nada clicável aqui: era ir ao
+   Relatório e remontar o filtro à mão. O Chart.js entrega o índice da
+   barra no clique; o resto é traduzir esse índice em filtro. O Relatório
+   também filtra pela emissão, então o recorte é o mesmo. */
+function _ligarCliqueGrafico(chart, rotulos, montarFiltro) {
+    if (!chart) return;
+    chart.options.onClick = (evento, elementos) => {
+        if (!elementos || !elementos.length) return;
+        const rotulo = rotulos[elementos[0].index];
+        if (rotulo == null) return;
+        irParaRelatorioFiltrado(montarFiltro(rotulo));
+    };
+    // Nada de mexer nos callbacks do tooltip aqui: `chart.options` é um
+    // proxy do Chart.js e embrulhar o `afterLabel` a cada render entrava
+    // em recursão infinita (RangeError, testado em 17/09/2026). O convite
+    // ao clique fica no texto acima dos gráficos e no cursor.
+    if (chart.canvas) chart.canvas.style.cursor = "pointer";
+}
+
 /** Devolve o canvas pronto para desenho (ou null se ele não existir). */
 function _graficoPronto(idCanvas) {
     const canvas = document.getElementById(idCanvas);
@@ -369,6 +390,7 @@ function renderAbaMensal(dados) {
             }
         }
     });
+    _ligarCliqueGrafico(chartMensal, meses.map(m => m.mes), mes => _mesParaPeriodo(mes));
 }
 
 function renderAbaMotoristas(dados) {
@@ -429,6 +451,7 @@ function renderAbaMotoristas(dados) {
             }
         }
     });
+    _ligarCliqueGrafico(chartMotoristas, lista.map(m => m.nome), nome => ({ motorista: nome }));
 }
 
 function renderAbaVeiculos(dados) {
@@ -489,6 +512,7 @@ function renderAbaVeiculos(dados) {
             }
         }
     });
+    _ligarCliqueGrafico(chartVeiculos, lista.map(v => v.nome), placa => ({ placa }));
 }
 
 function renderAbaCombustivel(dados) {
@@ -547,6 +571,7 @@ function renderAbaCombustivel(dados) {
             }
         }
     });
+    _ligarCliqueGrafico(chartCombustivel, lista.map(c => c.nome), comb => ({ combustivel: comb }));
 }
 
 function renderAbaComparativo(dados) {
