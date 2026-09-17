@@ -222,7 +222,36 @@ function _periodoAnterior(inicio, fim) {
  * A taxa é atributo da empresa contratante — não do combustível
  * transportado. Valor ausente, inválido ou negativo vira 0, para que o
  * cálculo de frete nunca produza NaN nem valor negativo.
+ *
+ * `_taxaFreteDaEmpresa(empresa)` devolve a taxa DE HOJE. Para calcular
+ * frete de um mês passado use `_taxaFreteDaEmpresaNaData(empresa, iso)`:
+ * até 17/09/2026 a taxa era um valor único, e mudá-la reescrevia em
+ * silêncio todos os meses já pagos — nada de frete é gravado, a tela
+ * recalcula tudo a cada abertura. Agora cada mudança fecha a vigência
+ * anterior e abre outra, do mesmo jeito que a composição de um conjunto
+ * de veículos já fazia.
  */
+function _taxaFreteDaEmpresaNaData(empresa, iso) {
+    if (!empresa) return 0;
+    const hist = Array.isArray(empresa.taxaHistorico) ? empresa.taxaHistorico : [];
+    if (!hist.length || !iso) return _taxaFreteDaEmpresa(empresa);
+    // Da vigência mais nova para a mais antiga: a primeira que contém a
+    // data é a que valia naquele dia.
+    const achada = [...hist]
+        .sort((a, b) => String(b.vigenciaDe || "").localeCompare(String(a.vigenciaDe || "")))
+        .find(v => String(v.vigenciaDe || "") <= iso && (!v.vigenciaAte || iso <= String(v.vigenciaAte)));
+    if (achada) {
+        const t = Number(achada.taxa);
+        return isFinite(t) && t > 0 ? t : 0;
+    }
+    // Data anterior a toda vigência registrada: a mais antiga é a melhor
+    // aproximação do que se cobrava então — e é o que o sistema mostrava
+    // antes de existir histórico.
+    const maisAntiga = [...hist].sort((a, b) => String(a.vigenciaDe || "").localeCompare(String(b.vigenciaDe || "")))[0];
+    const t = Number(maisAntiga && maisAntiga.taxa);
+    return isFinite(t) && t > 0 ? t : _taxaFreteDaEmpresa(empresa);
+}
+
 function _taxaFreteDaEmpresa(empresa) {
     const taxa = parseFloat(empresa?.taxaFrete);
     return isNaN(taxa) || taxa < 0 ? 0 : taxa;

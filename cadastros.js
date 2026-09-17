@@ -50,6 +50,17 @@ window.normalizarPlaca = function(placa) {
     return converterPlacaMercosul(limpa) || limpa;
 };
 
+/** Histórico de taxa de frete em texto, para o `title` da lista. */
+function _historicoTaxaTexto(empresa) {
+    const hist = Array.isArray(empresa && empresa.taxaHistorico) ? empresa.taxaHistorico : [];
+    if (!hist.length) return "Taxa sem histórico: vale para todo o período.";
+    return "Vigências da taxa:\n" + [...hist]
+        .sort((a, b) => String(a.vigenciaDe).localeCompare(String(b.vigenciaDe)))
+        .map(v => `${fmtR4(Number(v.taxa) || 0)}/L — de ${formatarData(v.vigenciaDe)}`
+                + (v.vigenciaAte ? ` a ${formatarData(v.vigenciaAte)}` : " (atual)"))
+        .join("\n");
+}
+
 /*=================================================
   CONJUNTOS DE VEÍCULOS
 =================================================*/
@@ -287,6 +298,21 @@ function confirmarEdicao() {
             if (taxaAntiga !== novaTaxa) {
                 if (!item.logs) item.logs = [];
                 item.logs.push(`Taxa de frete alterada de R$ ${taxaAntiga.toFixed(4)}/L para R$ ${novaTaxa.toFixed(4)}/L em ${new Date().toLocaleString('pt-BR')}`);
+                // ── VIGÊNCIA DA TAXA (17/09/2026) ───────────────────────
+                // A taxa nova vale de hoje em diante; a anterior fica
+                // fechada em ontem. Sem isso, mudar a taxa em outubro
+                // reescrevia o frete de janeiro a setembro, já pago, sem
+                // aviso nenhum — o único rastro era a linha de log acima.
+                const hoje = _hojeISO();
+                if (!Array.isArray(item.taxaHistorico)) item.taxaHistorico = [];
+                if (!item.taxaHistorico.length && taxaAntiga > 0) {
+                    // Primeira mudança de uma empresa antiga: o que valia
+                    // até ontem é a taxa que estava no registro.
+                    item.taxaHistorico.push({ taxa: taxaAntiga, vigenciaDe: "2000-01-01", vigenciaAte: _somarDiasISO(hoje, -1) });
+                }
+                item.taxaHistorico.forEach(v => { if (!v.vigenciaAte) v.vigenciaAte = _somarDiasISO(hoje, -1); });
+                item.taxaHistorico = item.taxaHistorico.filter(v => String(v.vigenciaDe) <= String(v.vigenciaAte));
+                item.taxaHistorico.push({ taxa: novaTaxa, vigenciaDe: hoje, vigenciaAte: null });
                 item.taxaFrete = novaTaxa;
             }
         }
@@ -518,6 +544,9 @@ function salvarEmpresa() {
         nome,
         municipio,
         taxaFrete,
+        // A vigência nasce junto: assim o frete de um mês passado nunca é
+        // recalculado por uma taxa futura (17/09/2026).
+        taxaHistorico: taxaFrete > 0 ? [{ taxa: taxaFrete, vigenciaDe: _hojeISO(), vigenciaAte: null }] : [],
         ativo: true,
         logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
     });
@@ -939,7 +968,7 @@ function atualizarListas() {
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda">Frete: ${fmtR4(_taxaFreteDaEmpresa(e))}/L</em>` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtR4(_taxaFreteDaEmpresa(e))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">

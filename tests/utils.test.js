@@ -105,6 +105,34 @@ test("_taxaFreteDaEmpresa: valor ausente, inválido ou negativo vira zero", () =
     assert.equal(_taxaFreteDaEmpresa(null), 0);
 });
 
+/* ── VIGÊNCIA DA TAXA (17/09/2026) ───────────────────────────────────── */
+test("_taxaFreteDaEmpresaNaData: cada mês usa a taxa que valia nele", () => {
+    const empresa = {
+        nome: "Aurora",
+        taxaFrete: 0.32,
+        taxaHistorico: [
+            { taxa: 0.28, vigenciaDe: "2000-01-01", vigenciaAte: "2026-08-31" },
+            { taxa: 0.32, vigenciaDe: "2026-09-01", vigenciaAte: null }
+        ]
+    };
+    // Mês já pago continua com a taxa daquele mês.
+    assert.equal(_taxaFreteDaEmpresaNaData(empresa, "2026-08-15"), 0.28);
+    assert.equal(_taxaFreteDaEmpresaNaData(empresa, "2026-08-31"), 0.28);
+    // A nova vale do dia em que entrou.
+    assert.equal(_taxaFreteDaEmpresaNaData(empresa, "2026-09-01"), 0.32);
+    assert.equal(_taxaFreteDaEmpresaNaData(empresa, "2026-12-31"), 0.32);
+    // Sem histórico, a taxa do registro vale para tudo (empresa antiga).
+    assert.equal(_taxaFreteDaEmpresaNaData({ taxaFrete: 0.2 }, "2026-08-15"), 0.2);
+    // Sem data, é a taxa de hoje.
+    assert.equal(_taxaFreteDaEmpresaNaData(empresa, null), 0.32);
+    assert.equal(_taxaFreteDaEmpresaNaData(null, "2026-08-15"), 0);
+});
+
+test("_taxaFreteDaEmpresaNaData: data anterior a toda vigência usa a mais antiga", () => {
+    const empresa = { taxaFrete: 0.5, taxaHistorico: [{ taxa: 0.4, vigenciaDe: "2026-05-01", vigenciaAte: null }] };
+    assert.equal(_taxaFreteDaEmpresaNaData(empresa, "2026-01-10"), 0.4);
+});
+
 /* ── DATAS SEM UTC ───────────────────────────────────────────────────── */
 test("_somarDiasISO e _ultimoDiaDoMesISO andam pelo calendário local", () => {
     assert.equal(_somarDiasISO("2026-08-10", -6), "2026-08-04");

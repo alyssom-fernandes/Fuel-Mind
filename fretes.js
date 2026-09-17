@@ -32,8 +32,10 @@ function _empresaDoLancamentoFrete(l) {
  * Ponto único de leitura do módulo: nenhum cálculo deve ler
  * `taxaFrete` direto do registro.
  */
-function _taxaFreteEmpresa(nomeEmpresa) {
-    return _taxaFreteDaEmpresa(db.empresas.find(e => e.nome === nomeEmpresa));
+function _taxaFreteEmpresa(nomeEmpresa, iso) {
+    const emp = db.empresas.find(e => e.nome === nomeEmpresa);
+    // Com data, a taxa que VALIA naquele dia (vigência, 17/09/2026).
+    return iso ? _taxaFreteDaEmpresaNaData(emp, iso) : _taxaFreteDaEmpresa(emp);
 }
 
 /**
@@ -47,7 +49,11 @@ function _taxaFreteEmpresa(nomeEmpresa) {
  */
 function _taxaFreteGrupo(grupo) {
     if (!grupo || !grupo.empresas || grupo.empresas.size !== 1) return null;
-    return _taxaFreteEmpresa([...grupo.empresas][0]);
+    // A taxa do MÊS exibido, não a de hoje: depois que a taxa passou a ter
+    // vigência, mostrar a atual num mês antigo não descreveria o frete
+    // somado ao lado (17/09/2026).
+    const mesRef = dadosFretesAtual && dadosFretesAtual.mes ? dadosFretesAtual.mes + "-15" : null;
+    return _taxaFreteEmpresa([...grupo.empresas][0], mesRef);
 }
 
 /** Taxa do grupo formatada para as tabelas da tela. */
@@ -125,7 +131,7 @@ function calcularEExibirFretes() {
         const dataRef   = dataDescargaDe(l) || mes + "-01";
         // A taxa vem do cadastro achado pelo id quando o nome não bate; antes
         // uma nota com nome diferente do cadastro virava R$ 0,00 em silêncio.
-        const taxaEmpresa = _taxaFreteDaEmpresa(cadEmpresa);
+        const taxaEmpresa = _taxaFreteDaEmpresaNaData(cadEmpresa, dataRef);
         if (!cadEmpresa) semTaxa++;
         else if (!(taxaEmpresa > 0)) { taxaZero++; empresasTaxaZero.add(cadEmpresa.nome); }
 
@@ -230,7 +236,7 @@ function calcularEExibirFretes() {
         totalNotas:  lancamentosMes.length,
         totalLitros: lancamentosMes.reduce((s, l) => s + (l.itens || []).reduce((ss, i) => ss + (i.qtd || 0), 0), 0),
         totalFrete:  lancamentosMes.reduce((s, l) => {
-            const taxa = _taxaFreteDaEmpresa(_empresaDoLancamentoFrete(l));
+            const taxa = _taxaFreteDaEmpresaNaData(_empresaDoLancamentoFrete(l), dataDescargaDe(l) || mes + "-01");
             return s + (l.itens || []).reduce((ss, i) => ss + (i.qtd || 0) * taxa, 0);
         }, 0),
         semTaxa,
