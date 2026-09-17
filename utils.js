@@ -48,6 +48,25 @@ function _litrosItem(i) {
     return (i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0;
 }
 
+/* ── TELA VAZIA QUE ENSINA ──────────────────────────────────────────
+   Até 17/09/2026 toda tabela sem dado dizia "Sem dados." em itálico
+   cinza, e paravam aí. Para uma empresa nova, ou no primeiro dia de um
+   operador, a primeira coisa que ele via era uma frase morta. Agora o
+   vazio diz o motivo provável e oferece o próximo passo — que é o padrão
+   que as ferramentas boas usam e que as pesquisas desta rodada apontaram
+   como o mais elogiado em estado vazio.
+
+   `acao` é opcional: `{ texto, onclick }`. */
+function linhaTabelaVazia(colunas, titulo, motivo, acao) {
+    const botao = acao
+        ? `<div style="margin-top:10px"><button class="btn-secundario" onclick="${escapeHtml(acao.onclick)}">${escapeHtml(acao.texto)}</button></div>`
+        : "";
+    return `<tr><td colspan="${colunas}" class="td-vazio" style="padding:26px 14px">
+        <strong style="display:block;color:var(--text);font-size:0.95rem;margin-bottom:4px">${escapeHtml(titulo)}</strong>
+        <span>${escapeHtml(motivo)}</span>${botao}
+    </td></tr>`;
+}
+
 // ========== CRITÉRIO ÚNICO DE LANÇAMENTO VÁLIDO ==========
 /**
  * Um lançamento que deixou de valer continua no vetor e sai de toda conta.

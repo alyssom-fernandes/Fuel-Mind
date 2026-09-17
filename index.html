@@ -250,7 +250,7 @@
        porque é para o botão que o operador olha na hora de salvar. -->
   <div id="faixaValidacao" class="faixa-validacao" style="display:none"></div>
   <div class="acoes-lancamento">
-    <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar('proxima')">Salvar e lançar próxima</button>
+    <button class="btn-primario" id="btnSalvarLancamento" onclick="salvarOuAtualizar('proxima')" title="Ctrl+Enter ou Ctrl+S">Salvar e lançar próxima</button>
     <button class="btn-secundario" id="btnSalvarSair" onclick="salvarOuAtualizar('sair')">Salvar e sair</button>
     <button class="btn-cancelar" onclick="descartarFormulario()">Cancelar</button>
     <span class="dica-atalho">Ctrl+Enter salva e abre a próxima</span>
@@ -280,6 +280,7 @@
   <div id="freteHistoricoContainer" style="margin-bottom:22px"></div>
   <div class="barra-exportacao" id="fretesBarraExportacao">
     <span class="exportacao-titulo">Exportar:</span>
+    <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma — para anexar na resposta a um transportador.">Nota a nota</button>
     <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
     <button class="btn-export btn-pdf" onclick="exportarFretesPDF()">PDF</button>
     <button class="btn-export btn-csv" onclick="exportarFretesCSV()">CSV</button>

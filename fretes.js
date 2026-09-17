@@ -302,7 +302,9 @@ function renderAbaPlacas() {
 
     const lista = dadosFretesAtual.porPlaca;
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="td-vazio">Nenhum dado para este mês.</td></tr>`;
+        tbody.innerHTML = linhaTabelaVazia(6, "Nenhuma descarga neste mês",
+            "O frete conta pela data da descarga: nenhuma nota foi descarregada no mês escolhido.",
+            { texto: "Ver os lançamentos", onclick: "mostrarTela('relatorios')" });
         return;
     }
 
@@ -326,7 +328,9 @@ function renderAbaMotoristasFrete() {
 
     const lista = dadosFretesAtual.porMotorista;
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="td-vazio">Nenhum dado para este mês.</td></tr>`;
+        tbody.innerHTML = linhaTabelaVazia(5, "Nenhuma descarga neste mês",
+            "O frete conta pela data da descarga: nenhuma nota foi descarregada no mês escolhido.",
+            { texto: "Ver os lançamentos", onclick: "mostrarTela('relatorios')" });
         return;
     }
 
@@ -349,7 +353,9 @@ function renderAbaEmpresasFrete() {
 
     const lista = dadosFretesAtual.porEmpresa;
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="td-vazio">Nenhum dado para este mês.</td></tr>`;
+        tbody.innerHTML = linhaTabelaVazia(5, "Nenhuma descarga neste mês",
+            "O frete conta pela data da descarga: nenhuma nota foi descarregada no mês escolhido.",
+            { texto: "Ver os lançamentos", onclick: "mostrarTela('relatorios')" });
         return;
     }
 
@@ -374,7 +380,9 @@ function renderAbaConjuntosFretes() {
 
     const lista = dadosFretesAtual.porConjunto;
     if (!lista || lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="td-vazio">Nenhum lançamento vinculado a conjuntos neste mês.</td></tr>`;
+        tbody.innerHTML = linhaTabelaVazia(5, "Nenhuma placa em conjunto neste mês",
+            "As notas do mês são de placas que não estavam em nenhum conjunto de veículos na data da descarga.",
+            { texto: "Abrir Cadastros › Conjuntos", onclick: "mostrarTela('cadastros')" });
         return;
     }
 
@@ -512,6 +520,114 @@ function _freteAbrirMes(mes) {
     if (!sel) return;
     sel.value = mes;
     calcularEExibirFretes();
+}
+
+/* ── FRETE NOTA A NOTA (17/09/2026) ─────────────────────────────────
+   As quatro abas somam por grupo, e o detalhe parava no tipo de
+   combustível. Quando um transportador questiona um valor, o que resolve
+   é a lista "nota, data, litros, taxa, R$" — que antes só saía cruzando
+   Fretes com Relatórios à mão. */
+function _freteNotaANota(mes) {
+    const linhas = [];
+    db.lancamentos
+        .filter(l => lancamentoAtivo(l)
+            && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
+            && dataDescargaDe(l).startsWith(mes))
+        .sort((a, b) => dataDescargaDe(a).localeCompare(dataDescargaDe(b)))
+        .forEach(l => {
+            const emp  = _empresaDoLancamentoFrete(l);
+            const taxa = _taxaFreteDaEmpresaNaData(emp, dataDescargaDe(l));
+            const litros = (l.itens || []).reduce((s2, i) => s2 + (Number(i.qtd) || 0), 0);
+            const conj = (typeof resolverConjuntoEPeriodo === 'function' && l.placa)
+                ? (resolverConjuntoEPeriodo(l.placa, dataDescargaDe(l))?.conj?.nome || "")
+                : "";
+            linhas.push({
+                descarga: dataDescargaDe(l),
+                emissao:  dataEmissaoDe(l),
+                nota:     l.numeroNota || "",
+                empresa:  emp?.nome || l.empresa || "",
+                motorista: l.motorista || "",
+                placa:    l.placa || "",
+                conjunto: conj,
+                litros, taxa, frete: litros * taxa
+            });
+        });
+    return linhas;
+}
+
+function abrirFreteNotaANota() {
+    if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
+    const linhas = _freteNotaANota(dadosFretesAtual.mes);
+    if (!linhas.length) return mostrarToast("Nenhuma nota descarregada neste mês.", "aviso", 4000);
+    const totalFrete = linhas.reduce((s2, x) => s2 + x.frete, 0);
+    const totalLitros = linhas.reduce((s2, x) => s2 + x.litros, 0);
+
+    const modal = document.createElement("div");
+    modal.id = "_modalFreteNotas";
+    modal.className = "modal-overlay";
+    modal.style.display = "flex";
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    modal.innerHTML = `
+        <div class="modal" style="max-width:min(1000px, 96vw)" onclick="event.stopPropagation()">
+            <h3 style="margin:0 0 4px">Frete nota a nota — ${nomeMes(dadosFretesAtual.mes)}</h3>
+            <p class="dica">Pela data da descarga, com a taxa que valia em cada data. É esta lista que responde a um transportador que questiona um valor.</p>
+            <div class="tabela-container" style="max-height:52vh;overflow:auto">
+                <table><thead><tr>
+                    <th>Descarga</th><th>Emissão</th><th>Nota</th><th>Empresa</th>
+                    <th>Motorista</th><th>Placa</th><th>Conjunto</th>
+                    <th>Litros (carga)</th><th>Taxa</th><th>Frete</th>
+                </tr></thead>
+                <tbody>${linhas.map(x => `<tr>
+                    <td>${formatarData(x.descarga)}</td>
+                    <td>${formatarData(x.emissao)}</td>
+                    <td>${escapeHtml(x.nota)}</td>
+                    <td>${escapeHtml(x.empresa)}</td>
+                    <td>${escapeHtml(x.motorista)}</td>
+                    <td>${escapeHtml(x.placa)}</td>
+                    <td>${escapeHtml(x.conjunto) || "—"}</td>
+                    <td>${fmtL3(x.litros)}</td>
+                    <td>${x.taxa > 0 ? fmtR4(x.taxa) : "—"}</td>
+                    <td><strong>${fmtR(x.frete)}</strong></td>
+                </tr>`).join("")}</tbody>
+                <tfoot><tr>
+                    <td colspan="7"><strong>TOTAL — ${linhas.length} nota(s)</strong></td>
+                    <td><strong>${fmtL3(totalLitros)}</strong></td>
+                    <td></td>
+                    <td><strong>${fmtR(totalFrete)}</strong></td>
+                </tr></tfoot>
+                </table>
+            </div>
+            <div class="sistema-acoes" style="margin-top:14px;justify-content:flex-end">
+                <button class="btn-secundario" onclick="exportarFreteNotaANota()">Excel desta lista</button>
+                <button class="btn-secundario" onclick="document.getElementById('_modalFreteNotas').remove()">Fechar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    if (typeof _modalAcessivel === "function") _modalAcessivel(modal, () => modal.remove());
+}
+
+function exportarFreteNotaANota() {
+    if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
+    const linhas = _freteNotaANota(dadosFretesAtual.mes);
+    if (!linhas.length) return mostrarToast("Nenhuma nota descarregada neste mês.", "aviso", 4000);
+    const aoa = [
+        [`FRETE NOTA A NOTA — ${nomeMes(dadosFretesAtual.mes)}`],
+        [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${formatarData(_hojeISO())}`],
+        [],
+        ["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
+    ];
+    linhas.forEach(x => aoa.push([
+        formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa,
+        x.motorista, x.placa, x.conjunto, _num(x.litros, 3), _num(x.taxa, 4), _num(x.frete, 2)
+    ]));
+    aoa.push([]);
+    aoa.push(["TOTAL", "", `${linhas.length} nota(s)`, "", "", "", "",
+              _num(linhas.reduce((s2, x) => s2 + x.litros, 0), 3), "",
+              _num(linhas.reduce((s2, x) => s2 + x.frete, 0), 2)]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Frete nota a nota");
+    XLSX.writeFile(wb, `frete-nota-a-nota-${dadosFretesAtual.mes}.xlsx`);
 }
 
 /*=================================================

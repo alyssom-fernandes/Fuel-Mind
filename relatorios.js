@@ -417,7 +417,17 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
     const total = dados.length;
 
     if (total === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="td-vazio">Nenhum lançamento encontrado.</td></tr>`;
+        // O vazio diz por que está vazio: filtro apertado ou empresa sem
+        // nota nenhuma são coisas diferentes (17/09/2026).
+        const semNotaNenhuma = !db.lancamentos.some(l => lancamentoAtivo(l)
+            && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal));
+        tbody.innerHTML = semNotaNenhuma
+            ? linhaTabelaVazia(10, "Nenhuma nota lançada ainda",
+                `${empresaFiltroGlobal || "Esta empresa"} não tem nenhuma entrada registrada.`,
+                { texto: "Lançar a primeira nota", onclick: "mostrarTela('lancamentos')" })
+            : linhaTabelaVazia(10, "Nenhuma nota neste filtro",
+                "Existem notas nesta empresa, mas nenhuma dentro do período e dos filtros escolhidos.",
+                { texto: "Limpar filtros", onclick: "limparFiltros()" });
         _renderPaginacao(idTabela, 0, 0, 0, contexto);
         return;
     }

@@ -290,6 +290,53 @@ function calcularPerdaBadge(nomeCombustivel, qtd, qtdDescargada) {
     return `<span class="badge-perda excesso">Perda: ${perdaReal.toFixed(3)} L (${percentReal}%) — Acima do tolerado (${cad.perda}%)</span>`;
 }
 
+/* ── ENTER AVANÇA DE CAMPO (17/09/2026) ─────────────────────────────
+   A tela mais usada do dia — 10 a 30 notas, em blocos de 5 a 15 — exigia
+   mouse entre um campo e outro. Enter agora vai para o próximo campo da
+   nota, que é o padrão dos sistemas de caixa e o ganho que os usuários de
+   Superhuman e Linear mais elogiam.
+
+   Três donos do Enter já existiam e continuam com a tecla:
+   - o combobox de motorista, placa e base, quando há item destacado
+     (`combobox.js`): lá o Enter escolhe o item;
+   - o modal de busca global (`ui.js`);
+   - o Enter global do login e da seleção de empresa (`app.js`).
+   Por isso o handler aqui ignora o evento que já foi tratado, sai fora
+   quando a lista do combobox está aberta, e nunca salva sozinho: salvar
+   continua sendo Ctrl+Enter ou Ctrl+S, decisão do dono. */
+const _ORDEM_TAB_LANCAMENTO = [
+    "dataNota", "dataDescarga", "numeroNota", "baseEntradaInput",
+    "motoristaInput", "placaInput", "observacoes"
+];
+
+function _enterAvancaCampo(e) {
+    if (e.key !== "Enter" || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    if (e.defaultPrevented) return;
+    const alvo = e.target;
+    if (!alvo || !alvo.id) return;
+    // Lista de sugestão aberta: o Enter é do combobox.
+    // A lista do combobox é `.fm-combo-lista`, criada ao lado do campo.
+    const lista = alvo.parentElement?.querySelector?.(".fm-combo-lista");
+    const listaAberta = lista && getComputedStyle(lista).display !== "none" && lista.children.length;
+    if (listaAberta) return;
+
+    const idx = _ORDEM_TAB_LANCAMENTO.indexOf(alvo.id);
+    if (idx === -1) return;
+    e.preventDefault();
+    // Observações é o último: dali o Enter não vai a lugar nenhum, e quem
+    // quer salvar usa Ctrl+Enter (o campo é textarea, então Enter dentro
+    // dele deve continuar quebrando linha).
+    if (alvo.tagName === "TEXTAREA") return;
+    for (let i = idx + 1; i < _ORDEM_TAB_LANCAMENTO.length; i++) {
+        const prox = document.getElementById(_ORDEM_TAB_LANCAMENTO[i]);
+        if (prox && !prox.disabled && prox.offsetParent !== null) { prox.focus(); return; }
+    }
+    // Todos os campos preenchidos: o foco vai para o primeiro combustível.
+    document.querySelector(".linha-combustivel .qtd")?.focus();
+}
+
+document.addEventListener("keydown", _enterAvancaCampo, true);
+
 /*=================================================
   TOTALIZADOR EM TEMPO REAL
 =================================================*/
