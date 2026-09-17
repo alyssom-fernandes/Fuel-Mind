@@ -19,6 +19,15 @@ let dadosFretesAtual = null;
 =================================================*/
 
 /**
+ * Empresa de um lançamento no cadastro: pelo nome e, se o nome não bater
+ * (uma nota com o nome antigo), pelo id gravado na nota.
+ */
+function _empresaDoLancamentoFrete(l) {
+    const id = typeof _empresaIdDoLancamento === 'function' ? _empresaIdDoLancamento(l) : null;
+    return db.empresas.find(e => e.id === id) || db.empresas.find(e => e.nome === l.empresa) || null;
+}
+
+/**
  * Taxa de frete (R$/litro) de uma empresa, pelo nome.
  * Ponto único de leitura do módulo: nenhum cálculo deve ler
  * `taxaFrete` direto do registro.
@@ -79,6 +88,7 @@ function calcularEExibirFretes() {
     // ── FIX: garante que db.conjuntosVeiculos existe antes de processar ──
     if (typeof garantirConjuntos === 'function') garantirConjuntos();
 
+    let semTaxa = 0;
     const lancamentosMes = db.lancamentos.filter(l => {
         // Funil único das quatro abas. Nota excluída ou cancelada não gera
         // frete: o valor sai de `item.qtd` da própria nota, e sem nota
@@ -99,19 +109,27 @@ function calcularEExibirFretes() {
     lancamentosMes.forEach(l => {
         const placa     = l.placa     || "(sem placa)";
         const motorista = l.motorista || "(sem motorista)";
-        const empresa   = l.empresa   || "(sem empresa)";
+        const cadEmpresa = _empresaDoLancamentoFrete(l);
+        const empresa   = cadEmpresa?.nome || l.empresa || "(sem empresa)";
         const dataRef   = dataDescargaDe(l) || mes + "-01";
-        const taxaEmpresa = _taxaFreteEmpresa(empresa);
+        // A taxa vem do cadastro achado pelo id quando o nome não bate; antes
+        // uma nota com nome diferente do cadastro virava R$ 0,00 em silêncio.
+        const taxaEmpresa = _taxaFreteDaEmpresa(cadEmpresa);
+        if (!cadEmpresa) semTaxa++;
 
-        // Resolver conjunto vigente para esta placa e data
-        const conjObj = typeof resolverConjuntoPorPlaca === 'function'
-            ? resolverConjuntoPorPlaca(placa, dataRef)
+        // Conjunto e composição que valiam NA DATA da viagem: o nome
+        // automático sai da composição daquele período, e não da atual —
+        // editar um conjunto hoje renomeava os meses passados.
+        const resolvido = typeof resolverConjuntoEPeriodo === 'function'
+            ? resolverConjuntoEPeriodo(placa, dataRef)
             : null;
+        const conjObj = resolvido?.conj || null;
+        const placasPeriodo = (resolvido?.periodo?.placas || conjObj?.composicaoAtual || []);
         const conjKey = conjObj
             ? conjObj.id
             : null;
         const conjLabel = conjObj
-            ? (conjObj.nome || `Conjunto ${conjObj.composicaoAtual[0]}`)
+            ? (conjObj.nome || `Conjunto ${placasPeriodo[0] || ''}`)
             : null;
 
         if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set(), conjunto: conjLabel };
@@ -122,7 +140,7 @@ function calcularEExibirFretes() {
             porConjunto[conjKey] = {
                 id: conjKey,
                 nome: conjLabel,
-                placas: conjObj.composicaoAtual.slice(),
+                placas: placasPeriodo.slice(),
                 viagens: 0,
                 litros: 0,
                 frete: 0,
@@ -143,7 +161,14 @@ function calcularEExibirFretes() {
         porEmpresa[empresa].empresas.add(empresa);
         if (conjKey) porConjunto[conjKey].empresas.add(empresa);
 
-        l.itens.forEach(item => {
+        if (conjKey) {
+            const conj = porConjunto[conjKey];
+            if (!conj.porPlacaInterna[placa]) conj.porPlacaInterna[placa] = { viagens: 0, litros: 0, frete: 0 };
+            // Uma viagem por nota, e não uma por combustível da nota.
+            conj.porPlacaInterna[placa].viagens++;
+        }
+
+        (l.itens || []).forEach(item => {
             const litros = item.qtd || 0;
             const frete  = litros * taxaEmpresa;
             const tipo   = item.tipo || "Desconhecido";
@@ -179,8 +204,6 @@ function calcularEExibirFretes() {
                 conj.detalhes[tipo].frete  += frete;
 
                 // Sub-agrupamento por placa dentro do conjunto
-                if (!conj.porPlacaInterna[placa]) conj.porPlacaInterna[placa] = { viagens: 0, litros: 0, frete: 0 };
-                conj.porPlacaInterna[placa].viagens++;
                 conj.porPlacaInterna[placa].litros += litros;
                 conj.porPlacaInterna[placa].frete  += frete;
             }
@@ -193,11 +216,12 @@ function calcularEExibirFretes() {
     dadosFretesAtual = {
         mes,
         totalNotas:  lancamentosMes.length,
-        totalLitros: lancamentosMes.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + (i.qtd || 0), 0), 0),
+        totalLitros: lancamentosMes.reduce((s, l) => s + (l.itens || []).reduce((ss, i) => ss + (i.qtd || 0), 0), 0),
         totalFrete:  lancamentosMes.reduce((s, l) => {
-            const taxa = _taxaFreteEmpresa(l.empresa || "(sem empresa)");
-            return s + l.itens.reduce((ss, i) => ss + (i.qtd || 0) * taxa, 0);
+            const taxa = _taxaFreteDaEmpresa(_empresaDoLancamentoFrete(l));
+            return s + (l.itens || []).reduce((ss, i) => ss + (i.qtd || 0) * taxa, 0);
         }, 0),
+        semTaxa,
         porPlaca:     sortDesc(porPlaca),
         porMotorista: sortDesc(porMotorista),
         porEmpresa:   sortDesc(porEmpresa),
@@ -222,6 +246,7 @@ function renderFreteResumo() {
             <strong>${dadosFretesAtual.totalNotas}</strong> nota(s)
             &nbsp;|&nbsp; Litros: <strong>${fmtL(dadosFretesAtual.totalLitros)}</strong>
             &nbsp;|&nbsp; Frete total: <strong>${fmtR(dadosFretesAtual.totalFrete)}</strong>
+            ${dadosFretesAtual.semTaxa ? `<br><span style="color:var(--danger)">${dadosFretesAtual.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.</span>` : ''}
         `;
     }
 }
@@ -564,7 +589,7 @@ function exportarFretesCSV() {
         });
     });
 
-    const csv = linhas.map(row => row.map(cell => `"${cell}"`).join(';')).join('\n');
+    const csv = linhas.map(row => row.map(_celulaCSV).join(';')).join('\n');
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

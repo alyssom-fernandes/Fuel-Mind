@@ -79,7 +79,11 @@ function carregarRelatorio() {
  */
 const _cacheBusca = new WeakMap();
 function _textoBuscavel(l) {
-    let txt = _cacheBusca.get(l);
+    // O cache também vale por versão dos dados: renomear um cadastro, a
+    // correção em massa e a lápide da reimportação mudavam a nota no lugar,
+    // e a busca continuava achando pelo valor velho.
+    const guardado = _cacheBusca.get(l);
+    let txt = guardado && guardado.v === (window._versaoDados || 0) ? guardado.txt : undefined;
     if (txt === undefined) {
         txt = [l.numeroNota, l.empresa, l.motorista, l.placa, l.base, l.observacoes,
                l.dataNota, l.dataDescarga,
@@ -88,8 +92,10 @@ function _textoBuscavel(l) {
                // serializava o objeto inteiro, e é uso legítimo — "o que o
                // Fulano lançou". Só o nome entra, não a ação nem o timestamp.
                ...(l.logs || []).map(g => (typeof g === 'object' && g) ? g.usuario : g)]
-              .filter(Boolean).join(" ").toLowerCase();
-        _cacheBusca.set(l, txt);
+              .filter(Boolean).join(" ");
+        // Sem acento, como a busca do Ctrl+K: "jose" acha "José".
+        txt = normalizarTexto(txt);
+        _cacheBusca.set(l, { v: window._versaoDados || 0, txt });
     }
     return txt;
 }
@@ -100,9 +106,9 @@ function _aplicarFiltroRelatorio() {
     const motorista   = document.getElementById("filtroMotorista").value;
     const placa       = document.getElementById("filtroPlaca").value;
     const combustivel = document.getElementById("filtroCombustivel").value;
-    const nota        = document.getElementById("filtroNota").value.trim().toLowerCase();
-    const base        = document.getElementById("filtroBase").value.trim().toLowerCase();
-    const busca       = document.getElementById("filtroBusca").value.trim().toLowerCase();
+    const nota        = normalizarTexto(document.getElementById("filtroNota").value);
+    const base        = normalizarTexto(document.getElementById("filtroBase").value);
+    const busca       = normalizarTexto(document.getElementById("filtroBusca").value);
 
     const mostrarInativos = document.getElementById("filtroMostrarInativos")?.checked;
 
@@ -114,9 +120,9 @@ function _aplicarFiltroRelatorio() {
     const passaSemData = l => {
         if (motorista   && l.motorista !== motorista) return false;
         if (placa       && l.placa !== placa)         return false;
-        if (nota        && !l.numeroNota.toLowerCase().includes(nota)) return false;
-        if (base        && !(l.base || "").toLowerCase().includes(base)) return false;
-        if (combustivel && !l.itens.some(i => i.tipo === combustivel)) return false;
+        if (nota        && !normalizarTexto(l.numeroNota).includes(nota)) return false;
+        if (base        && !normalizarTexto(l.base).includes(base)) return false;
+        if (combustivel && !(l.itens || []).some(i => i.tipo === combustivel)) return false;
         if (busca       && !_textoBuscavel(l).includes(busca)) return false;
         return true;
     };
@@ -254,7 +260,7 @@ function _aplicarFiltroRelatorio() {
             return `<div style="background:var(--surface-alt);border:1px solid var(--border-light);
                         border-radius:var(--radius-sm);padding:10px 14px;min-width:160px;flex:1">
                 <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
-                     letter-spacing:.07em;color:var(--text-muted);margin-bottom:6px">${comb}</div>
+                     letter-spacing:.07em;color:var(--text-muted);margin-bottom:6px">${escapeHtml(comb)}</div>
                 <div style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;
                      color:var(--text)">${fmtL3(d.litros)}</div>
                 <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">${fmtR(d.total)}</div>
@@ -273,7 +279,7 @@ function _aplicarFiltroRelatorio() {
                          ${idx > 0 ? 'margin-top:5px;padding-top:5px;border-top:1px solid var(--border-light)' : ''}">
                         <span style="font-size:0.8rem;color:var(--text);white-space:nowrap;
                               overflow:hidden;text-overflow:ellipsis;max-width:120px"
-                              title="${nome}">${nome}</span>
+                              title="${escapeHtml(nome)}">${escapeHtml(nome)}</span>
                         <span style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
                               color:var(--text-muted);margin-left:8px;white-space:nowrap">${fmtL(litros, 0)}</span>
                     </div>`).join('')}
@@ -325,6 +331,9 @@ function limparFiltros(contexto) {
             const el = document.getElementById(id);
             if (el) el.value = "";
         });
+        // "Limpar" volta a tela ao padrão, e o padrão é não mostrar excluídas.
+        const inativos = document.getElementById("filtroMostrarInativos");
+        if (inativos) inativos.checked = false;
         carregarRelatorio();
     }
 }
@@ -568,14 +577,10 @@ function _buildConteudoDetalhe(l) {
     `;
 }
 
-function mostrarDetalhes(id, contexto) { toggleDetalheInline(id, contexto); }
-
 function fecharDetalhes(contexto) {
     if (_detalheInlineAberto.contexto === contexto) {
         _detalheInlineAberto = { contexto: null, id: null };
     }
-    const el = document.getElementById(`painelDetalhes${contexto.charAt(0).toUpperCase() + contexto.slice(1)}`);
-    if (el) el.style.display = "none";
 }
 
 /*=================================================
@@ -937,7 +942,7 @@ function exportarCSV(contexto) {
         ];
     });
     linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
-    const csv = linhas.map(row => row.map(cell => `"${cell}"`).join(';')).join('\n');
+    const csv = linhas.map(row => row.map(_celulaCSV).join(';')).join('\n');
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1081,7 +1086,7 @@ function gerarRelatorioMensalPDF() {
             </div>
             <div class="campo" style="margin-bottom:20px">
                 <label for="_nomeEmpresaRel">Nome do posto / empresa (cabeçalho)</label>
-                <input id="_nomeEmpresaRel" type="text" value="${empresaFiltroNome || db.empresas?.[0]?.nome || 'Posto Rosário'}"
+                <input id="_nomeEmpresaRel" type="text" value="${escapeHtml(empresaFiltroNome || db.empresas?.[0]?.nome || '')}"
                     style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-sizing:border-box">
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end">

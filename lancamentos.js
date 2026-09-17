@@ -15,6 +15,46 @@ let isClonando = false;
  */
 let _chaveAcessoAtual = null;
 
+/**
+ * Empresa destinatária da NF-e importada por XML, quando o destinatário
+ * corresponde, sem ambiguidade, a uma empresa cadastrada. A validação
+ * BLOQUEIA salvar a nota numa empresa diferente dessa (decisão do dono,
+ * 17/09/2026): nota de outra empresa não dá entrada nesta.
+ * `{ id, nome, xNome }` ou null.
+ */
+let _xmlEmpresaDestino = null;
+
+/* Nome de empresa para comparar com o destinatário da NF-e: sem acento,
+   sem pontuação e sem as terminações societárias, que o cadastro às vezes
+   tem e o XML às vezes não. */
+function _nomeEmpresaComparavel(nome) {
+    return normalizarTexto(nome)
+        .replace(/[.,/\-]/g, " ")
+        .replace(/\b(ltda|me|epp|eireli|s a|sa|cia|companhia|comercio|com)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+/**
+ * A empresa cadastrada que o destinatário da NF-e é, com segurança.
+ * Vale só igualdade do nome comparável, ou o nome cadastrado inteiro dentro
+ * do destinatário como palavras inteiras — e só quando UMA empresa casa.
+ * Casamento por pedaço de palavra ou com duas candidatas não é leitura
+ * segura, e nesses casos a função devolve null.
+ */
+function _empresaDoDestinatario(xNomeDest) {
+    const dest = _nomeEmpresaComparavel(xNomeDest);
+    if (!dest) return null;
+    const palavrasDest = ` ${dest} `;
+    const candidatas = (db.empresas || []).filter(e => {
+        const nome = _nomeEmpresaComparavel(e.nome);
+        return nome && (nome === dest || palavrasDest.includes(` ${nome} `));
+    });
+    if (candidatas.length === 1) return candidatas[0];
+    const exatas = candidatas.filter(e => _nomeEmpresaComparavel(e.nome) === dest);
+    return exatas.length === 1 ? exatas[0] : null;
+}
+
 /*=================================================
   IMPORTAÇÃO DE XML DA NF-e
 =================================================*/
@@ -31,14 +71,21 @@ function importarXMLNFe(input) {
         // A importação sobrescreve os campos e zera as linhas de combustível.
         // Era mais um caminho de perda silenciosa: quem tinha meia nota
         // digitada e importava o XML por engano perdia tudo sem aviso.
-        if (_formularioSujo) {
+        // Numa edição ou num clone a pergunta vem sempre: depois de "Salvar"
+        // a edição continua aberta com o marcador limpo, e o XML seguinte
+        // substituía a nota editada, com o mesmo id, sem pergunta nenhuma.
+        const emEdicao = !!lancamentoEditandoId || isClonando;
+        if (_formularioSujo || emEdicao) {
             if (!await fmConfirm({
-                titulo: "Substituir o que está preenchido?",
-                msg: "O XML vai sobrescrever os campos e as linhas de combustível desta tela.",
+                titulo: emEdicao ? "Sair da edição e importar o XML?" : "Substituir o que está preenchido?",
+                msg: emEdicao
+                    ? "A tela está com uma nota em edição. Importar o XML abandona a edição (a nota continua gravada como estava) e começa uma nota nova."
+                    : "O XML vai sobrescrever os campos e as linhas de combustível desta tela.",
                 confirmTxt: "Substituir pelo XML",
                 cancelTxt: "Manter o que está",
                 tipo: "aviso"
             })) { input.value = ""; return; }
+            if (emEdicao) limparFormulario();
         }
         try {
             const parser = new DOMParser();
@@ -79,10 +126,16 @@ function importarXMLNFe(input) {
             ];
             function identificarCombustivel(xProd) {
                 const norm = normalizarTexto(xProd);
+                // Compara sem espaço, hífen e ponto: "Diesel S10", "Diesel S-10"
+                // e "DIESEL S 10" são o mesmo produto. Antes o nome fixo da
+                // tabela ("Diesel S-10") só casava se o cadastro tivesse
+                // exatamente essa grafia, e a linha nascia sem combustível.
+                const compacto = t => normalizarTexto(t).replace(/[^a-z0-9]/g, "");
                 for (const eq of EQUIV_COMBUSTIVEL) {
                     if (eq.termos.some(t => norm.includes(t))) {
-                        const cad = db.combustiveis.find(c => c.nome === eq.nome);
-                        return cad ? cad.nome : eq.nome;
+                        const alvos = [eq.nome, ...eq.termos].map(compacto);
+                        const cad = db.combustiveis.find(c => c.ativo !== false && alvos.includes(compacto(c.nome)));
+                        if (cad) return cad.nome;
                     }
                 }
                 const direto = db.combustiveis.find(c => {
@@ -96,18 +149,23 @@ function importarXMLNFe(input) {
             const itensPossiveis = [];
             dets.forEach(det => {
                 const xProd  = det.querySelector("xProd")?.textContent?.trim() || "";
-                const qCom   = parseFloat(det.querySelector("qCom")?.textContent  || "0");
-                const vUnCom = parseFloat(det.querySelector("vUnCom")?.textContent || "0");
-                const vProd  = parseFloat(det.querySelector("vProd")?.textContent  || "0");
+                // `qCom` e `vUnCom` no XML têm ponto decimal e até 4 e 10 casas.
+                const qCom   = Number(det.querySelector("qCom")?.textContent  || "0");
+                const vUnCom = Number(det.querySelector("vUnCom")?.textContent || "0");
+                const vProd  = Number(det.querySelector("vProd")?.textContent  || "0");
                 itensPossiveis.push({ nomeProduto: xProd, tipo: identificarCombustivel(xProd), qtd: qCom, valor: vUnCom, total: vProd });
             });
 
             let baseParaPreencher = "";
             if (xNomeEmit) {
-                const baseCadastrada = db.bases?.find(b =>
-                    normalizarTexto(xNomeEmit).includes(normalizarTexto(b.nome)) ||
-                    normalizarTexto(b.nome).includes(normalizarTexto(xNomeEmit).split(" ")[0])
-                );
+                // O nome inteiro da base, como palavras inteiras, dentro do
+                // emitente. Casar pela primeira palavra do emitente ligava
+                // "DISTRIBUIDORA RAIZEN" à primeira base com "distribuidora".
+                const emit = ` ${_nomeEmpresaComparavel(xNomeEmit)} `;
+                const baseCadastrada = (db.bases || []).find(b => {
+                    const nb = _nomeEmpresaComparavel(b.nome);
+                    return b.ativo !== false && nb && emit.includes(` ${nb} `);
+                });
                 baseParaPreencher = baseCadastrada?.nome || xNomeEmit;
             }
 
@@ -124,37 +182,29 @@ function importarXMLNFe(input) {
             // ativa e o destinatário do XML é outro, o campo não é tocado e a
             // divergência aparece no banner e num aviso.
             let avisoEmpresaDivergente = "";
-            if (xNomeDest) {
-                const empCadastrada = db.empresas.find(e =>
-                    e.ativo !== false &&
-                    (normalizarTexto(xNomeDest).includes(normalizarTexto(e.nome)) ||
-                     normalizarTexto(e.nome).includes(normalizarTexto(xNomeDest)))
-                );
-                if (empCadastrada) {
-                    if (empresaFiltroGlobal && empCadastrada.nome !== empresaFiltroGlobal) {
-                        avisoEmpresaDivergente =
-                            `<br><small><strong>Empresa não alterada.</strong> O XML é de `
-                            + `"${escapeHtml(empCadastrada.nome)}" e a empresa ativa é `
-                            + `"${escapeHtml(empresaFiltroGlobal)}". Para lançar na outra, `
-                            + `troque a empresa ativa no cabeçalho e importe de novo.</small>`;
-                        mostrarToast(
-                            `O XML é da empresa "${empCadastrada.nome}", diferente da empresa ativa. `
-                            + `A empresa do lançamento não foi alterada.`,
-                            "aviso", 7000
-                        );
-                    } else {
-                        document.getElementById("empresaInput").value  = empCadastrada.nome;
-                        document.getElementById("empresaSelect").value = empCadastrada.nome;
-                    }
+            _xmlEmpresaDestino = null;
+            const empCadastrada = xNomeDest ? _empresaDoDestinatario(xNomeDest) : null;
+            if (empCadastrada) {
+                _xmlEmpresaDestino = { id: empCadastrada.id, nome: empCadastrada.nome, xNome: xNomeDest };
+                if (empresaFiltroGlobal && empCadastrada.nome !== empresaFiltroGlobal) {
+                    avisoEmpresaDivergente =
+                        `<br><small><strong>Esta NF-e é de outra empresa.</strong> O destinatário é `
+                        + `"${escapeHtml(empCadastrada.nome)}" e a empresa ativa é `
+                        + `"${escapeHtml(empresaFiltroGlobal)}". A nota não pode ser salva aqui: `
+                        + `troque a empresa ativa no cabeçalho e importe de novo.</small>`;
+                } else {
+                    document.getElementById("empresaInput").value  = empCadastrada.nome;
+                    document.getElementById("empresaSelect").value = empCadastrada.nome;
                 }
             }
+            let motorCadastrado = null;
             if (xNomeTransp) {
                 // Casa por palavra inteira, não por pedaço de palavra. Com
                 // `includes` do primeiro nome, o motorista "Ana" casava com
                 // "TRANSPORTES CAMPANA LTDA" — e o lançamento saía com o
                 // motorista errado, sem ninguém ver.
                 const palavrasTransp = normalizarTexto(xNomeTransp).split(/\s+/);
-                const motorCadastrado = db.motoristas.find(m => {
+                motorCadastrado = db.motoristas.find(m => {
                     if (m.ativo === false) return false;
                     const partes = normalizarTexto(m.nome).split(/\s+/).filter(Boolean);
                     if (!partes.length) return false;
@@ -169,10 +219,10 @@ function importarXMLNFe(input) {
                     document.getElementById("motoristaSelect").value = motorCadastrado.nome;
                 }
             }
+            let veiculoCadastrado = null;
             if (placaTransp) {
-                const placaNorm = placaTransp.replace(/[-\s]/g, "").toUpperCase();
-                const veiculoCadastrado = db.veiculos.find(v =>
-                    v.ativo !== false && v.nome.replace(/[-\s]/g, "").toUpperCase() === placaNorm
+                veiculoCadastrado = db.veiculos.find(v =>
+                    v.ativo !== false && normalizarPlaca(v.nome) === normalizarPlaca(placaTransp)
                 );
                 if (veiculoCadastrado) {
                     document.getElementById("placaInput").value  = veiculoCadastrado.nome;
@@ -181,7 +231,7 @@ function importarXMLNFe(input) {
             }
 
             document.getElementById("combustiveisNota").innerHTML = "";
-            itensPossiveis.forEach(item => adicionarCombustivelNota({ tipo: item.tipo, qtd: item.qtd, valor: item.valor }));
+            itensPossiveis.forEach(item => adicionarCombustivelNota({ tipo: item.tipo, qtd: item.qtd, valor: item.valor, totalXml: item.total }));
 
             const camposPreenchidos = [
                 dataNota ? "Data" : null, nNF ? "Nº Nota" : null,
@@ -189,12 +239,14 @@ function importarXMLNFe(input) {
                 itensPossiveis.length > 0 ? `${itensPossiveis.length} item(ns)` : null
             ].filter(Boolean);
 
+            // O aviso sai do resultado real do casamento, e não de um segundo
+            // critério mais fraco que às vezes dizia o contrário do que foi feito.
             const naoCruzados = [];
-            if (xNomeDest && !db.empresas.find(e => e.ativo !== false && normalizarTexto(xNomeDest).includes(normalizarTexto(e.nome))))
-                naoCruzados.push(`Empresa "${escapeHtml(xNomeDest)}"`);
-            if (xNomeTransp && !db.motoristas.find(m => m.ativo !== false && normalizarTexto(xNomeTransp).includes(normalizarTexto(m.nome).split(" ")[0])))
+            if (xNomeDest && !empCadastrada)
+                naoCruzados.push(`Empresa "${escapeHtml(xNomeDest)}" (confira se é a empresa ativa)`);
+            if (xNomeTransp && !motorCadastrado)
                 naoCruzados.push(`Motorista "${escapeHtml(xNomeTransp)}"`);
-            if (placaTransp && !db.veiculos.find(v => v.ativo !== false && v.nome.replace(/[-\s]/g,"").toUpperCase() === placaTransp.replace(/[-\s]/g,"").toUpperCase()))
+            if (placaTransp && !veiculoCadastrado)
                 naoCruzados.push(`Placa "${escapeHtml(placaTransp)}"`);
             const avisoNaoCruzados = naoCruzados.length > 0
                 ? `<br><small>Não encontrado(s) no cadastro: ${naoCruzados.join(", ")}</small>` : "";
@@ -359,6 +411,14 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     const container = document.getElementById("combustiveisNota");
     const div = document.createElement("div");
     div.className = "linha-combustivel";
+    // Os números exatos que chegaram (XML, edição, clone): o campo mostra
+    // 4 casas no preço e 3 na quantidade, e ler o texto de volta
+    // arredondava em silêncio — a NF-e com R$ 5,8765432100 virava 5,8765 e o
+    // total divergia do documento. Enquanto o campo mostrar o mesmo número,
+    // vale o exato.
+    if (typeof dadosIniciais?.qtd === "number")   div.dataset.qtdExata   = String(dadosIniciais.qtd);
+    if (typeof dadosIniciais?.valor === "number") div.dataset.valorExato = String(dadosIniciais.valor);
+    if (typeof dadosIniciais?.totalXml === "number" && dadosIniciais.totalXml > 0) div.dataset.totalXml = String(dadosIniciais.totalXml);
     const opcoesCombustiveis = db.combustiveis.map(c =>
         `<option value="${escapeHtml(c.nome)}" ${dadosIniciais?.tipo === c.nome ? "selected" : ""}>${escapeHtml(c.nome)}</option>`
     ).join("");
@@ -378,7 +438,7 @@ function adicionarCombustivelNota(dadosIniciais = null) {
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.valor, 4))}"
                oninput="atualizarTotalizadorNota(); marcarFormularioSujo();">
         <div class="badge-wrapper"></div>
-        <button class="btn-excluir" onclick="this.parentElement.remove(); atualizarTotalizadorNota();">Remover</button>`;
+        <button class="btn-excluir" onclick="this.parentElement.remove(); atualizarTotalizadorNota(); marcarFormularioSujo(); if (typeof validarLancamento === 'function') validarLancamento();">Remover</button>`;
     container.appendChild(div);
     // A linha nasce depois da carga da página, então precisa ser preparada
     // aqui: é o que aplica teclado decimal, formatação e bloqueio da roda.
@@ -442,11 +502,30 @@ function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = nul
     // justamente o caminho de correção de quem excluiu por engano. Um
     // cancelado, sim — ele avisa que alguém já deu aquela nota por
     // inválida, e relançar em cima disso quase nunca é o que se quer.
+    const alvo = _numeroNotaComparavel(numeroNota);
     return db.lancamentos.some(l =>
         l.estado !== 'excluido' &&
-        l.numeroNota === numeroNota && l.empresa === empresa && l.dataNota === dataNota &&
+        _numeroNotaComparavel(l.numeroNota) === alvo && l.empresa === empresa && l.dataNota === dataNota &&
         (idIgnorar === null || l.id !== idIgnorar)
     );
+}
+
+/** "001234", "1.234" e "1234" são o mesmo número de nota. */
+function _numeroNotaComparavel(n) {
+    const digitos = String(n || "").replace(/\D/g, "").replace(/^0+/, "");
+    return digitos || String(n || "").trim().toLowerCase();
+}
+
+/** Número exato de um campo da linha: o guardado, se o texto ainda for ele. */
+function _numeroDaLinha(linha, seletor, chaveExata, casas) {
+    const campo = linha.querySelector(seletor);
+    const lido  = parseNumeroBR(campo.value);
+    const exato = linha.dataset[chaveExata];
+    if (exato !== undefined && lido !== null) {
+        const n = Number(exato);
+        if (Number.isFinite(n) && fmtNumeroExibicao(n, casas) === fmtNumeroExibicao(lido, casas)) return n;
+    }
+    return lido;
 }
 
 /*=================================================
@@ -472,7 +551,22 @@ function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = nul
  *   lançando, e ir ao relatório a cada nota custava tempo e foco.
  * @returns {Promise<void>}
  */
+let _salvandoLancamento = false;
+
 async function salvarOuAtualizar(modo = 'proxima') {
+    // Um salvamento por vez. Com a conferência aberta, Ctrl+Enter chamava
+    // esta função de novo, e a segunda confirmação gravava a mesma nota uma
+    // segunda vez, com outro id.
+    if (_salvandoLancamento) return;
+    _salvandoLancamento = true;
+    try {
+        await _salvarOuAtualizar(modo);
+    } finally {
+        _salvandoLancamento = false;
+    }
+}
+
+async function _salvarOuAtualizar(modo) {
     const btn = document.getElementById(modo === 'sair' ? "btnSalvarSair" : "btnSalvarLancamento");
     mostrarSpinner(btn, btn.innerText);
 
@@ -522,11 +616,15 @@ async function salvarOuAtualizar(modo = 'proxima') {
         // `parseNumeroBR` devolve null no que não entendeu, e a validação já
         // barrou esse caso antes de chegar aqui; o `?? 0` só cobre campo
         // vazio, que é zero de verdade.
-        const qtd           = parseNumeroBR(linha.querySelector(".qtd").value) ?? 0;
+        const qtd           = _numeroDaLinha(linha, ".qtd", "qtdExata", 3) ?? 0;
         const qtdDescargada = parseNumeroBR(linha.querySelector(".qtdDescargada").value) ?? 0;
-        const valor         = parseNumeroBR(linha.querySelector(".valor").value) ?? 0;
+        const valor         = _numeroDaLinha(linha, ".valor", "valorExato", 4) ?? 0;
         if (tipo && qtd > 0) {
-            const itemTotal = qtd * valor;
+            // Com quantidade e preço intactos do XML, o total é o da NF-e
+            // (vProd), e não a conta refeita — que pode diferir por centavos.
+            const intactos = linha.dataset.totalXml
+                && String(qtd) === linha.dataset.qtdExata && String(valor) === linha.dataset.valorExato;
+            const itemTotal = intactos ? Number(linha.dataset.totalXml) : Math.round(qtd * valor * 100) / 100;
             itens.push({ tipo, qtd, qtdDescargada, valor, total: itemTotal });
             total += itemTotal;
         }
@@ -566,9 +664,11 @@ async function salvarOuAtualizar(modo = 'proxima') {
         })) { esconderSpinner(btn); return; }
     }
 
+    // O spinner sai antes de gravar: gravar pode trocar o texto do botão
+    // (fim de uma edição), e restaurar o texto depois punha o rótulo velho.
+    esconderSpinner(btn);
     salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa,
                           motorista, placa, itens, total, observacoes, [], undefined, modo, alertas);
-    esconderSpinner(btn);
 }
 
 /**
@@ -613,11 +713,14 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         : null;
 
     const lancamento = {
-        id: lancamentoIdPreGerado || lancamentoEditandoId || gerarId(),
+        id: lancamentoIdPreGerado || (isClonando ? null : lancamentoEditandoId) || gerarId(),
         dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes,
         anexos: arquivos,
-        logs: (anterior && anterior.logs) || []
+        // Cópia do histórico: o objeto anterior não é mudado no lugar.
+        logs: (anterior && !isClonando && Array.isArray(anterior.logs)) ? anterior.logs.slice() : []
     };
+    const idEmpresa = typeof _empresaIdDoLancamento === 'function' ? _empresaIdDoLancamento(lancamento) : null;
+    if (idEmpresa) lancamento.empresaId = idEmpresa;
 
     // Salvar monta um objeto NOVO e o põe no lugar do antigo. Sem esta
     // linha, editar um lançamento excluído o traria de volta à vida em
@@ -626,7 +729,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     if (anterior && anterior.estado && !isClonando) {
         lancamento.estado = anterior.estado;
     }
-    const logAcao = lancamentoEditandoId ? (isClonando ? "Clonado" : "Editado") : "Criado";
+    const logAcao = isClonando ? "Clonado" : (lancamentoEditandoId ? "Editado" : "Criado");
     // Log estruturado: objeto {acao, ts, usuario} — compatível com logs antigos (string)
     // que são exibidos normalmente em _buildConteudoDetalhe via typeof check
     const entradaLog = {
@@ -780,6 +883,7 @@ function limparFormularioParcial() {
     // A chave pertencia à nota que acabou de ser gravada; a próxima começa
     // sem ela, mesmo que o contexto do lote continue.
     _chaveAcessoAtual = null;
+    _xmlEmpresaDestino = null;
     alternarCampoDescarga(false);
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
@@ -856,15 +960,18 @@ function _sessaoRenderizar() {
         // A nota desfeita não sai da lista: ela fica, riscada, com o
         // caminho de volta ao lado. Sumir seria a mesma mentira de antes,
         // agora do outro lado — o operador precisa ver o que fez.
-        const desfeita = l.estado === 'excluido';
-        return `<div class="sessao-item${desfeita ? " sessao-item-desfeita" : ""}">
+        const desfeita  = l.estado === 'excluido';
+        const cancelada = l.estado === 'cancelado';
+        return `<div class="sessao-item${desfeita || cancelada ? " sessao-item-desfeita" : ""}">
             <span class="sessao-hora">${escapeHtml(hora)}</span>
             <span class="sessao-nota">${escapeHtml(l.numeroNota || "sem número")}</span>
             <span class="sessao-empresa">${escapeHtml(l.empresa || "")}</span>
             <span class="sessao-base">${escapeHtml(l.base || "—")}</span>
             <span class="sessao-litros">${fmtL3(litros)}</span>
             <span class="sessao-total">${fmtR(l.total || 0)}</span>
-            ${desfeita
+            ${cancelada
+                ? `<span class="tag-inativo" title="Marcada como cancelada na origem">cancelada</span>`
+                : desfeita
                 ? `<button class="btn-editar" title="Refazer este lançamento"
                         onclick="_sessaoRefazer('${escapeJsAttr(l.id)}')">Refazer</button>`
                 : `<button class="btn-excluir" title="Desfazer este lançamento"
@@ -956,29 +1063,60 @@ function _diffLancamento(antes, depois) {
  *   sobre um fato de fora do sistema, e precisa de autor e razão
  */
 function _marcarEstadoLancamento(l, novoEstado, acao, motivo) {
-    if (!l) return;
-    if (novoEstado) l.estado = novoEstado;
-    else delete l.estado;
+    if (!l) return false;
+    // Pelo id, na memória de AGORA: entre abrir o modal e confirmar pode ter
+    // chegado a gravação de um colega, e o objeto guardado antes já não é o
+    // que está no vetor — a mudança ia para um objeto solto e se perdia.
+    const idx = db.lancamentos.findIndex(x => x.id === l.id);
+    if (idx === -1) {
+        mostrarToast("Esta nota não está mais neste computador. Nada foi alterado.", "erro", 7000);
+        return false;
+    }
+    const novo = Object.assign({}, db.lancamentos[idx]);
+    if (novoEstado) novo.estado = novoEstado;
+    else delete novo.estado;
 
-    if (!Array.isArray(l.logs)) l.logs = [];
     const entrada = {
         acao,
         ts:      new Date().toISOString(),
         usuario: window._usuarioAtual?.nome || '—'
     };
     if (motivo) entrada.motivo = motivo;
-    l.logs.push(entrada);
+    novo.logs = (Array.isArray(novo.logs) ? novo.logs : []).concat([entrada]);
+    db.lancamentos[idx] = novo;
 
     // `imediato` pelo mesmo motivo do salvamento: um clique explícito do
     // operador merece uma tentativa explícita imediata, sem debounce.
     //
-    // A mudança de estado NÃO entra no registro de pendentes. Ele foi
-    // feito para trazer de volta uma nota que não chegou ao servidor, e o
-    // teste dele é a ausência do id lá — uma lápide que não subiu continua
-    // existindo dos dois lados, com o campo diferente, e passaria batido.
-    // Recuperar conteúdo, e não só existência, precisa do campo de versão
-    // que a migração dos temas 14+15 vai trazer.
+    // A mudança entra nos pendentes pelo próprio salvarDB, que compara com
+    // o que o servidor tem: uma exclusão que não subiu volta na próxima carga.
     salvarDB({ imediato: true });
+    return true;
+}
+
+/**
+ * Antes de reativar uma nota, procura outra ATIVA que seja a mesma: mesma
+ * chave de acesso (bloqueia) ou mesmo número, empresa e data (pergunta).
+ * O caminho de correção documentado é desfazer e relançar; reativar a
+ * primeira depois disso deixava a nota contada duas vezes.
+ */
+async function _podeReativar(l) {
+    const outras = db.lancamentos.filter(x => x.id !== l.id && lancamentoAtivo(x));
+    if (l.chaveAcesso && outras.some(x => x.chaveAcesso === l.chaveAcesso)) {
+        mostrarToast("Já existe uma nota ativa com a mesma chave de acesso: esta NF-e já foi relançada. Nada foi reativado.", "erro", 8000);
+        return false;
+    }
+    const alvo = _numeroNotaComparavel(l.numeroNota);
+    const igual = outras.find(x => _numeroNotaComparavel(x.numeroNota) === alvo && x.empresa === l.empresa && x.dataNota === l.dataNota);
+    if (igual) {
+        return await fmConfirm({
+            titulo: "Já existe uma nota ativa igual",
+            msg: `A nota ${l.numeroNota} de ${l.empresa} em ${formatarData(l.dataNota)} já está lançada e ativa. `
+               + `Reativar esta deixa as duas contando nos litros, no custo e no frete.`,
+            confirmTxt: "Reativar mesmo assim", cancelTxt: "Não reativar", tipo: "aviso"
+        });
+    }
+    return true;
 }
 
 async function _sessaoDesfazer(id) {
@@ -993,7 +1131,9 @@ async function _sessaoDesfazer(id) {
         tipo: "perigo"
     })) return;
 
-    _marcarEstadoLancamento(l, 'excluido', 'Desfeito na sessão');
+    const atual = (db.lancamentos || []).find(x => x.id === id);
+    if (!atual || atual.estado) { _sessaoRenderizar(); return; }
+    if (!_marcarEstadoLancamento(atual, 'excluido', 'Desfeito na sessão')) return;
     _sessaoRenderizar();
     mostrarToast("Lançamento desfeito. Ele saiu dos relatórios.", "info", 5000);
 }
@@ -1002,7 +1142,8 @@ async function _sessaoDesfazer(id) {
 async function _sessaoRefazer(id) {
     const l = (db.lancamentos || []).find(x => x.id === id);
     if (!l || l.estado !== 'excluido') return;
-    _marcarEstadoLancamento(l, null, 'Refeito na sessão');
+    if (!await _podeReativar(l)) return;
+    if (!_marcarEstadoLancamento(l, null, 'Refeito na sessão')) return;
     _sessaoRenderizar();
     mostrarToast("Lançamento refeito. Ele voltou aos relatórios.", "sucesso", 4000);
 }
@@ -1037,9 +1178,25 @@ async function editarLancamento(id) {
         if (typeof trocarEmpresaAtiva !== 'function' || !await trocarEmpresaAtiva(l.empresa)) return;
     }
 
+    // Trabalho na tela que não é esta nota: pergunta antes de substituir.
+    // A tela promete ao sair que "os dados continuam aqui"; editar outra nota
+    // pelo relatório apagava esse trabalho, e o rascunho junto.
+    const haTrabalho = lancamentoEditandoId !== id && (_formularioSujo || (typeof _formularioTemAlemDaHeranca === 'function' && _formularioTemAlemDaHeranca()));
+    if (haTrabalho) {
+        if (!await fmConfirm({
+            titulo: "Substituir o que está na tela de lançamento?",
+            msg: "Há um lançamento preenchido e não salvo. Abrir esta nota para edição descarta o que está lá.",
+            confirmTxt: "Descartar e editar", cancelTxt: "Manter o que está", tipo: "aviso"
+        })) return;
+    }
+
+    // O rascunho pendente de outra sessão só some se o operador acabou de
+    // mandar descartar o que estava na tela.
+    limparFormulario({ preservarRascunhoPendente: !haTrabalho });
     lancamentoEditandoId = id;
     isClonando = false;
-    mostrarTela("lancamentos");
+    await mostrarTela("lancamentos");
+    if (document.getElementById("lancamentos")?.style.display !== "block") { lancamentoEditandoId = null; return; }
 
     setTimeout(() => {
         document.getElementById("dataNota").value     = l.dataNota;
@@ -1051,8 +1208,10 @@ async function editarLancamento(id) {
         setBase(l.base || "");
 
         atualizarListas();
-        const empresaInput = document.getElementById('empresaInput');
-        if (empresaInput) empresaInput.disabled = false;
+        // A empresa fica travada também na edição: a nota é editada sob a
+        // própria empresa, e mudá-la aqui movia a nota para o documento de
+        // outra empresa sem aviso. Para mudar uma nota de empresa, o caminho
+        // é a correção em massa do supremo.
         document.getElementById("empresaInput").value    = l.empresa || "";
         document.getElementById("empresaSelect").value   = l.empresa || "";
         document.getElementById("motoristaInput").value  = l.motorista || "";
@@ -1093,7 +1252,7 @@ async function editarLancamento(id) {
  *
  * @param {string} id - ID do lançamento a clonar
  */
-function clonarLancamento(id) {
+async function clonarLancamento(id) {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) return;
     // Clonar uma nota morta produziria uma nota nova a partir de dados que
@@ -1102,6 +1261,18 @@ function clonarLancamento(id) {
         mostrarToast("Este lançamento não vale mais e não pode ser clonado.", "aviso", 4000);
         return;
     }
+    if (empresaFiltroGlobal && l.empresa && l.empresa !== empresaFiltroGlobal) {
+        if (typeof trocarEmpresaAtiva !== 'function' || !await trocarEmpresaAtiva(l.empresa)) return;
+    }
+    const haTrabalho = _formularioSujo || (typeof _formularioTemAlemDaHeranca === 'function' && _formularioTemAlemDaHeranca());
+    if (haTrabalho) {
+        if (!await fmConfirm({
+            titulo: "Substituir o que está na tela de lançamento?",
+            msg: "Há um lançamento preenchido e não salvo. Clonar esta nota descarta o que está lá.",
+            confirmTxt: "Descartar e clonar", cancelTxt: "Manter o que está", tipo: "aviso"
+        })) return;
+    }
+    limparFormulario({ preservarRascunhoPendente: !haTrabalho });
     lancamentoEditandoId = null;
     isClonando = true;
     document.getElementById("dataNota").value     = "";
@@ -1113,8 +1284,8 @@ function clonarLancamento(id) {
     setBase(l.base || "");
 
     atualizarListas();
-    document.getElementById("empresaInput").value    = l.empresa || "";
-    document.getElementById("empresaSelect").value   = l.empresa || "";
+    document.getElementById("empresaInput").value    = empresaFiltroGlobal || l.empresa || "";
+    document.getElementById("empresaSelect").value   = empresaFiltroGlobal || l.empresa || "";
     document.getElementById("motoristaInput").value  = l.motorista || "";
     document.getElementById("motoristaSelect").value = l.motorista || "";
     document.getElementById("placaInput").value      = l.placa || "";
@@ -1177,6 +1348,17 @@ function limparFormulario(opcoes) {
     const marca = document.getElementById("marcaHerdada");
     if (marca) marca.style.display = "none";
     _chaveAcessoAtual = null;
+    _xmlEmpresaDestino = null;
+    // A empresa ativa volta ao campo, travado. Antes o campo ficava vazio e
+    // cinza depois de Cancelar, e a próxima nota não salvava ("Informe a
+    // empresa") sem sair da tela e voltar.
+    const ei = document.getElementById("empresaInput");
+    if (ei && typeof empresaFiltroGlobal !== 'undefined') {
+        ei.value = empresaFiltroGlobal || "";
+        ei.disabled = !!empresaFiltroGlobal;
+        const es = document.getElementById("empresaSelect");
+        if (es) es.value = empresaFiltroGlobal || "";
+    }
     alternarCampoDescarga(false);
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
@@ -1242,7 +1424,9 @@ async function excluirLancamento(id, contexto = 'relatorio') {
         tipo: "perigo"
     })) return;
 
-    _marcarEstadoLancamento(l, 'excluido', 'Excluído');
+    const atual = db.lancamentos.find(x => x.id === id);
+    if (!atual || atual.estado) { recarregarRelatorioSemZerarFiltros(); mostrarToast("A nota mudou enquanto a pergunta estava aberta. Confira e tente de novo.", "aviso", 6000); return; }
+    if (!_marcarEstadoLancamento(atual, 'excluido', 'Excluído')) return;
     recarregarRelatorioSemZerarFiltros();
     mostrarToast("Lançamento excluído. Ele saiu dos relatórios.", "info", 5000);
 }
@@ -1276,7 +1460,10 @@ async function restaurarLancamento(id, contexto = 'relatorio') {
         tipo: "aviso"
     })) return;
 
-    _marcarEstadoLancamento(l, null, 'Restaurado');
+    const atual = db.lancamentos.find(x => x.id === id);
+    if (!atual || atual.estado !== 'excluido') { recarregarRelatorioSemZerarFiltros(); mostrarToast("A nota mudou enquanto a pergunta estava aberta. Confira e tente de novo.", "aviso", 6000); return; }
+    if (!await _podeReativar(atual)) return;
+    if (!_marcarEstadoLancamento(atual, null, 'Restaurado')) return;
     recarregarRelatorioSemZerarFiltros();
     mostrarToast("Lançamento restaurado.", "sucesso", 4000);
 }
@@ -1318,7 +1505,9 @@ async function cancelarNaOrigem(id) {
     });
     if (motivo === null) return;
 
-    _marcarEstadoLancamento(l, 'cancelado', 'Cancelado na origem', motivo);
+    const atual = db.lancamentos.find(x => x.id === id);
+    if (!atual || !lancamentoAtivo(atual)) { recarregarRelatorioSemZerarFiltros(); mostrarToast("A nota mudou enquanto a pergunta estava aberta. Confira e tente de novo.", "aviso", 6000); return; }
+    if (!_marcarEstadoLancamento(atual, 'cancelado', 'Cancelado na origem', motivo)) return;
     recarregarRelatorioSemZerarFiltros();
     mostrarToast("Nota marcada como cancelada na origem.", "info", 5000);
 }

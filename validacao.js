@@ -241,6 +241,21 @@ function validarLancamento() {
     // digitado numa edição — fazia a nota não entrar em documento nenhum:
     // ela sumia no próximo carregamento, com o toast dizendo que salvou e a
     // pílula dizendo sincronizado. Testado na rodada 10. Agora é bloqueio.
+    // A nota é da empresa ativa. O campo fica travado, e isto é a garantia
+    // de que nada — edição antiga, rascunho, script — grava em outra.
+    if (empresa && typeof empresaFiltroGlobal !== "undefined" && empresaFiltroGlobal && empresa !== empresaFiltroGlobal) {
+        marcar("empresaInput", `A empresa ativa é "${empresaFiltroGlobal}". A nota só pode ser salva nela.`, "bloqueio");
+    }
+    // NF-e de outra empresa (decisão do dono, 17/09/2026): o destinatário do
+    // XML corresponde, sem ambiguidade, a outra empresa cadastrada.
+    if (typeof _xmlEmpresaDestino !== "undefined" && _xmlEmpresaDestino && empresa
+        && _xmlEmpresaDestino.nome !== empresa) {
+        marcar("empresaInput",
+            `Esta NF-e é de "${_xmlEmpresaDestino.nome}" (destinatário no XML: ${_xmlEmpresaDestino.xNome}). `
+            + `Nota de outra empresa não dá entrada aqui: troque a empresa ativa e importe de novo.`,
+            "bloqueio");
+    }
+
     if (empresa && typeof _empresaIdDoLancamento === "function") {
         const idEmpresa  = _empresaIdDoLancamento({ empresa });
         const permitidas = typeof _empresaIdsPermitidos === "function" ? _empresaIdsPermitidos() : null;
@@ -309,7 +324,11 @@ function validarLancamento() {
         } else if (jaLancada) {
             marcar("numeroNota", "Esta NF-e já foi lançada. A chave de acesso é a mesma.", "bloqueio");
         }
-    } else if (numeroNota && empresa && dataNota &&
+    }
+    // Número, empresa e data valem SEMPRE, com ou sem chave: uma nota
+    // digitada à mão não tem chave, e a mesma NF-e importada depois por XML
+    // passava sem nenhum aviso.
+    if (!porCampo["numeroNota"] && numeroNota && empresa && dataNota &&
                verificarDuplicidadeNota(numeroNota, empresa, dataNota, lancamentoEditandoId)) {
         marcar("numeroNota",
             `Já existe um lançamento da nota ${numeroNota} de ${empresa} em ${formatarData(dataNota)}.`,
@@ -329,6 +348,7 @@ function validarLancamento() {
         const valorTxt = linha.querySelector(".valor").value.trim();
         const qtd   = parseNumeroBR(qtdTxt);
         const valor = parseNumeroBR(valorTxt);
+        const temAlgo = !!(tipo || qtdTxt || descTxt || valorTxt);
 
         [["Quantidade", ".qtd", qtdTxt, qtd],
          ["Quantidade descarregada", ".qtdDescargada", descTxt, parseNumeroBR(descTxt)],
@@ -347,6 +367,21 @@ function validarLancamento() {
         });
 
         if (tipo && qtd > 0) temItemValido = true;
+
+        // Linha começada e não terminada não some mais em silêncio: antes a
+        // linha sem combustível ou sem quantidade era descartada ao salvar, e
+        // os litros dela não existiam em lugar nenhum. E preço vazio, zero ou
+        // negativo não existe (decisão do dono, 17/09/2026).
+        if (_tentouSalvar && temAlgo) {
+            const n = [...document.querySelectorAll(".linha-combustivel")].indexOf(linha) + 1;
+            if (!tipo) numerosInvalidos.push(`Linha ${n}: escolha o combustível (ou remova a linha).`);
+            if (qtd === null && !qtdTxt) numerosInvalidos.push(`Linha ${n}: informe a quantidade.`);
+            else if (qtd !== null && qtd <= 0) numerosInvalidos.push(`Linha ${n}: a quantidade precisa ser maior que zero.`);
+            if (valor === null && !valorTxt) numerosInvalidos.push(`Linha ${n}: informe o valor unitário.`);
+            else if (valor !== null && valor <= 0) numerosInvalidos.push(`Linha ${n}: o valor unitário precisa ser maior que zero.`);
+            const desc = parseNumeroBR(descTxt);
+            if (desc !== null && desc < 0) numerosInvalidos.push(`Linha ${n}: a quantidade descarregada não pode ser negativa.`);
+        }
 
         _desenharReferenciaPreco(linha, tipo);
 

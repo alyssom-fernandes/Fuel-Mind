@@ -1871,3 +1871,6 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 
 /* Permissões por papel (aplicarPermissoesDaTela, app.js). */
 .fm-sem-permissao { display: none !important; }
+
+/* Resultado destacado pelo teclado na busca global. */
+#buscaGlobalResultados .busca-item-ativo { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--surface-raised) !important; }

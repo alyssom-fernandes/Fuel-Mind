@@ -222,7 +222,13 @@ function _fmAbrir(est) {
     // tecla, e cadastro duplicado é exatamente o que a checagem por acento
     // acabou de fechar. Quem quer um cadastro novo com nome parecido usa a
     // tela de Cadastros.
-    const podeCriar = !!est.opts.listaCadastro && tokensBusca.length > 0 && itens.length === 0;
+    // Um cadastro INATIVO com o mesmo nome não é oferecido para criar de
+    // novo: a lista diz que ele existe e está inativo.
+    const inativoIgual = (!itens.length && tokensBusca.length)
+        ? (est.opts.fonte() || []).find(i => i && i.nome && i.ativo === false
+            && normalizarTexto(est.opts.normalizarValor ? est.opts.normalizarValor(i.nome) : i.nome) === consultaNorm)
+        : null;
+    const podeCriar = !!est.opts.listaCadastro && tokensBusca.length > 0 && itens.length === 0 && !inativoIgual;
 
     let html = '';
     if (cabecalho) {
@@ -235,7 +241,9 @@ function _fmAbrir(est) {
     }).join('');
 
     if (!itens.length && tokensBusca.length) {
-        html += `<li class="fm-combo-vazio" role="presentation">Nenhum ${escapeHtml(est.opts.rotulo)} encontrado</li>`;
+        html += inativoIgual
+            ? `<li class="fm-combo-vazio" role="presentation">"${escapeHtml(inativoIgual.nome)}" está cadastrado, mas inativo. Reative em Cadastros para usar.</li>`
+            : `<li class="fm-combo-vazio" role="presentation">Nenhum ${escapeHtml(est.opts.rotulo)} encontrado</li>`;
     }
     if (podeCriar) {
         est.itens.push({ __novo: true, nome: est.input.value.trim() });
@@ -391,8 +399,12 @@ function fmComboboxAplicarLancamento() {
         campoUso: 'placa',
         rotulo: 'placa',
         listaCadastro: 'veiculos',
-        // Placa casa igual com hífen, espaço ou nada: ABC-1D23 = ABC 1D23.
-        normalizarValor: v => String(v || '').replace(/[-\s]/g, ''),
+        // Placa casa igual com hífen, espaço ou nada, e no formato antigo ou
+        // no Mercosul: ABC-1234 acha ABC1C34. Sem isso o veículo cadastrado
+        // no outro formato não aparecia, e "Cadastrar" falhava por duplicidade.
+        normalizarValor: v => (typeof normalizarPlaca === 'function')
+            ? normalizarPlaca(String(v || ''))
+            : String(v || '').replace(/[-\s]/g, ''),
         fonte: () => db.veiculos || [],
         aoSelecionar: nome => {
             document.getElementById('placaSelect').value = nome;

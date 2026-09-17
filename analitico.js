@@ -92,10 +92,14 @@ function preencherSelectsAnalitico() {
 }
 
 function carregarAnalitico() {
+    // O combustível escolhido é lido ANTES de refazer a lista: refazer o
+    // select volta a escolha para "Todos", e o filtro nunca era aplicado.
+    const combustivel = document.getElementById("analiticoCombustivel").value;
     preencherSelectsAnalitico();
+    const selComb = document.getElementById("analiticoCombustivel");
+    if (selComb && [...selComb.options].some(o => o.value === combustivel)) selComb.value = combustivel;
     const inicio      = document.getElementById("analiticoInicio").value;
     const fim         = document.getElementById("analiticoFim").value;
-    const combustivel = document.getElementById("analiticoCombustivel").value;
 
     const labelPeriodo = document.getElementById("analiticoPeriodoLabel");
     if (labelPeriodo) {
@@ -142,6 +146,11 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
     const precosPorMes = {};
 
     lancamentos.forEach(l => {
+        // Com um combustível escolhido, a nota que não tem esse combustível
+        // não conta como nota nem como viagem: antes contava, e a linha dizia
+        // "12 viagens" ao lado dos litros de 3.
+        if (filtroCombustivel && !(l.itens || []).some(i => i.tipo === filtroCombustivel)) return;
+
         const mesKey = dataEmissaoDe(l) ? dataEmissaoDe(l).slice(0, 7) : "desconhecido";
         if (!mensal[mesKey]) mensal[mesKey] = { mes: mesKey, notas: 0, litros: 0, gasto: 0 };
         mensal[mesKey].notas++;
@@ -154,7 +163,7 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
         if (!porVeiculo[vei]) porVeiculo[vei] = { nome: vei, viagens: 0, litros: 0, gasto: 0 };
         porVeiculo[vei].viagens++;
 
-        l.itens.forEach(item => {
+        (l.itens || []).forEach(item => {
             if (filtroCombustivel && item.tipo !== filtroCombustivel) return;
 
             // Volume agregado segue o critério único (descarga quando houver);

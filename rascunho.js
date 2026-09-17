@@ -63,6 +63,10 @@ function _fmRascunhoCapturar() {
         editandoId: (typeof lancamentoEditandoId !== 'undefined' && lancamentoEditandoId) || null,
         isClonando: (typeof isClonando !== 'undefined' && isClonando) || false,
         chaveAcesso: (typeof _chaveAcessoAtual !== 'undefined' && _chaveAcessoAtual) || null,
+        xmlEmpresaDestino: (typeof _xmlEmpresaDestino !== 'undefined' && _xmlEmpresaDestino) || null,
+        // Assinatura da nota em edição no momento da captura: se ela mudar
+        // até o Continuar, alguém a alterou nesse meio tempo.
+        assinaturaEdicao: _fmAssinaturaNota((typeof lancamentoEditandoId !== 'undefined' && lancamentoEditandoId) || null),
         descargaVisivel: !!(document.getElementById('informarDescarga') || {}).checked,
         campos: {
             dataNota:     val('dataNota'),
@@ -86,8 +90,11 @@ function _fmRascunhoCapturar() {
  */
 function _fmRascunhoTemConteudo(r) {
     const c = r.campos;
-    if (c.dataNota || c.dataDescarga || c.numeroNota || c.base ||
-        c.motorista || c.placa || c.observacoes) return true;
+    // Base e Data da Descarga sozinhas são a herança do "lançar próxima", e
+    // não trabalho: com elas o fechamento da aba no fim do dia gravava um
+    // rascunho fantasma. Uma edição ou um clone contam sempre.
+    if (r.editandoId || r.isClonando) return true;
+    if (c.dataNota || c.numeroNota || c.motorista || c.placa || c.observacoes) return true;
     return r.itens.some(i => i.tipo || i.qtd || i.qtdDescargada || i.valor);
 }
 
@@ -121,8 +128,27 @@ function fmRascunhoGravarAgora() {
 
 /** Agendado a cada alteração; junta rajadas de digitação num só gravar. */
 function fmRascunhoAgendar() {
+    // Trabalho novo começou com a faixa de um rascunho antigo na tela: a
+    // faixa sai, e o rascunho antigo é guardado de lado — senão a primeira
+    // tecla o sobrescrevia e "Continuar" depois apagava o que foi digitado.
+    const faixa = document.getElementById('bannerRascunho');
+    if (_fmRascunhoPendente && faixa && faixa.style.display !== 'none') {
+        try { localStorage.setItem(_fmChaveRascunho() + '_anterior', JSON.stringify(_fmRascunhoPendente)); } catch (_) {}
+        faixa.style.display = 'none';
+        _fmRascunhoPendente = null;
+        mostrarToast('O lançamento não salvo anterior ficou guardado; ele volta a ser oferecido quando esta tela estiver vazia.', 'info', 6000);
+    }
     clearTimeout(_fmRascunhoTimer);
     _fmRascunhoTimer = setTimeout(fmRascunhoGravarAgora, FM_RASCUNHO_DEBOUNCE);
+}
+
+/** Assinatura curta do estado de uma nota: último registro do histórico. */
+function _fmAssinaturaNota(id) {
+    if (!id) return null;
+    const l = (db.lancamentos || []).find(x => x.id === id);
+    if (!l) return null;
+    const ultimo = (l.logs || [])[(l.logs || []).length - 1];
+    return JSON.stringify([ultimo && (ultimo.ts || ultimo), l.estado || '', l.total]);
 }
 
 function fmRascunhoApagar() {
@@ -144,7 +170,15 @@ function fmRascunhoVerificar() {
 
     let r = null;
     try {
-        const bruto = localStorage.getItem(_fmChaveRascunho());
+        let bruto = localStorage.getItem(_fmChaveRascunho());
+        // Sem rascunho atual, oferece o que ficou guardado de lado.
+        if (!bruto) {
+            bruto = localStorage.getItem(_fmChaveRascunho() + '_anterior');
+            if (bruto) {
+                localStorage.setItem(_fmChaveRascunho(), bruto);
+                localStorage.removeItem(_fmChaveRascunho() + '_anterior');
+            }
+        }
         if (bruto) r = JSON.parse(bruto);
     } catch (_) { r = null; }
 
@@ -175,9 +209,13 @@ function fmRascunhoVerificar() {
         // regravaria por cima — ressuscitando a nota com um clique em
         // Continuar.
         const existe = (db.lancamentos || []).some(l => l.id === r.editandoId && lancamentoAtivo(l));
-        aviso = existe
-            ? '<br><small>Era uma <strong>edição</strong> de lançamento existente.</small>'
-            : '<br><small>Era a edição de um lançamento que <strong>não vale mais</strong>. Só é possível descartar.</small>';
+        const mudouDepois = existe && r.assinaturaEdicao && _fmAssinaturaNota(r.editandoId) !== r.assinaturaEdicao;
+        aviso = !existe
+            ? '<br><small>Era a edição de um lançamento que <strong>não vale mais</strong>. Só é possível descartar.</small>'
+            : mudouDepois
+            ? '<br><small>Era uma <strong>edição</strong>, e <strong>a nota foi alterada depois</strong> (por você em outra tela ou por um colega). Continuar desfaria essas alterações: abra a nota de novo pelo relatório.</small>'
+            : '<br><small>Era uma <strong>edição</strong> de lançamento existente.</small>';
+        if (mudouDepois) r.__orfao = true;
         if (!existe) r.__orfao = true;
     }
     if (r.empresaAtiva && empresaFiltroGlobal && r.empresaAtiva !== empresaFiltroGlobal) {
@@ -199,9 +237,14 @@ function fmRascunhoVerificar() {
 }
 
 /** Só aqui os campos são tocados, e só depois do clique em Continuar. */
-function fmRascunhoRestaurar() {
+async function fmRascunhoRestaurar() {
     const r = _fmRascunhoPendente;
     if (!r) return;
+    if (_formularioSujo && !await fmConfirm({
+        titulo: 'Substituir o que está na tela?',
+        msg: 'Há um lançamento preenchido agora. Continuar o rascunho antigo descarta o que está na tela.',
+        confirmTxt: 'Substituir', cancelTxt: 'Manter o que está', tipo: 'aviso'
+    })) return;
     // A faixa já esconde o Continuar nesse caso; a guarda repete aqui porque
     // a empresa ativa pode ter mudado entre desenhar a faixa e o clique.
     if (r.empresaAtiva && empresaFiltroGlobal && r.empresaAtiva !== empresaFiltroGlobal) {
@@ -219,6 +262,11 @@ function fmRascunhoRestaurar() {
         document.getElementById('btnSalvarLancamento').textContent = 'Salvar';
         const bs = document.getElementById('btnSalvarSair');
         if (bs) bs.textContent = 'Salvar e voltar';
+        const banner = document.getElementById('bannerEdicao');
+        if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = `Editando nota <strong>${escapeHtml(c.numeroNota || '')}</strong> — <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
+        }
     } else {
         lancamentoEditandoId = null;
         isClonando = !!r.isClonando;
@@ -248,6 +296,7 @@ function fmRascunhoRestaurar() {
     const bx = document.getElementById('bannerXML');
     if (bx && r.bannerXML) { bx.innerHTML = r.bannerXML; bx.style.display = 'block'; }
     _chaveAcessoAtual = r.chaveAcesso || null;
+    if (typeof _xmlEmpresaDestino !== 'undefined') _xmlEmpresaDestino = r.xmlEmpresaDestino || null;
 
     document.getElementById('bannerRascunho').style.display = 'none';
     _fmRascunhoPendente = null;

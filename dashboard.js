@@ -231,7 +231,9 @@ function _renderAlertas(lancDescarga, lancEmissao) {
     // DESCARREGADAS no período.
     lancEmissao.forEach(l => {
         l.itens.forEach(i => {
-            const chavePreco = `preco|${l.numeroNota}|${i.tipo}`;
+            // Pelo id da nota: pelo número, confirmar o alerta de uma nota calava
+            // o de outra nota com o mesmo número (outra empresa, outro fornecedor).
+            const chavePreco = `preco|${l.id}|${i.tipo}`;
             if (!cfg.precoAtivo || !(i.valor > 0) || ignorados[chavePreco]) return;
             const ref   = referenciaPrecoCombustivel(i.tipo, dataEmissaoDe(l), l.id);
             const juizo = julgarPreco(i.valor, ref.mediana);
@@ -254,7 +256,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
 
     lancDescarga.forEach(l => {
         l.itens.forEach(i => {
-            const chaveVol   = `vol|${l.numeroNota}|${i.tipo}`;
+            const chaveVol   = `vol|${l.id}|${i.tipo}`;
             if (cfg.volumeAtivo && i.qtd > 0 && !ignorados[chaveVol]) {
                 const mediaVol = _mediaVolumePorNota(i.tipo, l.id);
                 if (mediaVol > 0) {
@@ -289,7 +291,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
         });
 
         if (cfg.dataAtivo) {
-            const chaveData = `data|${l.numeroNota}`;
+            const chaveData = `data|${l.id}`;
             if (!ignorados[chaveData]) {
                 const tolerMs   = cfg.dataTolerDias * 86400000;
                 const dtDesc    = l.dataDescarga ? new Date(l.dataDescarga + 'T00:00:00') : null;
@@ -347,7 +349,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
         return `
         <div class="alerta-card alerta-card--${cor} alerta-clicavel">
             <div class="alerta-corpo"
-                 onclick="editarLancamento('${id}')"
+                 onclick="editarLancamento('${escapeJsAttr(id)}')"
                  title="Clique para editar o lançamento"
                  style="cursor:pointer">
                 ${icone} <strong class="alerta-titulo">${titulo}</strong> —
@@ -355,7 +357,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
                 <span class="alerta-link">Ver →</span>
             </div>
             <button class="alerta-ignorar"
-                    onclick="ignorarAlerta('${chave}'); carregarDashboard();"
+                    onclick="ignorarAlerta('${escapeJsAttr(chave)}'); carregarDashboard();"
                     title="Marcar como verificado e não exibir mais">
                 ✓ ${confirmarLabel || 'Confirmar'}
             </button>

@@ -758,10 +758,10 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
         ${temNovos ? `
         <div class="importacao-aviso aviso-novos">
             <strong>Cadastros que serão criados automaticamente:</strong>
-            ${empresasNovas.length     ? `<div>• <strong>Empresas:</strong> ${empresasNovas.join(", ")}</div>`         : ""}
-            ${motoristasNovos.length   ? `<div>• <strong>Motoristas:</strong> ${motoristasNovos.join(", ")}</div>`     : ""}
-            ${placasNovas.length       ? `<div>• <strong>Veículos:</strong> ${placasNovas.join(", ")}</div>`           : ""}
-            ${combustiveisNovos.length ? `<div>• <strong>Combustíveis:</strong> ${combustiveisNovos.join(", ")}</div>` : ""}
+            ${empresasNovas.length     ? `<div>• <strong>Empresas:</strong> ${empresasNovas.map(escapeHtml).join(", ")}</div>`         : ""}
+            ${motoristasNovos.length   ? `<div>• <strong>Motoristas:</strong> ${motoristasNovos.map(escapeHtml).join(", ")}</div>`     : ""}
+            ${placasNovas.length       ? `<div>• <strong>Veículos:</strong> ${placasNovas.map(escapeHtml).join(", ")}</div>`           : ""}
+            ${combustiveisNovos.length ? `<div>• <strong>Combustíveis:</strong> ${combustiveisNovos.map(escapeHtml).join(", ")}</div>` : ""}
             <small>Você poderá ajustar esses cadastros depois na tela de Cadastros.</small>
         </div>` : ""}
 

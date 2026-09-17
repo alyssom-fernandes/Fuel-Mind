@@ -370,6 +370,19 @@ function preencherSelect(idSelect, itens, textoPadrao) {
         itens.map(i => `<option value="${escapeHtml(i.valor)}">${escapeHtml(i.texto)}</option>`).join("");
 }
 
+// ========== CÉLULA DE CSV ==========
+/* Uma célula de CSV exportado. Aspas internas são dobradas — antes um nome
+   com aspas deslocava as colunas seguintes — e texto que começa com = + - @
+   ganha um apóstrofo na frente, para o Excel não o executar como fórmula
+   (um cadastro "=HYPERLINK(...)" virava link que vazava dado ao abrir o
+   arquivo). Número continua número. */
+function _celulaCSV(cell) {
+    if (typeof cell === "number") return String(cell);
+    let t = String(cell ?? "");
+    if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t;
+    return `"${t.replace(/"/g, '""')}"`;
+}
+
 // ========== LOGO DO PDF POR EMPRESA ==========
 /* A logo é guardada pelo id da empresa. Era pelo nome, e um rename fazia o
    PDF sair sem logo, com a imagem antiga ocupando espaço sem jeito de

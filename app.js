@@ -713,7 +713,10 @@ document.addEventListener('keydown', (e) => {
     // estado de teclado de quem digita placa. `metaKey` cobre o Mac.
     const comando = e.ctrlKey || e.metaKey;
     const tecla   = (e.key || '').toLowerCase();
-    const telaVisivel = id => document.getElementById(id)?.style.display === 'block';
+    // Com um modal aberto, o atalho de salvar não age por trás dele: antes,
+    // Ctrl+Enter na conferência salvava a nota duas vezes.
+    const modalAberto = [...document.querySelectorAll('.modal-overlay')].some(o => getComputedStyle(o).display !== 'none');
+    const telaVisivel = id => !modalAberto && document.getElementById(id)?.style.display === 'block';
 
     // O `preventDefault` fica DENTRO da checagem de tela, como no Ctrl+F
     // logo abaixo. Solto lá fora, ele engolia o "salvar página" do
@@ -1099,6 +1102,7 @@ function _aplicarNaMemoria(nome, conteudo) {
  * @returns {boolean} se a memória mudou
  */
 function _absorverDoc(nome, dados) {
+    window._versaoDados = (window._versaoDados || 0) + 1;
     const antes = JSON.stringify(_payloadDoc(nome));
     const mud   = _mudancasLocais(nome);
     const servidor = _normalizarDocServidor(nome, dados);
@@ -1236,6 +1240,8 @@ function _marcarPendentesDasMudancas() {
  * segundo depois precisa ter tido a tentativa.
  */
 function salvarDB(opcoes) {
+    // Toda gravação muda a versão dos dados (o cache da busca do relatório a usa).
+    window._versaoDados = (window._versaoDados || 0) + 1;
     // Modo demonstração: nada sai da máquina. Esta é a trava — se ela
     // falhar, dados fictícios acabam na base real. Vem antes de tudo.
     if (typeof demoAtivo === 'function' && demoAtivo()) {

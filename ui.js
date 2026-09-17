@@ -393,26 +393,65 @@ function _realizarBusca() {
     }
 
     resultadosDiv.innerHTML = html;
+    _buscaIndiceAtivo = -1;
 }
 
 /**
  * Abre Relatórios pré-filtrado por motorista, placa ou empresa.
  */
-function _buscaAbrirFiltrado(tipo, valor) {
-    mostrarTela('relatorios');
-    setTimeout(() => {
-        if (tipo === 'motorista') {
-            const sel = document.getElementById('filtroMotorista');
-            if (sel) { sel.value = valor; carregarRelatorio(); }
-        } else if (tipo === 'placa') {
-            const sel = document.getElementById('filtroPlaca');
-            if (sel) { sel.value = valor; carregarRelatorio(); }
-        } else if (tipo === 'empresa') {
-            const inp = document.getElementById('filtroBusca');
-            if (inp) { inp.value = valor; carregarRelatorio(); }
-        }
-    }, 100);
+async function _buscaAbrirFiltrado(tipo, valor) {
+    // Empresa é a empresa ativa, não um texto de busca: o relatório sempre
+    // filtra pela ativa, e "Ver relatório" de outra empresa abria vazio.
+    if (tipo === 'empresa') {
+        if (!await trocarEmpresaAtiva(valor)) return;
+        await mostrarTela('relatorios');
+        if (document.getElementById('relatorios')?.style.display === 'block') limparFiltros('relatorio');
+        return;
+    }
+    await mostrarTela('relatorios');
+    // Se a pergunta de saída do lançamento cancelou a troca, não mexe nos filtros.
+    if (document.getElementById('relatorios')?.style.display !== 'block') return;
+    if (tipo === 'motorista') {
+        const sel = document.getElementById('filtroMotorista');
+        if (sel) { sel.value = valor; carregarRelatorio(); }
+    } else if (tipo === 'placa') {
+        const sel = document.getElementById('filtroPlaca');
+        if (sel) { sel.value = valor; carregarRelatorio(); }
+    }
 }
+
+/* Navegação por teclado nos resultados da busca global: o rodapé do modal
+   prometia ↑ ↓ e Enter, e nada acontecia. */
+let _buscaIndiceAtivo = -1;
+function _buscaItens() {
+    return [...document.querySelectorAll('#buscaGlobalResultados [onclick]')];
+}
+function _buscaDestacar(idx) {
+    const itens = _buscaItens();
+    itens.forEach((el, i) => {
+        const ativo = i === idx;
+        el.classList.toggle('busca-item-ativo', ativo);
+        el.setAttribute('aria-selected', ativo ? 'true' : 'false');
+        if (ativo) el.scrollIntoView({ block: 'nearest' });
+    });
+    _buscaIndiceAtivo = idx;
+}
+document.addEventListener('keydown', e => {
+    if (e.target?.id !== 'buscaGlobalInput') return;
+    const itens = _buscaItens();
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (!itens.length) return;
+        e.preventDefault();
+        const passo = e.key === 'ArrowDown' ? 1 : -1;
+        const prox = _buscaIndiceAtivo < 0
+            ? (passo > 0 ? 0 : itens.length - 1)
+            : (_buscaIndiceAtivo + passo + itens.length) % itens.length;
+        _buscaDestacar(prox);
+    } else if (e.key === 'Enter') {
+        const alvo = itens[_buscaIndiceAtivo] || (itens.length === 1 ? itens[0] : null);
+        if (alvo) { e.preventDefault(); alvo.click(); }
+    }
+});
 
 /*─────────────────────────────────────────────────
   MODAL DE ATALHOS DE TECLADO
@@ -625,9 +664,9 @@ function fmAlert({ titulo = 'Atenção', msg = '', tipo = 'info', btnTxt = 'OK' 
         overlay.innerHTML = `
             <div class="modal" style="max-width:420px">
                 <h3 style="display:flex;align-items:center;gap:8px;margin-bottom:${msg ? '12px' : '20px'}">
-                    <span style="color:${cor}">${icone}</span>${titulo}
+                    <span style="color:${cor}">${icone}</span>${escapeHtml(titulo)}
                 </h3>
-                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:20px;white-space:pre-wrap">${msg}</p>` : ''}
+                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:20px;white-space:pre-wrap">${escapeHtml(msg)}</p>` : ''}
                 <div class="modal-acoes">
                     <button class="btn-primario fm-ok">${btnTxt}</button>
                 </div>
