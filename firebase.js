@@ -11,7 +11,6 @@
   server-side. Nunca inclua credenciais fixas no código-fonte.
 =================================================*/
 import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAnalytics }  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import {
     getFirestore, doc, getDoc, setDoc, onSnapshot,
     collection, getDocs, deleteDoc, query, where, runTransaction
@@ -38,7 +37,8 @@ const firebaseConfig = {
 };
 
 const app       = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// O Analytics era importado e inicializado sem nenhum `logEvent` no
+// projeto inteiro: peso de rede e cookie sem uso (17/09/2026).
 const firestore = getFirestore(app);
 const auth      = getAuth(app);
 

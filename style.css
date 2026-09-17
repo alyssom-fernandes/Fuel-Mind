@@ -6,7 +6,8 @@
    v3.1: Cobertura completa de --primary (sem hardcodes de vinho)
 ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+/* Fontes carregadas por <link> no index.html: dentro do CSS o navegador
+   só descobre a fonte depois de baixar o arquivo inteiro (17/09/2026). */
 
 /* ── TOKENS DARK (DEFAULT) — Ultra Dark ── */
 :root {
@@ -335,18 +336,18 @@ body {
 }
 
 /* No tema escuro (padrão), mostra a logo escura e esconde a clara */
-.logo-dark {
+.logoDarkAntiga {
   display: block;
 }
-.logo-light {
+.logoLightAntiga {
   display: none;
 }
 
 /* No tema claro, inverte */
-[data-theme="light"] .logo-dark {
+[data-theme="light"] .logoDarkAntiga {
   display: none;
 }
-[data-theme="light"] .logo-light {
+[data-theme="light"] .logoLightAntiga {
   display: block;
 }
 

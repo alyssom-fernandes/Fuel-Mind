@@ -1105,7 +1105,11 @@ function gerarRelatorioMensalPDF() {
     const hoje = new Date();
     const modal = document.createElement('div');
     modal.id = '_modalRelMensal';
-    modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999`;
+    // Usa o modal do projeto (classe, Escape e foco preso), como os outros:
+    // este nascia com estilo próprio e sem Escape (17/09/2026).
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
 
     const opcoes = [];
     for (let i = 0; i < 24; i++) {
@@ -1115,7 +1119,7 @@ function gerarRelatorioMensalPDF() {
     }
 
     modal.innerHTML = `
-        <div style="background:var(--surface);border-radius:12px;padding:28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
+        <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
             <h3 style="margin:0 0 8px">Relatório Mensal Gerencial</h3>
             <p style="color:var(--text-muted);font-size:0.88rem;margin:0 0 20px">
                 Gera um PDF formatado com resumo executivo, detalhamento por combustível e comparativo com o mês anterior.
@@ -1145,6 +1149,7 @@ function gerarRelatorioMensalPDF() {
         </div>
     `;
     document.body.appendChild(modal);
+    if (typeof _modalAcessivel === 'function') _modalAcessivel(modal, () => modal.remove());
 }
 
 function _executarRelatorioMensal() {

@@ -595,7 +595,18 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
         return { nome: c.nome, valor: gasto };
     }).filter(d => d.valor > 0);
 
-    if (dados.length === 0) return;
+    if (dados.length === 0) {
+        // Antes a função saía sem desenhar nada, e quem olhava a tela não
+        // sabia se o gráfico não carregou ou se não havia gasto (17/09/2026).
+        const aviso = document.createElement("div");
+        aviso.id = "graficoPizzaDashboard";
+        aviso.style.marginTop = "28px";
+        aviso.innerHTML = `<h3>Distribuição de Gastos no Período <small style="font-weight:400;font-size:0.72rem;color:var(--text-muted)">· pela data de emissão</small></h3>
+            <p class="grafico-vazio">Nenhuma compra emitida neste período.</p>`;
+        const compar = document.getElementById("dashComparativoContainer");
+        if (compar) compar.insertAdjacentElement("afterend", aviso);
+        return;
+    }
 
     const pizzaContainer = document.createElement('div');
     pizzaContainer.id = 'graficoPizzaDashboard';
