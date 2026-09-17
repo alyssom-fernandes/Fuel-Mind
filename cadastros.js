@@ -53,64 +53,13 @@ window.normalizarPlaca = function(placa) {
 /*=================================================
   CONJUNTOS DE VEÍCULOS
 =================================================*/
-const CONJUNTOS_INICIAIS = [
-    ["RDF9F67","RDK5E85","RDK0G28"],
-    ["QTX8J26","ONX1J94","ONX2C24"],
-    ["SJX6H35","SKA4B87","SKA7H81"],
-    ["SJM5C49","RDR5I68","RDR2I76"],
-    ["QTX0H24","NWE8C87","NWE8D87"],
-    ["RPP9F60","OGO9C52","OGO9C82"],
-    ["QTX2F47","QTZ9F09","QTZ0C85"],
-    ["RPH8H71","PJV4E84","PJV0F20"],
-    ["RPS4E25","RDR5H38","RDR1H63"],
-    ["SJR2D37","SJR4G23","SJR9A84"],
-    ["SJR4F35","SJR7E95","SJR1E09"],
-    ["SJR5C80","SJT3A18","SJT9D31"],
-    ["SJR3C66","SJT3C48","SJT4J16"],
-    ["RPS9G84","SKB9E49","SKB3H46"],
-    ["SJX5E42","SKA3F54","SKA3H33"],
-    ["RPU6D11","PLH4A38","PLH5B73"],
-    ["SJX5E42","SKR8I44","SKR7H57"],
-    ["THG3H49","THG6I26","THG4B90"],
-    ["QTX1J32","OMP4G31","OMI0C31"],
-    ["PLJ0549","NTV9A58","NTV9A64"],
-    ["RDE5G40","RDE9G15","RDE2G60"],
-    ["RPI2B47","PLO4I24","PLO5J23"],
-    ["SJM5B04","SJL5A12","SJL3J68"],
-    ["RDE2A93","RDE9B12","RDE2A47"],
-    ["RDE9B17","RDE9C02","RDE1C54"],
-    ["RDF5D84","RDE4J97","RDE3C35"],
-    ["RDF7E97","RDE2D36","RDE5A11"],
-    ["RDF0G41","OMI0C61","OMI0C81"],
-    ["RDE7C80","RDC7H98","RDC4D65"],
-    ["SKK5J82","SJL2J96","SJL9H10"],
-    ["RPU5A11","RCP1I85","RCP1C59"],
-    ["QTX7H56","SKA8H11","SKA2A31"],
-    ["SJX4J75","SKK0D20","SKK7G07"],
-    ["OKU0A94","RPY3H95"],
-];
-
+/* Os conjuntos vivem só no banco. Até 17/09/2026 havia aqui 101 placas
+   reais de 34 conjuntos, semeadas quando o banco não tinha a lista — e
+   publicadas junto com o site. Saíram por decisão do dono: instalação nova
+   nasce sem conjunto, e eles são cadastrados na aba Conjuntos. */
 function garantirConjuntos() {
-    if (!db.conjuntosVeiculos) {
-        db.conjuntosVeiculos = [];
-        CONJUNTOS_INICIAIS.forEach(placas => {
-            db.conjuntosVeiculos.push({
-                id: gerarId(),
-                nome: "",
-                composicaoAtual: placas.slice(),
-                historico: [{
-                    placas: placas.slice(),
-                    vigenciaDe: "2000-01-01",
-                    vigenciaAte: null
-                }],
-                ativo: true,
-                logs: [`Criado automaticamente em ${new Date().toLocaleString('pt-BR')}`]
-            });
-        });
-        salvarDB();
-    }
+    if (!Array.isArray(db.conjuntosVeiculos)) db.conjuntosVeiculos = [];
 }
-garantirConjuntos();
 
 /**
  * Dado uma placa e uma data (YYYY-MM-DD), retorna o conjunto

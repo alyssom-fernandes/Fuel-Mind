@@ -780,6 +780,7 @@ const DB_PADRAO = {
     combustiveis:  [],
     lancamentos:   [],
     bases:         [],
+    conjuntosVeiculos: [],
     configRelatorio: {
         titulo: "Controle de Entradas de Combustível",
         mostrarBase: true,
@@ -1768,11 +1769,10 @@ function _mesclarComPadrao(dados) {
     if (!dados || typeof dados !== 'object') return resultado;
 
     // `conjuntosVeiculos` PRECISA estar aqui. _montarPayloads o grava no
-    // documento compartilhado, mas enquanto ele faltava nesta lista a carga
-    // devolvia undefined, garantirConjuntos() ressemeava os 34 conjuntos do
-    // CONJUNTOS_INICIAIS com ids novos, e o save seguinte gravava isso por
-    // cima — toda edição de conjunto era revertida em silêncio, e os ids
-    // mudando quebravam o histórico de vigência.
+    // documento compartilhado, e enquanto ele faltava nesta lista a carga
+    // devolvia a lista padrão: toda edição de conjunto era revertida em
+    // silêncio (e, quando ainda havia conjuntos semeados no código, os ids
+    // mudavam e quebravam o histórico de vigência).
     ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases',
      'conjuntosVeiculos'].forEach(campo => {
         if (Array.isArray(dados[campo])) resultado[campo] = dados[campo];
