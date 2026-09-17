@@ -62,6 +62,13 @@ function _taxaGrupoTexto(grupo) {
     return taxa > 0 ? taxa.toFixed(4) : "";
 }
 
+/** Taxa do grupo como NÚMERO, para a célula da planilha somar e ordenar.
+    Vazio quando o grupo mistura taxas diferentes. */
+function _taxaGrupoNum(grupo) {
+    const taxa = _taxaFreteGrupo(grupo);
+    return taxa > 0 ? Number(taxa.toFixed(4)) : "";
+}
+
 /** Taxa do grupo com prefixo R$, para PDF e impressão. */
 function _taxaGrupoMoeda(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
@@ -402,6 +409,23 @@ function trocarAbaFretes(nomeAba, botao) {
   EXPORTAÇÕES
 =================================================*/
 
+/* Número de verdade na célula: `toFixed` devolve string, e a planilha de
+   quem recebe não somava nem ordenava a coluna (17/09/2026). */
+function _num(v, casas) {
+    return Number((Number(v) || 0).toFixed(casas));
+}
+
+/* Linha de fechamento de uma seção do resumo de fretes. `colunas` é 6 nas
+   seções com a coluna Conjunto e 5 nas outras. */
+function _totalSecao(lista, colunas) {
+    const viagens = lista.reduce((s, x) => s + (x.viagens || 0), 0);
+    const litros  = lista.reduce((s, x) => s + (x.litros  || 0), 0);
+    const frete   = lista.reduce((s, x) => s + (x.frete   || 0), 0);
+    return colunas === 6
+        ? ["TOTAL", "", viagens, _num(litros, 3), "", _num(frete, 2)]
+        : ["TOTAL", viagens, _num(litros, 3), "", _num(frete, 2)];
+}
+
 // ========== EXPORTAÇÃO EXCEL ==========
 function exportarFretesExcel() {
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
@@ -419,44 +443,48 @@ function exportarFretesExcel() {
     linhas.push(["POR PLACA"]);
     linhas.push(["Placa", "Conjunto", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porPlaca.forEach(p => {
-        linhas.push([p.nome, p.conjunto || "—", p.viagens, p.litros.toFixed(3), _taxaGrupoTexto(p), p.frete.toFixed(2)]);
+        linhas.push([p.nome, p.conjunto || "—", p.viagens, _num(p.litros, 3), _taxaGrupoNum(p), _num(p.frete, 2)]);
         Object.entries(p.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", "", _num(det.litros, 3), "", _num(det.frete, 2)]);
         });
     });
+    linhas.push(_totalSecao(d.porPlaca, 6));
     linhas.push([]);
 
     linhas.push(["POR CONJUNTO"]);
     linhas.push(["Conjunto", "", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porConjunto.forEach(c => {
-        linhas.push([c.nome, "", c.viagens, c.litros.toFixed(3), _taxaGrupoTexto(c), c.frete.toFixed(2)]);
+        linhas.push([c.nome, "", c.viagens, _num(c.litros, 3), _taxaGrupoNum(c), _num(c.frete, 2)]);
         Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
-            linhas.push([`  ↳ ${placa}`, "", det.viagens, det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${placa}`, "", det.viagens, _num(det.litros, 3), "", _num(det.frete, 2)]);
         });
         Object.entries(c.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", "", _num(det.litros, 3), "", _num(det.frete, 2)]);
         });
     });
+    linhas.push(_totalSecao(d.porConjunto, 6));
     linhas.push([]);
 
     linhas.push(["POR MOTORISTA"]);
     linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, m.litros.toFixed(3), _taxaGrupoTexto(m), m.frete.toFixed(2)]);
+        linhas.push([m.nome, m.viagens, _num(m.litros, 3), _taxaGrupoNum(m), _num(m.frete, 2)]);
         Object.entries(m.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", _num(det.litros, 3), "", _num(det.frete, 2)]);
         });
     });
+    linhas.push(_totalSecao(d.porMotorista, 5));
     linhas.push([]);
 
     linhas.push(["POR EMPRESA"]);
     linhas.push(["Empresa", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porEmpresa.forEach(e => {
-        linhas.push([e.nome, e.viagens, e.litros.toFixed(3), _taxaGrupoTexto(e), e.frete.toFixed(2)]);
+        linhas.push([e.nome, e.viagens, _num(e.litros, 3), _taxaGrupoNum(e), _num(e.frete, 2)]);
         Object.entries(e.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", _num(det.litros, 3), "", _num(det.frete, 2)]);
         });
     });
+    linhas.push(_totalSecao(d.porEmpresa, 5));
 
     const ws = XLSX.utils.aoa_to_sheet(linhas);
     const wb = XLSX.utils.book_new();
@@ -554,48 +582,65 @@ function exportarFretesCSV() {
     const d = dadosFretesAtual;
     const linhas = [];
 
+    // Vírgula decimal: com ponto, o Excel em português lê a coluna como
+    // texto e não soma (17/09/2026).
+    const brTaxa = g => { const t = _taxaFreteGrupo(g); return t > 0 ? t.toFixed(4).replace('.', ',') : ''; };
+    const br = (v, casas) => (Number(v) || 0).toFixed(casas).replace('.', ',');
+    const totalCsv = (lista, colunas) => {
+        const viagens = lista.reduce((s2, x) => s2 + (x.viagens || 0), 0);
+        const litros  = lista.reduce((s2, x) => s2 + (x.litros  || 0), 0);
+        const frete   = lista.reduce((s2, x) => s2 + (x.frete   || 0), 0);
+        return colunas === 6
+            ? ["TOTAL", "", viagens, br(litros, 3), "", br(frete, 2)]
+            : ["TOTAL", viagens, br(litros, 3), "", br(frete, 2)];
+    };
+
     linhas.push(['"RESUMO DE FRETES"', `"${nomeMes(d.mes)}"`, "", "", ""]);
-    linhas.push([`"Notas: ${d.totalNotas}"`, `"Litros: ${d.totalLitros.toFixed(0)} L"`, `"Frete Total: R$ ${d.totalFrete.toFixed(2)}"`, "", ""]);
+    linhas.push([`"Notas: ${d.totalNotas}"`, `"Litros: ${br(d.totalLitros, 3)} L"`, `"Frete Total: R$ ${br(d.totalFrete, 2)}"`, "", ""]);
     linhas.push([]);
 
     linhas.push(["POR PLACA"]);
     linhas.push(["Placa", "Conjunto", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porPlaca.forEach(p => {
-        linhas.push([p.nome, p.conjunto || "—", p.viagens, p.litros.toFixed(3), _taxaGrupoTexto(p), p.frete.toFixed(2)]);
+        linhas.push([p.nome, p.conjunto || "—", p.viagens, br(p.litros, 3), brTaxa(p), br(p.frete, 2)]);
         Object.entries(p.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", "", br(det.litros, 3), "", br(det.frete, 2)]);
         });
     });
+    linhas.push(totalCsv(d.porPlaca, 6));
     linhas.push([]);
 
     linhas.push(["POR CONJUNTO"]);
     linhas.push(["Conjunto", "", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porConjunto.forEach(c => {
-        linhas.push([c.nome, "", c.viagens, c.litros.toFixed(3), _taxaGrupoTexto(c), c.frete.toFixed(2)]);
+        linhas.push([c.nome, "", c.viagens, br(c.litros, 3), brTaxa(c), br(c.frete, 2)]);
         Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
-            linhas.push([`  ↳ ${placa}`, "", det.viagens, det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${placa}`, "", det.viagens, br(det.litros, 3), "", br(det.frete, 2)]);
         });
     });
+    linhas.push(totalCsv(d.porConjunto, 6));
     linhas.push([]);
 
     linhas.push(["POR MOTORISTA"]);
     linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, m.litros.toFixed(3), _taxaGrupoTexto(m), m.frete.toFixed(2)]);
+        linhas.push([m.nome, m.viagens, br(m.litros, 3), brTaxa(m), br(m.frete, 2)]);
         Object.entries(m.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", br(det.litros, 3), "", br(det.frete, 2)]);
         });
     });
+    linhas.push(totalCsv(d.porMotorista, 5));
     linhas.push([]);
 
     linhas.push(["POR EMPRESA"]);
     linhas.push(["Empresa", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
     d.porEmpresa.forEach(e => {
-        linhas.push([e.nome, e.viagens, e.litros.toFixed(3), _taxaGrupoTexto(e), e.frete.toFixed(2)]);
+        linhas.push([e.nome, e.viagens, br(e.litros, 3), brTaxa(e), br(e.frete, 2)]);
         Object.entries(e.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete.toFixed(2)]);
+            linhas.push([`  ↳ ${tipo}`, "", br(det.litros, 3), "", br(det.frete, 2)]);
         });
     });
+    linhas.push(totalCsv(d.porEmpresa, 5));
 
     const csv = linhas.map(row => row.map(_celulaCSV).join(';')).join('\n');
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });

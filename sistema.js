@@ -450,6 +450,34 @@ function atualizarInfoSistema() {
         <div class="info-card"><div class="info-card-valor">${o.pctNavegador}%</div><div class="info-card-label">Espaço usado no navegador</div></div>
     `;
     renderBackupsAuto();
+
+    // ── Últimas falhas registradas neste navegador (17/09/2026) ──
+    const erros = typeof errosRegistrados === "function" ? errosRegistrados() : [];
+    const alvoErros = document.getElementById("infoErros");
+    if (alvoErros) {
+        if (!erros.length) {
+            alvoErros.innerHTML = '<p class="dica" style="margin:0">Nenhuma falha registrada neste navegador.</p>';
+        } else {
+            alvoErros.innerHTML = `
+                <p class="dica" style="margin:0 0 8px">
+                    ${erros.length} ${erros.length === 1 ? 'falha' : 'falhas'} neste navegador, da mais recente para a mais antiga.
+                    Mande este texto para quem mantém o sistema.
+                </p>
+                <div class="tabela-container" style="max-height:240px;overflow:auto">
+                    <table><thead><tr><th>Quando</th><th>Tela</th><th>Usuário</th><th>Falha</th></tr></thead>
+                    <tbody>${erros.map(e => `<tr>
+                        <td>${escapeHtml(new Date(e.ts).toLocaleString('pt-BR'))}</td>
+                        <td>${escapeHtml(e.tela || '—')}${e.demo ? ' <em class="tag-perda">demo</em>' : ''}</td>
+                        <td>${escapeHtml(e.usuario || '—')}</td>
+                        <td><code style="font-size:0.75rem">${escapeHtml(e.msg)}</code></td>
+                    </tr>`).join('')}</tbody></table>
+                </div>
+                <div class="sistema-acoes" style="margin-top:10px">
+                    <button class="btn-secundario" onclick="errosCopiar()">Copiar para enviar</button>
+                    <button class="btn-secundario" onclick="errosLimpar()">Limpar registro</button>
+                </div>`;
+        }
+    }
 }
 
 /* ========== AUDITORIA DE DATAS SUSPEITAS ========== */
@@ -1504,4 +1532,17 @@ function _cfgSalvar() {
         validarLancamento();
     }
     mostrarToast('Configurações de alertas salvas!','sucesso',3000);
+}
+
+/* Copia o registro de falhas em texto puro: é assim que o operador manda
+   o que aconteceu, sem depender de print de tela nem de console. */
+function errosCopiar() {
+    const erros = typeof errosRegistrados === "function" ? errosRegistrados() : [];
+    if (!erros.length) return mostrarToast("Nenhuma falha registrada.", "info", 2500);
+    const texto = erros.map(e =>
+        `[${new Date(e.ts).toLocaleString('pt-BR')}] ${e.tipo} · tela ${e.tela} · ${e.usuario}${e.demo ? ' · demo' : ''}\n`
+        + `${e.msg}\n${e.detalhe || ''}`).join("\n---\n");
+    navigator.clipboard?.writeText(texto)
+        .then(() => mostrarToast("Registro copiado. Cole na mensagem para quem mantém o sistema.", "sucesso", 4000))
+        .catch(() => mostrarToast("Não consegui copiar. Selecione o texto da tabela à mão.", "aviso", 5000));
 }

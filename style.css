@@ -66,6 +66,29 @@
     --radius-xl:       20px;
     --export-bg:       #151515;
     --export-border:   #333333;
+
+    /* ── MOVIMENTO ──────────────────────────────────────────────────
+       Três durações e uma curva, para a ferramenta ter um ritmo só. O
+       arquivo tinha sete durações soltas; as novas entram por aqui.
+       Regra: animar transform e opacity, nunca largura, altura ou
+       margem — e nada longo numa ação que se repete trinta vezes por
+       dia, como lançar nota. */
+    --duration-fast:   0.12s;   /* estado de botão, hover, foco */
+    --duration-base:   0.2s;    /* abrir lista, trocar aba */
+    --duration-slow:   0.3s;    /* entrada de tela e de modal */
+    --ease-standard:   cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* Quem pede menos movimento no sistema operacional recebe menos
+   movimento aqui. Antes não havia nenhuma ocorrência desta regra no
+   projeto: as três animações rodavam sempre. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* ── TOKENS LIGHT (mantido, mas com ajustes de contraste) ── */

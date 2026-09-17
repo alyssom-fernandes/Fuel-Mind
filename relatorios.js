@@ -63,6 +63,18 @@ function _iconeOrdem(campo) {
 /*=================================================
   RELATÓRIOS
 =================================================*/
+/* ── FILTRO DE TEXTO COM ATRASO ─────────────────────────────────────
+   Nota, Base e Busca rápida chamavam carregarRelatorio() a cada tecla, e
+   cada chamada varre o vetor de lançamentos duas vezes, ordena e remonta a
+   tabela inteira. A busca global já usava 300 ms de atraso (ui.js); estes
+   três não. Mesma régua para os dois lugares. */
+let _timerFiltroTexto = null;
+
+function carregarRelatorioComAtraso() {
+    clearTimeout(_timerFiltroTexto);
+    _timerFiltroTexto = setTimeout(() => carregarRelatorio(), 300);
+}
+
 function carregarRelatorio() {
     paginaRelatorio = 1;
     _aplicarFiltroRelatorio();
@@ -670,9 +682,18 @@ function exportarExcel(contexto) {
             formatarData(l.dataNota),
             l.dataDescarga ? formatarData(l.dataDescarga) : "",
             l.numeroNota, l.base || "", l.empresa || "", l.motorista || "", l.placa || "",
-            combustiveis, totalLitros.toFixed(3), l.total.toFixed(2)
+            // Número, não texto: `toFixed` devolve string e a planilha do
+            // contador não somava nem ordenava a coluna (17/09/2026).
+            combustiveis, Number(totalLitros.toFixed(3)), Number((l.total || 0).toFixed(2))
         ];
     });
+    // Linha de fechamento dentro da própria tabela: quem confere a planilha
+    // não precisa somar a coluna à mão.
+    const somaLitros = dados.reduce((s2, l) => s2 + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
+    const somaTotal  = dados.reduce((s2, l) => s2 + (l.total || 0), 0);
+    linhas.push([]);
+    linhas.push(["TOTAL", "", `${dados.length} nota(s)`, "", "", "", "", "",
+                 Number(somaLitros.toFixed(3)), Number(somaTotal.toFixed(2))]);
     linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
     // Cabeçalho do período, como no PDF: sem ele, a planilha não dizia de
     // que intervalo nem de que data eram as notas (rodada 11).
@@ -941,7 +962,19 @@ function exportarCSV(contexto) {
             l.total.toFixed(2).replace('.', ',')
         ];
     });
+    // Total e cabeçalho de período, como no Excel: sem eles o CSV não dizia
+    // de que intervalo era nem fechava conta nenhuma (17/09/2026).
+    const somaLitrosCsv = dados.reduce((s2, l) => s2 + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
+    const somaTotalCsv  = dados.reduce((s2, l) => s2 + (l.total || 0), 0);
+    linhas.push([]);
+    linhas.push(["TOTAL", "", `${dados.length} nota(s)`, "", "", "", "", "",
+                 somaLitrosCsv.toFixed(3).replace('.', ','), somaTotalCsv.toFixed(2).replace('.', ',')]);
     linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
+    linhas.unshift(
+        [`Relatório — ${_descricaoPeriodoRelatorio()}`],
+        [`${empresaFiltroGlobal ? empresaFiltroGlobal + " · " : ""}Gerado em ${formatarData(_hojeISO())}`],
+        []
+    );
     const csv = linhas.map(row => row.map(_celulaCSV).join(';')).join('\n');
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -964,7 +997,8 @@ function imprimirRelatorio() {
     const dataHoje    = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
 
     document.getElementById("impressaoTitulo").textContent = titulo;
-    document.getElementById("impressaoData").textContent   = `Impresso em: ${dataHoje} | ${dados.length} registros | Total: ${fmtR(totalGeral)} | Litros: ${totalLitros.toFixed(3)} L`;
+    // O papel também precisa dizer de que período é (17/09/2026).
+    document.getElementById("impressaoData").textContent   = `${_descricaoPeriodoRelatorio()} | Impresso em: ${dataHoje} | ${dados.length} registros | Total: ${fmtR(totalGeral)} | Litros: ${totalLitros.toFixed(3)} L`;
 
     document.getElementById("impressaoConteudo").innerHTML = `
         <table>

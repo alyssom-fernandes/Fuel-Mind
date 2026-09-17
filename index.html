@@ -308,9 +308,9 @@
       <div class="campo"><label for="filtroMotorista">Motorista</label><select id="filtroMotorista" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
       <div class="campo"><label for="filtroPlaca">Placa</label><select id="filtroPlaca" onchange="carregarRelatorio()"><option value="">Todas</option></select></div>
       <div class="campo"><label for="filtroCombustivel">Combustível</label><select id="filtroCombustivel" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
-      <div class="campo"><label for="filtroNota">Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota" oninput="carregarRelatorio()"></div>
-      <div class="campo"><label for="filtroBase">Base</label><input id="filtroBase" placeholder="Base" oninput="carregarRelatorio()"></div>
-      <div class="campo"><label for="filtroBusca">Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroNota">Nota Fiscal</label><input id="filtroNota" placeholder="Número da nota" oninput="carregarRelatorioComAtraso()"></div>
+      <div class="campo"><label for="filtroBase">Base</label><input id="filtroBase" placeholder="Base" oninput="carregarRelatorioComAtraso()"></div>
+      <div class="campo"><label for="filtroBusca">Busca rápida</label><input id="filtroBusca" placeholder="Palavra-chave" oninput="carregarRelatorioComAtraso()"></div>
       <div class="campo campo-checkbox">
         <label for="filtroMostrarInativos" title="As canceladas aparecem sempre; as excluídas, só com esta caixa marcada. Nenhuma das duas entra nos totais.">
           <input type="checkbox" id="filtroMostrarInativos" onchange="carregarRelatorio()"> Mostrar excluídas
@@ -517,6 +517,8 @@
     <div class="sistema-secao">
       <h3>Informações do Sistema</h3>
       <div id="infoSistema" class="info-sistema"></div>
+      <h3 style="margin-top:20px">Falhas registradas</h3>
+      <div id="infoErros"></div>
       <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
     </div>
     <div class="sistema-secao" id="secaoMigracaoEmpresa" style="display:none">

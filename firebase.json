@@ -15,6 +15,22 @@
       "README.pt-BR.md",
       "Artes/**",
       "docs/**"
+    ],
+    "headers": [
+      {
+        "//": "O projeto não tem build, então o nome do arquivo nunca muda: app.js é sempre app.js. Com o padrão do Firebase (max-age=3600), depois de publicar o operador podia ficar até uma hora com o index.html novo e um .js velho — ou o contrário. Aconteceu no servidor local em 17/09/2026: a tela chamava função que o arquivo em cache não tinha. `no-cache` não desliga o cache: obriga o navegador a perguntar se mudou, e a resposta é um 304 de poucos bytes quando não mudou.",
+        "source": "**/*.@(html|js|css)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "//": "Imagem e ícone podem ficar guardados um dia: mudam junto com uma publicação e não quebram a tela se atrasarem.",
+        "source": "**/*.@(svg|ico|png|jpg|jpeg|webp|woff|woff2)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=86400" }
+        ]
+      }
     ]
   }
 }
