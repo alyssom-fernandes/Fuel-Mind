@@ -140,6 +140,8 @@ function carregarAnalitico() {
 function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
     const mensal = {}, porMotorista = {}, porVeiculo = {}, porCombustivel = {};
     let totalGasto = 0, totalLitros = 0;
+    // Litros faturados: o denominador do preço de compra (17/09/2026).
+    let totalLitrosNota = 0;
     const numNotas = lancamentos.length;
 
     // Para evolução de preços
@@ -152,15 +154,15 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
         if (filtroCombustivel && !(l.itens || []).some(i => i.tipo === filtroCombustivel)) return;
 
         const mesKey = dataEmissaoDe(l) ? dataEmissaoDe(l).slice(0, 7) : "desconhecido";
-        if (!mensal[mesKey]) mensal[mesKey] = { mes: mesKey, notas: 0, litros: 0, gasto: 0 };
+        if (!mensal[mesKey]) mensal[mesKey] = { mes: mesKey, notas: 0, litros: 0, litrosNota: 0, gasto: 0 };
         mensal[mesKey].notas++;
 
         const mot = l.motorista || "(sem motorista)";
-        if (!porMotorista[mot]) porMotorista[mot] = { nome: mot, viagens: 0, litros: 0, gasto: 0 };
+        if (!porMotorista[mot]) porMotorista[mot] = { nome: mot, viagens: 0, litros: 0, litrosNota: 0, gasto: 0 };
         porMotorista[mot].viagens++;
 
         const vei = l.placa || "(sem placa)";
-        if (!porVeiculo[vei]) porVeiculo[vei] = { nome: vei, viagens: 0, litros: 0, gasto: 0 };
+        if (!porVeiculo[vei]) porVeiculo[vei] = { nome: vei, viagens: 0, litros: 0, litrosNota: 0, gasto: 0 };
         porVeiculo[vei].viagens++;
 
         (l.itens || []).forEach(item => {
@@ -175,30 +177,38 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
 
             totalGasto  += gasto;
             totalLitros += litros;
-            mensal[mesKey].litros += litros;
-            mensal[mesKey].gasto  += gasto;
-            porMotorista[mot].litros += litros;
-            porMotorista[mot].gasto  += gasto;
+            totalLitrosNota += litrosNota;
+            mensal[mesKey].litros     += litros;
+            mensal[mesKey].litrosNota += litrosNota;
+            mensal[mesKey].gasto      += gasto;
+            porMotorista[mot].litros     += litros;
+            porMotorista[mot].litrosNota += litrosNota;
+            porMotorista[mot].gasto      += gasto;
             porVeiculo[vei].litros   += litros;
+            porVeiculo[vei].litrosNota += litrosNota;
             porVeiculo[vei].gasto    += gasto;
 
             const tipo = item.tipo || "Desconhecido";
             if (!porCombustivel[tipo]) {
-                porCombustivel[tipo] = { nome: tipo, notas: 0, litros: 0, gasto: 0, precoMin: Infinity, precoMax: -Infinity };
+                porCombustivel[tipo] = { nome: tipo, notas: 0, litros: 0, litrosNota: 0, gasto: 0, precoMin: Infinity, precoMax: -Infinity };
             }
             porCombustivel[tipo].notas++;
             porCombustivel[tipo].litros += litros;
+            porCombustivel[tipo].litrosNota += litrosNota;
             porCombustivel[tipo].gasto  += gasto;
             if (preco > 0) {
                 porCombustivel[tipo].precoMin = Math.min(porCombustivel[tipo].precoMin, preco);
                 porCombustivel[tipo].precoMax = Math.max(porCombustivel[tipo].precoMax, preco);
             }
 
-            // Para evolução de preços
+            // Evolução de preços: média PONDERADA pela carga faturada
+            // (17/09/2026). Antes era média simples dos preços dos itens, e
+            // uma nota de 5 mil litros pesava igual a uma de 30 mil — na
+            // mesma tela em que a aba Por Combustível mostrava a ponderada.
             if (!precosPorMes[mesKey]) precosPorMes[mesKey] = {};
-            if (!precosPorMes[mesKey][tipo]) precosPorMes[mesKey][tipo] = { soma: 0, count: 0 };
-            precosPorMes[mesKey][tipo].soma += preco;
-            precosPorMes[mesKey][tipo].count += (preco > 0 ? 1 : 0);
+            if (!precosPorMes[mesKey][tipo]) precosPorMes[mesKey][tipo] = { gasto: 0, litrosNota: 0 };
+            precosPorMes[mesKey][tipo].gasto      += gasto;
+            precosPorMes[mesKey][tipo].litrosNota += litrosNota;
         });
     });
 
@@ -207,18 +217,19 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
     const precosPorCombustivel = {};
     mesesOrdenados.forEach(mes => {
         const precosMes = precosPorMes[mes] || {};
-        Object.entries(precosMes).forEach(([tipo, {soma, count}]) => {
+        Object.entries(precosMes).forEach(([tipo, {gasto, litrosNota}]) => {
             if (!precosPorCombustivel[tipo]) precosPorCombustivel[tipo] = [];
             precosPorCombustivel[tipo].push({
                 mes,
-                precoMedio: count > 0 ? soma / count : 0
+                precoMedio: litrosNota > 0 ? gasto / litrosNota : 0
             });
         });
     });
 
     return {
-        totalGasto, totalLitros, numNotas,
-        custoMedio: totalLitros > 0 ? totalGasto / totalLitros : 0,
+        totalGasto, totalLitros, numNotas, totalLitrosNota,
+        // Preço de compra: sobre os litros faturados.
+        custoMedio: totalLitrosNota > 0 ? totalGasto / totalLitrosNota : 0,
         mensal:         Object.values(mensal).sort((a, b) => a.mes.localeCompare(b.mes)),
         porMotorista:   Object.values(porMotorista).sort((a, b) => b.gasto - a.gasto),
         porVeiculo:     Object.values(porVeiculo).sort((a, b) => b.gasto - a.gasto),
@@ -242,9 +253,10 @@ function renderKPIs(dados) {
             <div class="kpi-valor">${fmtL(dados.totalLitros)}</div>
             <div class="kpi-label">Total de Litros</div>
         </div>
-        <div class="kpi-card roxo">
+        <div class="kpi-card roxo" title="Preço médio de compra: valor das notas ÷ litros faturados nelas, no período filtrado pela emissão.">
             <div class="kpi-valor">${dados.custoMedio > 0 ? "R$ " + dados.custoMedio.toFixed(4) : "—"}</div>
-            <div class="kpi-label">Custo Médio por Litro</div>
+            <div class="kpi-label">Preço Médio de Compra / L</div>
+            <div class="kpi-base">sobre ${fmtL(dados.totalLitrosNota || 0)} faturados</div>
         </div>
     `;
 }
@@ -308,8 +320,8 @@ function renderAbaMensal(dados) {
         return;
     }
     tbody.innerHTML = meses.map((m, idx) => {
-        const cm = m.litros > 0 ? m.gasto / m.litros : 0;
-        const varBadge = idx > 0 ? badgeVariacao(cm, meses[idx-1].litros > 0 ? meses[idx-1].gasto/meses[idx-1].litros : 0) : "";
+        const cm = m.litrosNota > 0 ? m.gasto / m.litrosNota : 0;
+        const varBadge = idx > 0 ? badgeVariacao(cm, meses[idx-1].litrosNota > 0 ? meses[idx-1].gasto/meses[idx-1].litrosNota : 0) : "";
         return `<tr>
             <td>${nomeMes(m.mes)}</td><td>${m.notas}</td><td>${fmtL(m.litros)}</td>
             <td>${fmtR(m.gasto)}</td><td>${cm > 0 ? fmtR4(cm) : "—"}</td>
@@ -368,7 +380,7 @@ function renderAbaMotoristas(dados) {
         return;
     }
     tbody.innerHTML = lista.map(m => {
-        const cm  = m.litros > 0 ? m.gasto/m.litros : 0;
+        const cm  = m.litrosNota > 0 ? m.gasto/m.litrosNota : 0;
         const pct = dados.totalGasto > 0 ? m.gasto/dados.totalGasto*100 : 0;
         return `<tr>
             <td>${escapeHtml(m.nome)}</td><td>${m.viagens}</td><td>${fmtL(m.litros)}</td>
@@ -428,7 +440,7 @@ function renderAbaVeiculos(dados) {
         return;
     }
     tbody.innerHTML = lista.map(v => {
-        const cm  = v.litros > 0 ? v.gasto/v.litros : 0;
+        const cm  = v.litrosNota > 0 ? v.gasto/v.litrosNota : 0;
         const pct = dados.totalGasto > 0 ? v.gasto/dados.totalGasto*100 : 0;
         return `<tr>
             <td>${escapeHtml(v.nome)}</td><td>${v.viagens}</td><td>${fmtL(v.litros)}</td>
@@ -488,7 +500,7 @@ function renderAbaCombustivel(dados) {
         return;
     }
     tbody.innerHTML = lista.map(c => {
-        const pm = c.litros > 0 ? c.gasto/c.litros : 0;
+        const pm = c.litrosNota > 0 ? c.gasto/c.litrosNota : 0;
         const mm = c.precoMin !== Infinity ? `${fmtR4(c.precoMin)} / ${fmtR4(c.precoMax)}` : "—";
         return `<tr>
             <td>${escapeHtml(c.nome)}</td><td>${c.notas}</td><td>${fmtL(c.litros)}</td>
@@ -546,7 +558,7 @@ function renderAbaComparativo(dados) {
         document.getElementById("alertaComparativo").style.display = "none";
         return;
     }
-    const custosMedias = meses.map(m => m.litros > 0 ? m.gasto/m.litros : 0);
+    const custosMedias = meses.map(m => m.litrosNota > 0 ? m.gasto/m.litrosNota : 0);
     tbody.innerHTML = meses.map((m, idx) => {
         const cm = custosMedias[idx];
         const varBadge = idx > 0 ? badgeVariacao(cm, custosMedias[idx-1]) : "—";

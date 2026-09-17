@@ -248,9 +248,10 @@ function _aplicarFiltroRelatorio() {
         dadosRelatorioValidos.forEach(l => {
             l.itens.forEach(i => {
                 if (!i.tipo) return;
-                if (!porComb[i.tipo]) porComb[i.tipo] = { litros: 0, total: 0 };
-                porComb[i.tipo].litros += _litrosItem(i);
-                porComb[i.tipo].total  += i.total || 0;
+                if (!porComb[i.tipo]) porComb[i.tipo] = { litros: 0, litrosNota: 0, total: 0 };
+                porComb[i.tipo].litros     += _litrosItem(i);   // volume: litros descarregados
+                porComb[i.tipo].litrosNota += Number(i.qtd) || 0; // preço: litros faturados
+                porComb[i.tipo].total      += i.total || 0;
             });
         });
 
@@ -264,11 +265,15 @@ function _aplicarFiltroRelatorio() {
         const topMotoristas = Object.entries(porMotorista)
             .sort((a, b) => b[1] - a[1]).slice(0, 3);
 
-        const precoMedio = totalLitros > 0 ? totalGeral / totalLitros : 0;
+        // Preço médio de compra: sobre os litros FATURADOS (decisão de
+        // 17/09/2026, rodada 12). `totalLitros` continua sendo o volume
+        // descarregado, que é o que a tela mostra como litros.
+        const mPreco = metricasPreco(dadosRelatorioValidos.flatMap(l => l.itens || []));
+        const precoMedio = mPreco.precoCompra;
 
         // Cards por combustível
         const cardsComb = Object.entries(porComb).map(([comb, d]) => {
-            const pm = d.litros > 0 ? d.total / d.litros : 0;
+            const pm = d.litrosNota > 0 ? d.total / d.litrosNota : 0;
             return `<div style="background:var(--surface-alt);border:1px solid var(--border-light);
                         border-radius:var(--radius-sm);padding:10px 14px;min-width:160px;flex:1">
                 <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
@@ -312,8 +317,12 @@ function _aplicarFiltroRelatorio() {
                 <span style="font-size:0.85rem;color:var(--text-muted)">
                     Litros: <strong style="color:var(--text)">${fmtL3(totalLitros)}</strong>
                 </span>
-                ${precoMedio > 0 ? `<span style="font-size:0.85rem;color:var(--text-muted)">
-                    Preço médio: <strong style="color:var(--text)">${fmtR4(precoMedio)}/L</strong>
+                ${precoMedio > 0 ? `<span style="font-size:0.85rem;color:var(--text-muted)" title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
+                    Preço médio de compra: <strong style="color:var(--text)">${fmtR4(precoMedio)}/L</strong>
+                    <em style="font-style:normal;opacity:.75">· sobre ${fmtL3(mPreco.litrosNota)} faturados</em>
+                </span>` : ''}
+                ${mPreco.custoRecebido > 0 ? `<span style="font-size:0.8rem;color:var(--text-muted)" title="Valor das notas com descarga informada ÷ litros medidos.">
+                    ${escapeHtml(textoCustoRecebido(mPreco))}
                 </span>` : ''}
             </div>
             ${_textoFronteiraRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora)}
@@ -1171,7 +1180,9 @@ function _executarRelatorioMensal() {
     const totalNotas  = lansMes.length;
     const totalLitros = lansMes.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
     const totalGasto  = lansMes.reduce((s,l) => s + (l.total || 0), 0);
-    const custoMedio  = totalLitros > 0 ? totalGasto/totalLitros : 0;
+    // Preço de compra, sobre os litros faturados (17/09/2026).
+    const mMes        = metricasPreco(lansMes.flatMap(l => l.itens || []));
+    const custoMedio  = mMes.precoCompra;
     const totLitrosAnt = lansAnterior.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
     const totGastoAnt  = lansAnterior.reduce((s,l) => s + (l.total || 0), 0);
 
@@ -1194,7 +1205,7 @@ function _executarRelatorioMensal() {
         { label: 'Total de Notas',      valor: String(totalNotas) },
         { label: 'Total de Litros',     valor: totalLitros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L' },
         { label: 'Total Gasto',         valor: 'R$ ' + totalGasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) },
-        { label: 'Custo Médio / Litro', valor: 'R$ ' + custoMedio.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4}) },
+        { label: 'Preço Médio de Compra / L', valor: 'R$ ' + custoMedio.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4}) },
     ];
     const colW = (W - 28) / 4;
     kpis.forEach((k, i) => {
@@ -1224,8 +1235,9 @@ function _executarRelatorioMensal() {
     const combRows = combustiveis.map(c => {
         const itens    = lansMes.flatMap(l => l.itens.filter(i => i.tipo===c.nome));
         const litros   = itens.reduce((s,i) => s+_litrosItem(i),0);
-        const gasto    = itens.reduce((s,i) => s+(i.total ?? i.qtd*i.valor),0);
-        const custo    = litros > 0 ? gasto/litros : 0;
+        const mComb    = metricasPreco(itens);
+        const gasto    = mComb.gasto;
+        const custo    = mComb.precoCompra;
         const notas    = lansMes.filter(l=>l.itens.some(i=>i.tipo===c.nome)).length;
         const itensAnt = lansAnterior.flatMap(l => l.itens.filter(i => i.tipo===c.nome));
         const litrosAnt= itensAnt.reduce((s,i) => s+_litrosItem(i),0);
@@ -1240,7 +1252,7 @@ function _executarRelatorioMensal() {
     }).filter(r => r[1] !== '0');
 
     doc.autoTable({
-        head: [['Combustível','Notas','Litros','Custo Médio/L','Total Gasto','Var. Litros']],
+        head: [['Combustível','Notas','Litros','Preço Médio/L','Total Gasto','Var. Litros']],
         body: combRows, startY: y + 2, theme: 'grid',
         headStyles: { fillColor: azul, fontSize: 8, fontStyle: 'bold' },
         bodyStyles: { fontSize: 8.5 },

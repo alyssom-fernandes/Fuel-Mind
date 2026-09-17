@@ -73,6 +73,72 @@ function lancamentoAtivo(l) {
     return !!l && !l.estado;
 }
 
+/* ── O PREÇO POR LITRO, NUM LUGAR SÓ ────────────────────────────────
+   Decisão do dono em 17/09/2026, depois da rodada 12 (cinco pesquisas
+   lidas): o número principal das telas é o **preço médio de compra** —
+   valor pago dividido pelos litros FATURADOS na nota. É o preço que o
+   fornecedor cobrou, e é completo: entra toda nota.
+
+   O custo por litro RECEBIDO (com a perda de trânsito embutida) é outra
+   pergunta, e só existe onde alguém mediu a descarga. Ele vem ao lado,
+   dizendo em quantos itens se apoia — na base de demonstração isso é um
+   item em cada cinco, e uma métrica assim no lugar de destaque daria a
+   impressão de cobrir tudo.
+
+   Até aqui as três telas dividiam o valor pelos litros de `_litrosItem`
+   (descarga quando informada, carga quando não), o que contrariava a
+   regra escrita logo acima nesta mesma função e inflava o preço nas notas
+   com perda. Agora a única conta é esta.
+
+   `_litrosItem` continua sendo o critério de VOLUME: litros
+   descarregados, que é o que o Dashboard, o Relatório e o Analítico
+   mostram como litros. Preço é uma coisa, volume é outra. */
+function metricasPreco(itens) {
+    let gasto = 0, litrosNota = 0, itensTotal = 0;
+    let gastoMedido = 0, litrosRecebidos = 0, itensMedidos = 0, litrosNotaMedidos = 0;
+    (itens || []).forEach(i => {
+        const qtd   = Number(i.qtd) || 0;
+        const valor = i.total != null ? Number(i.total) : qtd * (Number(i.valor) || 0);
+        gasto      += valor || 0;
+        litrosNota += qtd;
+        itensTotal++;
+        if (Number(i.qtdDescargada) > 0) {
+            gastoMedido       += valor || 0;
+            litrosRecebidos   += Number(i.qtdDescargada);
+            litrosNotaMedidos += qtd;
+            itensMedidos++;
+        }
+    });
+    return {
+        gasto, litrosNota, itensTotal,
+        litrosRecebidos, itensMedidos, litrosNotaMedidos,
+        // O número principal: preço de compra, sobre a carga faturada.
+        precoCompra:   litrosNota > 0 ? gasto / litrosNota : 0,
+        // O de reconciliação: só os itens em que a descarga foi informada.
+        custoRecebido: litrosRecebidos > 0 ? gastoMedido / litrosRecebidos : 0,
+        // O preço do MESMO grupo pela carga, para a comparação ser honesta:
+        // sem ele, o operador compararia 5 itens medidos com 34 faturados e
+        // concluiria qualquer coisa.
+        precoCompraMedido: litrosNotaMedidos > 0 ? gastoMedido / litrosNotaMedidos : 0
+    };
+}
+
+/** Texto curto que explica a conta, para o `title` de um número na tela. */
+function explicacaoPrecoCompra(m) {
+    return `Preço médio de compra: valor das notas ÷ litros faturados nelas.\n`
+         + `${fmtR(m.gasto)} ÷ ${fmtL3(m.litrosNota)} · ${m.itensTotal} item(ns)`;
+}
+
+/** Frase do custo por litro recebido, ou vazio quando ninguém mediu. */
+function textoCustoRecebido(m) {
+    if (!(m.custoRecebido > 0)) return "";
+    // Os dois números do MESMO grupo: o que foi faturado e o que chegou.
+    // A diferença entre eles é o efeito da perda de trânsito, e só existe
+    // onde alguém mediu.
+    return `nos ${m.itensMedidos} de ${m.itensTotal} item(ns) com descarga informada: `
+         + `${fmtR4(m.custoRecebido)}/L recebido contra ${fmtR4(m.precoCompraMedido)}/L faturado`;
+}
+
 // ========== AS DUAS DATAS DE UM LANÇAMENTO ==========
 /**
  * Uma nota tem duas datas, e cada uma responde a uma pergunta diferente.

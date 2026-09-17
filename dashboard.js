@@ -106,8 +106,9 @@ function _garantirFiltrosDashboard() {
     dica.className = 'dica';
     dica.style.cssText = 'margin:0 0 20px;font-size:0.8rem;';
     dica.innerHTML = 'Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong> — '
-        + 'é o que entrou nos tanques. Gasto e custo médio contam pela <strong>data de emissão</strong> — '
-        + 'é o valor da compra naquela data.';
+        + 'é o que entrou nos tanques. Gasto e preço médio contam pela <strong>data de emissão</strong> e sobre os '
+        + '<strong>litros faturados</strong> na nota — é o preço que o fornecedor cobrou. Quando a descarga foi '
+        + 'informada, o custo por litro recebido aparece ao lado, dizendo em quantas notas ele se apoia.';
 
     const dashEl = document.getElementById('dashboard');
     const kpiEl  = document.getElementById('kpiDashboard');
@@ -133,10 +134,18 @@ function _lancamentosDoPeriodo(inicio, fim, dataDe) {
 
 function _totaisCompra(lancs, nomeComb) {
     const itens = lancs.flatMap(l => l.itens.filter(i => !nomeComb || i.tipo === nomeComb));
-    const gasto  = itens.reduce((s, i) => s + (i.total ?? i.qtd * i.valor), 0);
-    const litros = itens.reduce((s, i) => s + _litrosItem(i), 0);
-    const notas  = nomeComb ? lancs.filter(l => l.itens.some(i => i.tipo === nomeComb)).length : lancs.length;
-    return { gasto, litros, notas, custo: litros > 0 ? gasto / litros : 0 };
+    const m     = metricasPreco(itens);
+    const notas = nomeComb ? lancs.filter(l => l.itens.some(i => i.tipo === nomeComb)).length : lancs.length;
+    // `custo` é o preço médio de compra (sobre a carga faturada), decisão de
+    // 17/09/2026. `litros` aqui são os FATURADOS, os mesmos do denominador —
+    // quem dividir um pelo outro chega ao número mostrado ao lado.
+    return {
+        gasto: m.gasto, litros: m.litrosNota, notas,
+        custo: m.precoCompra,
+        litrosRecebidos: m.litrosRecebidos, custoRecebido: m.custoRecebido,
+        itensMedidos: m.itensMedidos, itensTotal: m.itensTotal,
+        metricas: m
+    };
 }
 
 function carregarDashboard() {
@@ -174,10 +183,11 @@ function carregarDashboard() {
             <div class="kpi-label">Gasto em Compras</div>
             <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
         </div>
-        <div class="kpi-card roxo">
+        <div class="kpi-card roxo" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
             <div class="kpi-valor">${fmtR4(compra.custo)}</div>
-            <div class="kpi-label">Custo Médio / L</div>
-            <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)}</div>
+            <div class="kpi-label">Preço Médio de Compra / L</div>
+            <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)} faturados</div>
+            ${compra.custoRecebido > 0 ? `<div class="kpi-base" title="Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebido(compra.metricas))}</div>` : ''}
         </div>
     `;
 
@@ -438,7 +448,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
         const sinal = vp > 0 ? '▲' : '▼';
         const cls   = vp > 0 ? 'danger' : 'success';
         const ref   = `${formatarData(anterior.inicio).slice(0, 5)} a ${formatarData(anterior.fim).slice(0, 5)}`;
-        variacaoHTML = `<span style="font-size:0.7rem; color:var(--${cls}); margin-left:4px" title="Custo médio das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtR4(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
+        variacaoHTML = `<span style="font-size:0.7rem; color:var(--${cls}); margin-left:4px" title="Preço médio de compra das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtR4(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
     }
 
     const lancsComb = lancDescarga
@@ -480,9 +490,10 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
                 <div class="dash-comb-kpi-val">${fmtR(r.compra.gasto)}</div>
                 <div class="dash-comb-kpi-label">Gasto · pela emissão</div>
             </div>
-            <div class="dash-comb-kpi roxo">
+            <div class="dash-comb-kpi roxo" title="${escapeHtml(explicacaoPrecoCompra(r.compra.metricas))}">
                 <div class="dash-comb-kpi-val">${fmtR4(r.compra.custo)}</div>
-                <div class="dash-comb-kpi-label">Custo médio/L · pela emissão ${variacaoHTML}</div>
+                <div class="dash-comb-kpi-label">Preço médio/L · faturado, pela emissão ${variacaoHTML}</div>
+                ${r.compra.custoRecebido > 0 ? `<div class="dash-comb-kpi-label" style="opacity:.8">${escapeHtml(textoCustoRecebido(r.compra.metricas))}</div>` : ''}
             </div>
         </div>
         ${lancsComb.length ? `<div style="margin-top:4px">
@@ -552,10 +563,10 @@ function renderComparativoMeses() {
                 <tbody>${linhasDescarga}</tbody>
             </table>
         </div>
-        <p class="dica" style="margin:0 0 6px;font-size:0.8rem">Compras — pela <strong>data de emissão</strong></p>
+        <p class="dica" style="margin:0 0 6px;font-size:0.8rem">Compras — pela <strong>data de emissão</strong>, com os litros <strong>faturados</strong> na nota</p>
         <div class="tabela-container" style="overflow-x:auto">
             <table>
-                <thead><tr><th>Mês</th><th>Notas</th><th>Litros das Notas</th><th>Total Gasto</th><th>Custo Médio/L</th></tr></thead>
+                <thead><tr><th>Mês</th><th>Notas</th><th>Litros Faturados</th><th>Total Gasto</th><th>Preço Médio/L</th></tr></thead>
                 <tbody>${linhasCompra}</tbody>
             </table>
         </div>`;

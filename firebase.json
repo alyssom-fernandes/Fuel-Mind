@@ -14,7 +14,8 @@
       "README.md",
       "README.pt-BR.md",
       "Artes/**",
-      "docs/**"
+      "docs/**",
+      "tests/**"
     ],
     "headers": [
       {

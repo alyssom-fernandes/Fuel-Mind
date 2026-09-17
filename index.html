@@ -391,12 +391,12 @@
     </div>
     <div id="aba-mensal" class="aba-conteudo">
       <h3>Resumo Mensal</h3>
-      <p class="dica">Total gasto e litros carregados por mês no período selecionado.</p>
+      <p class="dica">Total gasto e litros por mês, pela data de emissão. O preço médio divide o gasto pelos litros <strong>faturados</strong> nas notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoMensal" height="280"></canvas></div>
       <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('mensal')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês / Ano</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Custo Médio / L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês / Ano</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
     </div>
     <div id="aba-motoristas" class="aba-conteudo" style="display:none">
       <h3>Resumo por Motorista</h3>
@@ -404,7 +404,7 @@
       <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('motoristas')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Motorista</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Custo Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Motorista</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
     </div>
     <div id="aba-veiculos" class="aba-conteudo" style="display:none">
       <h3>Resumo por Veículo</h3>
@@ -412,7 +412,7 @@
       <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('veiculos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Placa</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Custo Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Placa</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
     </div>
     <div id="aba-combustivel" class="aba-conteudo" style="display:none">
       <h3>Resumo por Tipo de Combustível</h3>
@@ -430,7 +430,7 @@
       <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('comparativo')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês</th><th>Custo Médio / L</th><th>vs. mês anterior</th><th>Total Litros</th><th>Total Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
+      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês</th><th>Preço Médio / L</th><th>vs. mês anterior</th><th>Total Litros</th><th>Total Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
     </div>
     <div id="aba-distribuicao" class="aba-conteudo" style="display:none">
       <h3>Distribuição de Gastos</h3>
@@ -449,7 +449,7 @@
     </div>
     <div id="aba-evolucaoPrecos" class="aba-conteudo" style="display:none">
       <h3>Evolução de Preços por Combustível</h3>
-      <p class="dica">Variação do preço médio por litro ao longo do período selecionado.</p>
+      <p class="dica">Preço médio de compra por litro, mês a mês — média <strong>ponderada</strong> pelos litros faturados, não média simples das notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
       <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
