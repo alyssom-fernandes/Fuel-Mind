@@ -2,7 +2,10 @@
   IMPORTAÇÃO DE HISTÓRICO VIA EXCEL / CSV
   Permite importar lançamentos históricos de
   planilhas .xlsx, .xls ou .csv.
-  Não remove dados existentes — apenas acrescenta.
+  Acrescenta notas novas. Uma nota que já existe só é substituída se o
+  operador marcar "Reimportar": a antiga fica registrada como excluída.
+  A empresa de cada linha precisa estar cadastrada e liberada para quem
+  importa — a importação não cria empresa.
   
   Formatos suportados:
   - Padrão sistema (uma linha por combustível)
@@ -14,6 +17,10 @@
   ESTADO DA IMPORTAÇÃO
 ─────────────────────────────────────────────*/
 let importacaoLinhas      = [];
+// Os valores crus das células (número continua número), na mesma ordem de
+// `importacaoLinhas`. Ler só o texto formatado fazia "5,234" de uma célula
+// numérica virar 5234 em alguns caminhos.
+let importacaoLinhasRaw   = null;
 let importacaoMapeamento  = {};
 let importacaoArquivoNome = "";
 let _importacaoNovasPendentes      = [];
@@ -83,7 +90,8 @@ const SINONIMOS_IMPORTACAO = {
  * é a mesma placa que "ABC1D23".
  */
 function _chaveNotaImportacao(n) {
-    return [n.empresa, n.numeroNota, n.dataNota, n.placa]
+    return [n.empresa, _numeroNotaComparavel(n.numeroNota), n.dataNota,
+            typeof normalizarPlaca === "function" ? normalizarPlaca(String(n.placa ?? "")) : n.placa]
         .map(v => normalizarTexto(String(v ?? "")))
         .join("||");
 }
@@ -145,11 +153,12 @@ function importacaoLerArquivo(input) {
     reader.onload = function(e) {
         try {
             let linhas = [];
+            let linhasRaw = null;
 
             if (ext === "csv") {
-                linhas = importacaoLerCSV(e.target.result);
+                linhas = importacaoLerCSV(_decodificarTexto(e.target.result));
             } else {
-                // Lê células de data como texto puro (raw:true) para evitar
+                // Lê as células formatadas (raw:false) e, à parte, os valores crus; evita
                 // que o XLSX interprete e inverta DD/MM em datas com dia <= 12.
                 // Datas Excel (serial numérico) são convertidas manualmente no normalizador.
                 const workbook = XLSX.read(e.target.result, { type: "binary", cellDates: false, cellText: false });
@@ -179,10 +188,13 @@ function importacaoLerArquivo(input) {
                         .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
                         .replace(/[^a-z0-9\s]/g,"").trim();
                     // Cabeçalhos que indicam data — nunca quantidade ou valor
-                    if (cabNorm.includes("data") || cabNorm.includes("date") ||
+                    // "Qtd Descarga" e "Litros Descarga" são quantidade, não
+                    // data: antes 44.850 L viravam 17/10/2022 e depois zero.
+                    const ehQuantidade = /\b(qtd|qtde|litros|lts|quantidade|volume)\b/.test(cabNorm);
+                    if (!ehQuantidade && (cabNorm.includes("data") || cabNorm.includes("date") ||
                         cabNorm === "dt" || cabNorm.includes("vencimento") ||
                         cabNorm.includes("emissao") || cabNorm.includes("entrada") ||
-                        cabNorm.includes("saida") || cabNorm.includes("descarga")) {
+                        cabNorm.includes("saida") || cabNorm.includes("descarga"))) {
                         _colunasData.add(C);
                     }
                 }
@@ -202,10 +214,13 @@ function importacaoLerArquivo(input) {
                 }
 
                 linhas = XLSX.utils.sheet_to_json(aba, { header: 1, defval: "", raw: false });
+                linhasRaw = XLSX.utils.sheet_to_json(aba, { header: 1, defval: "", raw: true });
             }
 
-            // Remove linhas completamente vazias
-            linhas = linhas.filter(l => l.some(c => String(c || "").trim() !== ""));
+            // Remove linhas completamente vazias (as duas matrizes juntas)
+            const manter = linhas.map(l => l.some(c => String(c || "").trim() !== ""));
+            linhas = linhas.filter((_, i) => manter[i]);
+            if (linhasRaw) linhasRaw = linhasRaw.filter((_, i) => manter[i]);
 
             if (!linhas || linhas.length < 2) {
                 mostrarToast("O arquivo está vazio ou só tem cabeçalho.", "aviso", 4000);
@@ -214,13 +229,15 @@ function importacaoLerArquivo(input) {
             }
 
             importacaoLinhas     = linhas;
+            importacaoLinhasRaw  = linhasRaw;
             importacaoMapeamento = {};
 
             const formato = _detectarFormato(linhas[0]);
 
             if (formato === "wide") {
                 // Converte automaticamente para o formato padrão antes de exibir
-                importacaoLinhas = _converterWideParaPadrao(linhas);
+                importacaoLinhas = _converterWideParaPadrao(linhas, linhasRaw);
+                importacaoLinhasRaw = null;
                 mostrarToast("Formato Posto Rosário detectado — convertido automaticamente ✓", "info", 5000);
             } else if (formato === "fabiandra") {
                 mostrarToast("Formato TRR Fabiandra detectado — mapeamento automático ✓", "info", 4000);
@@ -242,16 +259,59 @@ function importacaoLerArquivo(input) {
         input.value = "";
     };
 
-    if (ext === "csv") reader.readAsText(file, "UTF-8");
+    if (ext === "csv") reader.readAsArrayBuffer(file);
     else               reader.readAsBinaryString(file);
 }
 
+/**
+ * Texto de um CSV em UTF-8 ou, se não for UTF-8 válido, em Windows-1252 —
+ * que é como o Excel em português salva "CSV (separado por vírgulas)".
+ * Antes o arquivo era lido sempre como UTF-8, "JOSÉ" virava "JOS�" e a
+ * importação criava um motorista com esse nome.
+ */
+function _decodificarTexto(buffer) {
+    try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(buffer).replace(/^\uFEFF/, "");
+    } catch (_) {
+        return new TextDecoder("windows-1252").decode(buffer);
+    }
+}
+
+/**
+ * CSV com aspas: separador decidido UMA vez, pelo cabeçalho, e vírgula ou
+ * ponto e vírgula dentro de aspas não divide a célula. Antes o separador
+ * era escolhido linha a linha e "5,234" entre aspas virava duas colunas.
+ */
 function importacaoLerCSV(texto) {
-    const linhas = texto.split(/\r?\n/).filter(l => l.trim() !== "");
-    return linhas.map(linha => {
-        const sep = linha.includes(";") ? ";" : ",";
-        return linha.split(sep).map(c => c.replace(/^"|"$/g, "").trim());
-    });
+    const primeira = (texto.split(/\r?\n/).find(l => l.trim() !== "") || "");
+    const contar = ch => { let n = 0, dentro = false; for (const c of primeira) { if (c === '"') dentro = !dentro; else if (c === ch && !dentro) n++; } return n; };
+    const sep = contar(";") >= contar(",") && contar(";") > 0 ? ";" : (contar(",") > 0 ? "," : (contar("\t") > 0 ? "\t" : ";"));
+
+    const linhas = [];
+    let linha = [], campo = "", dentro = false;
+    for (let i = 0; i < texto.length; i++) {
+        const c = texto[i];
+        if (dentro) {
+            if (c === '"') {
+                if (texto[i + 1] === '"') { campo += '"'; i++; }
+                else dentro = false;
+            } else campo += c;
+        } else if (c === '"') {
+            dentro = true;
+        } else if (c === sep) {
+            linha.push(campo.trim()); campo = "";
+        } else if (c === "\n" || c === "\r") {
+            if (c === "\r" && texto[i + 1] === "\n") i++;
+            linha.push(campo.trim()); campo = "";
+            if (linha.some(x => x !== "")) linhas.push(linha);
+            linha = [];
+        } else {
+            campo += c;
+        }
+    }
+    linha.push(campo.trim());
+    if (linha.some(x => x !== "")) linhas.push(linha);
+    return linhas;
 }
 
 /*─────────────────────────────────────────────
@@ -283,16 +343,26 @@ function importacaoLerCSV(texto) {
  * @returns {Array<Array<string>>} Nova matriz no formato padrão (cabeçalho
  *   em [0], uma linha por combustível por nota nas demais posições).
  */
-function _converterWideParaPadrao(linhas) {
+function _converterWideParaPadrao(linhas, linhasRaw) {
     const cabecalho = linhas[0];
     const cols      = cabecalho.map(_normCol);
 
     // ── Localiza colunas fixas pelo nome ─────────────────────────
-    const _find = (...termos) => cols.findIndex(c => termos.some(t => c === t || c.includes(t)));
+    // Igualdade primeiro; só então o termo como palavra inteira. Com
+    // "contém" puro, "nf" achava a coluna "Data NF" quando ela vinha antes
+    // da "NF", e o número da nota virava a data.
+    const _find = (...termos) => {
+        const exata = cols.findIndex(c => termos.includes(c));
+        if (exata >= 0) return exata;
+        return cols.findIndex(c => termos.some(t => ` ${c} `.includes(` ${t} `)));
+    };
 
-    const idxDataNota  = _find("data nf", "datanf");
+    const idxDataNota  = _find("data nf", "datanf", "data nota");
     const idxDataDesc  = _find("data descarga", "descarga");
-    const idxNF        = _find("nf", "nfe", "numero nota", "num nota");
+    const idxNF        = (() => {
+        const i = _find("nf", "nfe", "numero nota", "num nota");
+        return i >= 0 && /\bdata\b/.test(cols[i]) ? -1 : i;
+    })();
     const idxBase      = _find("base");
     const idxEmpresa   = _find("empresa", "fornecedor", "posto", "trr");
     const idxPlaca     = _find("placa");
@@ -393,7 +463,8 @@ function _converterWideParaPadrao(linhas) {
     // ── Normaliza datas "28-jan-26", "02/01/2026", etc. ──────────
     const MESES_PT = {
         jan:"01",fev:"02",mar:"03",abr:"04",mai:"05",jun:"06",
-        jul:"07",ago:"08",set:"09",out:"10",nov:"11",dez:"12"
+        jul:"07",ago:"08",set:"09",out:"10",nov:"11",dez:"12",
+        feb:"02",apr:"04",may:"05",aug:"08",sep:"09",oct:"10",dec:"12"
     };
     function normData(val) {
         if (!val || String(val).trim() === "") return "";
@@ -402,24 +473,24 @@ function _converterWideParaPadrao(linhas) {
         const mPT = v.match(/^(\d{1,2})[-\/]([a-z]{3})[-\/](\d{2,4})$/);
         if (mPT) {
             const dia = mPT[1].padStart(2,"0");
-            const mes = MESES_PT[mPT[2]] || "01";
+            // Mês desconhecido é data inválida, e não janeiro.
+            const mes = MESES_PT[mPT[2]];
+            if (!mes) return "";
             const ano = mPT[3].length === 2 ? "20"+mPT[3] : mPT[3];
             return `${ano}-${mes}-${dia}`;
         }
         return importacaoNormalizarData(val);
     }
 
-    // ── Limpa número (milhar e decimal BR) + remove "R$" ─────────
-    function limparNum(val) {
-        let s = String(val || "").replace(/R\$/gi,"").replace(/\s/g,"").trim();
-        if (s.includes(",")) {
-            s = s.replace(/\./g,"").replace(",",".");
-        } else if ((s.match(/\./g)||[]).length === 1) {
-            const p = s.split(".");
-            if (p[1] && p[1].length === 3) s = s.replace(".","");
-        }
-        return s;
+    // ── Número da célula: o valor cru quando a célula é numérica, senão o
+    // texto lido em português. O limpador antigo tirava o ponto de qualquer
+    // número com três casas: R$ 5,234 guardado como número virava 5.234,00.
+    function numeroCelula(linha, idxLinha, idx) {
+        const cru = linhasRaw && linhasRaw[idxLinha] ? linhasRaw[idxLinha][idx] : undefined;
+        if (typeof cru === "number" && Number.isFinite(cru)) return cru;
+        return parseNumeroBR(String(linha[idx] || "").replace(/R\$/gi, "").trim());
     }
+    const textoNumero = n => String(n).replace(".", ",");
 
     // ── Monta linhas no formato padrão ───────────────────────────
     const novoCabecalho = [
@@ -429,7 +500,8 @@ function _converterWideParaPadrao(linhas) {
     ];
     const novasLinhas = [novoCabecalho];
 
-    linhas.slice(1).forEach(linha => {
+    linhas.slice(1).forEach((linha, i) => {
+        const idxLinha = i + 1;
         if (linha.every(c => String(c||"").trim() === "")) return;
 
         const g = idx => idx >= 0 ? String(linha[idx]||"").trim() : "";
@@ -445,15 +517,15 @@ function _converterWideParaPadrao(linhas) {
         if (!nf || !placa || !motorista) return;
 
         combustiveisCols.forEach(({ nome, idxQtd, idxValor }) => {
-            const qtd = parseFloat(limparNum(linha[idxQtd]));
-            const vl  = parseFloat(limparNum(linha[idxValor]));
-            if (!qtd || qtd <= 0 || !vl || vl <= 0) return;
+            const qtd = numeroCelula(linha, idxLinha, idxQtd);
+            const vl  = numeroCelula(linha, idxLinha, idxValor);
+            if (!(qtd > 0) || !(vl > 0)) return;
 
             novasLinhas.push([
                 dataNota, dataDescarg,
                 nf, base, empresa, motorista, placa,
                 nome,
-                String(qtd), "", String(vl.toFixed(4)),
+                textoNumero(qtd), "", textoNumero(vl),
                 ""
             ]);
         });
@@ -500,14 +572,32 @@ function importacaoRenderizarEtapa2(cabecalho) {
     const container = document.getElementById("importacaoMapeamento");
     if (!container) return;
 
+    // Mapeamento em duas passadas. Primeiro, cabeçalho IGUAL a um sinônimo;
+    // depois, o sinônimo como palavra inteira dentro do cabeçalho — e uma
+    // coluna serve a um campo só. Antes valia "contém" nos dois sentidos,
+    // e o próprio modelo do sistema mapeava "DATA NF" como Número da Nota
+    // (por causa de "nf"); cabeçalho vazio casava com todos os campos.
     const autoMap = {};
-    cabecalho.forEach((col, idx) => {
-        const colNorm = _normCol(col);
-        for (const [campo, termos] of Object.entries(SINONIMOS_IMPORTACAO)) {
-            if (termos.some(t => colNorm.includes(t) || t.includes(colNorm))) {
-                if (autoMap[campo] === undefined) autoMap[campo] = idx;
-            }
-        }
+    const cols = cabecalho.map(_normCol);
+    const sin  = Object.fromEntries(Object.entries(SINONIMOS_IMPORTACAO).map(([c, t]) => [c, t.map(_normCol).filter(Boolean)]));
+    const usadas = new Set();
+    const ordem = ["dataNota","dataDescarga","numeroNota","qtdDescargada","qtd","valor","base","empresa","motorista","placa","combustivel","observacoes"];
+    const ehData = c => /\b(data|date|dt|emissao|entrada|saida)\b/.test(c);
+    const ehQtd  = c => /\b(qtd|qtde|litros|lts|quantidade|volume)\b/.test(c);
+    const podeUsar = (campo, c) => {
+        if (!c) return false;
+        if (campo === "dataNota" || campo === "dataDescarga") return !ehQtd(c);
+        return !ehData(c);
+    };
+    ordem.forEach(campo => {
+        const idx = cols.findIndex((c, i) => !usadas.has(i) && podeUsar(campo, c) && sin[campo].includes(c));
+        if (idx >= 0) { autoMap[campo] = idx; usadas.add(idx); }
+    });
+    ordem.forEach(campo => {
+        if (autoMap[campo] !== undefined) return;
+        const idx = cols.findIndex((c, i) => !usadas.has(i) && podeUsar(campo, c)
+            && sin[campo].some(t => t.length >= 3 && ` ${c} `.includes(` ${t} `)));
+        if (idx >= 0) { autoMap[campo] = idx; usadas.add(idx); }
     });
 
     const opcoes = `<option value="">-- Não importar --</option>` +
@@ -550,6 +640,8 @@ function importacaoRenderizarEtapa2(cabecalho) {
 ─────────────────────────────────────────────*/
 function importacaoProcessar() {
     const btnProcessar = document.querySelector('button[onclick="importacaoProcessar()"]');
+    const permitidas = new Set(_empresaIdsPermitidos());
+    const empresaAtivaCad = (db.empresas || []).find(e => e.nome === empresaFiltroGlobal) || null;
     if (btnProcessar) mostrarSpinner(btnProcessar, btnProcessar.innerText);
     const mapa = {};
     CAMPOS_IMPORTACAO.forEach(campo => {
@@ -587,38 +679,44 @@ function importacaoProcessar() {
             const i = mapa[campo];
             return i !== undefined ? String(linha[i] || "").trim() : "";
         };
+        // Número: o valor cru da célula quando ela é numérica.
+        const getNum = (campo) => {
+            const i = mapa[campo];
+            if (i === undefined) return null;
+            const cru = importacaoLinhasRaw && importacaoLinhasRaw[idx + 1] ? importacaoLinhasRaw[idx + 1][i] : undefined;
+            if (typeof cru === "number" && Number.isFinite(cru)) return cru;
+            const txt = String(linha[i] || "").replace(/R\$/gi, "").trim();
+            if (txt === "" || txt === "-") return null;
+            // Litros não têm três casas decimais numa planilha brasileira:
+            // "59.850" numa coluna de quantidade é 59.850 litros, e não 59,85.
+            // No preço, "5.234" continua sendo R$ 5,234.
+            if ((campo === "qtd" || campo === "qtdDescargada") && /^\d{1,3}(\.\d{3})+$/.test(txt)) {
+                return Number(txt.replace(/\./g, ""));
+            }
+            return parseNumeroBR(txt);
+        };
 
         const dataNota     = importacaoNormalizarData(get("dataNota"));
         const dataDescarga = importacaoNormalizarData(get("dataDescarga"));
         const numeroNota   = get("numeroNota").replace(/\./g,"").replace(/,/g,""); // remove pontos de milhar do NF
-        const base         = get("base");
-        const empresa      = get("empresa") || empresaFiltroGlobal || "";
-        const motorista    = get("motorista");
-        const placa        = get("placa").toUpperCase();
+        const baseTxt      = get("base");
+        const base         = (db.bases || []).find(b => normalizarTexto(b.nome) === normalizarTexto(baseTxt))?.nome || baseTxt;
+        // Empresa pelo cadastro, sem acento e sem caixa: "POSTO ROSÁRIO" é o
+        // cadastro "Posto Rosário". Empresa que não existe ou que quem importa
+        // não acessa vira erro da linha — antes a nota era aceita com um nome
+        // que não resolvia para documento nenhum e sumia da nuvem.
+        const empresaTxt   = get("empresa");
+        const empresaCad   = empresaTxt
+            ? ((db.empresas || []).find(e => normalizarTexto(e.nome) === normalizarTexto(empresaTxt))
+               || (typeof _empresaDoDestinatario === "function" ? _empresaDoDestinatario(empresaTxt) : null))
+            : empresaAtivaCad;
+        const empresa      = empresaCad ? empresaCad.nome : "";
+        const motoristaTxt = get("motorista");
+        const motorista    = (db.motoristas || []).find(m => normalizarTexto(m.nome) === normalizarTexto(motoristaTxt))?.nome || motoristaTxt;
+        const placaTxt     = get("placa").toUpperCase();
+        const placa        = (db.veiculos || []).find(v => normalizarPlaca(v.nome) === normalizarPlaca(placaTxt))?.nome
+                             || (placaTxt ? normalizarPlaca(placaTxt) : "");
         const combustivel  = _normalizarNomeCombustivel(get("combustivel"));
-        const _parseNum = (val) => {
-            let s = String(val || "").replace(/R\$/gi,"").replace(/\s/g,"").trim();
-            if (!s || s === "-") return "0";
-            const nVirgulas = (s.match(/,/g)||[]).length;
-            const nPontos   = (s.match(/\./g)||[]).length;
-            if (nVirgulas >= 1) {
-                s = s.replace(/\./g,"").replace(",",".");
-            } else if (nPontos > 1) {
-                s = s.replace(/\./g,"");
-            } else if (nPontos === 1) {
-                const [intPart, decPart] = s.split(".");
-                const vi = parseInt(intPart.replace("-","")) || 0;
-                if (decPart.length === 3) {
-                    if (intPart.replace("-","").length >= 4) s = s.replace(".","");
-                    else if (vi >= 100) s = s.replace(".","");
-                    else if (decPart.endsWith("00")) s = s.replace(".","");
-                }
-            }
-            return s;
-        };
-        const qtdStr     = _parseNum(get("qtd"));
-        const qtdDescStr = _parseNum(get("qtdDescargada"));
-        const valorStr   = _parseNum(get("valor"));
         const observacoes  = get("observacoes");
 
         if (!dataNota)    { erros.push(`Linha ${linhaNum}: Data da Nota inválida ("${get("dataNota")}")`); return; }
@@ -632,15 +730,24 @@ function importacaoProcessar() {
         if (!motorista)   { erros.push(`Linha ${linhaNum}: Motorista vazio`); return; }
         if (!placa)       { erros.push(`Linha ${linhaNum}: Placa vazia`); return; }
         if (!combustivel) { erros.push(`Linha ${linhaNum}: Combustível vazio`); return; }
+        if (!empresaCad) {
+            erros.push(empresaTxt
+                ? `Linha ${linhaNum}: empresa "${empresaTxt}" não está cadastrada (cadastre antes ou corrija a planilha)`
+                : `Linha ${linhaNum}: sem empresa na planilha e sem empresa ativa`);
+            return;
+        }
+        if (!permitidas.has(empresaCad.id)) { erros.push(`Linha ${linhaNum}: você não tem acesso à empresa "${empresaCad.nome}"`); return; }
 
-        const qtd   = parseNumeroBR(qtdStr);
-        // `?? 0` e não `|| 0`: descarga vazia é zero de verdade, mas
-        // descarga ilegível precisa continuar sendo erro, não virar zero.
-        const qtdD  = parseNumeroBR(qtdDescStr) ?? 0;
-        const valor = parseNumeroBR(valorStr);
+        const qtd   = getNum("qtd");
+        const valor = getNum("valor");
+        // Descarga vazia é zero de verdade; descarga ilegível é erro da
+        // linha. Antes as duas viravam zero.
+        const qtdDTxt = get("qtdDescargada");
+        const qtdD  = qtdDTxt === "" || qtdDTxt === "-" ? 0 : getNum("qtdDescargada");
 
-        if (qtd === null || qtd <= 0)     { erros.push(`Linha ${linhaNum}: Quantidade inválida ("${qtdStr}")`); return; }
-        if (valor === null || valor <= 0)  { erros.push(`Linha ${linhaNum}: Valor unitário inválido ("${valorStr}")`); return; }
+        if (qtd === null || qtd <= 0)     { erros.push(`Linha ${linhaNum}: Quantidade inválida ("${get("qtd")}")`); return; }
+        if (valor === null || valor <= 0)  { erros.push(`Linha ${linhaNum}: Valor unitário inválido ("${get("valor")}")`); return; }
+        if (qtdD === null || qtdD < 0)     { erros.push(`Linha ${linhaNum}: Quantidade descarregada inválida ("${qtdDTxt}")`); return; }
 
         // A empresa entra na chave de agrupamento pelo mesmo motivo que
         // entra na de duplicidade: sem ela, duas notas de mesmo número e
@@ -655,13 +762,21 @@ function importacaoProcessar() {
             };
         }
 
-        const itemTotal = qtd * valor;
+        // O mesmo combustível duas vezes na mesma nota é linha repetida
+        // (planilha colada duas vezes, meses sobrepostos), e não uma segunda
+        // carga: antes os litros e o total dobravam sem aviso.
+        if (notas[chave].itens.some(i => i.tipo === combustivel)) {
+            erros.push(`Linha ${linhaNum}: repetida — a nota ${numeroNota} já tem ${combustivel} numa linha anterior`);
+            return;
+        }
+        const itemTotal = Math.round(qtd * valor * 100) / 100;
         notas[chave].itens.push({ tipo: combustivel, qtd, qtdDescargada: qtdD, valor, total: itemTotal });
-        notas[chave].total += itemTotal;
+        notas[chave].total = Math.round((notas[chave].total + itemTotal) * 100) / 100;
     });
 
     const notasParaAnalisar = Object.values(notas);
     if (notasParaAnalisar.length === 0 && erros.length === 0) {
+        if (btnProcessar) esconderSpinner(btnProcessar);
         mostrarToast("Nenhuma linha válida encontrada no arquivo.", "aviso", 4000);
         return;
     }
@@ -674,9 +789,13 @@ function importacaoProcessar() {
         // Nota excluída não conta como duplicata: reimportar a planilha é
         // um dos caminhos de correção de quem excluiu por engano. Uma
         // cancelada conta, e o operador decide na tela de duplicatas.
-        const jaExiste = db.lancamentos.some(l =>
+        const existente = db.lancamentos.find(l =>
             l.estado !== 'excluido' && _chaveNotaImportacao(l) === chaveNota);
-        if (jaExiste) duplicatas.push(nota);
+        // A cancelada na origem não é oferecida para reimportar: substituir
+        // uma nota cancelada por uma ativa desfaria o cancelamento em silêncio.
+        if (existente && existente.estado === 'cancelado') {
+            erros.push(`Nota ${nota.numeroNota} (${formatarData(nota.dataNota)}): já lançada e marcada como cancelada na origem — não reimportada`);
+        } else if (existente) duplicatas.push(nota);
         else novasNotas.push(nota);
     });
 
@@ -691,6 +810,26 @@ function _normalizarNomeCombustivel(raw) {
     if (!raw) return "";
     const v = raw.trim();
     const norm = v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+
+    // O cadastro primeiro. Antes o nome saía de uma tabela fixa, e com o
+    // cadastro "Diesel S10" a planilha criava um segundo combustível
+    // "Diesel S-10" — o analítico e a referência de preço ficavam divididos.
+    const compacto = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g, "");
+    const cv = compacto(v);
+    const exato = (db.combustiveis || []).find(c => compacto(c.nome) === cv);
+    if (exato) return exato.nome;
+    const grupos = [
+        { teste: n => /s-?\s?500|\b500\b/.test(n), chaves: ["dieselS500","dieselS-500","s500"] },
+        { teste: n => /s-?\s?10\b|s10/.test(n),      chaves: ["dieselS10","dieselS-10","s10"] },
+        { teste: n => /v-?\s?power|vpower|premium|podium/.test(n), chaves: ["gasolinavpower","gasolinav-power","vpower","gasolinapremium"] },
+        { teste: n => /etanol|alcool/.test(n),         chaves: ["etanol","alcool"] },
+    ];
+    for (const g of grupos) {
+        if (!g.teste(norm)) continue;
+        const alvos = g.chaves.map(compacto);
+        const cad = (db.combustiveis || []).find(c => alvos.some(a => compacto(c.nome) === a || compacto(c.nome).endsWith(a)));
+        if (cad) return cad.nome;
+    }
 
     if (norm.includes("s-500") || norm.includes("s 500") || norm.includes("500"))  return "Diesel S-500";
     if (norm.includes("s-10")  || norm.includes("s 10")  || norm.includes("s10"))  return "Diesel S-10";
@@ -725,10 +864,11 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
     _importacaoDuplicatasPendentes = duplicatas;
     _importacaoEmpresa             = empresaFiltroGlobal || null;
 
-    const empresasNovas     = [...new Set(novas.map(n => n.empresa).filter(Boolean))].filter(e => !db.empresas.some(x => x.nome.toLowerCase() === e.toLowerCase()));
-    const motoristasNovos   = [...new Set(novas.map(n => n.motorista))].filter(m => !db.motoristas.some(x => x.nome.toLowerCase() === m.toLowerCase()));
-    const placasNovas       = [...new Set(novas.map(n => n.placa))].filter(p => !db.veiculos.some(x => x.nome.toUpperCase() === p.toUpperCase()));
-    const combustiveisNovos = [...new Set(novas.flatMap(n => n.itens.map(i => i.tipo)))].filter(c => !db.combustiveis.some(x => x.nome.toLowerCase() === c.toLowerCase()));
+    const todas = novas.concat(duplicatas);
+    const empresasNovas     = [];
+    const motoristasNovos   = [...new Set(todas.map(n => n.motorista))].filter(m => !db.motoristas.some(x => normalizarTexto(x.nome) === normalizarTexto(m)));
+    const placasNovas       = [...new Set(todas.map(n => n.placa))].filter(p => !db.veiculos.some(x => normalizarPlaca(x.nome) === normalizarPlaca(p)));
+    const combustiveisNovos = [...new Set(todas.flatMap(n => n.itens.map(i => i.tipo)))].filter(c => !db.combustiveis.some(x => normalizarTexto(x.nome) === normalizarTexto(c)));
     const temNovos = empresasNovas.length || motoristasNovos.length || placasNovas.length || combustiveisNovos.length;
 
     container.innerHTML = `
@@ -795,7 +935,7 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                 </table>
             </div>
             <p class="dica" style="margin-top:8px; font-size:0.78rem">
-                Notas marcadas serão reimportadas e substituirão os registros existentes com o mesmo número, data e placa.
+                Notas marcadas serão reimportadas: a nota que já existe (mesma empresa, número, data e placa) fica registrada como excluída, e a da planilha entra no lugar.
             </p>
         </details>` : ""}
 
@@ -853,7 +993,7 @@ function importacaoSelecionarTodasDuplicatas(marcar) {
 /*─────────────────────────────────────────────
   CONFIRMAR E SALVAR
 ─────────────────────────────────────────────*/
-function importacaoConfirmar() {
+async function importacaoConfirmar() {
     const btnConfirmar = document.querySelector('#importacaoResultado .btn-primario[onclick="importacaoConfirmar()"]')
                       || document.querySelector('button[onclick="importacaoConfirmar()"]');
     if (_importacaoEmpresa !== (empresaFiltroGlobal || null)) {
@@ -873,6 +1013,7 @@ function importacaoConfirmar() {
     });
 
     if (novas.length === 0 && dupSelecionadas.length === 0) {
+        if (btnConfirmar) esconderSpinner(btnConfirmar);
         mostrarToast("Nenhuma nota selecionada para importar.", "aviso", 4000);
         return;
     }
@@ -895,15 +1036,17 @@ function importacaoConfirmar() {
     // aconteceu.
     if (dupSelecionadas.length > 0) {
         const chavesDup = new Set(dupSelecionadas.map(_chaveNotaImportacao));
-        db.lancamentos.forEach(l => {
-            if (!lancamentoAtivo(l)) return;
-            if (!chavesDup.has(_chaveNotaImportacao(l))) return;
-            l.estado = 'excluido';
-            if (!Array.isArray(l.logs)) l.logs = [];
-            l.logs.push({
-                acao:    'Substituído por reimportação de planilha',
-                ts:      new Date().toISOString(),
-                usuario: window._usuarioAtual?.nome || '—'
+        // Objetos novos, e não mudança no lugar (o cache da busca é por objeto).
+        db.lancamentos = db.lancamentos.map(l => {
+            if (!lancamentoAtivo(l)) return l;
+            if (!chavesDup.has(_chaveNotaImportacao(l))) return l;
+            return Object.assign({}, l, {
+                estado: 'excluido',
+                logs: (Array.isArray(l.logs) ? l.logs : []).concat([{
+                    acao:    'Substituído por reimportação de planilha',
+                    ts:      new Date().toISOString(),
+                    usuario: window._usuarioAtual?.nome || '—'
+                }])
             });
         });
     }
@@ -912,21 +1055,19 @@ function importacaoConfirmar() {
     const agora = new Date().toLocaleString("pt-BR");
 
     todasParaSalvar.forEach(nota => {
-        // Cria cadastros automaticamente se não existirem
-        if (nota.empresa && !db.empresas.some(e => e.nome.toLowerCase() === nota.empresa.toLowerCase())) {
-            db.empresas.push({ id: gerarId(), nome: nota.empresa, ativo: true });
+        // Cria os cadastros que faltam (empresa não: ela precisa existir).
+        if (!db.motoristas.some(m => normalizarTexto(m.nome) === normalizarTexto(nota.motorista))) {
+            db.motoristas.push({ id: gerarId(), nome: nota.motorista, ativo: true, logs: [`Criado pela importação de planilha em ${agora}`] });
         }
-        if (!db.motoristas.some(m => m.nome.toLowerCase() === nota.motorista.toLowerCase())) {
-            db.motoristas.push({ id: gerarId(), nome: nota.motorista, ativo: true });
-        }
-        if (!db.veiculos.some(v => v.nome.toUpperCase() === nota.placa.toUpperCase())) {
-            db.veiculos.push({ id: gerarId(), nome: nota.placa, ativo: true });
+        if (!db.veiculos.some(v => normalizarPlaca(v.nome) === normalizarPlaca(nota.placa))) {
+            db.veiculos.push({ id: gerarId(), nome: nota.placa, ativo: true, logs: [`Criado pela importação de planilha em ${agora}`] });
         }
         nota.itens.forEach(item => {
-            if (!db.combustiveis.some(c => c.nome.toLowerCase() === item.tipo.toLowerCase())) {
-                db.combustiveis.push({ id: gerarId(), nome: item.tipo, perda: 0, ativo: true });
+            if (!db.combustiveis.some(c => normalizarTexto(c.nome) === normalizarTexto(item.tipo))) {
+                db.combustiveis.push({ id: gerarId(), nome: item.tipo, perda: 0, ativo: true, logs: [`Criado pela importação de planilha em ${agora}`] });
             }
         });
+        const empresaId = (db.empresas || []).find(e => e.nome === nota.empresa)?.id;
 
         db.lancamentos.push({
             id:           gerarId(),
@@ -935,19 +1076,22 @@ function importacaoConfirmar() {
             numeroNota:   nota.numeroNota,
             base:         nota.base,
             empresa:      nota.empresa,
+            empresaId,
             motorista:    nota.motorista,
             placa:        nota.placa,
             itens:        nota.itens,
             total:        nota.total,
             observacoes:  nota.observacoes || "",
             anexos:       [],
-            logs:         [`Importado via planilha em ${agora}${dupSelecionadas.includes(nota) ? " (reimportado)" : ""}`]
+            logs:         [{ acao: dupSelecionadas.includes(nota) ? "Reimportado via planilha" : "Importado via planilha",
+                             ts: new Date().toISOString(), usuario: window._usuarioAtual?.nome || '—' }]
         });
     });
 
     if (btnConfirmar) esconderSpinner(btnConfirmar);
-    salvarDB();
     atualizarListas();
+    // A mensagem de conclusão diz a verdade sobre a nuvem.
+    const confirmado = await _salvarEConfirmar(`${todasParaSalvar.length} nota(s) importada(s)`);
     _importacaoNovasPendentes      = [];
     _importacaoDuplicatasPendentes = [];
 
@@ -959,9 +1103,10 @@ function importacaoConfirmar() {
         container.innerHTML = `
             <div class="importacao-sucesso">
                 
-                <h3>Importação concluída!</h3>
+                <h3>${confirmado ? "Importação concluída!" : "Importação feita neste navegador — aguardando a nuvem"}</h3>
                 <p><strong>${totalImportado}</strong> nota(s) importadas com sucesso.</p>
-                ${dupSelecionadas.length > 0 ? `<p><strong>${dupSelecionadas.length}</strong> nota(s) reimportadas (substituíram registros anteriores).</p>` : ""}
+                ${dupSelecionadas.length > 0 ? `<p><strong>${dupSelecionadas.length}</strong> nota(s) reimportadas (as anteriores ficaram registradas como excluídas).</p>` : ""}
+                ${confirmado ? "" : `<p style="color:var(--warning)">Não feche a aba até a pílula de sincronização sumir.</p>`}
                 <p><strong>${totalItens}</strong> item(ns) de combustível registrados.</p>
                 <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px">
                     <button class="btn-primario" onclick="mostrarTela('relatorios')"> Ver Relatórios</button>
@@ -971,7 +1116,6 @@ function importacaoConfirmar() {
         `;
     }
 
-    mostrarToast(`${totalImportado} nota(s) importadas com sucesso!`, "sucesso", 5000);
 }
 
 /*─────────────────────────────────────────────
@@ -982,19 +1126,26 @@ function importacaoNormalizarData(valor) {
 
     const v = String(valor).trim();
 
-    // Já está no formato correto YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    // Uma data que existe no calendário: 31/02 é recusada, e não vira 03/03.
+    const valida = (a, m, d) => {
+        const dt = new Date(Number(a), Number(m) - 1, Number(d));
+        return dt.getFullYear() === Number(a) && dt.getMonth() === Number(m) - 1 && dt.getDate() === Number(d);
+    };
 
-    // DD/MM/YYYY ou DD/MM/YY — formato brasileiro (prioridade)
-    // Cobre: "28/01/2026", "28/01/26", "28-01-2026"
-    const matchBR = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    // Já está no formato correto YYYY-MM-DD (com ou sem hora)
+    const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+    if (iso) return valida(iso[1], iso[2], iso[3]) ? `${iso[1]}-${iso[2]}-${iso[3]}` : "";
+
+    // DD/MM/YYYY ou DD/MM/YY — formato brasileiro (prioridade), com hora opcional
+    // Cobre: "28/01/2026", "28/01/26", "28-01-2026", "28/01/2026 00:00"
+    const matchBR = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
     if (matchBR) {
         let [, p1, p2, ano] = matchBR;
         let dia = parseInt(p1), mes = parseInt(p2);
         // Se p2 > 12 e p1 <= 12: está invertido (MM/DD) — corrige
         if (mes > 12 && dia <= 12) { [dia, mes] = [mes, dia]; }
         if (ano.length === 2) ano = "20" + ano;
-        if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return "";
+        if (!valida(ano, mes, dia)) return "";
         return `${ano}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
     }
 
@@ -1012,6 +1163,7 @@ function importacaoNormalizarData(valor) {
 
 function importacaoReiniciar() {
     importacaoLinhas              = [];
+    importacaoLinhasRaw           = null;
     importacaoMapeamento          = {};
     importacaoArquivoNome         = "";
     _importacaoNovasPendentes     = [];

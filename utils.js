@@ -437,24 +437,29 @@ function salvarConfigAlertas(cfg) {
      perto de si e calaria o alerta das vizinhas.
    - Janela de N dias (configurável, padrão 7) terminando em `fimISO`, pela
      data de emissão: preço é fato da compra (rodada 11). A nota julgada
-     não entra na régua que a julga.
+     não entra na régua que a julga. "7 dias" é o dia da emissão e os 6
+     anteriores.
    - Basta uma nota para haver referência (decisão do dono, tema 06).
    - Diferença em reais por litro, para cima ou para baixo (configurável,
      padrão R$ 0,25/L). Alerta quando a diferença é maior ou igual ao
      limite, comparada em quatro casas — a precisão do preço — para que
      R$ 6,25 contra R$ 6,00 seja 0,25 e não 0,2499999. */
-function referenciaPrecoCombustivel(nomeCombustivel, fimISO, idIgnorar) {
+function referenciaPrecoCombustivel(nomeCombustivel, fimISO, idIgnorar, empresa) {
+    // A régua é sempre da empresa da nota; a ativa só serve de padrão.
+    const empresaRegua = empresa || empresaFiltroGlobal;
     const cfg    = configAlertas();
     const dias   = cfg.precoPeriodoDias;
     const fim    = fimISO || _hojeISO();
-    const inicio = _somarDiasISO(fim, -dias);
+    // "7 dias" são 7 dias de calendário: o dia da nota e os 6 anteriores.
+    // A conta antiga incluía as duas pontas e cobria 8.
+    const inicio = _somarDiasISO(fim, -(Math.max(1, dias) - 1));
 
     const precos = (db.lancamentos || [])
         .filter(l => {
             // Excluída não aconteceu; cancelada foi desfeita. Com uma nota
             // bastando, uma só nota morta viraria régua.
             if (!lancamentoAtivo(l)) return false;
-            if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return false;
+            if (empresaRegua && l.empresa !== empresaRegua) return false;
             if (idIgnorar && l.id === idIgnorar) return false;
             const e = dataEmissaoDe(l);
             return e >= inicio && e <= fim;

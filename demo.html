@@ -364,32 +364,6 @@ section { padding: 100px 0; position: relative; z-index: 1; }
 }
 .alert-action:hover { background: var(--green); color: #fff; border-color: var(--green); }
 
-/* ── STOCK TABLE DEMO ── */
-.stock-section { background: var(--bg); }
-.stock-demo {
-  margin-top: 56px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px; overflow: hidden;
-}
-.stock-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; background: var(--surface2); border-bottom: 1px solid var(--border);
-}
-.stock-tabs { display: flex; gap: 4px; }
-.stab {
-  padding: 6px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
-  color: var(--muted); cursor: default;
-}
-.stab.active { background: rgba(192,57,43,0.15); color: var(--primary2); }
-.stock-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.stock-table th { padding: 10px 16px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); background: #0a0a0a; border-bottom: 1px solid var(--border); }
-.stock-table td { padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
-.stock-table tr:last-child td { border-bottom: none; }
-.stock-table tr:hover td { background: rgba(255,255,255,0.02); }
-.veeder-ok   { color: var(--green); font-weight: 700; }
-.veeder-warn { color: var(--accent); font-weight: 700; }
-.veeder-pend { color: rgba(255,255,255,0.25); font-style: italic; }
 .diff-ok { background: rgba(16,185,129,0.1); color: var(--green); padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; }
 .diff-warn { background: rgba(239,68,68,0.12); color: #ef4444; padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; }
 .diff-pend { color: rgba(255,255,255,0.2); }
@@ -473,7 +447,6 @@ footer {
   </a>
   <nav>
     <a href="#features">Features</a>
-    <a href="#stock">Stock</a>
     <a href="#stack">Stack</a>
     <a href="https://github.com" target="_blank">Docs</a>
   </nav>
@@ -489,8 +462,8 @@ footer {
   <div class="hero-eyebrow">Open Source · Firebase · Vanilla JS</div>
   <h1>Fuel management<br>done <em>right</em></h1>
   <p class="hero-sub">
-    Real-time multi-company fuel tracking with analytics, stock control,
-    Veeder-Root integration, freight calculation, and PDF/Excel exports.
+    Real-time multi-company fuel entry tracking with analytics,
+    freight calculation, tank-report reconciliation and PDF/Excel exports.
     No build step required.
   </p>
   <div class="hero-ctas">
@@ -542,10 +515,6 @@ footer {
           <div class="dash-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             Analytics
-          </div>
-          <div class="dash-nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            Stock
           </div>
           <div class="dash-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/></svg>
@@ -637,18 +606,11 @@ footer {
         <div class="feat-desc">7 analytical tabs: monthly, per-driver, per-vehicle, per-fuel, comparative, distribution, and price evolution — all with Chart.js.</div>
       </div>
       <div class="feat">
-        <div class="feat-icon fi-blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        </div>
-        <div class="feat-title">Stock Control</div>
-        <div class="feat-desc">Daily stock table per company and fuel. Entries, sales, evaporation (% or liters), Veeder-Root reading, month closing with audit log.</div>
-      </div>
-      <div class="feat">
         <div class="feat-icon fi-yellow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         </div>
         <div class="feat-title">Freight Calculation</div>
-        <div class="feat-desc">Configure R$/L rates per fuel. Automatic freight totals by plate, driver, company, and vehicle set — with historical composition support.</div>
+        <div class="feat-desc">Configure R$/L rates per company. Automatic freight totals by plate, driver, company, and vehicle set — with historical composition support.</div>
       </div>
       <div class="feat">
         <div class="feat-icon fi-purple">
@@ -662,7 +624,7 @@ footer {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
         <div class="feat-title">Multi-user Permissions</div>
-        <div class="feat-desc">Roles: Supremo, Admin, User. Per-company access. Login via e-mail or @username. Audit trail on all stock edits per user.</div>
+        <div class="feat-desc">Roles: Supremo, Admin, Operator. Per-company access. Login via e-mail or @username. Change history on every entry, per user.</div>
       </div>
     </div>
   </div>
@@ -697,80 +659,6 @@ footer {
         </div>
         <button class="alert-action">✓ Confirm date</button>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- STOCK TABLE DEMO -->
-<section class="stock-section" id="stock">
-  <div class="container">
-    <p class="section-label reveal">Stock</p>
-    <h2 class="section-title reveal">Veeder-Root reconciliation</h2>
-    <p class="section-desc reveal">Import Veeder-Root readings and AutoSystem reports. The system cross-checks calculated stock vs. physical readings instantly.</p>
-
-    <div class="stock-demo reveal">
-      <div class="stock-header">
-        <div class="stock-tabs">
-          <div class="stab active">Diesel S-10</div>
-          <div class="stab">S-500</div>
-          <div class="stab">Etanol</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <span style="font-size:0.72rem;color:var(--muted);padding:5px 10px;border:1px solid var(--border);border-radius:6px;">Dec 2025</span>
-          <span style="font-size:0.72rem;color:var(--green);padding:5px 10px;border:1px solid rgba(16,185,129,0.3);border-radius:6px;background:rgba(16,185,129,0.08);">Capacity: 160,000 L</span>
-        </div>
-      </div>
-      <table class="stock-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Entry (L)</th>
-            <th>Sales (L)</th>
-            <th>Evap %</th>
-            <th>Calc. Stock</th>
-            <th>Veeder-Root</th>
-            <th>Diff</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>18/12</strong></td>
-            <td>60,000.000</td>
-            <td>42,318.000</td>
-            <td>0.03%</td>
-            <td><strong>141,237.430</strong></td>
-            <td class="veeder-ok">141,210.000 ✓</td>
-            <td><span class="diff-ok">+27 L</span></td>
-          </tr>
-          <tr>
-            <td><strong>17/12</strong></td>
-            <td>—</td>
-            <td>38,900.000</td>
-            <td>0.03%</td>
-            <td><strong>123,520.000</strong></td>
-            <td class="veeder-warn">121,950.000</td>
-            <td><span class="diff-warn">+1,570 L</span></td>
-          </tr>
-          <tr>
-            <td><strong>16/12</strong></td>
-            <td>60,000.000</td>
-            <td>41,200.000</td>
-            <td>0.03%</td>
-            <td><strong>162,460.300</strong></td>
-            <td class="veeder-ok">162,440.000 ✓</td>
-            <td><span class="diff-ok">+20 L</span></td>
-          </tr>
-          <tr>
-            <td><strong>15/12</strong></td>
-            <td>—</td>
-            <td>39,450.000</td>
-            <td>0.03%</td>
-            <td><strong>143,684.500</strong></td>
-            <td class="veeder-pend">Pending</td>
-            <td class="diff-pend">—</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </div>
 </section>
@@ -827,7 +715,6 @@ footer {
         <a href="https://github.com" target="_blank">GitHub</a>
         <a href="#features">Features</a>
         <a href="#stack">Stack</a>
-        <a href="#stock">Stock</a>
       </div>
       <span class="footer-copy">MIT License · Built with Firebase + Chart.js</span>
     </div>
@@ -861,14 +748,6 @@ document.querySelectorAll('.alert-action').forEach(btn => {
 // ── Bar chart stagger delay ──
 document.querySelectorAll('.bar').forEach((bar, i) => {
   bar.style.animationDelay = (i * 0.08) + 's';
-});
-
-// ── Stock tab switch ──
-document.querySelectorAll('.stab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-  });
 });
 
 // ── Header scroll effect ──

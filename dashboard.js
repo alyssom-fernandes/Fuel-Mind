@@ -235,7 +235,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
             // o de outra nota com o mesmo número (outra empresa, outro fornecedor).
             const chavePreco = `preco|${l.id}|${i.tipo}`;
             if (!cfg.precoAtivo || !(i.valor > 0) || ignorados[chavePreco]) return;
-            const ref   = referenciaPrecoCombustivel(i.tipo, dataEmissaoDe(l), l.id);
+            const ref   = referenciaPrecoCombustivel(i.tipo, dataEmissaoDe(l), l.id, l.empresa);
             const juizo = julgarPreco(i.valor, ref.mediana);
             if (!juizo) return;
             const sentido = juizo.acima ? 'acima' : 'abaixo';

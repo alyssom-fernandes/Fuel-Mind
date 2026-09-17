@@ -454,16 +454,25 @@ function atualizarInfoSistema() {
 
 /* ========== AUDITORIA DE DATAS SUSPEITAS ========== */
 function auditarDatas() {
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    const suspeitos = db.lancamentos.filter(l => {
-        // Não faz sentido mandar o operador corrigir a data de uma nota
-        // que ele já tirou do ar.
-        if (!lancamentoAtivo(l)) return false;
-        const dtNota = new Date(l.dataNota + 'T00:00:00');
-        const dtDesc = l.dataDescarga ? new Date(l.dataDescarga + 'T00:00:00') : null;
-        const diffDias = (dtDesc && dtNota) ? Math.round((dtDesc - dtNota) / 86400000) : 0;
-        return dtNota > hoje || (dtDesc && dtDesc > hoje) || diffDias > 30;
-    });
+    // Os mesmos limites do alerta de data do Dashboard (Sistema › Ajustar
+    // Alertas). Antes eram 30 dias e tolerância zero fixos, e as duas telas
+    // davam respostas diferentes para a mesma nota.
+    const cfg = configAlertas();
+    const hojeISO = _hojeISO();
+    const limiteFuturo = _somarDiasISO(hojeISO, cfg.dataTolerDias || 0);
+    const maxDias = cfg.dataMaxDescNota || 30;
+    const diasEntre = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+    const problemasDe = l => {
+        const p = [];
+        if (l.dataNota && l.dataNota > limiteFuturo) p.push('Nota futura');
+        if (l.dataDescarga && l.dataDescarga > limiteFuturo) p.push('Descarga futura');
+        if (l.dataNota && l.dataDescarga && l.dataDescarga < l.dataNota) p.push('Descarga antes da nota');
+        if (l.dataNota && l.dataDescarga && diasEntre(l.dataNota, l.dataDescarga) > maxDias) p.push(`Descarga ${diasEntre(l.dataNota, l.dataDescarga)} dias após nota`);
+        return p;
+    };
+    const suspeitos = db.lancamentos.filter(l => lancamentoAtivo(l)
+        && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
+        && problemasDe(l).length > 0);
 
     if (suspeitos.length === 0) {
         mostrarToast('Nenhum lançamento com data suspeita encontrado.', 'sucesso', 4000); return;
@@ -482,18 +491,12 @@ function auditarDatas() {
                 <thead><tr><th>Nota</th><th>Data Nota</th><th>Data Descarga</th><th>Problema</th><th></th></tr></thead>
                 <tbody>
                     ${suspeitos.map(l => {
-                        const dtNota = new Date(l.dataNota + 'T00:00:00');
-                        const dtDesc = l.dataDescarga ? new Date(l.dataDescarga + 'T00:00:00') : null;
-                        const diffDias = (dtDesc && dtNota) ? Math.round((dtDesc - dtNota) / 86400000) : 0;
-                        const problema = [];
-                        if (dtNota > hoje) problema.push('Nota futura');
-                        if (dtDesc && dtDesc > hoje) problema.push('Descarga futura');
-                        if (diffDias > 30) problema.push(`Descarga ${diffDias} dias após nota`);
+                        const problema = problemasDe(l);
                         return `<tr>
                             <td>${escapeHtml(l.numeroNota)}</td><td>${formatarData(l.dataNota)}</td>
                             <td>${l.dataDescarga ? formatarData(l.dataDescarga) : '—'}</td>
                             <td style="color:var(--danger);">${problema.join(', ')}</td>
-                            <td><button class="btn-secundario" onclick="irParaLancamento('${l.id}');document.getElementById('_modalAuditoria').remove()">Ver</button></td>
+                            <td><button class="btn-secundario" onclick="irParaLancamento('${escapeJsAttr(l.id)}');document.getElementById('_modalAuditoria').remove()">Ver</button></td>
                         </tr>`;
                     }).join('')}
                 </tbody>
@@ -504,6 +507,23 @@ function auditarDatas() {
         </div>
     `;
     document.body.appendChild(modal);
+    _modalAcessivel(modal, () => modal.remove());
+}
+
+/* Modais montados aqui: foco dentro ao abrir e Escape fecha. Antes o Tab
+   seguia para a tela de trás e o Escape não fazia nada. */
+function _modalAcessivel(modal, fechar) {
+    const focaveis = () => [...modal.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter(el => !el.disabled && el.offsetParent !== null);
+    modal.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { e.stopPropagation(); fechar(); return; }
+        if (e.key !== 'Tab') return;
+        const f = focaveis(); if (!f.length) return;
+        const primeiro = f[0], ultimo = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+        else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+    });
+    setTimeout(() => focaveis()[0]?.focus(), 0);
 }
 
 /* ========== CORREÇÃO EM MASSA ==========
@@ -583,7 +603,7 @@ function corrigirCampoEmMassa(campo) {
     `;
     document.body.appendChild(modal);
     modalCorrecaoMassa = modal;
-    modal.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); fecharModalCorrecaoMassa(); } });
+    _modalAcessivel(modal, fecharModalCorrecaoMassa);
     atualizarPreviewCorrecao();
     document.getElementById('correcaoMassaSelect').addEventListener('change', atualizarPreviewCorrecao);
     document.getElementById('correcaoMassaAntigo').addEventListener('change', atualizarPreviewCorrecao);
@@ -998,8 +1018,8 @@ function autosystemLerArquivo(input) {
         try {
             let linhas = [];
             if (ext === 'csv') {
-                linhas = e.target.result.split(/\r?\n/).filter(l => l.trim())
-                    .map(l => { const sep = l.includes(';') ? ';' : ','; return l.split(sep).map(c => c.replace(/^"|"$/g,'').trim()); });
+                // Mesma leitura da importação: codificação do Excel e aspas.
+                linhas = importacaoLerCSV(_decodificarTexto(e.target.result));
             } else {
                 const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: false, raw: true });
                 const ws = wb.Sheets[wb.SheetNames[0]];
@@ -1016,7 +1036,7 @@ function autosystemLerArquivo(input) {
         } catch(err) { mostrarToast('Erro ao ler o arquivo: ' + err.message, 'erro', 5000); }
         input.value = '';
     };
-    if (ext === 'csv') reader.readAsText(file, 'UTF-8');
+    if (ext === 'csv') reader.readAsArrayBuffer(file);
     else reader.readAsBinaryString(file);
 }
 
@@ -1084,6 +1104,7 @@ function _autosystemDetectarEProcessar() {
 
     const linhasParaProcessar = _autoLinhas.slice(cabIdx + 1);
     const linhasDados = [];
+    let ignoradas = 0;
     // Converte serial numérico de data SOMENTE na coluna de data (não afeta colunas de litros)
     const _serialParaData = (v) => {
         const n = typeof v === 'number' ? v : parseFloat(v);
@@ -1095,12 +1116,12 @@ function _autosystemDetectarEProcessar() {
     };
     linhasParaProcessar.forEach(row => {
         const dataRaw = _serialParaData(row[idxData]);
-        if (!dataRaw || dataRaw.toLowerCase().includes('total')) return;
-        const mData = dataRaw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-        if (!mData) return;
-        const [,d,m,y] = mData;
-        const ano = y.length === 2 ? '20'+y : y;
-        const data = `${ano}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        if (!dataRaw) return;
+        if (dataRaw.toLowerCase().includes('total')) return;
+        // Data com ou sem hora, no formato brasileiro ou ISO. Linha que não
+        // é lida é CONTADA e avisada: antes ela sumia em silêncio.
+        const data = importacaoNormalizarData(dataRaw);
+        if (!data) { ignoradas++; return; }
         // Era um parser próprio que trocava a vírgula mas não removia o
         // milhar, então "1.234,56" saía como 1,234. Usa o do sistema.
         const _n = (v) => parseNumeroBR(v) ?? 0;
@@ -1108,11 +1129,44 @@ function _autosystemDetectarEProcessar() {
     });
 
     if (!linhasDados.length) { mostrarToast('Nenhuma linha de dados encontrada no arquivo.', 'aviso'); return; }
-    _autoLinhasDados = linhasDados;
+    // O mesmo dia em duas linhas soma, em vez de a segunda ficar sem par.
+    const porDia = new Map();
+    linhasDados.forEach(l => porDia.set(l.data, (porDia.get(l.data) || 0) + l.entrada));
+    _autoLinhasDados = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([data, entrada]) => ({ data, entrada }));
+    _autoIgnoradas = ignoradas;
     _autosystemRenderizarConferencia();
 }
 
 let _autoLinhasDados = [];
+let _autoIgnoradas = 0;
+
+/**
+ * Linhas da conferência: todo dia do arquivo e também todo dia, DENTRO do
+ * período do arquivo, em que só o sistema tem entrada. Antes os totais
+ * só olhavam os dias presentes no arquivo, e uma descarga de 30.000 L num
+ * dia que o relatório não listava deixava a tela dizendo "confere".
+ */
+function _autoMontarLinhas(comb) {
+    const empresa = empresaFiltroGlobal || '';
+    const entradasSistema = {};
+    db.lancamentos
+        .filter(l => lancamentoAtivo(l) && l.empresa === empresa && (l.itens || []).some(i => i.tipo === comb))
+        .forEach(l => {
+            const dRef = dataDescargaDe(l);   // o tanque recebe na descarga (rodada 11)
+            if (!dRef) return;
+            const litros = l.itens.filter(i => i.tipo === comb).reduce((s, i) => s + _litrosItem(i), 0);
+            entradasSistema[dRef] = (entradasSistema[dRef] || 0) + litros;
+        });
+    const doArquivo = new Map(_autoLinhasDados.map(d => [d.data, d.entrada]));
+    const datas = _autoLinhasDados.map(d => d.data);
+    const ini = datas[0], fim = datas[datas.length - 1];
+    Object.keys(entradasSistema).forEach(d => { if (d >= ini && d <= fim && !doArquivo.has(d)) datas.push(d); });
+    return [...new Set(datas)].sort().map(data => {
+        const entrada    = doArquivo.get(data) || 0;
+        const sistemaVal = entradasSistema[data] || 0;
+        return { data, entrada, sistemaVal, diff: sistemaVal - entrada, soNoSistema: !doArquivo.has(data) };
+    });
+}
 
 /* Chamada na troca de empresa. O relatório do AutoSystem é da medição de
    tanque de uma empresa, e a comparação é feita contra os lançamentos da
@@ -1158,7 +1212,8 @@ function _autosystemRenderizarConferencia() {
         <div style="font-size:0.75rem;color:var(--text-muted);margin:-6px 0 14px">
             Lendo a data da coluna <strong>${escapeHtml(_autoColunas.data || '?')}</strong>
             e os litros da coluna <strong>${escapeHtml(_autoColunas.entrada || '?')}</strong>
-            do arquivo — ${_autoLinhasDados.length} linha(s).
+            do arquivo — ${_autoLinhasDados.length} dia(s).
+            ${_autoIgnoradas ? `<strong style="color:var(--warning)">${_autoIgnoradas} linha(s) com data ilegível ficaram de fora.</strong>` : ''}
         </div>
         <div id="_autoTabelaContainer"></div>`;
 
@@ -1187,26 +1242,13 @@ function _autosystemAtualizarTabela() {
     const container = document.getElementById('_autoTabelaContainer');
     if (!container || !comb || !empresa) return;
 
-    const entradasSistema = {};
-    db.lancamentos
-        .filter(l => lancamentoAtivo(l) && l.empresa === empresa && l.itens.some(i => i.tipo === comb))
-        .forEach(l => {
-            const dRef = dataDescargaDe(l);   // o tanque recebe na descarga (rodada 11)
-            if (!dRef) return;
-            const litros = l.itens.filter(i => i.tipo === comb)
-                .reduce((s,i) => s + ((i.qtdDescargada && i.qtdDescargada > 0) ? i.qtdDescargada : (i.qtd||0)), 0);
-            entradasSistema[dRef] = (entradasSistema[dRef] || 0) + litros;
-        });
-
     let totalAutoEntradas = 0, totalSistemaEntradas = 0, diasComDivergencia = 0;
-    const linhasEntrada = _autoLinhasDados.map(d => {
-        const sistemaVal = entradasSistema[d.data] || 0;
-        const diff       = sistemaVal - d.entrada;
-        const temDiv     = Math.abs(diff) > 1 && (d.entrada > 0 || sistemaVal > 0);
+    const linhasEntrada = _autoMontarLinhas(comb).map(d => {
+        const temDiv = Math.abs(d.diff) > 1 && (d.entrada > 0 || d.sistemaVal > 0);
         if (temDiv) diasComDivergencia++;
         totalAutoEntradas    += d.entrada;
-        totalSistemaEntradas += sistemaVal;
-        return { ...d, sistemaVal, diff, temDiv };
+        totalSistemaEntradas += d.sistemaVal;
+        return { ...d, temDiv };
     });
     const diffTotal = totalSistemaEntradas - totalAutoEntradas;
 
@@ -1239,7 +1281,7 @@ function _autosystemAtualizarTabela() {
             <tbody>
                 ${linhasEntrada.map(l => `
                 <tr style="${l.temDiv?'background:rgba(239,68,68,0.06)':l.entrada===0&&l.sistemaVal===0?'opacity:0.5':''}">
-                    <td><strong>${formatarData(l.data)}</strong></td>
+                    <td><strong>${formatarData(l.data)}</strong>${l.soNoSistema ? ' <small style="color:var(--warning)">só no sistema</small>' : ''}</td>
                     <td>${l.entrada>0?fmtL3(l.entrada):'—'}</td>
                     <td>${l.sistemaVal>0?fmtL3(l.sistemaVal):'—'}</td>
                     <td>${l.temDiv
@@ -1260,19 +1302,10 @@ function _autosystemAtualizarTabela() {
 }
 
 function _autoExportarExcel(comb) {
-    const empresa = empresaFiltroGlobal || '';
-    const entradasSistema = {};
-    db.lancamentos.filter(l => lancamentoAtivo(l) && l.empresa===empresa && l.itens.some(i=>i.tipo===comb))
-        .forEach(l => {
-            const dRef = dataDescargaDe(l);
-            if (!dRef) return;
-            const litros = l.itens.filter(i=>i.tipo===comb).reduce((s,i)=>s+((i.qtdDescargada&&i.qtdDescargada>0)?i.qtdDescargada:(i.qtd||0)),0);
-            entradasSistema[dRef] = (entradasSistema[dRef]||0)+litros;
-        });
     const wb = XLSX.utils.book_new();
     const rows = [
-        ['Data','Entrada AutoSystem (L)','Entrada Sistema (L)','Diferença (L)'],
-        ..._autoLinhasDados.map(l => { const s=entradasSistema[l.data]||0; return [l.data,l.entrada,s,s-l.entrada]; })
+        ['Data','Entrada AutoSystem (L)','Entrada Sistema (L)','Diferença (L)','Observação'],
+        ..._autoMontarLinhas(comb).map(l => [formatarData(l.data), l.entrada, l.sistemaVal, l.diff, l.soNoSistema ? 'Só no sistema' : ''])
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'AutoSystem');
     XLSX.writeFile(wb, `conferencia-autosystem-${_hojeISO()}.xlsx`);
@@ -1328,7 +1361,7 @@ function abrirConfigAlertas() {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                     <div><strong>Alerta de Preço</strong>
                     <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Compara o preço/L de cada nota com a mediana das notas emitidas nos dias anteriores. Avisa acima ou abaixo.</p></div>
-                    <label class="_cfg-toggle"><input type="checkbox" id="_cfgPrecoAtivo" ${cfg.precoAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
+                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar alerta de preço" id="_cfgPrecoAtivo" ${cfg.precoAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
                 </div>
                 <div id="_cfgPrecoOpts" style="${cfg.precoAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -1344,7 +1377,7 @@ function abrirConfigAlertas() {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                     <div><strong>Alerta de Volume Suspeito</strong>
                     <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Avisa quando a quantidade está muito acima ou abaixo do habitual.</p></div>
-                    <label class="_cfg-toggle"><input type="checkbox" id="_cfgVolAtivo" ${cfg.volumeAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
+                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar alerta de volume suspeito" id="_cfgVolAtivo" ${cfg.volumeAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
                 </div>
                 <div id="_cfgVolOpts" style="${cfg.volumeAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -1360,7 +1393,7 @@ function abrirConfigAlertas() {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                     <div><strong>Alerta de Data Suspeita</strong>
                     <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Avisa quando a data de descarga ou nota parece incorreta.</p></div>
-                    <label class="_cfg-toggle"><input type="checkbox" id="_cfgDataAtivo" ${cfg.dataAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
+                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar alerta de data suspeita" id="_cfgDataAtivo" ${cfg.dataAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
                 </div>
                 <div id="_cfgDataOpts" style="${cfg.dataAtivo?'':'opacity:0.4;pointer-events:none'}">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -1390,6 +1423,7 @@ function abrirConfigAlertas() {
         </div>
     `;
     document.body.appendChild(modal);
+    _modalAcessivel(modal, () => modal.remove());
     ['Preco','Vol','Data'].forEach(nome => {
         const chk=document.getElementById(`_cfg${nome}Ativo`);
         const opts=document.getElementById(`_cfg${nome}Opts`);

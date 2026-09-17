@@ -105,6 +105,19 @@ document.addEventListener("focusin", function (e) {
 });
 
 /**
+ * Preço por litro não chega a centenas de reais: "5.900" no campo de valor
+ * é R$ 5,90, e não R$ 5.900 como a heurística do ponto leria numa
+ * quantidade. A troca acontece antes do `change` (fase de captura), para a
+ * validação e o total já lerem o número certo.
+ */
+function _fmPontoDecimalNoPreco(el) {
+    if (!el || !el.classList || !el.classList.contains("valor")) return;
+    const t = el.value.trim();
+    if (/^\d{1,2}\.\d{3,4}$/.test(t)) el.value = t.replace(".", ",");
+}
+document.addEventListener("change", e => _fmPontoDecimalNoPreco(e.target), true);
+
+/**
  * Ao sair, formata. É também o retorno visível do que o sistema
  * entendeu: se alguém digitou "1.234" querendo mil duzentos e trinta e
  * quatro e o sistema leu um vírgula duzentos e trinta e quatro, isso
@@ -117,6 +130,7 @@ document.addEventListener("focusout", function (e) {
     const el = e.target;
     if (!_fmEhNumerico(el)) return;
     if (el.value.trim() === "") { el.value = ""; return; }
+    _fmPontoDecimalNoPreco(el);
     const n = parseNumeroBR(el.value);
     if (n === null) return;
     el.value = fmtNumeroExibicao(n, _fmCasasDe(el));

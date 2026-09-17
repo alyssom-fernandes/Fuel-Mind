@@ -1874,3 +1874,7 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 
 /* Resultado destacado pelo teclado na busca global. */
 #buscaGlobalResultados .busca-item-ativo { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--surface-raised) !important; }
+
+/* Foco visível nos interruptores do modal de alertas: o checkbox real tem
+   tamanho zero, então o anel vai no desenho. */
+._cfg-toggle input:focus-visible + ._cfg-slider { outline: 2px solid var(--primary); outline-offset: 2px; }

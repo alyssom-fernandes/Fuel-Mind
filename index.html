@@ -540,7 +540,7 @@
   <div id="sistemaAba-importar" class="sistema-aba-conteudo" style="display:none">
     <div class="sistema-secao" style="margin-bottom:20px">
       <h3>Importar Histórico de Planilha</h3>
-      <p class="dica">Importe lançamentos históricos das suas planilhas Excel (.xlsx, .xls) ou CSV. Os dados existentes <strong>não serão apagados</strong> — apenas acrescentados.</p>
+      <p class="dica">Importe lançamentos históricos das suas planilhas Excel (.xlsx, .xls) ou CSV. Notas novas são acrescentadas. Uma nota que já existe só é substituída se você marcar "Reimportar" no resumo, e a anterior fica registrada como excluída. A empresa de cada linha precisa estar cadastrada.</p>
     </div>
     <div class="sistema-secao" style="margin-bottom:20px">
       <h3>Antes de começar</h3>
@@ -600,7 +600,7 @@
             <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
             <input id="pdfLogoInput" aria-label="Arquivo de imagem da logo" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
           </div>
-          <span class="dica" style="font-size:0.75rem;margin:0">PNG ou JPG, máx. 500 KB.<br>Aparece no canto esquerdo do cabeçalho.</span>
+          <span class="dica" style="font-size:0.75rem;margin:0">PNG ou JPG, até 2 MB (é reduzida ao salvar).<br>Aparece no canto esquerdo do cabeçalho.</span>
         </div>
       </div>
 
