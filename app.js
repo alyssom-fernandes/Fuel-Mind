@@ -35,17 +35,73 @@ window.addEventListener("firebaseReady", () => {
             try {
                 window._firestore.usuarioSalvar(user.uid, {
                     ultimoAcesso: new Date().toISOString()
-                });
+                }).catch(() => {});
             } catch(_) {}
 
-            _mostrarSelecaoEmpresa(perfil);
+            _escutarPerfil(user.uid);
+            await _mostrarSelecaoEmpresa(perfil);
         } else {
             _authJaProcessado = false;
+            _encerrarSessaoDados();
             window._usuarioAtual = null;
             _mostrarTelaLogin();
         }
     });
 });
+
+/* ─── O PRÓPRIO PERFIL, DURANTE A SESSÃO ───
+   Inativar alguém ou mudar as empresas dele só valia no próximo login; até
+   lá a sessão aberta tentava ler o que não podia mais, em laço. */
+function _escutarPerfil(uid) {
+    try { _unsubPerfil?.(); } catch (_) {}
+    _unsubPerfil = null;
+    if (!window._firestore?.usuarioEscutar) return;
+    _unsubPerfil = window._firestore.usuarioEscutar(uid,
+        perfil => { _aplicarPerfilAtualizado(perfil); },
+        () => {});
+}
+
+function _derrubarSessao(mensagem) {
+    _encerrarSessaoDados();
+    window._usuarioAtual = null;
+    _authJaProcessado = false;
+    try { window._firestore?.authLogout(); } catch (_) {}
+    _mostrarTelaLogin(mensagem);
+}
+
+/**
+ * Aplica um perfil relido do servidor.
+ * @returns {boolean} true quando a sessão foi encerrada por causa dele
+ */
+function _aplicarPerfilAtualizado(perfil) {
+    const atual = window._usuarioAtual;
+    if (!atual) return true;
+    if (!perfil || perfil.ativo === false) {
+        _derrubarSessao("Seu acesso foi desativado. Fale com o administrador.");
+        return true;
+    }
+    const mudouAcesso = JSON.stringify(atual.empresaIds || []) !== JSON.stringify(perfil.empresaIds || [])
+        || atual.role !== perfil.role;
+    window._usuarioAtual = Object.assign(atual, perfil);
+    if (!mudouAcesso) return false;
+
+    if (typeof aplicarPermissoesDaTela === 'function') aplicarPermissoesDaTela();
+    _garantirListeners();
+    const disponiveis = _empresasDisponiveisDoPerfil(perfil);
+    // A empresa ativa saiu do perfil: não dá para continuar lançando nela.
+    if (empresaFiltroGlobal && !disponiveis.includes(empresaFiltroGlobal)) {
+        if (disponiveis.length === 0) {
+            _derrubarSessao("Você não tem mais acesso a nenhuma empresa ativa. Fale com o administrador.");
+            return true;
+        }
+        if (typeof limparFormulario === 'function') limparFormulario();
+        setEmpresaFiltro(disponiveis[0]);
+        mostrarToast(`Seu acesso a uma empresa foi retirado. Empresa ativa agora: ${disponiveis[0]}.`, "aviso", 10000);
+    } else {
+        mostrarToast("Suas permissões foram alteradas pelo administrador.", "info", 6000);
+    }
+    return false;
+}
 
 /* ─── TELA DE LOGIN ─── */
 function _mostrarTelaLogin(erroMsg) {
@@ -204,30 +260,58 @@ document.addEventListener("keydown", e => {
 });
 
 /* ─── SELEÇÃO DE EMPRESA PÓS-LOGIN ─── */
-function _mostrarSelecaoEmpresa(perfil) {
+/**
+ * Nomes das empresas ativas que um perfil pode usar, decididos pelos IDS.
+ *
+ * Antes eram decididos pelo nome gravado no perfil: renomear uma empresa
+ * tirava o acesso de todo mundo que não era supremo.
+ */
+function _empresasDisponiveisDoPerfil(perfil) {
+    if (!perfil) return [];
+    const ativas = (db.empresas || []).filter(e => e.ativo !== false);
+    if (perfil.role === "supremo") return ativas.map(e => e.nome);
+    const ids = _idsDoPerfil(perfil);
+    return ativas.filter(e => ids.includes(e.id)).map(e => e.nome);
+}
+
+/**
+ * Tela de escolha da empresa, logo depois do login.
+ *
+ * O cadastro de empresas é lido ANTES de montar a lista. Antes, numa aba
+ * recém-aberta a lista de empresas ainda estava vazia: quem não era supremo
+ * era recusado com "sem acesso a nenhuma empresa", e o supremo lia o
+ * documento do layout antigo — ou entrava num laço sem fim se ele não
+ * existisse.
+ */
+async function _mostrarSelecaoEmpresa(perfil) {
     document.getElementById("loginOverlay").style.display = "none";
     document.getElementById("appContainer").style.display = "none";
 
-    let empresasDisponiveis;
-    if (perfil.role === "supremo") {
-        empresasDisponiveis = db.empresas?.filter(e => e.ativo !== false).map(e => e.nome) || [];
-        if (empresasDisponiveis.length === 0) {
-            _carregarDBParaLogin(perfil);
-            return;
+    if (window._firestore && !(typeof demoAtivo === 'function' && demoAtivo())) {
+        try {
+            const comp = await window._firestore.firestoreCarregarDoc(_NOME_COMPARTILHADO);
+            if (comp) {
+                db = _mesclarComPadrao(Object.assign({}, comp, { lancamentos: [] }));
+            } else if (perfil.role === "supremo") {
+                const legado = await window._firestore.firestoreCarregarDoc(_NOME_LEGADO).catch(() => null);
+                if (legado) db = _mesclarComPadrao(legado);
+            }
+        } catch (e) {
+            console.error("[login] Cadastro de empresas:", e);
+            const local = _lerCopiaLocal();
+            if (local) { try { db = _mesclarComPadrao(local); } catch (_) {} }
         }
-    } else {
-        empresasDisponiveis = (perfil.empresas || []).filter(nome =>
-            db.empresas?.some(e => e.nome === nome && e.ativo !== false)
-        );
     }
+    if (window._usuarioAtual !== perfil) return;
+
+    let empresasDisponiveis = _empresasDisponiveisDoPerfil(perfil);
 
     if (empresasDisponiveis.length === 0) {
         if (perfil.role === "supremo") {
             _entrarNoSistema(perfil, "");
             return;
         }
-        _mostrarTelaLogin("Você não tem acesso a nenhuma empresa ativa. Contate o administrador.");
-        window._firestore.authLogout();
+        _derrubarSessao("Você não tem acesso a nenhuma empresa ativa. Contate o administrador.");
         return;
     }
 
@@ -261,33 +345,90 @@ function _mostrarSelecaoEmpresa(perfil) {
     overlay.style.display = "flex";
 }
 
-async function _carregarDBParaLogin(perfil) {
-    if (window._firestore) {
-        const dados = await window._firestore.firestoreCarregar();
-        if (dados) db = _mesclarComPadrao(dados);
+/* ─── PERMISSÕES NA TELA ───
+   Quem vê o quê. A regra do servidor é a barreira de verdade; a tela só
+   não oferece o que o servidor vai recusar, e não deixa o operador perto
+   do que apaga ou substitui dado de todo mundo.
+
+   Elementos marcados com `data-papel="admin"` aparecem para admin e
+   supremo; `data-papel="supremo"`, só para o supremo. */
+function papelAtual() {
+    return window._usuarioAtual?.role || "";
+}
+function ehSupremoAtual() {
+    return papelAtual() === "supremo";
+}
+function ehAdminOuSupremoAtual() {
+    return papelAtual() === "supremo" || papelAtual() === "admin";
+}
+function _papelPermite(minimo) {
+    if (minimo === "supremo") return ehSupremoAtual();
+    if (minimo === "admin")   return ehAdminOuSupremoAtual();
+    return true;
+}
+
+function aplicarPermissoesDaTela() {
+    document.querySelectorAll("[data-papel]").forEach(el => {
+        el.classList.toggle("fm-sem-permissao", !_papelPermite(el.dataset.papel));
+    });
+    document.querySelectorAll(".fm-so-operador").forEach(el => {
+        el.classList.toggle("fm-sem-permissao", ehAdminOuSupremoAtual());
+    });
+    document.querySelectorAll(".fm-so-nao-supremo").forEach(el => {
+        el.classList.toggle("fm-sem-permissao", ehSupremoAtual());
+    });
+    // A aba Backup some para o operador: se ela era a aberta, abre a próxima.
+    if (!ehAdminOuSupremoAtual() && typeof sistemaAbaAtiva !== 'undefined' && sistemaAbaAtiva === 'backup'
+        && typeof trocarAbaSistema === 'function') {
+        const btn = document.querySelector('#sistemaAbas .aba-btn[data-aba="importar"]');
+        trocarAbaSistema('importar', btn);
     }
-    _mostrarSelecaoEmpresa(perfil);
+}
+
+/** Recusa uma ação na hora, com o motivo, quando o papel não permite. */
+function exigirPapel(minimo, acao) {
+    if (_papelPermite(minimo)) return true;
+    mostrarToast(`${acao}: ${minimo === "supremo" ? "só o usuário supremo pode fazer isso" : "só administradores podem fazer isso"}.`, "aviso", 6000);
+    return false;
 }
 
 function confirmarSelecaoEmpresa(empresa) {
     if (!empresa) {
-        const btns = document.querySelectorAll("#selecaoEmpresaLista .btn-empresa-troca");
-        if (btns.length === 1) empresa = btns[0].querySelector("span").textContent;
+        const opcoes = _empresasDisponiveisDoPerfil(window._usuarioAtual);
+        if (opcoes.length === 1) empresa = opcoes[0];
         else return;
     }
     document.getElementById("selecaoEmpresaOverlay").style.display = "none";
+    try { localStorage.setItem("ultimaEmpresa", empresa); } catch (_) {}
     _entrarNoSistema(window._usuarioAtual, empresa);
 }
 
 function _entrarNoSistema(perfil, empresa) {
     document.getElementById("appContainer").style.display = "block";
     _aplicarEmpresaAtiva(empresa);
+    if (typeof aplicarPermissoesDaTela === 'function') aplicarPermissoesDaTela();
     carregarDB();
 }
 
 /* ─── LOGOUT ─── */
 async function fazerLogout() {
-    if (!await fmConfirm({ titulo: "Sair do sistema?", msg: "Sua sessão será encerrada.", confirmTxt: "Sair", cancelTxt: "Cancelar", tipo: "aviso" })) return;
+    const pendente = _pendentesSincronizacao && !(typeof demoAtivo === 'function' && demoAtivo());
+    if (pendente) {
+        // Sair com gravação pendente: fica guardado neste navegador, para
+        // ESTE usuário, e sobe no próximo login dele aqui. Quem sai precisa
+        // saber disso antes, e poder tentar enviar.
+        const sair = await fmConfirm({
+            titulo: "Há alterações que ainda não chegaram à nuvem",
+            msg: "Elas ficam guardadas neste navegador e sobem no seu próximo login aqui. "
+               + "Em outro computador, não aparecem até lá.\n\nPrefere ficar e tentar enviar agora?",
+            confirmTxt: "Sair mesmo assim",
+            cancelTxt: "Ficar e tentar enviar",
+            tipo: "aviso"
+        });
+        if (!sair) { sincronizarAgora(); return; }
+    } else if (!await fmConfirm({ titulo: "Sair do sistema?", msg: "Sua sessão será encerrada.", confirmTxt: "Sair", cancelTxt: "Cancelar", tipo: "aviso" })) {
+        return;
+    }
     // O rascunho é apagado no logout: a chave é por usuário, mas deixar
     // trabalho de um turno esperando o próximo login não ajuda ninguém.
     if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
@@ -296,11 +437,39 @@ async function fazerLogout() {
     // sessão do turno anterior.
     if (typeof limparFormulario === 'function') limparFormulario();
     if (typeof _idsSessao !== 'undefined') { _idsSessao = []; if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar(); }
+    _encerrarSessaoDados();
+    window._usuarioAtual = null;
+    await window._firestore.authLogout();
+}
+
+/**
+ * Desliga tudo o que a sessão deixou rodando: listeners, timers de
+ * gravação e de recarga, e a memória do banco. Antes, depois do logout os
+ * listeners negados religavam em laço na tela de login, o retry de 30 s
+ * seguia tentando gravar, e o próximo usuário da aba via o banco do
+ * anterior enquanto o dele não carregava.
+ */
+function _encerrarSessaoDados() {
+    _desligarListeners();
+    try { _unsubPerfil?.(); } catch (_) {}
+    _unsubPerfil = null;
+    clearTimeout(_timerDebounce);
+    clearTimeout(_timerRetry);
+    clearTimeout(_timerRecarga);
+    _cargaOk = false;
+    _primeiraCargaFeita = false;
+    _layoutNovo = false;
+    _base = {};
+    _hashPorDoc = {};
+    _salvandoDB = 0;
+    _gravacoesEmVoo = 0;
+    _falhasSeguidas = 0;
+    _tentativasRecarga = 0;
+    _pendentesSincronizacao = false;
+    db = JSON.parse(JSON.stringify(DB_PADRAO));
     empresaFiltroGlobal = null;
     empresaFiltroNome   = "";
     empresaFiltroId     = null;
-    window._usuarioAtual = null;
-    await window._firestore.authLogout();
 }
 
 
@@ -415,14 +584,7 @@ function abrirTrocarEmpresa() {
     const perfil = window._usuarioAtual;
     if (!perfil) return;
 
-    let empresasDisponiveis;
-    if (perfil.role === "supremo") {
-        empresasDisponiveis = db.empresas.filter(e => e.ativo !== false).map(e => e.nome);
-    } else {
-        empresasDisponiveis = (perfil.empresas || []).filter(nome =>
-            db.empresas.some(e => e.nome === nome && e.ativo !== false)
-        );
-    }
+    const empresasDisponiveis = _empresasDisponiveisDoPerfil(perfil);
 
     if (empresasDisponiveis.length <= 1) {
         mostrarToast("Você só tem acesso a uma empresa.", "info");
@@ -475,6 +637,12 @@ function _formularioTemAlemDaHeranca() {
 async function trocarEmpresaAtiva(nome) {
     if (!nome) return false;
     if (nome === empresaFiltroGlobal) return true;
+    // Só empresa que existe e que este perfil pode usar. Um nome velho (de
+    // antes de um rename) deixava a tela vazia e todo lançamento bloqueado.
+    if (window._usuarioAtual && !_empresasDisponiveisDoPerfil(window._usuarioAtual).includes(nome)) {
+        mostrarToast(`A empresa "${nome}" não está disponível para você (renomeada, inativa ou fora do seu acesso).`, "aviso", 7000);
+        return false;
+    }
 
     // O marcador de sujo não basta: edição, clone e XML preenchem por script
     // e só marcam quando criam uma linha de combustível. Base e Data da
@@ -622,19 +790,18 @@ const DB_PADRAO = {
 
 let db = JSON.parse(JSON.stringify(DB_PADRAO));
 
-// _salvandoDB é um contador: >0 significa que há um save em andamento.
-let _salvandoDB = 0;
 // Um unsubscribe por documento escutado: "compartilhado" e cada "lanc__{id}".
 let _unsubs = {};
+// O listener do próprio perfil, ligado no login.
+let _unsubPerfil = null;
 let _pendentesSincronizacao = false;
 
-// Hash do último payload que NÓS gravamos, por documento. O Firestore
-// devolve o snapshot logo após o setDoc; sem isso esse eco recarregaria a
-// memória e dispararia render em cadeia. Com N documentos, o token precisa
-// ser por documento — um eco de um doc não pode consumir o token de outro.
+// Só no layout antigo (`dados/principal`): proteção contra o eco do próprio
+// save por hash e contador de gravação em andamento.
+let _salvandoDB = 0;
 let _hashPorDoc = {};
 
-// Timer do debounce — agrupa writes múltiplos em um único setDoc.
+// Timer do debounce — agrupa writes múltiplos em uma gravação só.
 let _timerDebounce = null;
 const _DEBOUNCE_MS = 600;
 
@@ -643,10 +810,41 @@ const _NOME_COMPARTILHADO = "compartilhado";
 const _NOME_LEGADO        = "principal";
 
 // true quando os dados já estão repartidos por empresa; false enquanto o
-// banco ainda estiver no documento único `dados/principal`. Definido na
-// carga e consultado pelos listeners — inferir isso pela presença de uma
-// chave em _hashPorDoc funcionava, mas era frágil demais para o que decide.
+// banco ainda estiver no documento único `dados/principal`. Só é decidido
+// por uma carga que DEU CERTO — ver `_cargaOk`.
 let _layoutNovo = false;
+
+/* ── CARGA CONFIRMADA ───────────────────────────────────────────────
+   Nada vai para a nuvem enquanto a carga da nuvem não tiver dado certo.
+
+   Antes, uma falha ao ler um documento virava "documento vazio": a
+   empresa cuja leitura falhou ficava sem nota nenhuma em memória, e o
+   primeiro salvamento gravava um vetor vazio por cima do histórico dela.
+   E uma falha ao ler o compartilhado deixava a sessão gravando no
+   documento do layout antigo, com a pílula verde — as notas sumiam no F5
+   seguinte. Com a carga falha, o sistema mostra a cópia deste navegador,
+   guarda o que for lançado como pendente e tenta carregar de novo. */
+let _cargaOk = false;
+let _primeiraCargaFeita = false;
+let _timerRecarga = null;
+let _tentativasRecarga = 0;
+
+/* ── O QUE O SERVIDOR TINHA ─────────────────────────────────────────
+   `_base[nome]` é a fotografia do documento na última leitura ou gravação
+   confirmada: para cada lista, um mapa id → JSON do item.
+
+   É ela que diz o que ESTE navegador mudou: item que não está na base é
+   novo, item com JSON diferente foi editado, item da base que sumiu da
+   memória foi removido. A gravação lê o documento atual numa transação e
+   aplica só essas mudanças por cima dele — em vez de regravar o vetor
+   inteiro da memória, que apagava a nota que um colega tinha acabado de
+   salvar. E um snapshot que chega enquanto há mudança local ainda não
+   enviada é mesclado do mesmo jeito, em vez de substituir a memória e
+   levar a mudança embora. */
+let _base = {};
+
+const _LISTAS_COMPARTILHADO  = ['motoristas', 'veiculos', 'empresas', 'combustiveis', 'bases', 'conjuntosVeiculos'];
+const _OBJETOS_COMPARTILHADO = ['configRelatorio', 'configAlertas'];
 
 // ========== GERADOR DE ID ÚNICO ==========
 /**
@@ -662,7 +860,8 @@ function gerarId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-// Hash leve para detectar se o Firestore nos devolveu o que acabamos de salvar.
+// Hash leve para detectar se o Firestore nos devolveu o que acabamos de salvar
+// (layout antigo).
 function _hashStr(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
@@ -671,17 +870,6 @@ function _hashStr(str) {
     return h;
 }
 
-/**
- * Persiste o estado atual de `db` no localStorage (backup imediato) e
- * agenda um save debounced para o Firestore.
- *
- * O debounce de 600ms agrupa chamadas em rápida sucessão — por exemplo,
- * edições consecutivas em cadastros — em um único `setDoc`, evitando
- * writes excessivos no Firestore.
- *
- * Se o Firebase não estiver disponível, marca `_pendentesSincronizacao`
- * para tentar novamente quando a conexão for restabelecida.
- */
 /* ═══════════════════════════════════════════════════════════════════════
    REPARTIÇÃO POR EMPRESA
 
@@ -694,45 +882,262 @@ function _hashStr(str) {
    eles seguem iterando `db.lancamentos` sem saber da repartição.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/** Ids das empresas cujos lançamentos o usuário logado pode carregar. */
+/**
+ * Ids das empresas cujos lançamentos o usuário logado pode carregar.
+ * Sem usuário logado, nenhuma: antes a ausência de perfil liberava todas.
+ */
 function _empresaIdsPermitidos() {
     const perfil = window._usuarioAtual;
+    if (!perfil) return [];
     const todas  = (db.empresas || []).map(e => e.id);
-    if (!perfil || perfil.role === "supremo") return todas;
-    const liberadas = perfil.empresaIds || [];
+    if (perfil.role === "supremo") return todas;
+    const liberadas = _idsDoPerfil(perfil);
     return todas.filter(id => liberadas.includes(id));
 }
 
 /**
- * Id da empresa de um lançamento. O lançamento guarda o NOME da empresa;
- * o documento é nomeado pelo id. Esta é a única ponte entre os dois.
+ * Ids de empresa do perfil. `empresaIds` é a verdade (é o que as regras do
+ * servidor consultam, e não muda num rename); perfis antigos, sem o campo,
+ * caem nos nomes.
+ */
+function _idsDoPerfil(perfil) {
+    if (!perfil) return [];
+    if (Array.isArray(perfil.empresaIds) && perfil.empresaIds.length) return perfil.empresaIds;
+    return (perfil.empresas || [])
+        .map(nome => (db.empresas || []).find(e => e.nome === nome)?.id)
+        .filter(Boolean);
+}
+
+/**
+ * Id da empresa de um lançamento.
+ *
+ * O nome que está na nota decide primeiro — é ele que o operador vê e
+ * corrige, e é por ele que uma correção em massa move uma nota. Quando o
+ * nome não resolve (um colega renomeou a empresa e esta memória ainda tem
+ * o nome velho), vale o `empresaId` gravado na nota. Antes só havia o nome,
+ * e uma nota com nome que não batia sumia da nuvem em silêncio.
  */
 function _empresaIdDoLancamento(l) {
-    return (db.empresas || []).find(e => e.nome === l.empresa)?.id || null;
+    const porNome = (db.empresas || []).find(e => e.nome === l.empresa)?.id;
+    return porNome || l.empresaId || null;
+}
+
+/** Nome do documento de lançamentos de uma empresa. */
+function _nomeDocLanc(empresaId) {
+    return window._firestore ? window._firestore.docLancamentosNome(empresaId)
+                             : "lanc__" + empresaId;
+}
+
+function _idDoDocLanc(nome) {
+    return String(nome).startsWith("lanc__") ? String(nome).slice(6) : null;
+}
+
+/**
+ * Deixa as notas de um documento com a empresa dele: carimba o `empresaId`
+ * e põe o nome atual do cadastro. É o que faz um rename feito em outra
+ * máquina chegar a esta sem ninguém regravar as notas.
+ */
+function _normalizarLancamentosDoDoc(lista, empresaId) {
+    const nome = (db.empresas || []).find(e => e.id === empresaId)?.nome;
+    return (lista || []).map(l => {
+        const c = Object.assign({}, l, { empresaId });
+        if (nome) c.empresa = nome;
+        return c;
+    });
+}
+
+/** Lançamentos em memória agrupados pelo documento de destino. */
+function _agruparLancamentos() {
+    const grupos = {};
+    db.lancamentos.forEach(l => {
+        const id = _empresaIdDoLancamento(l);
+        if (!id) return;
+        if (l.empresaId !== id) l.empresaId = id;
+        (grupos[id] = grupos[id] || []).push(l);
+    });
+    return grupos;
+}
+
+/**
+ * O documento como a memória o vê agora.
+ * @param {string} nome
+ * @param {object} [grupos] - resultado de `_agruparLancamentos`, para não
+ *   reagrupar a cada documento
+ */
+function _payloadDoc(nome, grupos) {
+    if (nome === _NOME_COMPARTILHADO) {
+        const p = {};
+        _LISTAS_COMPARTILHADO.forEach(c => { p[c] = db[c] || []; });
+        p.configRelatorio = db.configRelatorio || {};
+        p.configAlertas   = db.configAlertas   || {};
+        return p;
+    }
+    const id = _idDoDocLanc(nome);
+    return { lancamentos: ((grupos || _agruparLancamentos())[id]) || [] };
+}
+
+/** Mantido pelo nome antigo: o payload de cada documento permitido. */
+function _montarPayloads() {
+    const grupos = _agruparLancamentos();
+    const payloads = { [_NOME_COMPARTILHADO]: _payloadDoc(_NOME_COMPARTILHADO, grupos) };
+    _empresaIdsPermitidos().forEach(id => {
+        payloads[_nomeDocLanc(id)] = _payloadDoc(_nomeDocLanc(id), grupos);
+    });
+    return payloads;
+}
+
+function _chaveItem(item) {
+    return (item && item.id != null) ? String(item.id) : "json:" + JSON.stringify(item);
+}
+
+/** Fotografia de um payload: listas como mapa id → JSON, objetos como JSON. */
+function _fotografar(payload) {
+    const foto = { listas: {}, objetos: {} };
+    Object.keys(payload || {}).forEach(campo => {
+        const v = payload[campo];
+        if (Array.isArray(v)) {
+            const m = new Map();
+            v.forEach(item => m.set(_chaveItem(item), JSON.stringify(item)));
+            foto.listas[campo] = m;
+        } else {
+            foto.objetos[campo] = JSON.stringify(v === undefined ? null : v);
+        }
+    });
+    return foto;
+}
+
+/**
+ * O que a memória mudou em relação à base do documento.
+ * @returns {null|{listas: Object, objetos: Object, idsLancamentos: string[]}}
+ */
+function _mudancasLocais(nome, grupos) {
+    const base    = _base[nome] || { listas: {}, objetos: {} };
+    const payload = _payloadDoc(nome, grupos);
+    const mud     = { listas: {}, objetos: {}, idsLancamentos: [] };
+    let alguma    = false;
+
+    Object.keys(payload).forEach(campo => {
+        const v = payload[campo];
+        if (Array.isArray(v)) {
+            const naBase    = base.listas[campo] || new Map();
+            const alterados = [];
+            const presentes = new Set();
+            v.forEach(item => {
+                const k = _chaveItem(item);
+                presentes.add(k);
+                if (naBase.get(k) !== JSON.stringify(item)) alterados.push(item);
+            });
+            const removidos = [];
+            naBase.forEach((_, k) => { if (!presentes.has(k)) removidos.push(k); });
+            if (alterados.length || removidos.length) {
+                mud.listas[campo] = { alterados, removidos };
+                alguma = true;
+                if (campo === 'lancamentos') {
+                    alterados.forEach(l => l && l.id && mud.idsLancamentos.push(l.id));
+                }
+            }
+        } else if (JSON.stringify(v === undefined ? null : v) !== base.objetos[campo]) {
+            mud.objetos[campo] = v === undefined ? null : v;
+            alguma = true;
+        }
+    });
+    return alguma ? mud : null;
+}
+
+/** Aplica as mudanças locais por cima do documento do servidor. */
+function _mesclar(servidor, mud) {
+    const resultado = Object.assign({}, servidor || {});
+    if (!mud) return resultado;
+    Object.keys(mud.listas).forEach(campo => {
+        const { alterados, removidos } = mud.listas[campo];
+        const tirar = new Set(removidos);
+        const lista = (Array.isArray(resultado[campo]) ? resultado[campo] : [])
+            .filter(item => !tirar.has(_chaveItem(item)));
+        alterados.forEach(item => {
+            const k = _chaveItem(item);
+            const i = lista.findIndex(x => _chaveItem(x) === k);
+            if (i >= 0) lista[i] = item; else lista.push(item);
+        });
+        resultado[campo] = lista;
+    });
+    Object.keys(mud.objetos).forEach(campo => { resultado[campo] = mud.objetos[campo]; });
+    return resultado;
+}
+
+/** O documento do servidor com a mesma normalização que a memória recebe. */
+function _normalizarDocServidor(nome, dados) {
+    if (nome === _NOME_COMPARTILHADO) {
+        const m = _mesclarComPadrao(Object.assign({}, dados || {}, { lancamentos: [] }));
+        const p = {};
+        _LISTAS_COMPARTILHADO.forEach(c => { p[c] = m[c] || []; });
+        p.configRelatorio = m.configRelatorio || {};
+        p.configAlertas   = m.configAlertas   || {};
+        return p;
+    }
+    const id = _idDoDocLanc(nome);
+    return { lancamentos: _normalizarLancamentosDoDoc((dados && dados.lancamentos) || [], id) };
+}
+
+/** Põe na memória o conteúdo de um documento. */
+function _aplicarNaMemoria(nome, conteudo) {
+    if (nome === _NOME_COMPARTILHADO) {
+        _LISTAS_COMPARTILHADO.forEach(c => { db[c] = conteudo[c] || []; });
+        db.configRelatorio = conteudo.configRelatorio || {};
+        db.configAlertas   = conteudo.configAlertas   || {};
+        return;
+    }
+    const id = _idDoDocLanc(nome);
+    const idsNovos = new Set((conteudo.lancamentos || []).map(l => l.id));
+    db.lancamentos = db.lancamentos
+        .filter(l => _empresaIdDoLancamento(l) !== id && !idsNovos.has(l.id))
+        .concat(conteudo.lancamentos || []);
+}
+
+/**
+ * Recebe um documento do servidor (snapshot ou retorno de gravação) e o
+ * junta com o que este navegador mudou e ainda não confirmou.
+ * @returns {boolean} se a memória mudou
+ */
+function _absorverDoc(nome, dados) {
+    const antes = JSON.stringify(_payloadDoc(nome));
+    const mud   = _mudancasLocais(nome);
+    const servidor = _normalizarDocServidor(nome, dados);
+    const mesclado = _mesclar(servidor, mud);
+    _base[nome] = _fotografar(servidor);
+    _aplicarNaMemoria(nome, mesclado);
+    if (nome === _NOME_COMPARTILHADO) _normalizarNomesDeEmpresa();
+    if (_mudancasLocais(nome)) _pendentesSincronizacao = true;
+    return JSON.stringify(_payloadDoc(nome)) !== antes;
+}
+
+/** Depois de um rename vindo de outra máquina, as notas da memória levam o nome novo. */
+function _normalizarNomesDeEmpresa() {
+    const nomePorId = new Map((db.empresas || []).map(e => [e.id, e.nome]));
+    db.lancamentos.forEach(l => {
+        if (!l.empresaId || !nomePorId.has(l.empresaId)) return;
+        const porNome = (db.empresas || []).find(e => e.nome === l.empresa);
+        if (!porNome && l.empresa !== nomePorId.get(l.empresaId)) {
+            l.empresa = nomePorId.get(l.empresaId);
+            const base = _base[_nomeDocLanc(l.empresaId)];
+            if (base && base.listas.lancamentos && base.listas.lancamentos.has(String(l.id))) {
+                // A nota não mudou para quem a gravou: só o nome do cadastro.
+                // Atualiza a base junto, para não regravar o documento inteiro.
+                base.listas.lancamentos.set(String(l.id), JSON.stringify(l));
+            }
+        }
+    });
 }
 
 /* ── O QUE FOI SALVO MAS AINDA NÃO SUBIU ────────────────────────────
-   Registro dos lançamentos que entraram na memória e cuja gravação na
-   nuvem ainda não foi confirmada. Vive no `localStorage`, e é por isso
-   que existe: precisa sobreviver ao fechamento da aba.
+   Registro, no `localStorage`, dos lançamentos que mudaram neste navegador
+   e cuja gravação na nuvem ainda não foi confirmada. Precisa sobreviver ao
+   fechamento da aba.
 
-   Sem ele, a nota salva e perdida na janela entre o clique e a resposta
-   do Firestore era DESTRUÍDA, não apenas atrasada. A sequência era esta:
-   `salvarDB` gravava a cópia local e agendava a nuvem; fechar a aba antes
-   matava o agendamento; na sessão seguinte `carregarDB` trocava a memória
-   pelo que veio do servidor e logo depois gravava isso por cima do
-   `db_backup`. A nota sumia dos dois lugares, e a pílula dizia
-   "sincronizado".
-
-   Este registro guarda só ids. O lançamento em si continua no
-   `db_backup`; é o cruzamento dos dois, em `_reconciliarNaoEnviados`, que
-   traz a nota de volta. Guardar ids e não o objeto evita ter duas versões
-   do mesmo lançamento em lugares diferentes.
-
-   Exclusões não entram aqui de propósito: quem apaga uma nota também a
-   tira do `db_backup`, então ela não é candidata a voltar. O preço é que
-   uma exclusão perdida na mesma janela é desfeita pelo servidor — e
-   ressuscitar dado é muito menos grave do que destruí-lo. */
+   Guarda só ids. O conteúdo está na cópia local; na próxima carga, a nota
+   pendente da cópia local é aplicada por cima do que veio do servidor —
+   inclusive uma exclusão ou uma edição, e não só uma nota nova, como era
+   antes da lápide. O preço conhecido: se um colega editou a mesma nota
+   nesse meio tempo, a versão deste navegador vence. */
 function _chavePendentes() {
     return "fm_pendentes_" + (window._usuarioAtual?.uid || "anon");
 }
@@ -742,40 +1147,62 @@ function _pendentesLer() {
     catch (_) { return []; }
 }
 
-function _pendenteMarcar(id) {
-    if (!id) return;
+function _pendentesGravar(ids) {
     try {
-        const ids = _pendentesLer();
-        if (!ids.includes(id)) {
-            ids.push(id);
-            localStorage.setItem(_chavePendentes(), JSON.stringify(ids));
-        }
+        if (ids.length) localStorage.setItem(_chavePendentes(), JSON.stringify(ids));
+        else localStorage.removeItem(_chavePendentes());
     } catch (_) {}
 }
 
-/* Chamado só quando TODAS as gravações da rodada deram certo. Aí tudo o
-   que está em memória está no servidor, porque `_montarPayloads` sempre
-   monta o vetor inteiro de cada empresa permitida. */
+function _pendenteMarcar(id) {
+    if (!id) return;
+    const ids = _pendentesLer();
+    if (!ids.includes(id)) { ids.push(id); _pendentesGravar(ids); }
+}
+
+/** Tira do registro só os ids cuja gravação foi confirmada com o conteúdo atual. */
+function _pendentesConfirmar(ids) {
+    if (!ids || !ids.length) return;
+    const confirmados = new Set(ids);
+    _pendentesGravar(_pendentesLer().filter(id => !confirmados.has(id)));
+}
+
 function _pendentesLimpar() {
-    try { localStorage.removeItem(_chavePendentes()); } catch (_) {}
+    _pendentesGravar([]);
 }
 
 /* A cópia local é a rede de segurança de tudo: é ela que sobrevive ao F5 e
-   à queda de conexão. Falhar aqui em silêncio — como acontecia, num
-   `catch(_) {}` mudo — deixava o operador achando que estava protegido.
-   O caminho da falha na prática é a quota do navegador: são quatro cópias
-   do banco vivendo lá (esta, mais até três `backupAuto_*`), e a ~440 bytes
-   por lançamento os ~5 MB acabam em torno de três mil notas somando todas
-   as empresas. Avisa uma vez por sessão, para não virar um toast a cada
-   salvamento. */
+   à queda de conexão. Ela é POR USUÁRIO: antes era uma chave só, e quem
+   entrava depois no mesmo computador gravava a própria cópia por cima das
+   notas não enviadas de quem saiu.
+
+   Falhar aqui em silêncio deixava o operador achando que estava protegido.
+   O caminho da falha na prática é a quota do navegador. Avisa uma vez por
+   sessão, para não virar um toast a cada salvamento. */
 let _avisouQuotaLocal = false;
 
+function _chaveCopiaLocal() {
+    const uid = window._usuarioAtual?.uid;
+    return uid ? "db_backup_" + uid : null;
+}
+
+function _lerCopiaLocal() {
+    const chave = _chaveCopiaLocal();
+    if (!chave) return null;
+    try { return JSON.parse(localStorage.getItem(chave) || "null"); }
+    catch (_) { return null; }
+}
+
 function _gravarCopiaLocal() {
+    const chave = _chaveCopiaLocal();
+    if (!chave) return;
     try {
-        localStorage.setItem("db_backup", JSON.stringify(db));
+        localStorage.setItem(chave, JSON.stringify(db));
+        // A chave antiga, de antes da cópia por usuário, não tem dono.
+        localStorage.removeItem("db_backup");
         _avisouQuotaLocal = false;
     } catch (e) {
-        console.warn("[db_backup] Falhou:", e.message);
+        console.warn("[copia local] Falhou:", e.message);
         if (!_avisouQuotaLocal) {
             _avisouQuotaLocal = true;
             mostrarToast(
@@ -787,55 +1214,27 @@ function _gravarCopiaLocal() {
     }
 }
 
-/** Nome do documento de lançamentos de uma empresa. */
-function _nomeDocLanc(empresaId) {
-    return window._firestore ? window._firestore.docLancamentosNome(empresaId)
-                             : "lanc__" + empresaId;
+/** Marca como pendentes os lançamentos que mudaram em relação ao servidor. */
+function _marcarPendentesDasMudancas() {
+    if (!_layoutNovo && _cargaOk) return;
+    const grupos = _agruparLancamentos();
+    const ids = new Set(_pendentesLer());
+    let mudou = false;
+    Object.keys(grupos).forEach(id => {
+        const mud = _mudancasLocais(_nomeDocLanc(id), grupos);
+        (mud?.idsLancamentos || []).forEach(x => { if (!ids.has(x)) { ids.add(x); mudou = true; } });
+    });
+    if (mudou) _pendentesGravar([...ids]);
 }
 
 /**
- * Reparte o `db` em um payload por documento.
+ * Persiste o `db`: cópia local na hora, nuvem em seguida.
  *
- * Só entram documentos das empresas permitidas: um usuário que carregou
- * duas empresas não pode, ao salvar, apagar o documento de uma terceira
- * que ele nunca leu.
+ * O debounce de 600ms agrupa chamadas em rápida sucessão — por exemplo,
+ * edições consecutivas em cadastros — numa gravação só. `imediato` existe
+ * para o salvamento fiscal: quem clica em "Salvar" e fecha a aba meio
+ * segundo depois precisa ter tido a tentativa.
  */
-function _montarPayloads() {
-    const payloads = {};
-
-    payloads[_NOME_COMPARTILHADO] = {
-        motoristas:        db.motoristas,
-        veiculos:          db.veiculos,
-        empresas:          db.empresas,
-        combustiveis:      db.combustiveis,
-        bases:             db.bases,
-        conjuntosVeiculos: db.conjuntosVeiculos || [],
-        configRelatorio:   db.configRelatorio,
-        // Vazio quando ninguém ajustou: os padrões ficam no código
-        // (ALERTAS_CONFIG_PADRAO), e `undefined` o Firestore recusaria.
-        configAlertas:     db.configAlertas || {}
-    };
-
-    const permitidos = _empresaIdsPermitidos();
-    permitidos.forEach(id => { payloads[_nomeDocLanc(id)] = { lancamentos: [] }; });
-
-    db.lancamentos.forEach(l => {
-        const id = _empresaIdDoLancamento(l);
-        if (!id || !permitidos.includes(id)) return;
-        payloads[_nomeDocLanc(id)].lancamentos.push(l);
-    });
-
-    return payloads;
-}
-
-/** Absorve o retorno de um documento de lançamentos na memória. */
-function _absorverLancamentos(empresaId, lista) {
-    const nomeEmpresa = (db.empresas || []).find(e => e.id === empresaId)?.nome;
-    if (!nomeEmpresa) return;
-    db.lancamentos = db.lancamentos.filter(l => l.empresa !== nomeEmpresa)
-                                   .concat(lista || []);
-}
-
 function salvarDB(opcoes) {
     // Modo demonstração: nada sai da máquina. Esta é a trava — se ela
     // falhar, dados fictícios acabam na base real. Vem antes de tudo.
@@ -843,97 +1242,178 @@ function salvarDB(opcoes) {
         demoSalvar();
         return;
     }
+    // Sem usuário logado não há o que salvar nem onde. Antes, uma chamada
+    // na carga da página (os conjuntos iniciais) gravava um banco quase
+    // vazio por cima da cópia local.
+    if (!window._usuarioAtual) return;
 
     _gravarCopiaLocal();
+    _marcarPendentesDasMudancas();
+    _pendentesSincronizacao = true;
 
     if (!window._firestore) {
         _setStatusConexao("offline");
-        _pendentesSincronizacao = true;
         return;
     }
 
     clearTimeout(_timerDebounce);
+    if (!_cargaOk) {
+        // A carga da nuvem falhou: fica guardado aqui e sobe quando ela der certo.
+        _setStatusConexao("pendente");
+        return;
+    }
     _setStatusConexao("salvando");
 
-    // `imediato` existe para o salvamento fiscal. O debounce agrupa
-    // chamadas seguidas num `setDoc` só, o que é ótimo para cadastro e
-    // configuração — e péssimo para uma nota: quem clica em "Salvar" e
-    // fecha a aba meio segundo depois nunca chegou a tentar. O clique
-    // explícito do operador merece uma tentativa explícita imediata.
     if (opcoes && opcoes.imediato) return _executarSave();
-
-    // Debounce: chamadas rápidas em sequência resultam em um único setDoc.
     _timerDebounce = setTimeout(() => _executarSave(), _DEBOUNCE_MS);
 }
 
+let _gravacoesEmVoo = 0;
+let _timerRetry = null;
+let _falhasSeguidas = 0;
+
 /**
- * Executa o save efetivo para o Firestore após o debounce de `salvarDB`.
+ * Grava na nuvem os documentos que este navegador mudou.
  *
- * Incrementa `_salvandoDB` durante a operação — o listener de tempo real
- * verifica esse contador e ignora snapshots enquanto ele for > 0, evitando
- * que o Firestore devolva o echo do próprio save e sobrescreva o `db`.
- *
- * Em caso de falha, agenda retry automático em 30s via `_pendentesSincronizacao`.
- * Não cancela nem recria o listener — ele continua ativo durante o save.
- */
-/**
- * Grava no Firestore apenas os documentos que mudaram.
- *
- * Antes era um `setDoc` do `db` inteiro. Agora o `db` é repartido e cada
- * documento só é enviado se seu conteúdo diferir do último que gravamos —
- * editar um lançamento da Empresa A não reescreve o documento da B.
- *
- * Em caso de falha, agenda retry automático em 30s via `_pendentesSincronizacao`.
+ * Cada documento é gravado numa transação que lê o que está no servidor e
+ * aplica por cima só as mudanças locais (`_mesclar`). Documento sem mudança
+ * local não é tocado.
  */
 function _executarSave() {
-    _salvandoDB++;
+    if (!window._firestore || !_cargaOk) return Promise.resolve();
+    if (!_layoutNovo) return _executarSaveLegado();
 
-    const payloads = _layoutNovo
-        ? _montarPayloads()
-        : { [_NOME_LEGADO]: JSON.parse(JSON.stringify(db)) };
-    const mudaram  = Object.keys(payloads).filter(nome =>
-        _hashStr(JSON.stringify(payloads[nome])) !== _hashPorDoc[nome]);
-
-    if (mudaram.length === 0) {
-        _salvandoDB = Math.max(0, _salvandoDB - 1);
-        _pendentesSincronizacao = false;
-        // Nada mudou porque os payloads são idênticos aos últimos gravados
-        // com sucesso: o servidor já tem tudo.
-        _pendentesLimpar();
-        _setStatusConexao("sincronizado");
-        return;
-    }
-
-    // O hash é marcado ANTES da gravação: o eco do snapshot pode chegar
-    // antes da promise resolver, e sem o token ele recarregaria a memória.
-    // Se a gravação falhar, o token é descartado para o retry reenviar.
-    const gravacoes = mudaram.map(nome => {
-        const payload = JSON.parse(JSON.stringify(payloads[nome]));
-        _hashPorDoc[nome] = _hashStr(JSON.stringify(payload));
-        return window._firestore.firestoreSalvarDoc(nome, payload)
-            .catch(err => { delete _hashPorDoc[nome]; throw err; });
+    clearTimeout(_timerRetry);
+    const grupos   = _agruparLancamentos();
+    const permitidos = new Set(_empresaIdsPermitidos());
+    const nomes    = [_NOME_COMPARTILHADO, ...[...permitidos].map(_nomeDocLanc)];
+    // Notas de empresa que o usuário não acessa ficariam só na memória.
+    Object.keys(grupos).forEach(id => {
+        if (!permitidos.has(id)) {
+            console.warn("[save] Lançamentos de empresa sem permissão ficaram de fora:", id);
+        }
     });
 
-    return Promise.all(gravacoes)
+    const trabalhos = nomes
+        .map(nome => ({ nome, mud: _mudancasLocais(nome, grupos) }))
+        .filter(t => t.mud);
+
+    if (trabalhos.length === 0) {
+        if (_gravacoesEmVoo === 0) {
+            // Nada difere do servidor: o que estava pendente já está lá.
+            _pendentesLimpar();
+            _pendentesSincronizacao = false;
+            _setStatusConexao("sincronizado");
+            _esconderStatusDepois();
+        }
+        return Promise.resolve();
+    }
+
+    _gravacoesEmVoo++;
+    const gravacoes = trabalhos.map(({ nome, mud }) =>
+        window._firestore.firestoreGravarMesclando(nome,
+            atual => _mesclar(_normalizarDocServidor(nome, atual), mud))
+            .then(gravado => {
+                _absorverDoc(nome, gravado);
+                // Pendente só sai quando o que subiu é o que está na memória.
+                const naMemoria = new Map((_payloadDoc(nome).lancamentos || []).map(l => [l.id, JSON.stringify(l)]));
+                const gravadoPorId = new Map((gravado.lancamentos || []).map(l => [l.id, JSON.stringify(l)]));
+                _pendentesConfirmar(mud.idsLancamentos.filter(id =>
+                    gravadoPorId.has(id) && gravadoPorId.get(id) === naMemoria.get(id)));
+                return { nome, ok: true };
+            })
+            .catch(erro => ({ nome, ok: false, erro })));
+
+    return Promise.all(gravacoes).then(resultados => {
+        _gravacoesEmVoo = Math.max(0, _gravacoesEmVoo - 1);
+        const falhas = resultados.filter(r => !r.ok);
+
+        if (falhas.length === 0) {
+            _falhasSeguidas = 0;
+            _gravarCopiaLocal();
+            _rerenderTelaAtual();
+            // Algo mudou enquanto gravava: grava de novo.
+            const restante = nomes.some(n => _mudancasLocais(n));
+            if (restante) { _timerDebounce = setTimeout(() => _executarSave(), _DEBOUNCE_MS); return; }
+            if (_gravacoesEmVoo === 0) {
+                _pendentesSincronizacao = false;
+                _setStatusConexao("sincronizado");
+                _esconderStatusDepois();
+            }
+            return;
+        }
+
+        _pendentesSincronizacao = true;
+        _falhasSeguidas++;
+        const negada = falhas.find(f => f.erro?.code === 'permission-denied');
+        if (negada && negada.nome === _NOME_COMPARTILHADO) {
+            // O servidor recusou uma mudança de cadastro que este perfil não
+            // pode fazer. Repetir para sempre travava o documento inteiro: os
+            // cadastros novos paravam de subir. A mudança é desfeita.
+            _desfazerMudancasLocais(_NOME_COMPARTILHADO);
+            mostrarToast("A nuvem recusou a alteração nos cadastros: seu perfil não tem permissão para ela. A alteração foi desfeita.", "erro", 9000);
+            _rerenderTelaAtual();
+        }
+        const semRede = !navigator.onLine || falhas.some(f =>
+            ['unavailable', 'failed-precondition', 'deadline-exceeded'].includes(f.erro?.code));
+        _setStatusConexao(semRede ? "offline" : "erro");
+        if (_falhasSeguidas === 1) {
+            mostrarToast(semRede
+                ? "Sem conexão com a nuvem. O que foi salvo está guardado neste navegador e sobe quando a conexão voltar."
+                : "Erro ao salvar na nuvem. O que foi salvo está guardado neste navegador; tentando de novo.",
+                semRede ? "aviso" : "erro", 7000);
+        }
+        console.error("[save] Falhas:", falhas.map(f => `${f.nome}: ${f.erro?.code || f.erro?.message}`));
+        const espera = Math.min(30000 * Math.pow(2, _falhasSeguidas - 1), 300000);
+        _timerRetry = setTimeout(() => { if (_pendentesSincronizacao) _executarSave(); }, espera);
+    });
+}
+
+/** Volta a memória de um documento ao que o servidor tem. */
+function _desfazerMudancasLocais(nome) {
+    const base = _base[nome];
+    if (!base) return;
+    const conteudo = {};
+    Object.keys(base.listas).forEach(c => { conteudo[c] = [...base.listas[c].values()].map(j => JSON.parse(j)); });
+    Object.keys(base.objetos).forEach(c => { conteudo[c] = JSON.parse(base.objetos[c]); });
+    _aplicarNaMemoria(nome, conteudo);
+}
+
+function _esconderStatusDepois() {
+    setTimeout(() => {
+        const el = document.getElementById("_statusConexao");
+        if (el && !_pendentesSincronizacao) el.style.display = "none";
+    }, 3000);
+}
+
+/** Layout antigo (`dados/principal`), antes da migração: grava o db inteiro. */
+function _executarSaveLegado() {
+    _salvandoDB++;
+    const payload = JSON.parse(JSON.stringify(db));
+    const hash = _hashStr(JSON.stringify(payload));
+    if (hash === _hashPorDoc[_NOME_LEGADO]) {
+        _salvandoDB = Math.max(0, _salvandoDB - 1);
+        _pendentesSincronizacao = false;
+        _pendentesLimpar();
+        _setStatusConexao("sincronizado");
+        return Promise.resolve();
+    }
+    _hashPorDoc[_NOME_LEGADO] = hash;
+    return window._firestore.firestoreSalvarDoc(_NOME_LEGADO, payload)
         .then(() => {
             _salvandoDB = Math.max(0, _salvandoDB - 1);
             _pendentesSincronizacao = false;
-            // Tudo o que está em memória está no servidor: `_montarPayloads`
-            // monta o vetor inteiro de cada empresa permitida, e os
-            // documentos que não foram enviados são os que já estavam
-            // idênticos lá.
             _pendentesLimpar();
             _setStatusConexao("sincronizado");
-            setTimeout(() => {
-                const el = document.getElementById("_statusConexao");
-                if (el) el.style.display = "none";
-            }, 3000);
+            _esconderStatusDepois();
         })
         .catch(() => {
+            delete _hashPorDoc[_NOME_LEGADO];
             _salvandoDB = Math.max(0, _salvandoDB - 1);
             _pendentesSincronizacao = true;
             _setStatusConexao("erro");
-            setTimeout(() => { if (_pendentesSincronizacao) salvarDB(); }, 30000);
+            clearTimeout(_timerRetry);
+            _timerRetry = setTimeout(() => { if (_pendentesSincronizacao) salvarDB(); }, 30000);
             mostrarToast("Erro ao salvar na nuvem. Tentando novamente em 30s…", "erro", 6000);
         });
 }
@@ -943,26 +1423,54 @@ function sincronizarAgora() {
         mostrarToast("Sem conexão com a nuvem.", "aviso", 3000);
         return;
     }
+    if (!_cargaOk) {
+        mostrarToast("Tentando carregar da nuvem de novo…", "info", 3000);
+        carregarDB();
+        return;
+    }
     if (_pendentesSincronizacao) {
         mostrarToast("Sincronizando…", "info", 2000);
-        salvarDB();
+        _falhasSeguidas = 0;
+        _executarSave();
     } else {
         mostrarToast("Dados já estão sincronizados.", "sucesso", 2000);
     }
 }
 
 /**
- * Carrega o banco de dados do Firestore (ou localStorage como fallback)
- * e inicia o listener de tempo real.
+ * Aplica, por cima do que veio do servidor, as notas pendentes da cópia
+ * local: as que foram salvas, editadas, excluídas ou restauradas neste
+ * navegador e não tiveram confirmação.
  *
- * Fluxo:
- * 1. Tenta carregar do Firestore via `getDoc`
- * 2. Se o documento não existir e houver backup local, migra os dados locais para o Firestore
- * 3. Liga o listener `onSnapshot` para sincronização contínua
- * 4. Em caso de falha total, usa o backup do localStorage
- *
- * @returns {Promise<void>}
+ * A empresa da nota precisa estar entre as permitidas: reviver lançamento
+ * de uma empresa que o usuário deixou de acessar poluiria os relatórios.
+ * @returns {number} quantas notas foram reaplicadas
  */
+function _reaplicarPendentesDaCopiaLocal() {
+    const ids = _pendentesLer();
+    if (!ids.length) return 0;
+    const local = _lerCopiaLocal();
+    if (!local || !Array.isArray(local.lancamentos)) return 0;
+
+    const permitidos = new Set(_empresaIdsPermitidos());
+    const pendentes  = new Set(ids);
+    let n = 0;
+    local.lancamentos.forEach(l => {
+        if (!pendentes.has(l.id)) return;
+        const id = _empresaIdDoLancamento(l);
+        if (!id || !permitidos.has(id)) return;
+        const i = db.lancamentos.findIndex(x => x.id === l.id);
+        if (i >= 0) {
+            if (JSON.stringify(db.lancamentos[i]) === JSON.stringify(l)) return;
+            db.lancamentos[i] = l;
+        } else {
+            db.lancamentos.push(l);
+        }
+        n++;
+    });
+    return n;
+}
+
 /**
  * Carrega o banco do Firestore e liga os listeners de tempo real.
  *
@@ -973,225 +1481,246 @@ function sincronizarAgora() {
  * Se `dados/compartilhado` não existir, o banco ainda está no layout
  * antigo (documento único `dados/principal`); nesse caso ele é carregado
  * como sempre foi, e a tela de Sistema oferece a migração.
+ *
+ * Qualquer falha de leitura invalida a carga inteira: nada é gravado na
+ * nuvem e a carga é tentada de novo, com espera crescente.
  */
-/**
- * Devolve os lançamentos que ficaram só no navegador, para voltarem à
- * memória antes que a cópia local seja sobrescrita.
- *
- * Uma nota entra aqui quando as três coisas valem ao mesmo tempo:
- *   1. o id está na lista de pendentes (foi salvo e não teve confirmação);
- *   2. a nota existe na cópia local (`db_backup`);
- *   3. a nota NÃO existe no que o servidor devolveu agora.
- *
- * As três juntas é que dão certeza. Só o item 3 acusaria como "não
- * enviada" qualquer nota que um colega apagou legitimamente enquanto esta
- * máquina estava fechada — e o sistema a ressuscitaria. Só o item 1 não
- * basta porque o envio pode ter dado certo com a aba morrendo antes do
- * `.then()`.
- *
- * A empresa da nota precisa estar entre as permitidas: reviver lançamento
- * de uma empresa que o usuário deixou de acessar poluiria os relatórios e
- * seria descartado por `_montarPayloads` de qualquer forma.
- */
-function _reconciliarNaoEnviados(doServidor) {
-    const ids = _pendentesLer();
-    if (!ids.length) return [];
-
-    let local = null;
-    try { local = JSON.parse(localStorage.getItem("db_backup") || "null"); }
-    catch (_) { return []; }
-    if (!local || !Array.isArray(local.lancamentos)) return [];
-
-    const noServidor = new Set(doServidor.map(l => l.id));
-    const permitidos = _empresaIdsPermitidos();
-
-    return local.lancamentos.filter(l =>
-        ids.includes(l.id) &&
-        !noServidor.has(l.id) &&
-        permitidos.includes(_empresaIdDoLancamento(l))
-    );
-}
-
 async function carregarDB() {
     // Em demo os dados já foram postos em memória por entrarModoDemo().
     if (typeof demoAtivo === 'function' && demoAtivo()) return;
+    if (!window._usuarioAtual) return;
 
-    _mostrarLoading(true);
-    let naoEnviados = [];
+    clearTimeout(_timerRecarga);
+    if (!_primeiraCargaFeita) _mostrarLoading(true);
+    let reaplicadas = 0;
     try {
-        if (!window._firestore) {
-            const local = localStorage.getItem("db_backup") || localStorage.getItem("db");
-            if (local) db = _mesclarComPadrao(JSON.parse(local));
-            _pendentesSincronizacao = true;
-            return;
-        }
+        if (!window._firestore) throw new Error("Firebase indisponível");
 
         const compartilhado = await window._firestore.firestoreCarregarDoc(_NOME_COMPARTILHADO);
 
         if (compartilhado) {
-            _layoutNovo = true;
+            const perfil = window._usuarioAtual;
+            const antesDeCarregar = db;
             db = _mesclarComPadrao(Object.assign({}, compartilhado, { lancamentos: [] }));
-
             const ids = _empresaIdsPermitidos();
-            const docs = await Promise.all(ids.map(id =>
-                window._firestore.firestoreCarregarDoc(_nomeDocLanc(id)).catch(() => null)));
+            let docs;
+            try {
+                docs = await Promise.all(ids.map(id =>
+                    window._firestore.firestoreCarregarDoc(_nomeDocLanc(id)).then(d => ({ id, d }))));
+            } catch (e) {
+                db = antesDeCarregar;
+                throw e;
+            }
+            if (window._usuarioAtual !== perfil) return;   // saiu no meio da carga
 
-            const doServidor = docs.flatMap(d => (d && d.lancamentos) || []);
-            naoEnviados = _reconciliarNaoEnviados(doServidor);
-            db.lancamentos = doServidor.concat(naoEnviados);
-            _pendentesSincronizacao = naoEnviados.length > 0;
+            _layoutNovo = true;
+            _base = {};
+            _base[_NOME_COMPARTILHADO] = _fotografar(_normalizarDocServidor(_NOME_COMPARTILHADO, compartilhado));
+            db.lancamentos = [];
+            docs.forEach(({ id, d }) => {
+                const nome  = _nomeDocLanc(id);
+                const lista = _normalizarLancamentosDoDoc((d && d.lancamentos) || [], id);
+                _base[nome] = _fotografar({ lancamentos: lista });
+                db.lancamentos = db.lancamentos.concat(lista);
+            });
+            reaplicadas = _reaplicarPendentesDaCopiaLocal();
         } else {
             // ── Layout antigo, ainda não migrado ──
             _layoutNovo = false;
-            const dados = await window._firestore.firestoreCarregar();
-            if (dados) {
-                db = _mesclarComPadrao(dados);
-                _pendentesSincronizacao = false;
-            } else {
-                const local = localStorage.getItem("db_backup") || localStorage.getItem("db");
-                if (local) db = _mesclarComPadrao(JSON.parse(local));
-                _pendentesSincronizacao = false;
-            }
+            const dados = await window._firestore.firestoreCarregarDoc(_NOME_LEGADO);
+            if (dados) db = _mesclarComPadrao(dados);
+            _hashPorDoc = {};
         }
 
-        // A cópia local é gravada DEPOIS da reconciliação. Antes, ela era
-        // escrita logo em seguida ao `db.lancamentos = …` do servidor, e
-        // era essa linha que apagava a última prova de que a nota não
-        // enviada existiu.
+        _cargaOk = true;
+        _tentativasRecarga = 0;
+        _pendentesSincronizacao = reaplicadas > 0;
+
+        // A cópia local é gravada DEPOIS de reaplicar as pendentes: era a
+        // gravação antecipada que apagava a última prova da nota não enviada.
         _gravarCopiaLocal();
 
-        // O reenvio acontece ANTES de ligar o listener. Se o listener
-        // subisse primeiro, o snapshot inicial traria o estado do servidor
-        // — sem estas notas — e `_absorverLancamentos` as tiraria da
-        // memória de novo, desfazendo a reconciliação.
-        if (naoEnviados.length) {
+        if (reaplicadas) {
             mostrarToast(
-                `${naoEnviados.length} lançamento(s) do último acesso não tinham `
+                `${reaplicadas} lançamento(s) alterado(s) neste navegador não tinham `
                 + `chegado à nuvem. Enviando agora.`, "aviso", 7000);
-            try { await salvarDB({ imediato: true }); } catch (_) {}
         }
-
         _ligarListenerTempoReal();
+        if (reaplicadas || _layoutNovo) _executarSave();
 
     } catch(e) {
         console.error("[carregarDB]", e);
-        const local = localStorage.getItem("db_backup") || localStorage.getItem("db");
-        if (local) { try { db = _mesclarComPadrao(JSON.parse(local)); } catch(_) {} }
+        _cargaOk = false;
+        const local = _lerCopiaLocal();
+        if (local && !_primeiraCargaFeita) {
+            try { db = _mesclarComPadrao(local); } catch(_) {}
+        }
+        // A base passa a ser o que a cópia local mostrou: só o que for
+        // lançado DEPOIS disto fica marcado como pendente.
+        _base = {};
+        _base[_NOME_COMPARTILHADO] = _fotografar(_payloadDoc(_NOME_COMPARTILHADO));
+        const grupos = _agruparLancamentos();
+        Object.keys(grupos).forEach(id => {
+            _base[_nomeDocLanc(id)] = _fotografar({ lancamentos: grupos[id] });
+        });
         _pendentesSincronizacao = true;
-        mostrarToast("Usando dados locais (sem conexão com a nuvem).", "aviso", 5000);
+        _tentativasRecarga++;
+        const espera = Math.min(15000 * Math.pow(2, _tentativasRecarga - 1), 120000);
+        if (_tentativasRecarga === 1) {
+            mostrarToast(
+                "Não consegui carregar os dados da nuvem. Mostrando a cópia deste navegador; "
+                + "o que for lançado fica guardado aqui e sobe quando a carga der certo.",
+                "aviso", 9000);
+        }
+        _timerRecarga = setTimeout(() => { if (window._usuarioAtual) carregarDB(); }, espera);
     } finally {
         _mostrarLoading(false);
         _criarIndicadorConexao();
-        _setStatusConexao(window._firestore ? (_pendentesSincronizacao ? "pendente" : "sincronizado") : "offline");
-        migrarDados();
-        atualizarListas();
-        if (empresaFiltroGlobal) _aplicarEmpresaAtiva(empresaFiltroGlobal);
-        verificarBackupAutomatico();
-        setTimeout(() => {
-            mostrarTela("dashboard");
-            carregarDashboard();
-        }, 0);
+        _setStatusConexao(!window._firestore ? "offline"
+            : !_cargaOk ? "pendente"
+            : (_pendentesSincronizacao ? "pendente" : "sincronizado"));
+        if (!_primeiraCargaFeita) {
+            _primeiraCargaFeita = true;
+            migrarDados();
+            atualizarListas();
+            _reconciliarEmpresaAtiva();
+            verificarBackupAutomatico();
+            setTimeout(() => {
+                mostrarTela("dashboard");
+                carregarDashboard();
+            }, 0);
+        } else {
+            atualizarListas();
+            _reconciliarEmpresaAtiva();
+            _rerenderTelaAtual();
+        }
     }
 }
 
-// Flag que previne criação de múltiplos listeners simultâneos.
-// _ligarListenerTempoReal pode ser chamada de vários pontos; sem essa
-// proteção, chamadas em rápida sucessão enquanto `_unsubs` ainda está
-// vazio gerariam listeners orphans que nunca seriam cancelados,
-// acumulando onSnapshot ativos e causando loop de writes + vazamento de RAM.
-let _listenerCriando = false;
+/* ── LISTENERS DE TEMPO REAL ─────────────────────────────────────────
+   Um no documento compartilhado e um em cada documento de lançamentos
+   permitido. `_garantirListeners` acrescenta e retira conforme a lista de
+   empresas muda — uma empresa criada durante a sessão ganha listener na
+   hora, em vez de ficar surda às notas dos colegas até o próximo F5. */
+let _tentativasListener = {};
+let _timerListener = {};
 
-/**
- * Registra os listeners `onSnapshot` de sincronização em tempo real: um no
- * documento compartilhado e um em cada documento de lançamentos permitido.
- * No layout antigo, um único listener em `dados/principal`.
- *
- * Cancela todos os listeners anteriores antes de criar novos (garante que
- * nunca existam dois `onSnapshot` simultâneos no mesmo documento).
- *
- * A flag `_listenerCriando` previne reentrada — se duas chamadas chegarem
- * antes dos listeners serem registrados, apenas a primeira os cria.
- *
- * O handler ignora atualizações enquanto `_salvandoDB > 0` (proteção
- * anti-regressão durante saves) e descarta o echo do próprio save
- * comparando o hash por documento (`_hashPorDoc`).
- *
- * O handler de erro religa automaticamente após 2s em caso de
- * `permission-denied` transitório (ocorre nos primeiros instantes após login).
- */
 function _ligarListenerTempoReal() {
-    Object.values(_unsubs).forEach(fn => { try { fn(); } catch(_) {} });
-    _unsubs = {};
+    _desligarListeners();
+    if (!window._firestore || !window._usuarioAtual) return;
 
-    if (_listenerCriando) return;
-    _listenerCriando = true;
-
-    // Layout antigo: um listener no documento único, como antes.
     if (!_layoutNovo) {
         _unsubs[_NOME_LEGADO] = window._firestore.firestoreEscutar(
             dados => _aoReceberDoc(_NOME_LEGADO, dados),
-            _aoFalharListener);
-        _listenerCriando = false;
+            erro => _aoFalharListener(_NOME_LEGADO, erro));
         return;
     }
+    _garantirListeners();
+}
 
-    _unsubs[_NOME_COMPARTILHADO] = window._firestore.firestoreEscutarDoc(
-        _NOME_COMPARTILHADO,
-        dados => _aoReceberDoc(_NOME_COMPARTILHADO, dados),
-        _aoFalharListener);
+function _garantirListeners() {
+    if (!window._firestore || !window._usuarioAtual || !_layoutNovo || !_cargaOk) return;
+    const desejados = new Set([_NOME_COMPARTILHADO, ..._empresaIdsPermitidos().map(_nomeDocLanc)]);
 
-    _empresaIdsPermitidos().forEach(id => {
-        const nome = _nomeDocLanc(id);
+    Object.keys(_unsubs).forEach(nome => {
+        if (!desejados.has(nome)) {
+            try { _unsubs[nome](); } catch (_) {}
+            delete _unsubs[nome];
+        }
+    });
+    desejados.forEach(nome => {
+        if (_unsubs[nome] || _timerListener[nome]) return;
         _unsubs[nome] = window._firestore.firestoreEscutarDoc(
             nome,
-            dados => _aoReceberDoc(nome, dados, id),
-            _aoFalharListener);
+            dados => { _tentativasListener[nome] = 0; _aoReceberDoc(nome, dados); },
+            erro => _aoFalharListener(nome, erro));
     });
 
-    _listenerCriando = false;
+    // Notas de empresa que deixou de ser permitida saem da memória.
+    const permitidos = new Set(_empresaIdsPermitidos());
+    const antes = db.lancamentos.length;
+    db.lancamentos = db.lancamentos.filter(l => {
+        const id = _empresaIdDoLancamento(l);
+        return !id || permitidos.has(id);
+    });
+    if (db.lancamentos.length !== antes) _rerenderTelaAtual();
+}
+
+function _desligarListeners() {
+    Object.values(_unsubs).forEach(fn => { try { fn(); } catch(_) {} });
+    _unsubs = {};
+    Object.values(_timerListener).forEach(t => clearTimeout(t));
+    _timerListener = {};
+    _tentativasListener = {};
 }
 
 /**
  * Trata a chegada de um snapshot, seja do documento compartilhado, de um
  * documento de lançamentos ou do documento único antigo.
  */
-function _aoReceberDoc(nome, dados, empresaId) {
-    if (_salvandoDB > 0) return;
-
-    // Eco do nosso próprio save: consome o token e ignora.
-    if (_hashPorDoc[nome]) {
-        if (_hashStr(JSON.stringify(dados)) === _hashPorDoc[nome]) {
-            _hashPorDoc[nome] = null;
-            return;
-        }
-        _hashPorDoc[nome] = null;
-    }
-
+function _aoReceberDoc(nome, dados) {
     if (nome === _NOME_LEGADO) {
+        if (_salvandoDB > 0 || !dados) return;
+        const h = _hashStr(JSON.stringify(dados));
+        if (_hashPorDoc[_NOME_LEGADO] && h === _hashPorDoc[_NOME_LEGADO]) return;
         db = _mesclarComPadrao(dados);
-    } else if (nome === _NOME_COMPARTILHADO) {
-        const lancamentos = db.lancamentos;
-        db = _mesclarComPadrao(Object.assign({}, dados, { lancamentos }));
-        // Um colega pode ter renomeado ou inativado a empresa ativa daqui.
-        _reconciliarEmpresaAtiva();
-    } else {
-        _absorverLancamentos(empresaId, dados.lancamentos);
+        _rerenderTelaAtual();
+        return;
     }
+    if (!_cargaOk) return;
 
-    _pendentesSincronizacao = false;
-    _rerenderTelaAtual();
+    const mudou = _absorverDoc(nome, dados);
+    if (nome === _NOME_COMPARTILHADO) {
+        // Um colega pode ter renomeado ou inativado a empresa ativa daqui,
+        // ou criado uma empresa nova.
+        _reconciliarEmpresaAtiva();
+        _garantirListeners();
+    }
+    // Mudança local que o snapshot não trouxe: sobe junto.
+    if (_pendentesSincronizacao && _gravacoesEmVoo === 0) {
+        clearTimeout(_timerDebounce);
+        _timerDebounce = setTimeout(() => _executarSave(), _DEBOUNCE_MS);
+    }
+    if (mudou) {
+        _gravarCopiaLocal();
+        _rerenderTelaAtual();
+    }
 }
 
-function _aoFalharListener(erro) {
-    _listenerCriando = false;
-    // Permissão negada logo após o login é transitório: o token do Auth
-    // ainda não propagou para o Firestore. Religa tudo após 2s.
-    if (erro?.code === 'permission-denied' || erro?.code === 'resource-exhausted') {
-        setTimeout(_ligarListenerTempoReal, 2000);
-    } else {
-        console.error("[Firestore] Erro listener:", erro);
+/**
+ * Falha de um listener.
+ *
+ * Antes, `permission-denied` religava TODOS os listeners a cada 2 s, para
+ * sempre — com o perfil alterado no meio da sessão, eram dezenas de
+ * leituras por minuto até a cota do dia. Agora: permissão negada relê o
+ * perfil e religa só o que ainda é permitido, com poucas tentativas; cota
+ * estourada não religa; queda de rede religa com espera crescente.
+ */
+async function _aoFalharListener(nome, erro) {
+    try { _unsubs[nome]?.(); } catch (_) {}
+    delete _unsubs[nome];
+    const n = (_tentativasListener[nome] || 0) + 1;
+    _tentativasListener[nome] = n;
+    console.warn("[listener]", nome, erro?.code || erro);
+
+    if (erro?.code === 'resource-exhausted') {
         _setStatusConexao("erro");
+        if (n === 1) mostrarToast("A cota diária da nuvem foi atingida. Os dados podem ficar desatualizados até amanhã.", "erro", 10000);
+        return;
     }
+    if (erro?.code === 'permission-denied') {
+        if (window._usuarioAtual && window._firestore) {
+            const perfil = await window._firestore.usuarioBuscar(window._usuarioAtual.uid);
+            if (_aplicarPerfilAtualizado(perfil)) return;
+        }
+        if (n > 3) { _setStatusConexao("erro"); return; }
+    }
+    const espera = Math.min(2000 * Math.pow(2, n - 1), 300000);
+    clearTimeout(_timerListener[nome]);
+    _timerListener[nome] = setTimeout(() => {
+        delete _timerListener[nome];
+        _garantirListeners();
+    }, espera);
 }
 
 function _rerenderTelaAtual() {
@@ -1199,9 +1728,11 @@ function _rerenderTelaAtual() {
     if (!telaAtual) return;
     const id = telaAtual.id;
     if (id === "dashboard")  carregarDashboard();
-    if (id === "relatorios") carregarRelatorio();
+    if (id === "relatorios") { if (typeof recarregarRelatorioSemZerarFiltros === 'function') recarregarRelatorioSemZerarFiltros(); else carregarRelatorio(); }
     if (id === "analitico")  { if (typeof carregarAnalitico === 'function') carregarAnalitico(); }
     if (id === "fretes")     carregarFretes();
+    if (id === "lancamentos" && typeof _sessaoRenderizar === 'function') _sessaoRenderizar();
+    if (id === "sistema" && typeof atualizarInfoSistema === 'function') atualizarInfoSistema();
     if (["motoristas","veiculos","empresas","combustiveis","cadastros"].includes(id)) atualizarListas();
 }
 
@@ -1245,9 +1776,10 @@ function _mesclarComPadrao(dados) {
         resultado.configRelatorio = Object.assign({}, DB_PADRAO.configRelatorio, dados.configRelatorio);
     }
 
-    // Guarda só o que foi ajustado; `configAlertas()` completa com os padrões
-    // na leitura, para que mudar um padrão no código valha para quem nunca
-    // ajustou nada.
+    // Vazio até alguém salvar a configuração; `configAlertas()` completa com
+    // os padrões na leitura. Depois do primeiro "Salvar", a configuração
+    // inteira fica gravada — mudar um padrão no código só vale para quem
+    // nunca salvou.
     if (dados.configAlertas && typeof dados.configAlertas === 'object') {
         resultado.configAlertas = dados.configAlertas;
     }
@@ -1577,8 +2109,19 @@ async function mostrarTela(id) {
 const BACKUP_AUTO_INTERVALO_DIAS = 3;
 const BACKUP_AUTO_MAX = 3;
 
+/* Os backups automáticos são POR USUÁRIO. Antes eram uma lista só no
+   navegador, com o banco de quem estava logado: o operador que entrava
+   depois do supremo no mesmo computador podia restaurar o backup dele e
+   passar a ver as notas de todas as empresas. */
+function _prefixoBackupAuto() {
+    const uid = window._usuarioAtual?.uid;
+    return uid ? `backupAuto_${uid}_` : null;
+}
+
 function verificarBackupAutomatico() {
-    const ultimo = localStorage.getItem("backupAutoData");
+    const uid = window._usuarioAtual?.uid;
+    if (!uid) return;
+    const ultimo = localStorage.getItem("backupAutoData_" + uid);
     const dias = ultimo ? (Date.now() - parseInt(ultimo)) / 86400000 : Infinity;
     if (dias >= BACKUP_AUTO_INTERVALO_DIAS) fazerBackupAutomatico();
 }
@@ -1588,25 +2131,30 @@ function verificarBackupAutomatico() {
  *
  * A falha aqui não pode ser silenciosa. O caminho que ela toma na prática
  * é a quota do navegador: são quatro cópias do banco vivendo lá dentro
- * (`db_backup` a cada salvamento, mais até três `backupAuto_*`), e a
- * ~440 bytes por lançamento os ~5 MB acabam em torno de três mil notas
- * somando todas as empresas. Quando isso acontecer, o backup para —
- * enquanto a tela de Sistema continua prometendo uma cópia a cada três
- * dias. Um `console.warn` não avisa ninguém.
+ * (a cópia local a cada salvamento, mais até três backups automáticos), e
+ * a ~440 bytes por lançamento os ~5 MB acabam em torno de três mil notas
+ * somando todas as empresas.
  *
  * A tentativa de liberar espaço apagando a cópia mais antiga vem antes do
- * aviso: na maior parte das vezes ela resolve, e o operador não precisa
- * saber de nada.
+ * aviso: na maior parte das vezes ela resolve.
  */
 function fazerBackupAutomatico() {
-    const chave = `backupAuto_${_hojeISO()}`;
+    const prefixo = _prefixoBackupAuto();
+    if (!prefixo) return;
+    const uid   = window._usuarioAtual.uid;
+    const chave = prefixo + _hojeISO();
     const dados = JSON.stringify(db);
 
+    // Backups do formato antigo, sem dono, só ocupavam espaço.
+    Object.keys(localStorage)
+        .filter(k => /^backupAuto_\d{4}-\d{2}-\d{2}$/.test(k))
+        .forEach(k => localStorage.removeItem(k));
+
     const gravar = () => {
-        const chaves = Object.keys(localStorage).filter(k => k.startsWith("backupAuto_")).sort();
+        const chaves = Object.keys(localStorage).filter(k => k.startsWith(prefixo)).sort();
         while (chaves.length >= BACKUP_AUTO_MAX) localStorage.removeItem(chaves.shift());
         localStorage.setItem(chave, dados);
-        localStorage.setItem("backupAutoData", Date.now().toString());
+        localStorage.setItem("backupAutoData_" + uid, Date.now().toString());
     };
 
     try {
@@ -1616,9 +2164,8 @@ function fazerBackupAutomatico() {
         console.warn("[Backup automático] Primeira tentativa falhou:", e.message);
     }
 
-    // Segunda tentativa, com uma cópia a menos.
     try {
-        const antigas = Object.keys(localStorage).filter(k => k.startsWith("backupAuto_")).sort();
+        const antigas = Object.keys(localStorage).filter(k => k.startsWith(prefixo)).sort();
         if (antigas.length) localStorage.removeItem(antigas[0]);
         gravar();
         return;
@@ -1633,26 +2180,121 @@ function fazerBackupAutomatico() {
 }
 
 function listarBackupsAutomaticos() {
+    const prefixo = _prefixoBackupAuto();
+    if (!prefixo) return [];
     return Object.keys(localStorage)
-        .filter(k => k.startsWith("backupAuto_")).sort().reverse()
-        .map(chave => ({ chave, data: chave.replace("backupAuto_",""), tamanhoKB: (localStorage.getItem(chave).length/1024).toFixed(1) }));
+        .filter(k => k.startsWith(prefixo)).sort().reverse()
+        .map(chave => ({ chave, data: chave.slice(prefixo.length), tamanhoKB: (localStorage.getItem(chave).length/1024).toFixed(1) }));
+}
+
+/* ── RESTAURAR UM BACKUP ─────────────────────────────────────────────
+   Antes a restauração trocava o `db` inteiro pelo arquivo. Três defeitos
+   vinham disso: um backup que só tinha as notas de algumas empresas
+   gravava as outras vazias; os cadastros criados depois do backup sumiam;
+   e o listener religado antes da gravação desfazia a restauração, com a
+   tela dizendo que tinha dado certo.
+
+   Agora: os lançamentos são substituídos só nas empresas que o arquivo
+   cobre (e que este usuário acessa); os cadastros do arquivo entram por
+   cima dos atuais, sem apagar os que só existem hoje; e a mensagem de
+   sucesso só aparece depois de a nuvem confirmar. */
+
+/** Id, no cadastro atual, da empresa de uma nota do arquivo. */
+function _idEmpresaNoBackup(dados, l) {
+    const nome = (dados.empresas || []).find(e => e.id === l.empresaId)?.nome || l.empresa;
+    const porId = l.empresaId && (db.empresas || []).some(e => e.id === l.empresaId) ? l.empresaId : null;
+    const noArquivo = (dados.empresas || []).find(e => e.nome === l.empresa)?.id;
+    return porId || noArquivo || (db.empresas || []).find(e => e.nome === nome)?.id || null;
+}
+
+/** Texto do que a restauração vai fazer, empresa por empresa. */
+function _resumoRestauracao(dados) {
+    const permitidos = new Set(_empresaIdsPermitidos());
+    const noArquivo = {};
+    let fora = 0;
+    (dados.lancamentos || []).forEach(l => {
+        const id = _idEmpresaNoBackup(dados, l);
+        if (!id || !permitidos.has(id)) { fora++; return; }
+        noArquivo[id] = (noArquivo[id] || 0) + 1;
+    });
+    const hoje = {};
+    db.lancamentos.forEach(l => { const id = _empresaIdDoLancamento(l); if (id) hoje[id] = (hoje[id] || 0) + 1; });
+
+    const nomeDe = id => (db.empresas || []).find(e => e.id === id)?.nome
+        || (dados.empresas || []).find(e => e.id === id)?.nome || id;
+    const linhas = Object.keys(noArquivo).map(id =>
+        `• ${nomeDe(id)}: hoje ${hoje[id] || 0} → depois ${noArquivo[id]} lançamento(s)`);
+    const intocadas = [...permitidos].filter(id => !noArquivo[id] && hoje[id])
+        .map(id => `• ${nomeDe(id)}: fica como está (${hoje[id]} lançamento(s)) — o arquivo não tem notas dela`);
+    return [
+        linhas.length ? linhas.join("\n") : "O arquivo não tem lançamentos de empresas que você acessa.",
+        intocadas.length ? "\n" + intocadas.join("\n") : "",
+        fora ? `\n${fora} lançamento(s) do arquivo são de empresas fora do cadastro ou do seu acesso e ficam de fora.` : "",
+        "\nOs cadastros do arquivo entram por cima dos atuais; os que só existem hoje continuam."
+    ].join("\n");
+}
+
+function _aplicarBackupNaMemoria(dados) {
+    _LISTAS_COMPARTILHADO.forEach(campo => {
+        const doBackup = Array.isArray(dados[campo]) ? dados[campo] : [];
+        const chaves   = new Set(doBackup.map(_chaveItem));
+        db[campo] = doBackup.concat((db[campo] || []).filter(i => !chaves.has(_chaveItem(i))));
+    });
+    if (dados.configRelatorio && typeof dados.configRelatorio === 'object') db.configRelatorio = dados.configRelatorio;
+    if (dados.configAlertas && typeof dados.configAlertas === 'object')     db.configAlertas   = dados.configAlertas;
+
+    const permitidos = new Set(_empresaIdsPermitidos());
+    const cobertas = new Set();
+    const notas = [];
+    (dados.lancamentos || []).forEach(l => {
+        const id = _idEmpresaNoBackup(dados, l);
+        if (!id || !permitidos.has(id)) return;
+        cobertas.add(id);
+        const nome = (db.empresas || []).find(e => e.id === id)?.nome;
+        notas.push(Object.assign({}, l, { empresaId: id }, nome ? { empresa: nome } : {}));
+    });
+    db.lancamentos = db.lancamentos
+        .filter(l => !cobertas.has(_empresaIdDoLancamento(l)))
+        .concat(notas);
+}
+
+/** Grava já e diz a verdade sobre o resultado. */
+async function _salvarEConfirmar(rotulo) {
+    if (typeof demoAtivo === 'function' && demoAtivo()) {
+        salvarDB();
+        mostrarToast(`${rotulo}.`, "sucesso", 5000);
+        return true;
+    }
+    await salvarDB({ imediato: true });
+    if (_cargaOk && !_pendentesSincronizacao) {
+        mostrarToast(`${rotulo} e gravado na nuvem.`, "sucesso", 5000);
+        return true;
+    }
+    mostrarToast(`${rotulo} neste navegador, mas a nuvem ainda não confirmou. `
+        + `Não feche a aba até a pílula de sincronização sumir.`, "aviso", 10000);
+    return false;
 }
 
 async function restaurarBackupAutomatico(chave) {
-    const dados = localStorage.getItem(chave);
-    if (!dados) return mostrarToast("Backup não encontrado.", "erro", 4000);
-    if (!await fmConfirm({ titulo: "Restaurar backup?", msg: `Data: ${chave.replace("backupAuto_","")}\n\nOs dados atuais serão substituídos por esta versão.`, confirmTxt: "Restaurar", tipo: "perigo" })) return;
+    if (!exigirPapel("supremo", "Restaurar backup")) return;
+    const prefixo = _prefixoBackupAuto();
+    if (!prefixo || !String(chave).startsWith(prefixo)) return mostrarToast("Backup não encontrado.", "erro", 4000);
+    const bruto = localStorage.getItem(chave);
+    if (!bruto) return mostrarToast("Backup não encontrado.", "erro", 4000);
+    let dados;
+    try { dados = JSON.parse(bruto); } catch (e) { return mostrarToast("Backup corrompido: " + e.message, "erro", 5000); }
+    if (!await fmConfirm({
+        titulo: "Restaurar backup?",
+        msg: `Data: ${chave.slice(prefixo.length)}\n\n${_resumoRestauracao(dados)}`,
+        confirmTxt: "Restaurar", cancelTxt: "Cancelar", tipo: "perigo" })) return;
     try {
-        Object.values(_unsubs).forEach(fn => { try { fn(); } catch(_) {} });
-        _unsubs = {};
-        db = _mesclarComPadrao(JSON.parse(dados));
-        salvarDB();
+        _aplicarBackupNaMemoria(_mesclarComPadrao(dados));
         migrarDados();
         atualizarListas();
         _reconciliarEmpresaAtiva();
         atualizarInfoSistema();
-        if (window._firestore) _ligarListenerTempoReal();
-        mostrarToast("Backup restaurado e sincronizado com a nuvem!", "sucesso");
+        _rerenderTelaAtual();
+        await _salvarEConfirmar("Backup restaurado");
     } catch(e) { mostrarToast("Erro ao restaurar: " + e.message, "erro", 5000); }
 }
 

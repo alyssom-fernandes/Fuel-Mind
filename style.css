@@ -1868,3 +1868,6 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
     .linha-combustivel,
     .linha-combustivel.mostra-descarga { grid-template-columns: 1fr; }
 }
+
+/* Permissões por papel (aplicarPermissoesDaTela, app.js). */
+.fm-sem-permissao { display: none !important; }

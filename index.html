@@ -488,7 +488,7 @@
 <div id="sistema" class="tela">
   <h2 id="tituloSistema" style="display:block;">Sistema</h2>
   <div class="analitico-abas" id="sistemaAbas">
-    <button class="aba-btn ativa" data-aba="backup" onclick="trocarAbaSistema('backup', this)">
+    <button class="aba-btn ativa" data-aba="backup" data-papel="admin" onclick="trocarAbaSistema('backup', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Backup
     </button>
@@ -501,13 +501,13 @@
       Configurações
     </button>
   </div>
-  <div id="sistemaAba-backup" class="sistema-aba-conteudo">
+  <div id="sistemaAba-backup" class="sistema-aba-conteudo" data-papel="admin">
     <div class="sistema-secao">
       <h3>Backup dos Dados</h3>
-      <p class="dica">O sistema armazena os dados no <strong>localStorage</strong> do seu navegador. Faça backups regularmente.</p>
+      <p class="dica">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga — guarde-o fora do computador de vez em quando.</p>
       <div class="sistema-acoes">
         <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
-        <div class="campo" style="max-width:360px; margin-top:12px">
+        <div class="campo" style="max-width:360px; margin-top:12px" data-papel="supremo">
           <label for="inputBackup">Restaurar a partir de backup (.json)</label>
           <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
         </div>
@@ -515,7 +515,7 @@
     </div>
     <div class="sistema-secao">
       <h3>Backups Automáticos</h3>
-      <p class="dica">O sistema salva automaticamente uma cópia dos seus dados a cada 3 dias. Os últimos 3 backups são mantidos.</p>
+      <p class="dica">Este navegador guarda uma cópia dos seus dados a cada 3 dias, para o seu usuário. As 3 últimas ficam.</p>
       <div id="listaBackupsAuto"></div>
       <button class="btn-secundario" style="margin-top:8px" onclick="renderBackupsAuto()">Atualizar lista</button>
     </div>
@@ -536,7 +536,7 @@
         <button class="btn-secundario" onclick="conferirMigracao()">Conferir migração</button>
       </div>
     </div>
-    <div class="sistema-secao zona-perigo">
+    <div class="sistema-secao zona-perigo" data-papel="supremo">
       <h3>Zona de Perigo</h3>
       <p class="dica" style="color:var(--danger); margin-bottom:12px">As ações abaixo são irreversíveis. Faça um backup antes de continuar.</p>
       <div class="sistema-acoes"><button class="btn-reset" onclick="resetSeguro()">Apagar Todos os Dados</button></div>
@@ -584,6 +584,7 @@
     </div>
     <div class="sistema-secao">
       <h3>Layout do Relatório PDF</h3>
+      <p class="dica fm-so-operador">Só administradores alteram o layout do PDF e a logo: valem para todos.</p>
       <p class="dica">Personalize a aparência dos relatórios em PDF.</p>
 
       <!-- Logo -->
@@ -600,7 +601,7 @@
           <img id="pdfLogoPreview" src="" alt="Logo"
                style="display:none;max-height:80px;max-width:200px;border-radius:6px;border:1px solid var(--border)">
           <div style="display:flex;flex-direction:column;gap:6px">
-            <button class="btn-secundario" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
+            <button class="btn-secundario" data-papel="admin" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
             <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
             <input id="pdfLogoInput" aria-label="Arquivo de imagem da logo" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
           </div>
@@ -674,22 +675,22 @@
         <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial" style="max-width:420px;">
       </div>
 
-      <button class="btn-secundario" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
+      <button class="btn-secundario" data-papel="admin" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
     </div>
     <div class="sistema-card">
       <h3>Configurações de Alertas</h3>
-      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Os critérios que acionam os alertas — iguais para todos os usuários. O alerta de preço vale também na tela de lançamento.</p>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Os critérios que acionam os alertas — iguais para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.</p>
       <div class="sistema-acoes"><button class="btn-primario" onclick="abrirConfigAlertas()">Ajustar Alertas</button></div>
     </div>
     <div class="sistema-card">
       <h3>Correções em Massa</h3>
-      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Corrija campos em lote nos lançamentos.</p>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Corrija campos em lote nos lançamentos. <span class="fm-so-nao-supremo">A correção em massa é só do usuário supremo; a verificação de datas é de todos.</span></p>
       <div class="sistema-acoes" style="flex-wrap:wrap;gap:10px">
-        <button class="btn-secundario" onclick="corrigirCampoEmMassa('empresa')">Corrigir Empresa</button>
-        <button class="btn-secundario" onclick="corrigirCampoEmMassa('motorista')">Corrigir Motorista</button>
-        <button class="btn-secundario" onclick="corrigirCampoEmMassa('placa')">Corrigir Placa</button>
-        <button class="btn-secundario" onclick="corrigirCampoEmMassa('base')">Corrigir Base</button>
-        <button class="btn-secundario" onclick="corrigirCampoEmMassa('combustivel')">Corrigir Combustível</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('empresa')">Corrigir Empresa</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('motorista')">Corrigir Motorista</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('placa')">Corrigir Placa</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('base')">Corrigir Base</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('combustivel')">Corrigir Combustível</button>
         <button class="btn-secundario" onclick="auditarDatas()">Verificar Datas Suspeitas</button>
       </div>
     </div>

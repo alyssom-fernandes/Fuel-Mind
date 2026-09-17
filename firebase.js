@@ -1,7 +1,8 @@
 /*=================================================
   FIREBASE — Auth + Firestore
   Banco: controle-entradas-posto
-  Documento de dados: dados/principal
+  Documentos de dados: dados/compartilhado e dados/lanc__{empresaId}
+  (dados/principal é o layout antigo, só para migração e rollback)
   Coleção de usuários: usuarios/{uid}
 
   NOTA DE SEGURANÇA: O usuário supremo deve ser criado
@@ -13,7 +14,7 @@ import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/fireb
 import { getAnalytics }  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import {
     getFirestore, doc, getDoc, setDoc, onSnapshot,
-    collection, getDocs, deleteDoc, query, where
+    collection, getDocs, deleteDoc, query, where, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
     getAuth,
@@ -139,15 +140,43 @@ async function firestoreSalvarDoc(nome, dados) {
  * @returns {function} unsubscribe
  */
 function firestoreEscutarDoc(nome, callback, onErro) {
+    // Documento inexistente chega como `null`: para um documento de
+    // lançamentos de empresa nova, "não existe" é uma resposta (vazio), e
+    // quem escuta precisa saber que a resposta chegou.
     return onSnapshot(_docDados(nome), snap => {
-        if (snap.exists()) callback(snap.data());
+        callback(snap.exists() ? snap.data() : null);
     }, e => {
         if (typeof onErro === 'function') onErro(e);
         else console.error("[Firestore] Erro listener em " + nome + ":", e);
     });
 }
 
-/** Remove um documento da coleção `dados` (usado no corte do layout antigo). */
+/**
+ * Grava um documento da coleção `dados` numa transação: lê o que está no
+ * servidor AGORA e deixa `mesclar(atual)` decidir o que gravar.
+ *
+ * É o que impede um navegador de apagar o que outro gravou. Com `setDoc`
+ * puro, cada máquina regravava o vetor inteiro que tinha em memória — e a
+ * nota que um colega salvou um segundo antes, ou durante uma queda de
+ * rede, sumia. A transação também FALHA sem rede, em vez de ficar na fila
+ * e regravar horas depois um vetor velho por cima de tudo.
+ *
+ * @param {string} nome
+ * @param {function(Object|null): Object} mesclar - recebe os dados atuais
+ *   (ou null) e devolve o documento inteiro a gravar
+ * @returns {Promise<Object>} o que foi gravado
+ */
+async function firestoreGravarMesclando(nome, mesclar) {
+    const ref = _docDados(nome);
+    return runTransaction(firestore, async (t) => {
+        const snap  = await t.get(ref);
+        const dados = mesclar(snap.exists() ? snap.data() : null);
+        t.set(ref, dados);
+        return dados;
+    });
+}
+
+/** Remove um documento da coleção `dados` (corte do layout antigo e "Apagar tudo"). */
 async function firestoreExcluirDoc(nome) {
     await deleteDoc(_docDados(nome));
 }
@@ -173,6 +202,17 @@ async function usuarioBuscar(uid) {
  * @param {Object} dados - Campos a atualizar
  * @returns {Promise<void>}
  */
+/**
+ * Escuta o próprio perfil durante a sessão. Sem isso, inativar alguém ou
+ * tirar uma empresa do perfil só valia no próximo login — e, até lá, a
+ * sessão aberta repetia leituras negadas em laço.
+ */
+function usuarioEscutar(uid, callback, onErro) {
+    return onSnapshot(doc(firestore, "usuarios", uid),
+        snap => callback(snap.exists() ? { uid, ...snap.data() } : null),
+        e => { if (typeof onErro === 'function') onErro(e); });
+}
+
 async function usuarioSalvar(uid, dados) {
     try { await setDoc(doc(firestore, "usuarios", uid), dados, { merge: true }); }
     catch (e) { console.error("[Usuarios] Erro ao salvar:", e); throw e; }
@@ -335,8 +375,9 @@ function authUsuarioAtual() {
 window._firestore = {
     firestoreCarregar, firestoreSalvar, firestoreEscutar,
     firestoreCarregarDoc, firestoreSalvarDoc, firestoreEscutarDoc, firestoreExcluirDoc,
+    firestoreGravarMesclando,
     docLancamentosNome, DOC_COMPARTILHADO, DOC_LEGADO,
-    usuarioBuscar, usuarioSalvar, usuariosListar, usuarioExcluirFirestore,
+    usuarioBuscar, usuarioSalvar, usuariosListar, usuarioExcluirFirestore, usuarioEscutar,
     usuarioBuscarPorUsername, usuarioUsernameDisponivel,
     usernameMapaDefinir, usernameMapaRemover,
     authLogin, authLogout, authCriarUsuario, authAlterarSenha,

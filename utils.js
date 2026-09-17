@@ -370,6 +370,19 @@ function preencherSelect(idSelect, itens, textoPadrao) {
         itens.map(i => `<option value="${escapeHtml(i.valor)}">${escapeHtml(i.texto)}</option>`).join("");
 }
 
+// ========== LOGO DO PDF POR EMPRESA ==========
+/* A logo é guardada pelo id da empresa. Era pelo nome, e um rename fazia o
+   PDF sair sem logo, com a imagem antiga ocupando espaço sem jeito de
+   remover. Logos antigas, pelo nome, continuam sendo lidas. */
+function _chaveLogoEmpresa(nome) {
+    return (typeof db !== "undefined" && (db.empresas || []).find(e => e.nome === nome)?.id) || nome;
+}
+
+function logoDaEmpresa(nome) {
+    const logos = (typeof db !== "undefined" && db.configRelatorio && db.configRelatorio.logos) || {};
+    return logos[_chaveLogoEmpresa(nome)] || logos[nome] || null;
+}
+
 // ========== CONFIGURAÇÕES DE ALERTAS (compartilhado) ==========
 /* A configuração é do sistema, igual para todos: vive em `db.configAlertas`,
    que vai para o documento compartilhado junto dos cadastros. Até 16/09/2026
@@ -393,6 +406,7 @@ function configAlertas() {
     return Object.assign({}, ALERTAS_CONFIG_PADRAO, salvo);
 }
 
+/** Grava a configuração inteira (todos os campos do modal). */
 function salvarConfigAlertas(cfg) {
     db.configAlertas = Object.assign({}, cfg);
     // A cópia antiga, por navegador, não vale mais nada e não deve confundir.

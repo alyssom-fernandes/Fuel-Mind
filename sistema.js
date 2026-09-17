@@ -12,6 +12,11 @@
 let sistemaAbaAtiva = 'backup';
 
 function trocarAbaSistema(aba, btn) {
+    // A aba Backup não existe para o operador (decisão do dono, 17/09/2026).
+    if (aba === 'backup' && typeof ehAdminOuSupremoAtual === 'function' && !ehAdminOuSupremoAtual()) {
+        aba = 'importar';
+        btn = document.querySelector('#sistemaAbas .aba-btn[data-aba="importar"]');
+    }
     sistemaAbaAtiva = aba;
     document.querySelectorAll('#sistemaAbas .aba-btn').forEach(b => b.classList.remove('ativa'));
     if (btn) btn.classList.add('ativa');
@@ -68,6 +73,17 @@ async function migrarParaIsolamentoPorEmpresa() {
     }
     if (!window._firestore) {
         return mostrarToast("Sem conexão com a nuvem.", "erro", 5000);
+    }
+
+    // A migração já feita não roda de novo. Rodá-la depois de dias de uso
+    // regravava os documentos novos com o conteúdo antigo, apagando tudo o
+    // que foi lançado e cadastrado desde a migração.
+    const jaMigrado = await window._firestore.firestoreCarregarDoc("compartilhado").catch(() => "erro");
+    if (jaMigrado === "erro") {
+        return mostrarToast("Não consegui conferir se a migração já foi feita. Tente de novo.", "erro", 6000);
+    }
+    if (jaMigrado) {
+        return mostrarToast("A migração já foi feita: os dados já estão repartidos por empresa. Nada a fazer.", "info", 7000);
     }
 
     const antigo = await window._firestore.firestoreCarregarDoc("principal");
@@ -188,14 +204,19 @@ async function conferirMigracao() {
     }
 
     const totalAntigo = (antigo.lancamentos || []).length;
-    const bate = totalAntigo === totalNovo;
+    // Depois da migração o sistema continua sendo usado, e os documentos
+    // novos crescem: ter MAIS notas que o antigo é o esperado. Só faltar
+    // nota é problema — e rodar a migração de novo nunca é o remédio.
+    const bate = totalNovo >= totalAntigo;
 
     await fmConfirm({
-        titulo: bate ? "Conferência bateu" : "DIVERGÊNCIA na conferência",
+        titulo: bate ? "Conferência bateu" : "Faltam lançamentos nos documentos novos",
         msg: `Documento antigo: ${totalAntigo} lançamento(s)\n`
            + `Somando os novos: ${totalNovo}\n\n${linhas.join("\n")}\n\n`
-           + (bate ? "Pode seguir para a publicação das regras."
-                   : "NÃO publique as regras. Rode a migração novamente."),
+           + (bate ? (totalNovo > totalAntigo
+                      ? "Os documentos novos têm mais notas que o antigo, o que é normal depois de dias de uso."
+                      : "Os números batem.")
+                   : "Não rode a migração de novo: ela sobrescreveria o que foi lançado depois. Baixe um backup e peça ajuda para conferir nota por nota."),
         confirmTxt: "Fechar",
         cancelTxt: "Fechar",
         tipo: bate ? "info" : "perigo"
@@ -204,6 +225,7 @@ async function conferirMigracao() {
 
 /* ========== BACKUP ========== */
 function baixarBackup() {
+    if (!exigirPapel("admin", "Baixar backup")) return;
     const json = JSON.stringify(db, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url  = URL.createObjectURL(blob);
@@ -218,6 +240,7 @@ function baixarBackup() {
 async function restaurarBackup(input) {
     const file = input.files[0];
     if (!file) return;
+    if (!exigirPapel("supremo", "Restaurar backup")) { input.value = ""; return; }
 
     try {
         const text = await new Promise((resolve, reject) => {
@@ -234,47 +257,84 @@ async function restaurarBackup(input) {
             throw new Error("Arquivo não é um backup válido deste sistema.");
         }
 
-        if (!await fmConfirm({ 
-            titulo: "Restaurar backup?", 
-            msg: `• ${dados.motoristas.length} motoristas\n• ${dados.veiculos.length} veículos\n• ${dados.empresas.length} empresas\n• ${dados.combustiveis.length} combustíveis\n• ${dados.lancamentos.length} lançamentos\n\nOs dados atuais serão substituídos.`, 
-            confirmTxt: "Restaurar", 
-            tipo: "perigo" 
-        })) return;
+        if (!await fmConfirm({
+            titulo: "Restaurar backup?",
+            msg: _resumoRestauracao(dados),
+            confirmTxt: "Restaurar",
+            cancelTxt: "Cancelar",
+            tipo: "perigo"
+        })) { input.value = ""; return; }
 
-        if (typeof _unsubscribeListener !== 'undefined' && _unsubscribeListener) {
-            _unsubscribeListener(); _unsubscribeListener = null;
-        }
-        db = _mesclarComPadrao(dados);
-        salvarDB(); 
-        migrarDados(); 
-        atualizarListas(); 
+        _aplicarBackupNaMemoria(_mesclarComPadrao(dados));
+        migrarDados();
+        atualizarListas();
         if (typeof _reconciliarEmpresaAtiva === 'function') _reconciliarEmpresaAtiva();
-        atualizarInfoSistema(); 
+        atualizarInfoSistema();
         carregarConfiguracoesTela();
-        if (window._firestore && typeof _ligarListenerTempoReal === 'function') _ligarListenerTempoReal();
-        mostrarToast("Backup restaurado com sucesso!", "sucesso");
-    } catch (err) { 
-        mostrarToast("Erro ao restaurar backup: " + err.message, "erro", 6000); 
+        _rerenderTelaAtual();
+        await _salvarEConfirmar("Backup restaurado");
+    } catch (err) {
+        mostrarToast("Erro ao restaurar backup: " + err.message, "erro", 6000);
     }
     input.value = "";
 }
 
-/* ========== RESET SEGURO ========== */
+/* ========== APAGAR TODOS OS DADOS ==========
+   Só o supremo (decisão do dono, 17/09/2026). E apaga de verdade: antes,
+   os documentos de lançamentos ficavam no servidor, órfãos, porque só a
+   lista de empresas era esvaziada — e a cópia local deste navegador era
+   destruída mesmo quando a nuvem recusava. Agora os documentos de cada
+   empresa são apagados primeiro; só depois os cadastros; e a memória só é
+   limpa quando a nuvem confirmou. Os backups automáticos deste navegador
+   ficam, como última saída. */
 async function resetSeguro() {
-    if (!await fmConfirm({ titulo: "Apagar todos os dados?", msg: "Esta ação apagará TODOS os dados permanentemente.\n\nRecomendamos fazer um backup antes de continuar.", confirmTxt: "Continuar", cancelTxt: "Cancelar", tipo: "perigo" })) return;
-    if (!await fmConfirm({ titulo: "Última confirmação", msg: "Todos os lançamentos, motoristas, veículos, empresas e combustíveis serão apagados.\n\nTem CERTEZA que deseja apagar tudo?", confirmTxt: "Apagar tudo", cancelTxt: "Cancelar", tipo: "perigo" })) return;
+    if (!exigirPapel("supremo", "Apagar todos os dados")) return;
+    if (!await fmConfirm({ titulo: "Apagar todos os dados?", msg: "Esta ação apagará da nuvem TODOS os lançamentos de todas as empresas e todos os cadastros, permanentemente.\n\nBaixe um backup antes de continuar.", confirmTxt: "Continuar", cancelTxt: "Cancelar", tipo: "perigo" })) return;
+    if (!await fmConfirm({ titulo: "Última confirmação", msg: "Todos os lançamentos, motoristas, veículos, empresas, combustíveis, bases e conjuntos serão apagados, para todos os usuários.\n\nTem CERTEZA que deseja apagar tudo?", confirmTxt: "Apagar tudo", cancelTxt: "Cancelar", tipo: "perigo" })) return;
 
-    if (typeof _unsubscribeListener !== 'undefined' && _unsubscribeListener) {
-        _unsubscribeListener(); _unsubscribeListener = null;
-    }
-    db = {
-        motoristas: [], veiculos: [], empresas: [], combustiveis: [],
-        lancamentos: [], bases: [], configRelatorio: db.configRelatorio,
-        configAlertas: db.configAlertas || {}
+    const limparMemoria = () => {
+        db.lancamentos = [];
+        _LISTAS_COMPARTILHADO.forEach(c => { db[c] = []; });
     };
-    salvarDB(); atualizarListas(); atualizarInfoSistema();
-    if (window._firestore && typeof _ligarListenerTempoReal === 'function') _ligarListenerTempoReal();
-    mostrarToast("Sistema resetado. Todos os dados foram apagados.", "aviso", 5000);
+
+    if (typeof demoAtivo === 'function' && demoAtivo()) {
+        limparMemoria();
+        salvarDB(); atualizarListas(); atualizarInfoSistema(); _rerenderTelaAtual();
+        mostrarToast("Dados da demonstração apagados. \"Restaurar dados\" na faixa vermelha os traz de volta.", "aviso", 6000);
+        return;
+    }
+    if (!window._firestore || !_cargaOk || !_layoutNovo) {
+        mostrarToast("Sem uma carga confirmada da nuvem não dá para apagar com segurança. Recarregue a página e tente de novo.", "erro", 8000);
+        return;
+    }
+
+    const ids = (db.empresas || []).map(e => e.id);
+    try {
+        // Os listeners dos documentos de lançamentos saem antes, para o
+        // apagamento não voltar para a memória como "mudança do servidor".
+        _desligarListeners();
+        for (const id of ids) {
+            await window._firestore.firestoreExcluirDoc(_nomeDocLanc(id));
+            delete _base[_nomeDocLanc(id)];
+        }
+        limparMemoria();
+        await window._firestore.firestoreGravarMesclando(_NOME_COMPARTILHADO, atual => {
+            const d = Object.assign({}, atual || {});
+            _LISTAS_COMPARTILHADO.forEach(c => { d[c] = []; });
+            return d;
+        });
+        _base[_NOME_COMPARTILHADO] = _fotografar(_payloadDoc(_NOME_COMPARTILHADO));
+        _pendentesLimpar();
+        _pendentesSincronizacao = false;
+        _gravarCopiaLocal();
+        _ligarListenerTempoReal();
+        atualizarListas(); atualizarInfoSistema(); _rerenderTelaAtual();
+        mostrarToast("Todos os dados foram apagados da nuvem.", "aviso", 6000);
+    } catch (e) {
+        console.error("[Apagar tudo]", e);
+        mostrarToast("Falha ao apagar: " + (e.code || e.message) + ". Recarregue a página para ver o que ficou.", "erro", 10000);
+        _ligarListenerTempoReal();
+    }
 }
 
 /* ========== BACKUPS AUTOMÁTICOS ========== */
@@ -297,7 +357,9 @@ function renderBackupsAuto() {
                 ${lista.map(b => `<tr style="border-bottom:1px solid var(--border-light)">
                     <td style="padding:8px 12px">${b.data}</td>
                     <td style="padding:8px 12px;color:var(--text-muted);font-family:monospace">${b.tamanhoKB} KB</td>
-                    <td style="padding:8px 12px"><button class="btn-secundario" onclick="restaurarBackupAutomatico('${b.chave}')">Restaurar</button></td>
+                    <td style="padding:8px 12px">${ehSupremoAtual()
+                        ? `<button class="btn-secundario" onclick="restaurarBackupAutomatico('${escapeJsAttr(b.chave)}')">Restaurar</button>`
+                        : '<span class="dica" style="margin:0">Só o supremo restaura</span>'}</td>
                 </tr>`).join("")}
             </tbody>
         </table>`;
@@ -444,44 +506,75 @@ function auditarDatas() {
     document.body.appendChild(modal);
 }
 
-/* ========== CORREÇÃO EM MASSA ========== */
+/* ========== CORREÇÃO EM MASSA ==========
+   Só o supremo: é uma renomeação dentro das notas, e renomear cadastro é
+   do supremo (decisão do dono, 17/09/2026). Também é o único perfil que
+   carrega todas as empresas, então a correção não deixa metade do
+   histórico com o nome velho.
+
+   O valor antigo é OBRIGATÓRIO e escolhido da lista do que existe nas
+   notas. Antes ele era texto livre e opcional: deixá-lo vazio trocava o
+   campo em todas as notas de todas as empresas — todas as notas numa
+   empresa só, ou todos os combustíveis num só — sem confirmação. */
 let campoCorrecaoAtual = '';
 let modalCorrecaoMassa = null;
 
+const _CORRECAO_ROTULOS = {
+    empresa: 'Empresa', motorista: 'Motorista', placa: 'Placa', base: 'Base', combustivel: 'Combustível'
+};
+
+/** Valores que aparecem hoje nas notas, com quantas notas cada um tem. */
+function _valoresNasNotas(campo) {
+    const cont = new Map();
+    db.lancamentos.forEach(l => {
+        const valores = campo === 'combustivel'
+            ? [...new Set((l.itens || []).map(i => i.tipo))]
+            : [l[campo]];
+        valores.forEach(v => { if (v) cont.set(v, (cont.get(v) || 0) + 1); });
+    });
+    return [...cont.entries()].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+}
+
 function corrigirCampoEmMassa(campo) {
+    if (!exigirPapel("supremo", "Correção em massa")) return;
     campoCorrecaoAtual = campo;
-    let titulo, lista = [];
+    let lista = [];
     switch(campo) {
-        case 'empresa':    titulo = 'Corrigir Empresa';     lista = db.empresas.filter(e=>e.ativo!==false).map(e=>e.nome);     break;
-        case 'motorista':  titulo = 'Corrigir Motorista';   lista = db.motoristas.filter(m=>m.ativo!==false).map(m=>m.nome);   break;
-        case 'placa':      titulo = 'Corrigir Placa';       lista = db.veiculos.filter(v=>v.ativo!==false).map(v=>v.nome);     break;
-        case 'base':       titulo = 'Corrigir Base';        lista = db.bases.filter(b=>b.ativo!==false).map(b=>b.nome);        break;
-        case 'combustivel':titulo = 'Corrigir Combustível'; lista = db.combustiveis.filter(c=>c.ativo!==false).map(c=>c.nome); break;
+        case 'empresa':    lista = db.empresas.filter(e=>e.ativo!==false).map(e=>e.nome);     break;
+        case 'motorista':  lista = db.motoristas.filter(m=>m.ativo!==false).map(m=>m.nome);   break;
+        case 'placa':      lista = db.veiculos.filter(v=>v.ativo!==false).map(v=>v.nome);     break;
+        case 'base':       lista = db.bases.filter(b=>b.ativo!==false).map(b=>b.nome);        break;
+        case 'combustivel':lista = db.combustiveis.filter(c=>c.ativo!==false).map(c=>c.nome); break;
         default: mostrarToast('Campo inválido para correção.', 'aviso'); return;
     }
-    if (lista.length === 0) { mostrarToast(`Nenhum ${campo} cadastrado. Cadastre pelo menos um antes de corrigir.`, 'aviso', 5000); return; }
+    const rotulo = _CORRECAO_ROTULOS[campo];
+    if (lista.length === 0) { mostrarToast(`Nenhum cadastro de ${rotulo.toLowerCase()}. Cadastre pelo menos um antes de corrigir.`, 'aviso', 5000); return; }
+    const antigos = _valoresNasNotas(campo);
+    if (antigos.length === 0) { mostrarToast('Não há lançamentos para corrigir.', 'info', 4000); return; }
 
     const modal = document.createElement('div');
     modal.id = 'modalCorrecaoMassa';
     modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;`;
     modal.innerHTML = `
-        <div style="background:var(--surface);border-radius:12px;padding:28px;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
-            <h3 style="margin:0 0 8px">${titulo}</h3>
+        <div role="dialog" aria-modal="true" aria-labelledby="correcaoMassaTitulo" style="background:var(--surface);border-radius:12px;padding:28px;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
+            <h3 id="correcaoMassaTitulo" style="margin:0 0 8px">Corrigir ${escapeHtml(rotulo)}</h3>
             <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px">
-                Substituirá o campo <strong>${campo}</strong> em todos os lançamentos que corresponderem ao filtro.
+                Troca o valor escolhido por outro em todos os lançamentos que o têm, inclusive os excluídos e cancelados.
             </p>
             <div class="campo" style="margin-bottom:16px">
-                <label for="correcaoMassaSelect">Novo valor</label>
-                <select id="correcaoMassaSelect" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
-                    ${lista.map(val => `<option value="${val}">${val}</option>`).join('')}
+                <label for="correcaoMassaAntigo">Valor que está errado nas notas</label>
+                <select id="correcaoMassaAntigo" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
+                    <option value="">Escolha…</option>
+                    ${antigos.map(([val, n]) => `<option value="${escapeHtml(val)}">${escapeHtml(val)} (${n} ${n === 1 ? 'nota' : 'notas'})</option>`).join('')}
                 </select>
             </div>
             <div class="campo" style="margin-bottom:16px">
-                <label for="correcaoMassaAntigo">Substituir apenas lançamentos com este valor antigo (deixe vazio para todos)</label>
-                <input type="text" id="correcaoMassaAntigo" placeholder="Ex: Posto Antigo"
-                    style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-sizing:border-box">
+                <label for="correcaoMassaSelect">Valor correto, do cadastro</label>
+                <select id="correcaoMassaSelect" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
+                    ${lista.map(val => `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`).join('')}
+                </select>
             </div>
-            <div id="correcaoMassaPreview" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;padding:8px;background:var(--surface-alt);border-radius:6px;"></div>
+            <div id="correcaoMassaPreview" role="status" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;padding:8px;background:var(--surface-alt);border-radius:6px;"></div>
             <div style="display:flex;gap:10px;justify-content:flex-end">
                 <button onclick="fecharModalCorrecaoMassa()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">Cancelar</button>
                 <button onclick="executarCorrecaoMassa()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:600">Aplicar</button>
@@ -490,51 +583,97 @@ function corrigirCampoEmMassa(campo) {
     `;
     document.body.appendChild(modal);
     modalCorrecaoMassa = modal;
+    modal.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); fecharModalCorrecaoMassa(); } });
     atualizarPreviewCorrecao();
     document.getElementById('correcaoMassaSelect').addEventListener('change', atualizarPreviewCorrecao);
-    document.getElementById('correcaoMassaAntigo').addEventListener('input', atualizarPreviewCorrecao);
+    document.getElementById('correcaoMassaAntigo').addEventListener('change', atualizarPreviewCorrecao);
+    document.getElementById('correcaoMassaAntigo').focus();
+}
+
+/** Quantas notas mudam, e em que empresas. */
+function _alcanceCorrecao(antigo, novo) {
+    const porEmpresa = new Map();
+    let notas = 0;
+    if (!antigo || antigo === novo) return { notas, porEmpresa };
+    db.lancamentos.forEach(l => {
+        const tem = campoCorrecaoAtual === 'combustivel'
+            ? (l.itens || []).some(i => i.tipo === antigo)
+            : l[campoCorrecaoAtual] === antigo;
+        if (!tem) return;
+        notas++;
+        porEmpresa.set(l.empresa, (porEmpresa.get(l.empresa) || 0) + 1);
+    });
+    return { notas, porEmpresa };
 }
 
 function atualizarPreviewCorrecao() {
     const select  = document.getElementById('correcaoMassaSelect');
-    const antigo  = document.getElementById('correcaoMassaAntigo')?.value.trim() || '';
+    const antigo  = document.getElementById('correcaoMassaAntigo')?.value || '';
     const preview = document.getElementById('correcaoMassaPreview');
     if (!select || !preview) return;
-    const novo = select.value;
-    let count = 0;
-    if (campoCorrecaoAtual === 'combustivel') {
-        db.lancamentos.forEach(l => { l.itens.forEach(i => { if ((!antigo || i.tipo === antigo) && i.tipo !== novo) count++; }); });
-    } else {
-        db.lancamentos.forEach(l => { const v = l[campoCorrecaoAtual]; if ((!antigo || v === antigo) && v !== novo) count++; });
-    }
-    preview.textContent = count > 0 ? `${count} lançamento(s) serão atualizados` : 'Nenhum lançamento corresponde ao filtro';
+    if (!antigo) { preview.textContent = 'Escolha o valor que está errado.'; return; }
+    if (antigo === select.value) { preview.textContent = 'O valor correto é igual ao errado: nada a trocar.'; return; }
+    const { notas } = _alcanceCorrecao(antigo, select.value);
+    preview.textContent = `${notas} lançamento(s) serão atualizados`;
 }
 
 function fecharModalCorrecaoMassa() {
     if (modalCorrecaoMassa) { modalCorrecaoMassa.remove(); modalCorrecaoMassa = null; }
 }
 
-/* Esta correção em massa toca TODOS os lançamentos, inclusive os
-   excluídos e os cancelados, e isso é de propósito. Ela é uma
-   renomeação, não uma conta: pular uma lápide a deixaria com o nome
-   antigo da empresa, e aí `_empresaIdDoLancamento` não a resolveria mais,
-   `_montarPayloads` a descartaria em silêncio e ela sumiria da nuvem —
-   ou seja, filtrar aqui não esconderia a lápide, destruiria a lápide.
-   O preço é o contador: o número anunciado no toast inclui os registros
-   que não aparecem no relatório, e por isso o texto diz "no histórico". */
-function executarCorrecaoMassa() {
+/* Esta correção toca TODOS os lançamentos com o valor, inclusive os
+   excluídos e os cancelados, e isso é de propósito: é uma renomeação, não
+   uma conta. O número anunciado inclui registros que não aparecem no
+   relatório, e por isso o texto diz "no histórico". */
+async function executarCorrecaoMassa() {
+    if (!exigirPapel("supremo", "Correção em massa")) return;
     const select = document.getElementById('correcaoMassaSelect');
-    const antigo = document.getElementById('correcaoMassaAntigo')?.value.trim() || '';
+    const antigo = document.getElementById('correcaoMassaAntigo')?.value || '';
     if (!select) return;
     const novo = select.value;
+    if (!antigo) { mostrarToast('Escolha o valor que está errado nas notas.', 'aviso', 4000); return; }
+    if (antigo === novo) { mostrarToast('O valor correto é igual ao errado: nada a trocar.', 'info', 4000); return; }
+
+    const { notas, porEmpresa } = _alcanceCorrecao(antigo, novo);
+    if (notas === 0) { mostrarToast('Nenhum lançamento tem esse valor.', 'info', 4000); return; }
+
+    const rotulo = _CORRECAO_ROTULOS[campoCorrecaoAtual];
+    const detalhe = [...porEmpresa.entries()].map(([emp, n]) => `• ${emp}: ${n}`).join('\n');
+    const aviso = campoCorrecaoAtual === 'empresa'
+        ? `\n\nAs notas MUDAM DE EMPRESA: saem de "${antigo}" e passam a contar em "${novo}".`
+        : '';
+    fecharModalCorrecaoMassa();
+    if (!await fmConfirm({
+        titulo: `Trocar ${rotulo.toLowerCase()} em ${notas} lançamento(s)?`,
+        msg: `"${antigo}" → "${novo}"\n\n${detalhe}${aviso}`,
+        confirmTxt: 'Trocar', cancelTxt: 'Cancelar', tipo: 'perigo'
+    })) return;
+
+    const usuario = window._usuarioAtual?.nome || 'Desconhecido';
+    const ts = new Date().toISOString();
     let count = 0;
-    if (campoCorrecaoAtual === 'combustivel') {
-        db.lancamentos.forEach(l => { l.itens.forEach(i => { if ((!antigo || i.tipo === antigo) && i.tipo !== novo) { i.tipo = novo; count++; } }); });
-    } else {
-        db.lancamentos.forEach(l => { const v = l[campoCorrecaoAtual]; if ((!antigo || v === antigo) && v !== novo) { l[campoCorrecaoAtual] = novo; count++; } });
-    }
-    salvarDB(); fecharModalCorrecaoMassa();
-    mostrarToast(`${count} lançamento(s) do histórico atualizados com ${campoCorrecaoAtual} = "${novo}".`, 'sucesso', 6000);
+    db.lancamentos = db.lancamentos.map(l => {
+        const tem = campoCorrecaoAtual === 'combustivel'
+            ? (l.itens || []).some(i => i.tipo === antigo)
+            : l[campoCorrecaoAtual] === antigo;
+        if (!tem) return l;
+        count++;
+        // Objeto novo, e não mudança no lugar: o cache da busca rápida do
+        // relatório é por objeto, e ficava com o valor velho.
+        const c = Object.assign({}, l);
+        if (campoCorrecaoAtual === 'combustivel') {
+            c.itens = (l.itens || []).map(i => i.tipo === antigo ? Object.assign({}, i, { tipo: novo }) : i);
+        } else {
+            c[campoCorrecaoAtual] = novo;
+            if (campoCorrecaoAtual === 'empresa') delete c.empresaId;
+        }
+        c.logs = (l.logs || []).concat([{ acao: 'Correção em massa', ts, usuario,
+            alteracoes: [{ campo: campoCorrecaoAtual, de: antigo, para: novo }] }]);
+        return c;
+    });
+    atualizarListas();
+    _rerenderTelaAtual();
+    await _salvarEConfirmar(`${count} lançamento(s) do histórico atualizados com ${rotulo.toLowerCase()} = "${novo}"`);
 }
 
 /* ========================================
@@ -562,6 +701,10 @@ function _pdfEmpresaAtiva() {
 async function pdfCarregarLogo(input) {
     const file = input.files[0];
     if (!file) return;
+    // Configuração de PDF é de todo mundo: só admin e supremo alteram. A
+    // regra do servidor recusava a do operador, e enquanto a memória
+    // guardava a mudança, NENHUM cadastro dele subia mais.
+    if (!exigirPapel("admin", "Alterar a logo do PDF")) { input.value = ''; return; }
     if (!file.type.startsWith('image/')) {
         mostrarToast('Selecione um arquivo de imagem (PNG, JPG, etc.).', 'aviso'); return;
     }
@@ -581,13 +724,17 @@ async function pdfCarregarLogo(input) {
         const dataUri = await _reduzirImagemParaDataUri(file, 320);
 
         if (!db.configRelatorio) db.configRelatorio = {};
-        if (!db.configRelatorio.logos) db.configRelatorio.logos = {};
-        db.configRelatorio.logos[empresa] = { url: dataUri, nome: file.name };
+        // Objeto novo: a sincronização compara com o que o servidor tinha.
+        const logos = Object.assign({}, db.configRelatorio.logos || {});
+        // Pelo id da empresa, que não muda num rename; a chave antiga, pelo
+        // nome, sai junto.
+        delete logos[empresa];
+        logos[_chaveLogoEmpresa(empresa)] = { url: dataUri, nome: file.name };
+        db.configRelatorio = Object.assign({}, db.configRelatorio, { logos });
 
         _pdfAtualizarPrevia(dataUri, empresa);
-        salvarDB();
         const kb = Math.round(dataUri.length * 0.75 / 1024);
-        mostrarToast(`Logo salva (${kb} KB).`, 'sucesso', 3000);
+        await _salvarEConfirmar(`Logo salva (${kb} KB)`);
     } catch (e) {
         mostrarToast('Erro ao processar a logo: ' + e.message, 'erro', 6000);
     } finally {
@@ -640,14 +787,16 @@ function _reduzirImagemParaDataUri(file, larguraMax) {
 }
 
 async function pdfRemoverLogo() {
+    if (!exigirPapel("admin", "Remover a logo do PDF")) return;
     const empresa = _pdfEmpresaAtiva();
     if (!db.configRelatorio) db.configRelatorio = {};
-    if (!db.configRelatorio.logos) db.configRelatorio.logos = {};
-    delete db.configRelatorio.logos[empresa];
+    const logos = Object.assign({}, db.configRelatorio.logos || {});
+    delete logos[empresa];
+    delete logos[_chaveLogoEmpresa(empresa)];
+    db.configRelatorio = Object.assign({}, db.configRelatorio, { logos });
 
     _pdfAtualizarPrevia(null, empresa);
-    salvarDB();
-    mostrarToast('Logo removida.', 'info', 2000);
+    await _salvarEConfirmar('Logo removida');
 }
 
 function _pdfAtualizarPrevia(urlOuBase64, empresa) {
@@ -669,8 +818,9 @@ function _pdfAtualizarPrevia(urlOuBase64, empresa) {
     }
 }
 
-function salvarConfigPDF() {
-    if (!db.configRelatorio) db.configRelatorio = {};
+async function salvarConfigPDF() {
+    if (!exigirPapel("admin", "Salvar as configurações de PDF")) return;
+    db.configRelatorio = Object.assign({}, db.configRelatorio || {});
 
     db.configRelatorio.titulo           = document.getElementById('pdfTitulo')?.value || 'Controle de Entradas de Combustível';
     db.configRelatorio.orientacao       = document.getElementById('pdfOrientacao')?.value || 'landscape';
@@ -688,8 +838,7 @@ function salvarConfigPDF() {
     db.configRelatorio.rodapeTexto      = document.getElementById('pdfRodapeTexto')?.value || '';
     // logo já salvo ao carregar via pdfCarregarLogo()
 
-    salvarDB();
-    mostrarToast('Configurações de PDF salvas!', 'sucesso', 3000);
+    await _salvarEConfirmar('Configurações de PDF salvas');
 }
 
 function carregarConfiguracoesTela() {
@@ -729,7 +878,7 @@ function carregarConfiguracoesTela() {
 
     // Logo: atualiza prévia com logo da empresa ativa
     const empresa = _pdfEmpresaAtiva();
-    const logoEmpresa = db.configRelatorio?.logos?.[empresa];
+    const logoEmpresa = logoDaEmpresa(empresa);
     // Fallback: logo global legada em base64
     const logoSrc = logoEmpresa?.url || cfg.logo || null;
     _pdfAtualizarPrevia(logoSrc, empresa);
@@ -1172,7 +1321,7 @@ function abrirConfigAlertas() {
                 <h3 style="margin:0">Configurações de Alertas</h3>
                 <button onclick="document.getElementById('_modalConfigAlertas').remove()" aria-label="Fechar" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
             </div>
-            <p style="margin:-8px 0 18px;font-size:0.82rem;color:var(--text-muted)">Valem para todos os usuários, no lançamento e no Dashboard.${podeAlterar ? '' : ' <strong>Só administradores alteram.</strong>'}</p>
+            <p style="margin:-8px 0 18px;font-size:0.82rem;color:var(--text-muted)">Valem para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.${podeAlterar ? '' : ' <strong>Só administradores alteram.</strong>'}</p>
 
             <fieldset id="_cfgCampos" ${podeAlterar ? '' : 'disabled'} style="border:none;margin:0;padding:0;min-width:0">
             <div class="_cfg-bloco">

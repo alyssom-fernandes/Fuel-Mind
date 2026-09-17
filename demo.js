@@ -324,7 +324,7 @@ function abrirModoDemo() {
         <button class="btn-empresa-troca" style="flex-direction:column;align-items:flex-start;gap:2px"
                 onclick="entrarModoDemo('${escapeJsAttr(u.uid)}')">
             <span style="font-weight:600">${escapeHtml(u.nome)}
-                <em style="font-style:normal;opacity:0.6;font-size:0.78rem">— ${escapeHtml(u.role)}</em>
+                <em style="font-style:normal;opacity:0.6;font-size:0.78rem">— ${escapeHtml((typeof ROLES !== 'undefined' && ROLES[u.role]?.label) || u.role)}</em>
             </span>
             <span style="font-size:0.76rem;color:var(--text-muted)">${escapeHtml(u.descricao)}</span>
         </button>`).join("");
@@ -370,6 +370,7 @@ function entrarModoDemo(uid) {
 
     document.getElementById("appContainer").style.display = "block";
     _aplicarEmpresaAtiva(visiveis[0] || "");
+    if (typeof aplicarPermissoesDaTela === "function") aplicarPermissoesDaTela();
     atualizarListas();
     mostrarTela("dashboard");
     carregarDashboard();

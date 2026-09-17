@@ -1,8 +1,7 @@
 /*=================================================
   USUARIOS.JS — Gerenciamento de Usuários e Permissões
-  Acessível apenas para role: 'supremo' | 'admin'
-  v1.1 — Fuel Mind
-  FIX: usuário pode editar próprio nome (não só senha)
+  A lista e a gestão são de supremo e admin (o admin, só das empresas
+  dele). O operador vê aqui apenas o próprio perfil e a troca de senha.
 =================================================*/
 
 /* ─── ESTADO ─── */
@@ -28,11 +27,27 @@ function _senhaTemporaria() {
 }
 
 /* ─── ROLES ─── */
+/* O papel operacional é gravado como 'usuario' (nome interno, que as regras
+   do servidor e os perfis existentes usam) e se chama "Operador" na tela:
+   admin e supremo também são usuários. */
 const ROLES = {
-    supremo: { label: "Supremo",  desc: "Acesso total, gerencia usuários e configurações" },
-    admin:   { label: "Admin",    desc: "Acesso total às empresas permitidas, sem gerenciar usuários" },
-    usuario: { label: "Usuário",  desc: "Acesso operacional às empresas permitidas" },
+    supremo: { label: "Supremo",  desc: "Acesso total a todas as empresas, usuários e configurações" },
+    admin:   { label: "Admin",    desc: "Empresas permitidas; gerencia os usuários delas e as configurações" },
+    usuario: { label: "Operador", desc: "Lança e consulta nas empresas permitidas" },
 };
+
+function _rotuloPapel(role) {
+    return ROLES[role]?.label || String(role || "—");
+}
+
+/** Na demonstração não existe conta de verdade: nada é criado nem alterado. */
+function _bloqueioDemoUsuarios() {
+    if (typeof demoAtivo === 'function' && demoAtivo()) {
+        mostrarToast("No modo demonstração a tela de usuários só mostra: nenhuma conta é criada ou alterada.", "info", 6000);
+        return true;
+    }
+    return false;
+}
 
 /**
  * Converte nomes de empresa nos ids correspondentes.
@@ -48,6 +63,11 @@ function _idsDasEmpresas(nomes) {
     return (nomes || [])
         .map(nome => db.empresas.find(e => e.nome === nome)?.id)
         .filter(Boolean);
+}
+
+/** Nomes atuais das empresas de um perfil, pelos ids (renomear não tira acesso). */
+function _nomesDasEmpresasDoPerfil(u) {
+    return _idsDoPerfil(u).map(id => db.empresas.find(e => e.id === id)?.nome).filter(Boolean);
 }
 
 /**
@@ -81,9 +101,10 @@ function podeAlterarRoles() {
 function _empresasGerenciaveis() {
     const perfil = window._usuarioAtual;
     if (!perfil) return [];
-    const ativas = db.empresas.filter(e => e.ativo !== false).map(e => e.nome);
-    if (perfil.role === "supremo") return ativas;
-    return ativas.filter(nome => (perfil.empresas || []).includes(nome));
+    const ativas = db.empresas.filter(e => e.ativo !== false);
+    if (perfil.role === "supremo") return ativas.map(e => e.nome);
+    const meus = _idsDoPerfil(perfil);
+    return ativas.filter(e => meus.includes(e.id)).map(e => e.nome);
 }
 
 /**
@@ -110,9 +131,14 @@ O índice guarda apenas o e-mail associado a cada @, e é o que permite entrar s
         tipo: "info"
     })) return;
 
-    let ok = 0, falhas = 0;
+    let ok = 0, falhas = 0, conflitos = 0;
     for (const u of comUsername) {
         try {
+            // Um @ que no índice já aponta para OUTRA conta não é regravado:
+            // o perfil pode ter sido alterado à mão, e regravar entregaria o @
+            // de uma pessoa para a conta de outra.
+            const atual = await window._firestore.usuarioBuscarPorUsername(u.username);
+            if (atual && atual.uid && atual.uid !== u.uid) { conflitos++; continue; }
             await window._firestore.usernameMapaDefinir(u.username, u.email, u.uid);
             ok++;
         } catch (e) {
@@ -121,11 +147,11 @@ O índice guarda apenas o e-mail associado a cada @, e é o que permite entrar s
         }
     }
     mostrarToast(
-        falhas === 0
+        (falhas === 0 && conflitos === 0)
             ? `Índice reconstruído: ${ok} usuário(s).`
-            : `Índice reconstruído com ${ok} sucesso(s) e ${falhas} falha(s). Veja o console.`,
-        falhas === 0 ? "sucesso" : "aviso",
-        6000
+            : `Índice reconstruído: ${ok} ok, ${falhas} falha(s), ${conflitos} @ que já pertencem a outra conta e ficaram como estavam.`,
+        (falhas === 0 && conflitos === 0) ? "sucesso" : "aviso",
+        8000
     );
 }
 
@@ -149,10 +175,20 @@ async function carregarUsuarios() {
     }
 
     if (!podeGerenciarUsuarios()) {
+        // O operador não gerencia ninguém, mas precisa trocar a própria
+        // senha — a senha temporária manda fazer isso aqui.
+        const u = window._usuarioAtual || {};
         container.innerHTML =
-            `<div class="card" style="text-align:center;padding:40px;">
-                <p style="color:var(--danger)">Você não tem permissão para acessar esta área.</p>
-                <p class="dica" style="margin-top:8px;">Role: ${window._usuarioAtual?.role || 'não definido'}</p>
+            `<div class="card" style="padding:24px;max-width:520px;">
+                <h3 style="margin:0 0 6px">Meu perfil</h3>
+                <p style="margin:0 0 4px"><strong>${escapeHtml(u.nome || '')}</strong></p>
+                <p class="dica" style="margin:0 0 4px">${escapeHtml(u.email || '')}${u.username ? ` · @${escapeHtml(u.username)}` : ''}</p>
+                <p class="dica" style="margin:0 0 16px">Nível: ${escapeHtml(_rotuloPapel(u.role))} · Empresas: ${escapeHtml(_nomesDasEmpresasDoPerfil(u).join(', ') || '—')}</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="btn-editar" onclick="abrirModalEditarProprioPerfil()">Editar perfil</button>
+                    <button class="btn-secundario" onclick="abrirModalAlterarSenha()">Alterar senha</button>
+                </div>
+                <p class="dica" style="margin-top:16px">A lista de usuários é de administradores.</p>
              </div>`;
         return;
     }
@@ -178,11 +214,11 @@ async function _recarregarListaUsuarios() {
             _usuariosCache = todos;
         } else {
             // Admin só enxerga a si mesmo e usuários que compartilhem ao menos
-            // uma empresa com ele — nunca a base de usuários inteira.
-            const minhasEmpresas = window._usuarioAtual?.empresas || [];
+            // uma empresa com ele — pelos ids, que não mudam num rename.
+            const minhas = _idsDoPerfil(window._usuarioAtual);
             _usuariosCache = todos.filter(u =>
                 u.uid === window._usuarioAtual?.uid ||
-                (u.empresas || []).some(e => minhasEmpresas.includes(e))
+                _idsDoPerfil(u).some(id => minhas.includes(id))
             );
         }
         _renderUsuarios();
@@ -191,7 +227,7 @@ async function _recarregarListaUsuarios() {
         container.innerHTML = `
             <div style="padding:20px;background:var(--surface-alt);border-radius:var(--radius);border:1px solid var(--border);">
                 <p style="color:var(--danger);margin-bottom:8px;">Erro ao carregar usuários:</p>
-                <code style="font-size:0.82rem;color:var(--text-muted);">${e.message}</code>
+                <code style="font-size:0.82rem;color:var(--text-muted);">${escapeHtml(e.message)}</code>
                 <br><br>
                 <button class="btn-secundario" onclick="_recarregarListaUsuarios()">Tentar novamente</button>
             </div>`;
@@ -205,19 +241,21 @@ function _renderUsuarios() {
     const supremoAtual = window._usuarioAtual?.role === "supremo";
 
     const linhas = _usuariosCache.map(u => {
-        const roleInfo   = ROLES[u.role] || { label: u.role };
         const isSelf     = u.uid === window._usuarioAtual?.uid;
+        const nomesEmp   = _nomesDasEmpresasDoPerfil(u);
         const empresasStr = u.role === "supremo"
             ? "<em style='color:var(--text-muted)'>Todas</em>"
-            : (u.empresas?.length
-                ? u.empresas.map(e => `<span class="badge-empresa-tag">${escapeHtml(e)}</span>`).join(" ")
+            : (nomesEmp.length
+                ? nomesEmp.map(e => `<span class="badge-empresa-tag">${escapeHtml(e)}</span>`).join(" ")
                 : "<em style='color:var(--text-muted)'>Nenhuma</em>");
 
         const ultimoAcesso = u.ultimoAcesso
             ? new Date(u.ultimoAcesso).toLocaleString("pt-BR")
             : "Nunca";
 
-        const badges = `<span class="badge-role badge-role-${u.role}">${roleInfo.label}</span>
+        // O papel vem do banco: escapado, e a classe só com papel conhecido.
+        const classePapel = ROLES[u.role] ? u.role : "desconhecido";
+        const badges = `<span class="badge-role badge-role-${classePapel}">${escapeHtml(_rotuloPapel(u.role))}</span>
                         ${u.ativo === false ? '<span class="badge-inativo-user">Inativo</span>' : ''}
                         ${isSelf ? '<span class="badge-voce">Você</span>' : ''}`;
 
@@ -231,20 +269,20 @@ function _renderUsuarios() {
                <button class="btn-secundario" onclick="abrirModalAlterarSenha()">Alterar senha</button>`
             : alvoBloqueado
             ? `<span style="font-size:0.78rem;color:var(--text-muted);font-style:italic">Sem permissão</span>`
-            : `<button class="btn-editar" onclick="abrirModalEditarUsuario('${u.uid}')">Editar</button>
+            : `<button class="btn-editar" onclick="abrirModalEditarUsuario('${escapeJsAttr(u.uid)}')">Editar</button>
                ${u.ativo !== false
-                   ? `<button class="btn-inativar" onclick="toggleAtivoUsuario('${u.uid}')">Inativar</button>`
-                   : `<button class="btn-secundario" onclick="toggleAtivoUsuario('${u.uid}')">Reativar</button>`
+                   ? `<button class="btn-inativar" onclick="toggleAtivoUsuario('${escapeJsAttr(u.uid)}')">Inativar</button>`
+                   : `<button class="btn-secundario" onclick="toggleAtivoUsuario('${escapeJsAttr(u.uid)}')">Reativar</button>`
                }
                ${supremoAtual && u.role !== "supremo"
-                   ? `<button class="btn-excluir" onclick="excluirUsuario('${u.uid}')">Excluir</button>`
+                   ? `<button class="btn-excluir" onclick="excluirUsuario('${escapeJsAttr(u.uid)}')">Excluir</button>`
                    : ""}`;
 
         return `<tr class="${u.ativo === false ? 'linha-inativo' : ''}">
             <td><strong>${escapeHtml(u.nome)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(u.email)}</small>${u.username ? `<br><small style="color:var(--primary);opacity:0.8">@${escapeHtml(u.username)}</small>` : ''}</td>
             <td>${badges}</td>
             <td>${empresasStr}</td>
-            <td style="font-size:0.78rem;color:var(--text-muted)">${ultimoAcesso}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted)">${escapeHtml(ultimoAcesso)}</td>
             <td class="no-print"><div style="display:flex;gap:6px;flex-wrap:wrap">${acoes}</div></td>
         </tr>`;
     }).join("");
@@ -317,6 +355,7 @@ function abrirModalEditarProprioPerfil() {
 }
 
 async function confirmarEditarProprioPerfil() {
+    if (_bloqueioDemoUsuarios()) return;
     const nome     = document.getElementById("perfilNomeInput")?.value.trim();
     const username = document.getElementById("perfilUsernameInput")?.value.trim().toLowerCase();
 
@@ -366,7 +405,15 @@ function abrirModalNovoUsuario() {
 function abrirModalEditarUsuario(uid) {
     const u = _usuariosCache.find(u => u.uid === uid);
     if (!u) return;
-    _abrirModalUsuario(u, _empresasGerenciaveis());
+    // Empresas inativas que o usuário já tem aparecem marcadas: antes elas
+    // não apareciam, e salvar qualquer coisa tirava o acesso a elas.
+    const gerenciaveis = _empresasGerenciaveis();
+    const inativasDele = _idsDoPerfil(u)
+        .map(id => db.empresas.find(e => e.id === id))
+        .filter(e => e && e.ativo === false && (window._usuarioAtual?.role === "supremo"
+            || _idsDoPerfil(window._usuarioAtual).includes(e.id)))
+        .map(e => e.nome);
+    _abrirModalUsuario(u, gerenciaveis.concat(inativasDele.filter(n => !gerenciaveis.includes(n))));
 }
 
 function _abrirModalUsuario(usuario, todasEmpresas) {
@@ -379,8 +426,10 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
             `<option value="${r}" ${usuario?.role === r ? "selected" : ""}>${info.label} — ${info.desc}</option>`
         ).join("");
 
+    const nomesDoAlvo = usuario ? _nomesDasEmpresasDoPerfil(usuario) : [];
     const empresasCheck = todasEmpresas.map(emp => {
-        const marcada = usuario?.empresas?.includes(emp) || false;
+        const marcada = nomesDoAlvo.includes(emp);
+        const inativa = db.empresas.find(e => e.nome === emp)?.ativo === false;
         const borderC = marcada ? 'var(--primary)' : 'var(--border)';
         const bgC     = marcada ? 'var(--primary-subtle)' : 'var(--surface-alt)';
         const dotBg   = marcada ? 'var(--primary)' : 'transparent';
@@ -394,7 +443,7 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
                    color:var(--text);cursor:pointer;transition:all 0.15s;font-size:0.88rem;">
             <span class="emp-toggle-dot" style="width:14px;height:14px;flex-shrink:0;border-radius:50%;
                 border:2px solid ${borderC};background:${dotBg};transition:all 0.15s;"></span>
-            ${escapeHtml(emp)}
+            ${escapeHtml(emp)}${inativa ? ' <small style="opacity:0.7">(inativa)</small>' : ''}
         </button>`;
     }).join("");
 
@@ -499,6 +548,7 @@ function _coletarEmpresasSelecionadas() {
 }
 
 async function confirmarNovoUsuario() {
+    if (_bloqueioDemoUsuarios()) return;
     const nome     = document.getElementById("usuarioNomeInput")?.value.trim();
     const email    = document.getElementById("usuarioEmailInput")?.value.trim();
     const senha    = document.getElementById("usuarioSenhaInput")?.value.trim();
@@ -529,18 +579,36 @@ async function confirmarNovoUsuario() {
         const cred = await window._firestore.authCriarUsuario(email, senha);
         const uid  = cred.user.uid;
 
-        await window._firestore.usuarioSalvar(uid, {
-            nome, email, role, empresas,
-            empresaIds: _idsDasEmpresas(empresas),
-            username: username || null,
-            ativo: true,
-            criadoEm: new Date().toISOString(),
-            ultimoAcesso: null
-        });
-        if (username) await window._firestore.usernameMapaDefinir(username, email, uid);
+        // A conta já existe a partir daqui. Se o perfil ou o @ falharem, é
+        // preciso dizer exatamente isso: antes a mensagem era "Erro ao criar
+        // usuário", e a nova tentativa respondia "e-mail já cadastrado".
+        try {
+            await window._firestore.usuarioSalvar(uid, {
+                nome, email, role, empresas,
+                empresaIds: _idsDasEmpresas(empresas),
+                username: username || null,
+                ativo: true,
+                criadoEm: new Date().toISOString(),
+                ultimoAcesso: null
+            });
+        } catch (erroPerfil) {
+            if (btn) esconderSpinner(btn);
+            await fmConfirm({
+                titulo: "Conta criada, perfil não",
+                msg: `A conta de acesso de ${email} foi criada, mas o perfil não foi gravado (${erroPerfil.code || erroPerfil.message}).\n\n`
+                   + `Sem perfil a pessoa não entra. Peça ao supremo para apagar essa conta no Console do Firebase Authentication e crie de novo.`,
+                confirmTxt: "Entendi", cancelTxt: "Fechar", tipo: "aviso"
+            });
+            return;
+        }
+        let avisoIndice = "";
+        if (username) {
+            try { await window._firestore.usernameMapaDefinir(username, email, uid); }
+            catch (_) { avisoIndice = ` O login por @${username} não foi registrado: por enquanto a pessoa entra pelo e-mail. Edite o usuário e salve de novo para tentar.`; }
+        }
 
         fecharUsuarioModal();
-        mostrarToast(`Usuário "${nome}" criado com sucesso!`, "sucesso", 5000);
+        mostrarToast(`Usuário "${nome}" criado com sucesso!${avisoIndice}`, avisoIndice ? "aviso" : "sucesso", avisoIndice ? 9000 : 5000);
         await _recarregarListaUsuarios();
     } catch (e) {
         if (btn) esconderSpinner(btn);
@@ -557,6 +625,7 @@ async function confirmarNovoUsuario() {
 }
 
 async function confirmarEditarUsuario(uid) {
+    if (_bloqueioDemoUsuarios()) return;
     // Admin não pode editar supremo
     const alvo = _usuariosCache.find(u => u.uid === uid);
     if (alvo?.role === "supremo" && window._usuarioAtual?.role === "admin") {
@@ -566,8 +635,17 @@ async function confirmarEditarUsuario(uid) {
     const nome     = document.getElementById("usuarioNomeInput")?.value.trim();
     const role     = document.getElementById("usuarioRoleSelect")?.value;
     const username = document.getElementById("usuarioUsernameInput")?.value.trim().toLowerCase() || null;
-    const permitidas = _empresasGerenciaveis();
-    const empresas = role === "supremo" ? [] : _coletarEmpresasSelecionadas().filter(e => permitidas.includes(e));
+    // As empresas que o modal mostrou são as que este editor gerencia (mais as
+    // inativas do alvo). As outras empresas do alvo não passaram pelo modal
+    // e ficam como estavam — antes eram apagadas em qualquer edição.
+    const noModal = Array.from(document.querySelectorAll(".btn-empresa-toggle")).map(b => b.dataset.empresa);
+    const selecionadas = _coletarEmpresasSelecionadas().filter(e => noModal.includes(e));
+    const idsForaDoModal = _idsDoPerfil(alvo || {}).filter(id => {
+        const nomeEmp = db.empresas.find(e => e.id === id)?.nome;
+        return !nomeEmp || !noModal.includes(nomeEmp);
+    });
+    const empresaIds = role === "supremo" ? [] : [...new Set(_idsDasEmpresas(selecionadas).concat(idsForaDoModal))];
+    const empresas   = empresaIds.map(id => db.empresas.find(e => e.id === id)?.nome).filter(Boolean);
 
     if (!nome) return mostrarToast("Informe o nome.", "aviso");
     if (username && username.length < 3) return mostrarToast("O usuário deve ter ao menos 3 caracteres.", "aviso");
@@ -596,8 +674,7 @@ async function confirmarEditarUsuario(uid) {
 
         const usernameAntigo = _usuariosCache.find(u => u.uid === uid)?.username || null;
         await window._firestore.usuarioSalvar(uid, {
-            nome, role, empresas,
-            empresaIds: _idsDasEmpresas(empresas),
+            nome, role, empresas, empresaIds,
             username: username || null
         });
         await _sincronizarIndiceUsername(usernameAntigo, username, alvo?.email, uid);
@@ -612,6 +689,7 @@ async function confirmarEditarUsuario(uid) {
 
 /* ─── INATIVAR / REATIVAR ─── */
 async function toggleAtivoUsuario(uid) {
+    if (_bloqueioDemoUsuarios()) return;
     const u = _usuariosCache.find(u => u.uid === uid);
     if (!u) return;
 
@@ -625,7 +703,7 @@ async function toggleAtivoUsuario(uid) {
         if (u.role === "supremo" && supremosAtivos.length === 0) {
             return mostrarToast("Não é possível inativar o único usuário supremo ativo.", "aviso");
         }
-        if (!await fmConfirm({ titulo: `Inativar "${u.nome}"?`, msg: "Ele não conseguirá mais fazer login.", confirmTxt: "Inativar", tipo: "aviso" })) return;
+        if (!await fmConfirm({ titulo: `Inativar "${u.nome}"?`, msg: "A pessoa não consegue mais entrar, e uma sessão que esteja aberta é encerrada.", confirmTxt: "Inativar", tipo: "aviso" })) return;
     } else {
         if (!await fmConfirm({ titulo: `Reativar "${u.nome}"?`, confirmTxt: "Reativar", tipo: "info" })) return;
     }
@@ -654,6 +732,7 @@ async function toggleAtivoUsuario(uid) {
  * quê.
  */
 async function excluirUsuario(uid) {
+    if (_bloqueioDemoUsuarios()) return;
     const u = _usuariosCache.find(u => u.uid === uid);
     if (!u) return;
     if (!await fmConfirm({
@@ -702,6 +781,7 @@ function abrirModalAlterarSenha() {
 }
 
 async function confirmarAlterarSenha() {
+    if (_bloqueioDemoUsuarios()) return;
     const nova      = document.getElementById("novaSenhaInput")?.value;
     const confirmar = document.getElementById("confirmarSenhaInput")?.value;
 

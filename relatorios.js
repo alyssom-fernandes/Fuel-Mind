@@ -723,7 +723,7 @@ async function exportarPDF(contexto) {
     // Sempre um data URI: o projeto não usa Firebase Storage, então a logo é
     // reduzida e gravada como base64 no próprio documento (ver sistema.js).
     // jsPDF não aceita URL remota, então isso também simplifica o desenho.
-    cfg.logo = cfg.logos?.[empresaFiltroGlobal]?.url || cfg.logo || null;
+    cfg.logo = logoDaEmpresa(empresaFiltroGlobal)?.url || cfg.logo || null;
 
     function hexRgb(hex) {
         const h = hex.replace('#','');

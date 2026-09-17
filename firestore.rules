@@ -16,15 +16,26 @@ rules_version = '2';
 //  todas as empresas.
 //
 //  O perfil guarda empresas[] com NOMES, que é o que a interface exibe, e
-//  empresaIds[] com os IDS, que é o que estas regras consultam. Os dois
-//  existem para que renomear uma empresa não invalide permissão nenhuma.
+//  empresaIds[] com os IDS, que é o que estas regras consultam e o que a
+//  interface usa para decidir acesso. Renomear uma empresa não muda o id.
+//
+//  PAPÉIS: supremo, admin e operador (gravado como 'usuario' — o nome
+//  interno ficou, o que a tela mostra é "Operador").
 //
 //  O que estas regras garantem:
 //   - só usuário autenticado E ativo lê ou grava os dados;
 //   - cada usuário lê apenas os lançamentos das empresas do seu perfil;
 //   - a coleção usuarios não é legível anonimamente;
+//   - ninguém cria o próprio perfil: perfil só nasce pelas mãos de supremo
+//     ou admin (antes de 17/09/2026, qualquer conta criada pelo Auth podia
+//     se gravar como admin — a apiKey é pública);
 //   - ninguém promove o próprio papel nem se dá acesso a outras empresas;
-//   - o índice público expõe apenas o e-mail necessário para o login por @.
+//     o admin só cria e edita admin e operador, só dentro das empresas dele,
+//     e não mexe no próprio perfil por esse caminho;
+//   - quem não é supremo não encolhe a lista de lançamentos de uma empresa
+//     nem as listas de cadastros: excluir de verdade é só do supremo;
+//   - o índice público expõe apenas o e-mail necessário para o login por @,
+//     e ninguém sobrescreve o @ de outra pessoa.
 //
 //  NOTA SOBRE get(campo, padrão)
 //  Acessar campo inexistente em regra do Firestore gera ERRO de avaliação,
@@ -76,6 +87,10 @@ service cloud.firestore {
       return dados.get('role', '');
     }
 
+    function idsDe(dados) {
+      return dados.get('empresaIds', []);
+    }
+
     // Acesso aos lançamentos de uma empresa: supremo vê todas; os demais,
     // apenas as que estiverem em empresaIds[] do próprio perfil.
     function podeNaEmpresa(empresaId) {
@@ -83,33 +98,60 @@ service cloud.firestore {
         || perfil().get('empresaIds', []).hasAny([empresaId]);
     }
 
-    // Campos que só quem gerencia usuários pode alterar.
+    // Campos que só quem gerencia usuários pode alterar. O e-mail entra
+    // aqui porque é ele que o índice de @ aponta: trocar o próprio e-mail no
+    // perfil fazia "Reconstruir índice" apontar o @ de alguém para outra
+    // conta.
     function campoSensivelIntacto(antes, depois) {
       return antes.get('role', '') == depois.get('role', '')
         && antes.get('ativo', true) == depois.get('ativo', true)
         && antes.get('empresas', []) == depois.get('empresas', [])
-        && antes.get('empresaIds', []) == depois.get('empresaIds', []);
+        && antes.get('empresaIds', []) == depois.get('empresaIds', [])
+        && antes.get('email', '') == depois.get('email', '');
     }
 
+    // ── Admin: dentro das próprias empresas ─────────────────────────────
+    // O admin mexe só no que é dele: o perfil alvo precisa dividir ao menos
+    // uma empresa com ele, e as empresas do alvo que o admin NÃO tem ficam
+    // exatamente como estavam — antes, editar o nome de um colega apagava
+    // as empresas dele que o admin não enxergava.
+    function divideEmpresaComAdmin(dados) {
+      return idsDe(dados).toSet().intersection(perfil().get('empresaIds', []).toSet()).size() > 0;
+    }
+
+    function foraDoEscopoIntacto(antes, depois) {
+      return idsDe(depois).toSet().difference(perfil().get('empresaIds', []).toSet())
+          == idsDe(antes).toSet().difference(perfil().get('empresaIds', []).toSet());
+    }
+
+    function papelQueAdminDa(dados) {
+      return papelDe(dados) in ['admin', 'usuario'];
+    }
+
+    // ── Documento compartilhado ──────────────────────────────────────────
     // Uma lista do documento compartilhado não pode encolher.
     function listaNaoEncolheu(campo) {
       return request.resource.data.get(campo, []).size()
           >= resource.data.get(campo, []).size();
     }
 
-    // O que o papel operacional pode fazer no documento de cadastros:
-    // acrescentar, nunca remover, e não tocar na configuração do PDF nem na
-    // dos alertas — que são de todo mundo (a régua do preço vale para o
-    // lançamento e o Dashboard de todos; só admin e supremo a alteram,
-    // decisão de 16/09/2026). Cobre o "Cadastrar X" do combobox, que é a
-    // única razão pela qual quem só lança nota precisa escrever aqui.
-    function cadastroSoCresce() {
+    function listasNaoEncolheram() {
       return listaNaoEncolheu('motoristas')
         && listaNaoEncolheu('veiculos')
         && listaNaoEncolheu('empresas')
         && listaNaoEncolheu('combustiveis')
         && listaNaoEncolheu('bases')
-        && listaNaoEncolheu('conjuntosVeiculos')
+        && listaNaoEncolheu('conjuntosVeiculos');
+    }
+
+    // O que o operador pode fazer no documento de cadastros: acrescentar,
+    // nunca remover, e não tocar na configuração do PDF nem na dos alertas —
+    // que são de todo mundo (a régua do preço vale para o lançamento e o
+    // Dashboard de todos; só admin e supremo a alteram, decisão de
+    // 16/09/2026). Cobre o "Cadastrar X" do combobox, que é a única razão
+    // pela qual quem só lança nota precisa escrever aqui.
+    function cadastroSoCresce() {
+      return listasNaoEncolheram()
         && request.resource.data.get('configRelatorio', {})
         == resource.data.get('configRelatorio', {})
         && request.resource.data.get('configAlertas', {})
@@ -121,26 +163,20 @@ service cloud.firestore {
     // têm vínculo com empresa — servem todas.
     //
     // Até 08/09/2026 esta regra era `allow read, write: if ativo()`, e o
-    // papel operacional — que existe justamente para só lançar nota — podia
-    // apagar a lista de empresas, os conjuntos de veículos com a composição
-    // histórica, as taxas de frete e a configuração do PDF de todo mundo,
-    // tudo de um documento só. Não é hipótese: o cliente grava o documento
-    // inteiro com `setDoc` a cada salvamento, então basta a memória dele
-    // estar errada.
-    //
-    // Fechar para admin e supremo teria quebrado o "Cadastrar X" do
-    // combobox: o operador que encontra um motorista novo no meio de um
-    // lote precisa cadastrá-lo sem sair da tela. Por isso a regra não é por
-    // papel, é por efeito — quem administra faz o que quiser, e os demais
-    // só conseguem gravar um documento que não perdeu nada.
+    // operador podia apagar a lista de empresas, os conjuntos de veículos
+    // com a composição histórica, as taxas de frete e a configuração do PDF
+    // de todo mundo. Em 17/09/2026 o admin também deixou de poder encolher
+    // as listas: excluir uma empresa que ele não enxerga deixava o documento
+    // de lançamentos dela órfão para sempre. Excluir cadastro é do supremo.
     //
     // O que esta regra ainda NÃO impede: renomear um cadastro existente,
-    // que mantém o tamanho da lista. É correção legítima na maior parte das
-    // vezes e propaga para os lançamentos; fica registrado como limite.
+    // que mantém o tamanho da lista. A tela restringe o rename ao supremo.
     match /dados/compartilhado {
       allow read:   if ativo();
       allow create: if gerenciaUsuarios();
-      allow update: if gerenciaUsuarios() || (ativo() && cadastroSoCresce());
+      allow update: if ehSupremo()
+                    || (ehAdmin() && listasNaoEncolheram())
+                    || (ativo() && cadastroSoCresce());
       allow delete: if ehSupremo();
     }
 
@@ -154,10 +190,26 @@ service cloud.firestore {
     // ── Lançamentos, um documento por empresa ────────────────────────────
     // `documento` chega como "lanc__{empresaId}". A regra recorta o id
     // depois do prefixo e confere contra empresaIds[] do perfil.
+    //
+    // Nota excluída ou cancelada continua no vetor (lápide), então no uso
+    // normal a lista nunca encolhe. Encolher é restaurar backup, apagar tudo
+    // ou gravar um vetor que o cliente não chegou a ler — o último apagava o
+    // histórico inteiro de uma empresa. Só o supremo encolhe; e só o supremo
+    // apaga o documento.
     match /dados/{documento} {
-      allow read, write: if ativo()
-                         && documento.matches('lanc__.*')
-                         && podeNaEmpresa(documento.split('lanc__')[1]);
+      allow read: if ativo()
+                  && documento.matches('lanc__.*')
+                  && podeNaEmpresa(documento.split('lanc__')[1]);
+      allow create: if ativo()
+                  && documento.matches('lanc__.*')
+                  && podeNaEmpresa(documento.split('lanc__')[1]);
+      allow update: if ativo()
+                  && documento.matches('lanc__.*')
+                  && podeNaEmpresa(documento.split('lanc__')[1])
+                  && (ehSupremo()
+                      || request.resource.data.get('lancamentos', []).size()
+                         >= resource.data.get('lancamentos', []).size());
+      allow delete: if ehSupremo() && documento.matches('lanc__.*');
     }
 
     // ── Perfis de usuário ────────────────────────────────────────────────
@@ -165,37 +217,48 @@ service cloud.firestore {
 
       // Ler o próprio perfil é necessário logo após o login, antes de
       // qualquer outra checagem — por isso a condição não usa ativo().
-      // O app já derruba a sessão de quem está inativo.
+      // O app derruba a sessão de quem está inativo no login e escuta o
+      // próprio perfil durante a sessão.
       allow get: if autenticado() && (request.auth.uid == uid || gerenciaUsuarios());
 
-      // Listagem é da tela de Usuários. O recorte por empresa continua
-      // sendo feito no cliente: como o admin precisa enxergar quem
-      // compartilha empresa com ele, a regra não consegue estreitar mais
-      // sem quebrar a tela.
+      // Listagem é da tela de Usuários. O recorte por empresa é feito no
+      // cliente: a regra não consegue filtrar uma listagem pelo conteúdo.
       allow list: if gerenciaUsuarios();
 
-      // Criação feita por quem gerencia usuários, ou auto-criação do
-      // próprio registro — que nunca pode nascer supremo.
-      allow create: if gerenciaUsuarios()
-                    || (autenticado()
-                        && request.auth.uid == uid
-                        && papelDe(request.resource.data) != 'supremo');
+      // Perfil só nasce pelas mãos de quem gerencia usuários. Não existe
+      // mais autocriação: o app nunca a usou, e ela deixava qualquer conta
+      // criada pelo Auth — que é público — gravar role 'admin' em si mesma.
+      allow create: if (ehSupremo()
+                        && papelDe(request.resource.data) in ['supremo', 'admin', 'usuario'])
+                    || (ehAdmin()
+                        && uid != request.auth.uid
+                        && papelQueAdminDa(request.resource.data)
+                        && idsDe(request.resource.data).hasOnly(perfil().get('empresaIds', [])));
 
       allow update: if
         // Supremo altera qualquer perfil, inclusive papel e empresas.
-        ehSupremo()
-        // Admin altera perfis comuns, mas não mexe em supremo nem cria um.
+        (ehSupremo() && papelDe(request.resource.data) in ['supremo', 'admin', 'usuario'])
+        // Admin altera admin e operador das empresas dele, sem sair do
+        // escopo e sem editar o próprio perfil por este caminho.
         || (ehAdmin()
-            && papelDe(resource.data) != 'supremo'
-            && papelDe(request.resource.data) != 'supremo')
+            && uid != request.auth.uid
+            && papelQueAdminDa(resource.data)
+            && papelQueAdminDa(request.resource.data)
+            && divideEmpresaComAdmin(resource.data)
+            && foraDoEscopoIntacto(resource.data, request.resource.data))
         // Qualquer autenticado atualiza o próprio perfil (nome, username,
-        // ultimoAcesso) desde que não toque em papel, ativo ou empresas.
+        // ultimoAcesso) desde que não toque em papel, ativo, empresas ou
+        // e-mail.
         || (autenticado()
             && request.auth.uid == uid
             && campoSensivelIntacto(resource.data, request.resource.data));
 
       allow delete: if ehSupremo()
-                    || (ehAdmin() && papelDe(resource.data) != 'supremo');
+                    || (ehAdmin()
+                        && uid != request.auth.uid
+                        && papelQueAdminDa(resource.data)
+                        && divideEmpresaComAdmin(resource.data)
+                        && idsDe(resource.data).hasOnly(perfil().get('empresaIds', [])));
     }
 
     // ── Índice público username → e-mail ─────────────────────────────────
@@ -204,16 +267,44 @@ service cloud.firestore {
     // O documento contém apenas { email, uid } — nunca nome, papel ou
     // empresas. A listagem da coleção continua restrita, para que não seja
     // possível varrer todos os e-mails de uma vez.
+    //
+    // Ninguém toma o @ de outra pessoa: a entrada nova tem de ser do próprio
+    // autor (com o e-mail da conta dele) ou gravada por quem gerencia
+    // usuários; e uma entrada existente só é trocada pelo dono dela, pelo
+    // supremo, ou por admin quando o dono não é supremo.
     match /usernames/{username} {
+      function donoDe(dados) {
+        return dados.get('uid', '');
+      }
+
+      function donoNaoEhSupremo(dados) {
+        return !exists(/databases/$(database)/documents/usuarios/$(donoDe(dados)))
+          || get(/databases/$(database)/documents/usuarios/$(donoDe(dados))).data.get('role', '') != 'supremo';
+      }
+
+      function proprioComEmailDaConta() {
+        return ativo()
+          && donoDe(request.resource.data) == request.auth.uid
+          && request.auth.token.email is string
+          && request.resource.data.get('email', '').lower() == request.auth.token.email.lower();
+      }
+
       allow get:  if true;
       allow list: if gerenciaUsuarios();
 
-      allow create, update: if gerenciaUsuarios()
-                            || (autenticado()
-                                && request.resource.data.get('uid', '') == request.auth.uid);
+      allow create: if ehSupremo()
+                    || (ehAdmin() && donoNaoEhSupremo(request.resource.data))
+                    || proprioComEmailDaConta();
 
-      allow delete: if gerenciaUsuarios()
-                    || (autenticado() && resource.data.get('uid', '') == request.auth.uid);
+      allow update: if ehSupremo()
+                    || (ehAdmin()
+                        && donoNaoEhSupremo(resource.data)
+                        && donoNaoEhSupremo(request.resource.data))
+                    || (proprioComEmailDaConta() && donoDe(resource.data) == request.auth.uid);
+
+      allow delete: if ehSupremo()
+                    || (ehAdmin() && donoNaoEhSupremo(resource.data))
+                    || (ativo() && donoDe(resource.data) == request.auth.uid);
     }
 
     // ── Bloqueio padrão ──────────────────────────────────────────────────

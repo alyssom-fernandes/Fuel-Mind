@@ -116,22 +116,31 @@ garantirConjuntos();
  * Dado uma placa e uma data (YYYY-MM-DD), retorna o conjunto
  * que continha essa placa naquela data (respeitando vigência).
  */
-window.resolverConjuntoPorPlaca = function(placa, data) {
+/* A composição que valia NAQUELA data decide — não o "ativo" de hoje.
+   Antes um conjunto inativado (o caminho que a tela recomenda para
+   cadastros) sumia também dos Fretes dos meses em que rodou, e o total por
+   conjunto de um mês já fechado mudava. Inativar agora fecha a vigência na
+   data da inativação; é ela que tira o conjunto dos meses seguintes. */
+window.resolverConjuntoEPeriodo = function(placa, data) {
     if (!placa || !db.conjuntosVeiculos) return null;
     const placaNorm = normalizarPlaca(placa);
     const dataRef = data || "9999-12-31";
 
     for (const conj of db.conjuntosVeiculos) {
-        if (conj.ativo === false) continue;
+        if (!data && conj.ativo === false) continue;
         const hist = [...(conj.historico || [])].reverse();
         for (const h of hist) {
             if (h.vigenciaDe > dataRef) continue;
             if (h.vigenciaAte && h.vigenciaAte < dataRef) continue;
             const placasNorm = (h.placas || []).map(p => normalizarPlaca(p));
-            if (placasNorm.includes(placaNorm)) return conj;
+            if (placasNorm.includes(placaNorm)) return { conj, periodo: h };
         }
     }
     return null;
+};
+
+window.resolverConjuntoPorPlaca = function(placa, data) {
+    return resolverConjuntoEPeriodo(placa, data)?.conj || null;
 };
 
 // ========== MODAL DE EDIÇÃO ==========
@@ -140,8 +149,10 @@ let modalContexto = null;
 function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '', taxaFreteAtual = '') {
     modalContexto = { lista, id };
     document.getElementById("modalTitulo").textContent = titulo;
-    document.getElementById("modalLabel").textContent = label;
+    const podeRenomear = typeof ehSupremoAtual === "function" ? ehSupremoAtual() : true;
+    document.getElementById("modalLabel").textContent = podeRenomear ? label : `${label} (só o supremo renomeia)`;
     document.getElementById("modalInput").value = valorAtual;
+    document.getElementById("modalInput").readOnly = !podeRenomear;
 
     // O wrapper de empresas e o de perda sao estaticos no index.html; aqui so
     // alternamos a visibilidade e preenchemos os valores do item em edicao.
@@ -209,6 +220,7 @@ function abrirModalCadastroRapido(lista, valorInicial, aoConcluir) {
     document.getElementById("modalTitulo").textContent = conf.titulo;
     document.getElementById("modalLabel").textContent  = conf.label;
     document.getElementById("modalInput").value        = valorInicial || "";
+    document.getElementById("modalInput").readOnly     = false;
 
     // Nenhum dos três usa os campos extras de empresa ou combustível.
     const wm = document.getElementById("modalCampoMunicipioWrapper");
@@ -237,8 +249,15 @@ function _confirmarCadastroRapido() {
         nome = (typeof converterPlacaMercosul === "function" && converterPlacaMercosul(limpa)) || limpa;
     }
 
-    if (db[lista].some(i => normalizarTexto(i.nome) === normalizarTexto(nome))) {
-        mostrarToast("Já existe um cadastro com esse nome.", "erro", 4000);
+    const existente = db[lista].find(i => lista === "veiculos"
+        ? normalizarPlaca(i.nome) === normalizarPlaca(nome)
+        : normalizarTexto(i.nome) === normalizarTexto(nome));
+    if (existente) {
+        // Um cadastro inativo com o mesmo nome não aparecia na lista, e a
+        // tela só dizia "já existe", sem dizer onde nem o que fazer.
+        mostrarToast(existente.ativo === false
+            ? `"${existente.nome}" já está cadastrado, mas inativo. Reative em Cadastros para usar.`
+            : `"${existente.nome}" já está cadastrado.`, "erro", 7000);
         return;
     }
 
@@ -270,20 +289,35 @@ function confirmarEdicao() {
     }
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
+
+    // Placa editada passa pelas mesmas regras de "Novo veículo": formato
+    // Mercosul, e duplicidade comparando placas normalizadas.
+    let valorFinal = novoValor;
+    if (lista === "veiculos") {
+        const limpa = novoValor.toUpperCase().replace(/[-\s]/g, "");
+        valorFinal = converterPlacaMercosul(limpa) || limpa;
+    }
     // normalizarTexto e não toLowerCase: com toLowerCase, "José" e "Jose"
     // passavam como cadastros distintos e o relatório os agrupava separado.
-    const duplicado = db[lista].some(i => String(i.id) !== String(id) && normalizarTexto(i.nome) === normalizarTexto(novoValor));
+    const duplicado = db[lista].some(i => String(i.id) !== String(id) && (lista === "veiculos"
+        ? normalizarPlaca(i.nome) === normalizarPlaca(valorFinal)
+        : normalizarTexto(i.nome) === normalizarTexto(valorFinal)));
     if (duplicado) {
         mostrarToast("Já existe um cadastro com esse nome.", "erro", 4000);
         return;
     }
 
     const nomeAntigo = item.nome;
-    if (nomeAntigo !== novoValor) {
+    // Renomear é do supremo (decisão do dono, 17/09/2026): o nome é
+    // reescrito nas notas, e só o supremo carrega as notas de todas as
+    // empresas — nas mãos de outro perfil, as empresas que ele não enxerga
+    // ficavam com o nome velho.
+    if (nomeAntigo !== valorFinal && typeof exigirPapel === "function" && !exigirPapel("supremo", "Renomear cadastro")) return;
+    if (nomeAntigo !== valorFinal) {
         if (!item.logs) item.logs = [];
-        item.logs.push(`Nome alterado de "${nomeAntigo}" para "${novoValor}" em ${new Date().toLocaleString('pt-BR')}`);
+        item.logs.push(`Nome alterado de "${nomeAntigo}" para "${valorFinal}" em ${new Date().toLocaleString('pt-BR')}`);
     }
-    item.nome = lista === "veiculos" ? novoValor.toUpperCase() : novoValor;
+    item.nome = valorFinal;
 
     if (lista === "empresas") {
         const munInput = document.getElementById("modalInputMunicipio");
@@ -330,16 +364,19 @@ function confirmarEdicao() {
         // resolve mais, `_montarPayloads` a descarta em silêncio e ela
         // some da nuvem no próximo salvamento. Filtrar aqui não esconde a
         // lápide, destrói a lápide.
-        db.lancamentos.forEach(l => {
-            if (lista === "empresas"   && l.empresa   === nomeAntigo) { l.empresa   = nomeNovo; propagados++; }
-            if (lista === "motoristas" && l.motorista === nomeAntigo) { l.motorista = nomeNovo; propagados++; }
-            if (lista === "veiculos"   && l.placa     === nomeAntigo) { l.placa     = nomeNovo; propagados++; }
-            if (lista === "bases"      && l.base      === nomeAntigo) { l.base      = nomeNovo; propagados++; }
-            if (lista === "combustiveis") {
-                l.itens.forEach(i => {
-                    if (i.tipo === nomeAntigo) { i.tipo = nomeNovo; propagados++; }
-                });
+        // Objetos novos, e não mudança no lugar: o cache da busca rápida do
+        // relatório é por objeto e ficava com o nome velho.
+        const campo = { empresas: "empresa", motoristas: "motorista", veiculos: "placa", bases: "base" }[lista];
+        db.lancamentos = db.lancamentos.map(l => {
+            if (campo && l[campo] === nomeAntigo) {
+                propagados++;
+                return Object.assign({}, l, { [campo]: nomeNovo });
             }
+            if (lista === "combustiveis" && (l.itens || []).some(i => i.tipo === nomeAntigo)) {
+                propagados++;
+                return Object.assign({}, l, { itens: l.itens.map(i => i.tipo === nomeAntigo ? Object.assign({}, i, { tipo: nomeNovo }) : i) });
+            }
+            return l;
         });
 
         // A placa também vive nos conjuntos de veículos, na composição
@@ -428,7 +465,7 @@ async function salvarVeiculo() {
     if (!validarPlaca(placa)) {
         if (!await fmConfirm({ titulo: "Placa com formato inválido", msg: `A placa "${placa}" não segue o padrão esperado (ABC1234 ou ABC1D23).\n\nDeseja salvar mesmo assim?`, confirmTxt: "Salvar mesmo assim", tipo: "aviso" })) return;
     }
-    if (db.veiculos.some(v => v.nome === placa)) {
+    if (db.veiculos.some(v => normalizarPlaca(v.nome) === normalizarPlaca(placa))) {
         mostrarToast("Essa placa já está cadastrada.", "erro", 4000);
         return;
     }
@@ -452,6 +489,7 @@ async function salvarVeiculo() {
  * convertidas para Mercosul e realiza a conversão após confirmação.
  */
 async function converterTodasPlacasMercosul() {
+    if (typeof exigirPapel === "function" && !exigirPapel("supremo", "Converter placas")) return;
     const paraConverter = db.veiculos.map(v => {
         const conv = converterPlacaMercosul(v.nome.replace(/[-\s]/g, ""));
         return conv ? { veiculo: v, antiga: v.nome, nova: conv } : null;
@@ -474,15 +512,17 @@ async function converterTodasPlacasMercosul() {
         // Todos os lançamentos, inclusive os que não estão ativos — pelo
         // mesmo motivo de `confirmarEdicao`: uma placa não convertida
         // deixa a nota fora de qualquer conjunto em `resolverConjuntoPorPlaca`.
-        db.lancamentos.forEach(l => {
-            if (l.placa === antiga) { l.placa = nova; propagados++; }
+        db.lancamentos = db.lancamentos.map(l => {
+            if (l.placa !== antiga) return l;
+            propagados++;
+            return Object.assign({}, l, { placa: nova });
         });
 
         if (db.conjuntosVeiculos) {
             db.conjuntosVeiculos.forEach(conj => {
-                conj.composicaoAtual = conj.composicaoAtual.map(p => p === antiga ? nova : p);
-                conj.historico.forEach(h => {
-                    h.placas = h.placas.map(p => p === antiga ? nova : p);
+                conj.composicaoAtual = (conj.composicaoAtual || []).map(p => p === antiga ? nova : p);
+                (conj.historico || []).forEach(h => {
+                    h.placas = (h.placas || []).map(p => p === antiga ? nova : p);
                 });
             });
         }
@@ -625,6 +665,15 @@ async function toggleAtivo(lista, id) {
     if (lista === "empresas" && typeof _reconciliarEmpresaAtiva === "function") _reconciliarEmpresaAtiva();
 }
 
+/* Excluir cadastro é do supremo (decisão do dono, 17/09/2026): o admin e o
+   operador só enxergam as notas das empresas deles, e excluir o que tem
+   nota em outra empresa deixava histórico órfão. A regra do servidor
+   recusa do mesmo jeito; o botão nem aparece. */
+function _btnExcluirCadastro(lista, id) {
+    if (!(typeof ehSupremoAtual === "function" && ehSupremoAtual())) return "";
+    return `<button class="btn-excluir"  data-acao="excluir"  data-lista="${lista}" data-id="${escapeHtml(id)}">Excluir</button>`;
+}
+
 // ========== VERIFICAÇÃO DE VÍNCULOS ==========
 /* Este é o único lugar do projeto em que o CADASTRO consulta o
    lançamento, e não o contrário — e é por isso que ele inverteria de
@@ -635,12 +684,18 @@ async function toggleAtivo(lista, id) {
    qualquer nota apagada viraria ineliminável para sempre, com a tela
    dizendo "existem lançamentos vinculados" e o operador não achando
    nenhum no relatório. */
+/* Empresa e combustível olham TODAS as notas, inclusive excluídas e
+   canceladas: a empresa é o documento onde as lápides moram (excluí-la
+   deixava o documento órfão, e as canceladas — que o relatório mostra
+   sempre — sumiam), e o combustível é por onde o Dashboard monta os
+   cartões. Motorista, placa e base olham só as que valem. */
 function temVinculoEmLancamentos(lista, item) {
     const ativos = db.lancamentos.filter(lancamentoAtivo);
     if (lista === "motoristas")   return ativos.some(l => l.motorista === item.nome);
-    if (lista === "veiculos")     return ativos.some(l => l.placa === item.nome);
-    if (lista === "empresas")     return ativos.some(l => l.empresa === item.nome);
-    if (lista === "combustiveis") return ativos.some(l => (l.itens || []).some(i => i.tipo === item.nome));
+    if (lista === "veiculos")     return ativos.some(l => normalizarPlaca(l.placa) === normalizarPlaca(item.nome));
+    if (lista === "bases")        return ativos.some(l => l.base === item.nome);
+    if (lista === "empresas")     return db.lancamentos.some(l => l.empresa === item.nome || l.empresaId === item.id);
+    if (lista === "combustiveis") return db.lancamentos.some(l => (l.itens || []).some(i => i.tipo === item.nome));
     return false;
 }
 
@@ -648,6 +703,7 @@ function temVinculoEmLancamentos(lista, item) {
 // FIX v4: String(i.id) === String(id) para garantir comparação correta
 //         independente de como o ID chegou do Firestore
 async function excluirCadastro(lista, id) {
+    if (typeof exigirPapel === "function" && !exigirPapel("supremo", "Excluir cadastro")) return;
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
     if (temVinculoEmLancamentos(lista, item)) {
@@ -695,9 +751,9 @@ function renderizarConjuntos() {
                 </div>
             </div>
             <div class="acoes-lista">
-                <button class="btn-editar" onclick="abrirEditarConjunto('${c.id}')">Editar</button>
-                <button class="btn-inativar" onclick="toggleAtivoConjunto('${c.id}')">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
-                <button class="btn-excluir" onclick="excluirConjunto('${c.id}')">Excluir</button>
+                <button class="btn-editar" onclick="abrirEditarConjunto('${escapeJsAttr(c.id)}')">Editar</button>
+                <button class="btn-inativar" onclick="toggleAtivoConjunto('${escapeJsAttr(c.id)}')">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
+                ${(typeof ehSupremoAtual === "function" && ehSupremoAtual()) ? `<button class="btn-excluir" onclick="excluirConjunto('${escapeJsAttr(c.id)}')">Excluir</button>` : ""}
             </div>
         </li>`;
     }).join("");
@@ -711,11 +767,33 @@ async function toggleAtivoConjunto(id) {
     conj.ativo = conj.ativo !== false ? false : true;
     if (!conj.logs) conj.logs = [];
     conj.logs.push(`${conj.ativo ? 'Reativado' : 'Inativado'} em ${new Date().toLocaleString('pt-BR')}`);
+    // A vigência é o que decide os Fretes de cada data: inativar fecha a
+    // composição hoje, e reativar reabre a que foi fechada pela inativação.
+    const ultimo = (conj.historico || [])[conj.historico.length - 1];
+    if (ultimo) {
+        if (!conj.ativo && !ultimo.vigenciaAte) {
+            ultimo.vigenciaAte = _hojeISO();
+            ultimo.fechadaPorInativacao = true;
+        } else if (conj.ativo && ultimo.fechadaPorInativacao) {
+            ultimo.vigenciaAte = null;
+            delete ultimo.fechadaPorInativacao;
+        }
+    }
     salvarDB();
     renderizarConjuntos();
 }
 
 async function excluirConjunto(id) {
+    if (typeof exigirPapel === "function" && !exigirPapel("supremo", "Excluir conjunto")) return;
+    const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(id));
+    if (!conj) return;
+    // Conjunto que já rodou é parte dos Fretes dos meses passados: excluir
+    // reescrevia esses meses sem volta. Esse é o caso de Inativar.
+    const placas = new Set((conj.historico || []).flatMap(h => h.placas || []).map(normalizarPlaca));
+    if (db.lancamentos.some(l => placas.has(normalizarPlaca(l.placa)))) {
+        mostrarToast("Esse conjunto tem viagens lançadas e aparece nos Fretes dos meses passados. Use Inativar.", "erro", 7000);
+        return;
+    }
     if (!await fmConfirm({ titulo: "Excluir conjunto?", msg: "Esta ação não pode ser desfeita.", confirmTxt: "Excluir", tipo: "perigo" })) return;
     db.conjuntosVeiculos = db.conjuntosVeiculos.filter(c => String(c.id) !== String(id));
     salvarDB();
@@ -817,7 +895,9 @@ async function salvarConjunto() {
         const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(_conjuntoEditandoId));
         if (!conj) return;
 
-        const composicaoMudou = JSON.stringify(conj.composicaoAtual.sort()) !== JSON.stringify(placas.slice().sort());
+        // `slice` antes do sort: ordenar no lugar mudava a composição salva,
+        // e com ela o nome automático do conjunto.
+        const composicaoMudou = JSON.stringify(conj.composicaoAtual.slice().sort()) !== JSON.stringify(placas.slice().sort());
         if (composicaoMudou) {
             if (!dataVigencia) {
                 mostrarToast("Ao alterar as placas de um conjunto, informe a data de vigência da nova composição.", "erro", 4000);
@@ -878,7 +958,7 @@ function atualizarListas() {
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="motoristas" data-id="${m.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="motoristas" data-id="${m.id}">${m.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  data-acao="excluir"  data-lista="motoristas" data-id="${m.id}">Excluir</button>
+                        ${_btnExcluirCadastro("motoristas", m.id)}
                     </div>
                 </li>`).join("");
     }
@@ -895,7 +975,7 @@ function atualizarListas() {
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="veiculos" data-id="${v.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="veiculos" data-id="${v.id}">${v.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  data-acao="excluir"  data-lista="veiculos" data-id="${v.id}">Excluir</button>
+                        ${_btnExcluirCadastro("veiculos", v.id)}
                     </div>
                 </li>`).join("");
     }
@@ -916,7 +996,7 @@ function atualizarListas() {
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="empresas" data-id="${e.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="empresas" data-id="${e.id}">${e.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  data-acao="excluir"  data-lista="empresas" data-id="${e.id}">Excluir</button>
+                        ${_btnExcluirCadastro("empresas", e.id)}
                     </div>
                 </li>`).join("");
     }
@@ -937,7 +1017,7 @@ function atualizarListas() {
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="combustiveis" data-id="${c.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="combustiveis" data-id="${c.id}">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  data-acao="excluir"  data-lista="combustiveis" data-id="${c.id}">Excluir</button>
+                        ${_btnExcluirCadastro("combustiveis", c.id)}
                     </div>
                 </li>`).join("");
     }
@@ -954,7 +1034,7 @@ function atualizarListas() {
                     <div class="acoes-lista">
                         <button class="btn-editar"   data-acao="editar"   data-lista="bases" data-id="${b.id}">Editar</button>
                         <button class="btn-inativar" data-acao="toggle"   data-lista="bases" data-id="${b.id}">${b.ativo !== false ? "Inativar" : "Reativar"}</button>
-                        <button class="btn-excluir"  data-acao="excluir"  data-lista="bases" data-id="${b.id}">Excluir</button>
+                        ${_btnExcluirCadastro("bases", b.id)}
                     </div>
                 </li>`).join("");
     }
