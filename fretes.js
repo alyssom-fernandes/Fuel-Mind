@@ -89,6 +89,10 @@ function calcularEExibirFretes() {
     if (typeof garantirConjuntos === 'function') garantirConjuntos();
 
     let semTaxa = 0;
+    // Empresa cadastrada com taxa em zero gerava frete R$ 0,00 em
+    // silêncio: o contador antigo só pegava empresa FORA do cadastro.
+    let taxaZero = 0;
+    const empresasTaxaZero = new Set();
     const lancamentosMes = db.lancamentos.filter(l => {
         // Funil único das quatro abas. Nota excluída ou cancelada não gera
         // frete: o valor sai de `item.qtd` da própria nota, e sem nota
@@ -116,6 +120,7 @@ function calcularEExibirFretes() {
         // uma nota com nome diferente do cadastro virava R$ 0,00 em silêncio.
         const taxaEmpresa = _taxaFreteDaEmpresa(cadEmpresa);
         if (!cadEmpresa) semTaxa++;
+        else if (!(taxaEmpresa > 0)) { taxaZero++; empresasTaxaZero.add(cadEmpresa.nome); }
 
         // Conjunto e composição que valiam NA DATA da viagem: o nome
         // automático sai da composição daquele período, e não da atual —
@@ -222,6 +227,8 @@ function calcularEExibirFretes() {
             return s + (l.itens || []).reduce((ss, i) => ss + (i.qtd || 0) * taxa, 0);
         }, 0),
         semTaxa,
+        taxaZero,
+        empresasTaxaZero: [...empresasTaxaZero],
         porPlaca:     sortDesc(porPlaca),
         porMotorista: sortDesc(porMotorista),
         porEmpresa:   sortDesc(porEmpresa),
@@ -247,6 +254,7 @@ function renderFreteResumo() {
             &nbsp;|&nbsp; Litros: <strong>${fmtL(dadosFretesAtual.totalLitros)}</strong>
             &nbsp;|&nbsp; Frete total: <strong>${fmtR(dadosFretesAtual.totalFrete)}</strong>
             ${dadosFretesAtual.semTaxa ? `<br><span style="color:var(--danger)">${dadosFretesAtual.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.</span>` : ''}
+            ${dadosFretesAtual.taxaZero ? `<br><span style="color:var(--danger)">${dadosFretesAtual.taxaZero} nota(s) de ${escapeHtml((dadosFretesAtual.empresasTaxaZero || []).join(', '))}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.</span>` : ''}
         `;
     }
 }

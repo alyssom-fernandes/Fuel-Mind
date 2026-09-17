@@ -262,12 +262,49 @@ function destruirGraficos() {
     if (chartEvolucaoPrecos) chartEvolucaoPrecos.destroy();
 }
 
+/* ── ESTADO VAZIO DO GRÁFICO ─────────────────────────────────────────
+   Nunca apagar o <canvas> com innerHTML no wrapper: ele não volta, e a
+   passada seguinte COM dados chamava getContext num null. O TypeError
+   estourava dentro de carregarAnalitico e as abas seguintes não rodavam —
+   a tela ficava misturando número novo com número velho até um F5.
+   Reproduzido em 17/09/2026 no modo demonstração: período sem nota,
+   Atualizar, período com nota, Atualizar.
+
+   O aviso agora é um irmão do canvas, e o canvas só é escondido.
+   renderAbaDistribuicao já fazia certo (guarda, sem apagar o wrapper). */
+function _graficoVazio(idCanvas, msg) {
+    const canvas = document.getElementById(idCanvas);
+    if (!canvas) return;
+    const wrapper = canvas.closest(".grafico-wrapper") || canvas.parentElement;
+    if (!wrapper) return;
+    canvas.style.display = "none";
+    let aviso = wrapper.querySelector(".grafico-vazio");
+    if (!aviso) {
+        aviso = document.createElement("p");
+        aviso.className = "grafico-vazio";
+        wrapper.appendChild(aviso);
+    }
+    aviso.textContent = msg;
+    aviso.style.display = "";
+}
+
+/** Devolve o canvas pronto para desenho (ou null se ele não existir). */
+function _graficoPronto(idCanvas) {
+    const canvas = document.getElementById(idCanvas);
+    if (!canvas) return null;
+    const wrapper = canvas.closest(".grafico-wrapper") || canvas.parentElement;
+    const aviso = wrapper && wrapper.querySelector(".grafico-vazio");
+    if (aviso) aviso.style.display = "none";
+    canvas.style.display = "";
+    return canvas;
+}
+
 function renderAbaMensal(dados) {
     const tbody = document.getElementById("tabelaMensal");
     const meses = dados.mensal;
     if (meses.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="td-vazio">Sem dados para o período.</td></tr>`;
-        document.getElementById("graficoMensal").closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Sem dados suficientes.</p>`;
+        _graficoVazio("graficoMensal", "Sem dados suficientes.");
         return;
     }
     tbody.innerHTML = meses.map((m, idx) => {
@@ -280,7 +317,8 @@ function renderAbaMensal(dados) {
         </tr>`;
     }).join("");
     
-    const canvas = document.getElementById("graficoMensal");
+    const canvas = _graficoPronto("graficoMensal");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (chartMensal) chartMensal.destroy();
     const colors = getChartColors();
@@ -326,7 +364,7 @@ function renderAbaMotoristas(dados) {
     const lista = dados.porMotorista;
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="td-vazio">Sem dados.</td></tr>`;
-        document.getElementById("graficoMotoristas").closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Sem dados.</p>`;
+        _graficoVazio("graficoMotoristas", "Sem dados.");
         return;
     }
     tbody.innerHTML = lista.map(m => {
@@ -339,7 +377,8 @@ function renderAbaMotoristas(dados) {
         </tr>`;
     }).join("");
     
-    const canvas = document.getElementById("graficoMotoristas");
+    const canvas = _graficoPronto("graficoMotoristas");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (chartMotoristas) chartMotoristas.destroy();
     const colors = getChartColors();
@@ -385,7 +424,7 @@ function renderAbaVeiculos(dados) {
     const lista = dados.porVeiculo;
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="td-vazio">Sem dados.</td></tr>`;
-        document.getElementById("graficoVeiculos").closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Sem dados.</p>`;
+        _graficoVazio("graficoVeiculos", "Sem dados.");
         return;
     }
     tbody.innerHTML = lista.map(v => {
@@ -398,7 +437,8 @@ function renderAbaVeiculos(dados) {
         </tr>`;
     }).join("");
     
-    const canvas = document.getElementById("graficoVeiculos");
+    const canvas = _graficoPronto("graficoVeiculos");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (chartVeiculos) chartVeiculos.destroy();
     const colors = getChartColors();
@@ -444,7 +484,7 @@ function renderAbaCombustivel(dados) {
     const lista = dados.porCombustivel;
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="td-vazio">Sem dados.</td></tr>`;
-        document.getElementById("graficoCombustivel").closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Sem dados.</p>`;
+        _graficoVazio("graficoCombustivel", "Sem dados.");
         return;
     }
     tbody.innerHTML = lista.map(c => {
@@ -456,7 +496,8 @@ function renderAbaCombustivel(dados) {
         </tr>`;
     }).join("");
     
-    const canvas = document.getElementById("graficoCombustivel");
+    const canvas = _graficoPronto("graficoCombustivel");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (chartCombustivel) chartCombustivel.destroy();
     const colors = getChartColors();
@@ -501,7 +542,7 @@ function renderAbaComparativo(dados) {
     const meses = dados.mensal;
     if (meses.length < 2) {
         tbody.innerHTML = `<tr><td colspan="5" class="td-vazio">São necessários pelo menos 2 meses de dados.</td></tr>`;
-        document.getElementById("graficoComparativo").closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Dados insuficientes para o comparativo.</p>`;
+        _graficoVazio("graficoComparativo", "Dados insuficientes para o comparativo.");
         document.getElementById("alertaComparativo").style.display = "none";
         return;
     }
@@ -515,7 +556,8 @@ function renderAbaComparativo(dados) {
         </tr>`;
     }).join("");
     
-    const canvas = document.getElementById("graficoComparativo");
+    const canvas = _graficoPronto("graficoComparativo");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (chartComparativo) chartComparativo.destroy();
     const colors = getChartColors();
@@ -583,8 +625,8 @@ function renderAbaComparativo(dados) {
 }
 
 function renderAbaDistribuicao(dados) {
-    const canvasComb = document.getElementById("graficoPizzaCombustivel");
-    const canvasMotor = document.getElementById("graficoPizzaMotoristas");
+    const canvasComb = _graficoPronto("graficoPizzaCombustivel");
+    const canvasMotor = _graficoPronto("graficoPizzaMotoristas");
     if (!canvasComb || !canvasMotor) return;
     
     const colors = getChartColors();
@@ -672,9 +714,11 @@ function renderAbaEvolucaoPrecos(dados) {
     const meses = dados.meses;
 
     if (Object.keys(precosPorComb).length === 0 || meses.length < 2) {
-        canvas.closest(".grafico-wrapper").innerHTML = `<p class="grafico-vazio">Dados insuficientes para evolução de preços.</p>`;
+        _graficoVazio("graficoEvolucaoPrecos", "Dados insuficientes para evolução de preços.");
         return;
     }
+
+    _graficoPronto("graficoEvolucaoPrecos");
 
     const colors = getChartColors();
     const datasets = [];

@@ -680,7 +680,9 @@ ul li.inativo { opacity: 0.45; }
 
 /* ══ LANÇAMENTOS ════════════════════════════ */
 .linha-combustivel {
-    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto auto;
+    /* As colunas são declaradas junto da célula de descarga, mais abaixo:
+       com o campo oculto a linha tem uma coluna a menos. */
+    display: grid;
     gap: 8px; align-items: center; margin-bottom: 8px;
     padding: 12px 14px; background: var(--surface-alt);
     border-radius: var(--radius); border: 1px solid var(--border-light);
@@ -1421,12 +1423,6 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
         text-align: center;
     }
 
-    /* Filtros do relatório — ajuste de grid */
-    .filtros-relatorio {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-
     /* KPI cards do dashboard em 2 colunas no mobile médio */
     .kpi-container { grid-template-columns: repeat(2, 1fr); }
 
@@ -1478,14 +1474,6 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
         display: none;
     }
 
-    /* ── Tabela de fretes: ocultar colunas secundárias ── */
-    .fretes-tabela thead th:nth-child(3),
-    .fretes-tabela tbody td:nth-child(3),
-    .fretes-tabela thead th:nth-child(4),
-    .fretes-tabela tbody td:nth-child(4) {
-        display: none;
-    }
-
     /* ── Analítico: filtros em coluna ── */
     .analitico-filtros {
         grid-template-columns: 1fr 1fr;
@@ -1532,9 +1520,6 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 
     /* ── Sistema: grid de info em 1 coluna ── */
     .info-sistema { grid-template-columns: 1fr; }
-
-    /* ── Config PDF: grid de margens em 2 colunas ── */
-    .pdf-margens-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 480px) {
