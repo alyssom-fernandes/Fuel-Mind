@@ -136,6 +136,7 @@ function _detectarFormato(cabecalho) {
   LEITURA DO ARQUIVO
 ─────────────────────────────────────────────*/
 function importacaoLerArquivo(input) {
+    if (adiarAteBibliotecas(["xlsx"], () => importacaoLerArquivo(input))) return;
     const file = input.files[0];
     if (!file) return;
 
@@ -1191,6 +1192,7 @@ function importacaoCancelar() {
   (formato Fabiandra — o mais simples e universal)
 ─────────────────────────────────────────────*/
 function baixarModeloPlanilha() {
+    if (adiarAteBibliotecas(["xlsx"], () => baixarModeloPlanilha())) return;
     const cabecalho = [
         "DATA NF", "DATA ENTRADA/SAÍDA", "NFE", "BASE",
         "PLACA", "MOTORISTA", "PRODUTO",

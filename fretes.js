@@ -470,6 +470,7 @@ function abrirFreteNotaANota() {
 }
 
 function exportarFreteNotaANota() {
+    if (adiarAteBibliotecas(["xlsx"], () => exportarFreteNotaANota())) return;
     if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
     const linhas = _freteNotaANota(dadosFretesAtual.mes);
     if (!linhas.length) return mostrarToast("Nenhuma nota descarregada neste mês.", "aviso", 4000);
@@ -516,6 +517,7 @@ function _totalSecao(lista, colunas) {
 
 // ========== EXPORTAÇÃO EXCEL ==========
 function exportarFretesExcel() {
+    if (adiarAteBibliotecas(["xlsx"], () => exportarFretesExcel())) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
         mostrarToast("Não há dados para exportar.", "aviso", 4000);
         return;
@@ -582,6 +584,7 @@ function exportarFretesExcel() {
 
 // ========== EXPORTAÇÃO PDF ==========
 function exportarFretesPDF() {
+    if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFretesPDF())) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
         mostrarToast("Não há dados para exportar.", "aviso", 4000);
         return;

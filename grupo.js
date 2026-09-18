@@ -59,6 +59,7 @@ function _grupoTotais(empresa, inicio, fim) {
         precoCompra: compra.precoCompra,
         litrosFaturados: compra.litrosNota,
         frete,
+        litrosFrete,
         fretePorLitro: litrosFrete > 0 ? frete / litrosFrete : 0,
         semTaxa
     };
@@ -92,9 +93,10 @@ function carregarGrupo() {
         gasto: acc.gasto + x.gasto,
         litrosFaturados: acc.litrosFaturados + x.litrosFaturados,
         frete: acc.frete + x.frete,
+        litrosFrete: acc.litrosFrete + x.litrosFrete,
         notasDescarga: acc.notasDescarga + x.notasDescarga,
         notasEmissao: acc.notasEmissao + x.notasEmissao
-    }), { litros: 0, gasto: 0, litrosFaturados: 0, frete: 0, notasDescarga: 0, notasEmissao: 0 });
+    }), { litros: 0, gasto: 0, litrosFaturados: 0, frete: 0, litrosFrete: 0, notasDescarga: 0, notasEmissao: 0 });
 
     const ordenadas = [...linhas].sort((a, b) => b.frete - a.frete || b.gasto - a.gasto);
 
@@ -118,7 +120,7 @@ function carregarGrupo() {
             <div class="kpi-card roxo">
                 <div class="kpi-valor">${fmtR(soma.frete)}</div>
                 <div class="kpi-label">Frete do Grupo</div>
-                <div class="kpi-base">pela descarga · ${soma.litrosFaturados > 0 ? fmtR4(soma.frete / soma.litrosFaturados) : "—"}/L</div>
+                <div class="kpi-base">pela descarga · ${soma.litrosFrete > 0 ? fmtR4(soma.frete / soma.litrosFrete) : "—"}/L</div>
             </div>
         </div>
 
@@ -216,6 +218,7 @@ async function _grupoAbrirEmpresa(nome) {
 
 /** Excel da comparação, com número de verdade e linha de total. */
 function exportarGrupoExcel() {
+    if (adiarAteBibliotecas(["xlsx"], () => exportarGrupoExcel())) return;
     const empresas = _grupoEmpresasVisiveis();
     if (!empresas.length) return mostrarToast("Nenhuma empresa para exportar.", "aviso", 4000);
     const linhas = empresas.map(e => _grupoTotais(e, _grupoPeriodo.inicio, _grupoPeriodo.fim))

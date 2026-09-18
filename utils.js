@@ -759,6 +759,57 @@ function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
         ${sobe ? "▲" : "▼"} ${Math.abs(pct).toFixed(1).replace(".", ",")}% vs ${escapeHtml(rotuloAnterior)}</div>`;
 }
 
+/* ── BIBLIOTECAS SÓ QUANDO USADAS (18/09/2026) ──────────────────────
+   A planilha (SheetJS) e o PDF (jsPDF e o plugin de tabela) vinham no
+   <head> de toda abertura — inclusive para quem só lança nota, que é o
+   uso de todo dia e não exporta nada. Agora elas são pedidas quando a
+   pessoa entra numa tela que exporta ou lê planilha (Relatórios, Fretes,
+   Grupo, Conferências, Sistema) e, por garantia, no próprio clique. O
+   Chart.js continua no <head>: o Dashboard, que é a tela de entrada,
+   usa gráfico. */
+const _BIBLIOTECAS = {
+    xlsx:      { src: "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
+                 pronta: () => typeof window !== "undefined" && !!window.XLSX },
+    jspdf:     { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+                 pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF) },
+    autotable: { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
+                 pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF
+                                && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) }
+};
+const _bibliotecaPromessa = {};
+
+function garantirBiblioteca(nome) {
+    const b = _BIBLIOTECAS[nome];
+    if (!b) return Promise.reject(new Error("Biblioteca desconhecida: " + nome));
+    if (b.pronta()) return Promise.resolve();
+    if (_bibliotecaPromessa[nome]) return _bibliotecaPromessa[nome];
+    _bibliotecaPromessa[nome] = new Promise((resolve, reject) => {
+        const el = document.createElement("script");
+        el.src = b.src;
+        el.async = false;
+        el.onload = () => resolve();
+        el.onerror = () => { delete _bibliotecaPromessa[nome]; reject(new Error("Falha ao carregar " + nome)); };
+        document.head.appendChild(el);
+    });
+    return _bibliotecaPromessa[nome];
+}
+
+/** Em sequência: o plugin de tabela precisa do jsPDF antes dele. */
+function garantirBibliotecas(nomes) {
+    return (nomes || []).reduce((p, n) => p.then(() => garantirBiblioteca(n)), Promise.resolve());
+}
+
+/* Guarda de entrada: se as bibliotecas ainda não chegaram, busca e chama
+   de novo a mesma ação quando chegarem. Devolve `true` quando adiou, e a
+   função que chamou deve sair na hora. */
+function adiarAteBibliotecas(nomes, acao) {
+    if ((nomes || []).every(n => _BIBLIOTECAS[n] && _BIBLIOTECAS[n].pronta())) return false;
+    mostrarToast("Preparando o arquivo…", "info", 1800);
+    garantirBibliotecas(nomes).then(acao).catch(() =>
+        mostrarToast("Não consegui carregar a biblioteca de exportação. Confira a internet e tente de novo.", "erro", 7000));
+    return true;
+}
+
 // ========== ALERTAS IGNORADOS ==========
 function alertasIgnorados() {
     try { return JSON.parse(localStorage.getItem("alertasIgnorados") || "{}"); }

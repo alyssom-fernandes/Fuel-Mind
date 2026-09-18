@@ -2089,6 +2089,12 @@ async function mostrarTela(id) {
     document.querySelectorAll(".tela").forEach(t => t.style.display = "none");
     const el = document.getElementById(id);
     if (el) el.style.display = "block";
+    // Telas que exportam ou leem planilha: as bibliotecas vêm agora, em
+    // segundo plano, para estarem prontas quando o botão for clicado.
+    if (["relatorios", "fretes", "grupo", "conferencia", "sistema"].includes(id)
+        && typeof garantirBibliotecas === "function") {
+        garantirBibliotecas(["xlsx", "jspdf", "autotable"]).catch(() => {});
+    }
 
     if (["motoristas","veiculos","empresas","combustiveis","cadastros"].includes(id)) atualizarListas();
     if (id === "analitico")    { if (typeof carregarAnalitico === 'function') carregarAnalitico(); }

@@ -1037,6 +1037,7 @@ let _autoLinhas = [];
 let _autoCombustivel = '';
 
 function autosystemLerArquivo(input) {
+    if (adiarAteBibliotecas(["xlsx"], () => autosystemLerArquivo(input))) return;
     const file = input.files[0];
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
@@ -1330,6 +1331,7 @@ function _autosystemAtualizarTabela() {
 }
 
 function _autoExportarExcel(comb) {
+    if (adiarAteBibliotecas(["xlsx"], () => _autoExportarExcel(comb))) return;
     const wb = XLSX.utils.book_new();
     const rows = [
         ['Data','Entrada AutoSystem (L)','Entrada Sistema (L)','Diferença (L)','Observação'],

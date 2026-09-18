@@ -727,6 +727,7 @@ function _descricaoPeriodoRelatorio() {
 }
 
 function exportarExcel(contexto) {
+    if (adiarAteBibliotecas(["xlsx"], () => exportarExcel(contexto))) return;
     // Exportação leva só o que conta: um Excel não tem "riscado"
     // confiável, e uma linha morta numa planilha vira soma errada na
     // primeira vez que alguém arrastar o mouse por cima dela.
@@ -835,6 +836,7 @@ function _pdfRodapes(doc, estilo, textoEsquerda) {
  * @returns {Promise<void>}
  */
 async function exportarPDF(contexto) {
+    if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarPDF(contexto))) return;
     const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
@@ -1218,6 +1220,7 @@ function compartilharEmail(contexto) {
   RELATÓRIO MENSAL GERENCIAL
 =================================================*/
 function gerarRelatorioMensalPDF() {
+    if (typeof garantirBibliotecas === "function") garantirBibliotecas(["jspdf", "autotable"]).catch(() => {});
     const hoje = new Date();
     const modal = document.createElement('div');
     modal.id = '_modalRelMensal';
@@ -1269,6 +1272,9 @@ function gerarRelatorioMensalPDF() {
 }
 
 function _executarRelatorioMensal() {
+    // O modal fica aberto enquanto a biblioteca chega: os campos dele são
+    // lidos na segunda chamada, não perdidos.
+    if (adiarAteBibliotecas(["jspdf", "autotable"], () => _executarRelatorioMensal())) return;
     const mes     = document.getElementById('_selMesRelMensal')?.value;
     const empresa = document.getElementById('_nomeEmpresaRel')?.value?.trim() || empresaFiltroNome || 'Controle de Combustível';
     document.getElementById('_modalRelMensal')?.remove();
