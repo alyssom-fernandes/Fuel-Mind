@@ -258,10 +258,25 @@ async function esqueciMinhaSenha() {
     }
 }
 
+/** O olho no campo de senha: mostra e esconde o que foi digitado. */
+function alternarVerSenhaLogin(btn) {
+    const input = document.getElementById("loginSenha");
+    if (!input) return;
+    const mostrar = input.type === "password";
+    input.type = mostrar ? "text" : "password";
+    btn.classList.toggle("ativo", mostrar);
+    const rotulo = mostrar ? "Esconder senha" : "Mostrar senha";
+    btn.setAttribute("aria-label", rotulo);
+    btn.title = rotulo;
+    input.focus();
+}
+
 document.addEventListener("keydown", e => {
     if (e.key === "Enter") {
         const loginOverlay = document.getElementById("loginOverlay");
-        if (loginOverlay?.style.display === "flex") fazerLogin();
+        // Enter num botão do login (modo demo, esqueci a senha, olho) já
+        // aciona o próprio botão; não dispara o login junto.
+        if (loginOverlay?.style.display === "flex" && !e.target?.closest?.("button")) fazerLogin();
         const selOverlay = document.getElementById("selecaoEmpresaOverlay");
         if (selOverlay?.style.display === "flex") confirmarSelecaoEmpresa();
     }

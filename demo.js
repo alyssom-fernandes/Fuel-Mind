@@ -40,7 +40,7 @@ const DEMO_USUARIOS = [
     },
     {
         uid: "demo-admin",
-        nome: "BrunoTavares",
+        nome: "Bruno Tavares",
         email: "bruno@demo.local",
         username: "bruno.demo",
         role: "admin",

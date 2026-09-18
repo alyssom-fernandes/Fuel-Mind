@@ -1263,12 +1263,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .campo label          { color: var(--text-muted); font-size: 0.72rem; }
 
 /* =====================================================
-   LOGIN
-   ===================================================== */
-.login-modal { padding: 32px 28px !important; }
-.login-logo { display:flex; justify-content:center; margin-bottom:16px; }
-
-/* =====================================================
    EMPRESA ATIVA — Badge no header
    ===================================================== */
 .empresa-ativa-badge {
@@ -2058,27 +2052,96 @@ button.confirmado-local::after {
 .busca-global-modal { max-width: 800px; width: 90%; }
 .modal-subtitulo { color: var(--text-muted); font-size: 0.85rem; margin-bottom: var(--space-6); }
 
-/* Login e escolha de empresa */
-.modal--login { padding: var(--space-8) var(--space-7); }
-.modal--login label { font-size: 0.78rem; }
-.modal--login .campo { text-align: left; }
-.login-icone { width: 52px; height: 52px; color: var(--primary); margin-bottom: var(--space-3); }
-.login-icone--menor { width: 40px; height: 40px; }
-.login-titulo { margin-bottom: var(--space-1); font-size: 1.4rem; }
-.login-subtitulo { color: var(--text-muted); margin-bottom: var(--space-7); font-size: 0.82rem; }
+/* Login e escolha de empresa — cartão em duas partes (18/09/2026).
+   A marca é sempre escura, nos dois temas: a logo usada é a de letras
+   brancas. O fundo da tela tem um brilho leve da cor principal. */
+.modal-overlay.login-overlay {
+    background:
+        radial-gradient(70% 55% at 50% -10%, var(--primary-subtle3), transparent 70%),
+        var(--bg);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    overflow-y: auto;
+}
+.login-cartao {
+    display: grid; grid-template-columns: 1fr 1fr;
+    width: min(880px, 100%); margin: auto;
+    background: var(--surface-raised);
+    border: 1px solid var(--border); border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg); overflow: hidden;
+    animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.login-cartao--uma-coluna { grid-template-columns: 1fr; width: min(420px, 100%); }
+.login-marca {
+    display: flex; flex-direction: column; justify-content: center; gap: var(--space-6);
+    padding: 44px 40px;
+    color: rgba(255,255,255,0.8);
+    background:
+        radial-gradient(90% 70% at 0% 0%, color-mix(in srgb, var(--primary) 45%, transparent), transparent 70%),
+        linear-gradient(160deg, #1c0b0b 0%, #0e0707 100%);
+}
+.login-logo-img { width: 210px; height: auto; display: block; }
+.login-marca-frase {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.35rem;
+    line-height: 1.3; color: #fff; margin: 0;
+}
+.login-marca-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+/* `ul li` global (listas de Cadastros) põe borda, respiro e texto à direita. */
+.login-marca-lista li,
+.login-marca-lista li:first-child {
+    display: flex; justify-content: flex-start; align-items: center; gap: var(--space-3);
+    padding: 0; border: 0; font-size: 0.9rem; flex-wrap: nowrap;
+}
+.login-marca-lista li:hover { background: none; }
+.login-marca-lista svg {
+    width: 20px; height: 20px; flex-shrink: 0; padding: 3px; border-radius: 50%;
+    color: #fff; background: rgba(255,255,255,0.12);
+}
+.login-marca--faixa { padding: var(--space-6) var(--space-7); align-items: center; }
+.login-marca--faixa .login-logo-img { width: 170px; }
+.login-form { padding: 40px 40px 28px; display: flex; flex-direction: column; }
+.login-form .campo { text-align: left; }
+.login-form label { font-size: 0.75rem; }
+.login-titulo { margin: 0 0 var(--space-1); font-size: 1.5rem; }
+.login-subtitulo { color: var(--text-muted); margin: 0 0 var(--space-6); font-size: 0.88rem; }
+.login-senha { position: relative; }
+.login-senha input { padding-right: 44px; }
+.login-ver-senha {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    width: 36px; height: 32px; display: flex; align-items: center; justify-content: center;
+    padding: 0; background: none; border: none; border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--text-light);
+}
+.login-ver-senha:hover, .login-ver-senha:focus-visible { color: var(--text); background: var(--surface-hover); }
+.login-ver-senha svg { width: 18px; height: 18px; }
+.login-ver-senha.ativo { color: var(--primary); }
 .btn-bloco  { width: 100%; justify-content: center; }
 .btn-grande { padding: var(--space-3); font-size: 1rem; }
-.login-msg  { font-size: 0.82rem; margin-top: var(--space-3); }
-.login-msg--erro { color: var(--danger); }
-.login-msg--ok   { color: var(--success); }
+.login-msg  { font-size: 0.84rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); text-align: left; line-height: 1.4; }
+.login-msg--erro { color: var(--danger); background: var(--danger-light); }
+.login-msg--ok   { color: var(--success); background: var(--success-light); }
 .btn-link {
     background: none; border: none; cursor: pointer; text-decoration: underline;
     color: var(--text-muted); font-size: 0.78rem; margin-top: var(--space-2);
 }
-.login-demo { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
-.login-demo .btn-secundario { width: 100%; justify-content: center; padding: 10px; font-size: 0.88rem; }
-.login-demo-nota { color: var(--text-muted); font-size: 0.72rem; margin-top: var(--space-2); line-height: 1.4; }
+.btn-link:hover { color: var(--text); }
+.login-esqueci { align-self: center; margin-top: var(--space-3); }
+.login-ou {
+    display: flex; align-items: center; gap: var(--space-3);
+    margin: var(--space-5) 0 var(--space-4); color: var(--text-light); font-size: 0.75rem;
+}
+.login-ou::before, .login-ou::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.login-demo-nota { color: var(--text-muted); font-size: 0.75rem; margin: var(--space-2) 0 0; line-height: 1.4; text-align: center; }
+.login-form .pf-assinatura { margin-top: var(--space-6); }
 .pf-assinatura .pf-afn, .pf-assinatura .pf-sys { font-size: 13px; }
+@media (max-width: 760px) {
+    .modal-overlay.login-overlay { align-items: flex-start; padding: var(--space-4); }
+    .login-cartao { grid-template-columns: 1fr; }
+    .login-marca { padding: var(--space-6); gap: var(--space-3); align-items: center; text-align: center; }
+    .login-logo-img { width: 170px; }
+    .login-marca-frase { font-size: 0.95rem; font-family: inherit; font-weight: 500; color: rgba(255,255,255,0.8); }
+    .login-marca-lista { display: none; }
+    .login-form { padding: var(--space-6) var(--space-5) var(--space-5); }
+}
 .page-footer .pf-afn, .page-footer .pf-sys { font-size: 10px; }
 .page-footer .pf-pipe { font-size: 13px; }
 .page-footer .pf-info { font-size: 11px; }

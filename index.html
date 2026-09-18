@@ -20,54 +20,75 @@
 </head>
 <body>
 <!-- LOGIN -->
-<div id="loginOverlay" class="modal-overlay modal-overlay--desfoque-forte" style="display:flex">
-    <div class="modal modal--centro modal--login">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="login-icone"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
-        <h2 class="login-titulo">Fuel Mind</h2>
-        <p class="login-subtitulo">Sistema de Gestão de Combustível</p>
-        <div class="campo mb-3">
-            <label for="loginEmail">E-mail ou usuário</label>
-            <input type="text" id="loginEmail" placeholder="seu@email.com ou @usuario" autocomplete="username" class="largura-total">
-        </div>
-        <div class="campo mb-5">
-            <label for="loginSenha">Senha</label>
-            <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" class="largura-total">
-        </div>
-        <button id="btnLogin" class="btn-primario btn-bloco btn-grande" onclick="fazerLogin()">Entrar</button>
-        <p id="loginErro" class="login-msg login-msg--erro" style="display:none"></p>
-        <p id="loginAviso" class="login-msg login-msg--ok" style="display:none"></p>
-        <button type="button" class="btn-link" onclick="esqueciMinhaSenha()">
-          Esqueci minha senha
-        </button>
-        <div class="login-demo">
-          <button class="btn-secundario" onclick="abrirModoDemo()">
-            Acessar modo demo
-          </button>
-          <p class="login-demo-nota">
-            Dados fictícios, sem login. Nada é gravado na nuvem.
-          </p>
-        </div>
+<!-- Cartão em duas partes: a marca (sempre escura, com a logo de letras
+     brancas nos dois temas) e o formulário. No celular a marca vira uma
+     faixa em cima. Redesenhado em 18/09/2026; antes era um modal estreito
+     com um carrinho de compras no lugar da logo. -->
+<div id="loginOverlay" class="modal-overlay login-overlay" style="display:flex">
+    <div class="login-cartao">
+        <section class="login-marca">
+            <img src="logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
+            <p class="login-marca-frase">Entradas de combustível, fretes e preços conferidos num lugar só.</p>
+            <ul class="login-marca-lista">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Nota a nota, direto do XML da NF-e</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Frete por placa, motorista e transportadora</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Aviso de preço e volume fora do normal</li>
+            </ul>
+        </section>
+        <section class="login-form">
+            <h2 class="login-titulo">Entrar</h2>
+            <p class="login-subtitulo">Use o e-mail ou o @usuário do seu cadastro.</p>
+            <div class="campo mb-4">
+                <label for="loginEmail">E-mail ou usuário</label>
+                <input type="text" id="loginEmail" placeholder="seu@email.com ou @usuario" autocomplete="username" class="largura-total">
+            </div>
+            <div class="campo mb-5">
+                <label for="loginSenha">Senha</label>
+                <div class="login-senha">
+                    <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" class="largura-total">
+                    <button type="button" class="login-ver-senha" onclick="alternarVerSenhaLogin(this)" aria-label="Mostrar senha" title="Mostrar senha">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
+            <button id="btnLogin" class="btn-primario btn-bloco btn-grande" onclick="fazerLogin()">Entrar</button>
+            <p id="loginErro" class="login-msg login-msg--erro" role="alert" style="display:none"></p>
+            <p id="loginAviso" class="login-msg login-msg--ok" role="status" style="display:none"></p>
+            <button type="button" class="btn-link login-esqueci" onclick="esqueciMinhaSenha()">
+              Esqueci minha senha
+            </button>
+            <div class="login-ou"><span>ou</span></div>
+            <button class="btn-secundario btn-bloco" onclick="abrirModoDemo()">
+              Acessar modo demo
+            </button>
+            <p class="login-demo-nota">Dados fictícios, sem login. Nada é gravado na nuvem.</p>
 
-        <!-- Assinatura AFN Systems — padrão do brand guide -->
-        <div class="pf-assinatura">
-          <div class="pf-marca">
-            <span class="pf-afn">AFN</span>
-            <span class="pf-gap"></span>
-            <span class="pf-sys">SYSTEMS</span>
-          </div>
-          <span class="pf-by">by Alyssom Fernandes</span>
-        </div>
+            <!-- Assinatura AFN Systems — padrão do brand guide -->
+            <div class="pf-assinatura">
+              <div class="pf-marca">
+                <span class="pf-afn">AFN</span>
+                <span class="pf-gap"></span>
+                <span class="pf-sys">SYSTEMS</span>
+              </div>
+              <span class="pf-by">by Alyssom Fernandes</span>
+            </div>
+        </section>
     </div>
 </div>
 
-<!-- SELEÇÃO DE EMPRESA PÓS-LOGIN -->
-<div id="selecaoEmpresaOverlay" class="modal-overlay modal-overlay--desfoque-forte" style="display:none">
-    <div class="modal modal--centro">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="login-icone login-icone--menor"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0H5m-2 0h2M9 7h1m-1 4h1m4-4h1m-1 4h1M9 15h6v6H9z"/></svg>
-        <h3 class="mb-2">Olá, <span id="selecaoEmpresaNome">—</span>!</h3>
-        <p class="modal-subtitulo">Selecione a empresa que deseja acessar:</p>
-        <div id="selecaoEmpresaLista" class="pilha mb-4"></div>
-        <button class="btn-secundario btn-bloco" onclick="fazerLogout()">Sair</button>
+<!-- SELEÇÃO DE EMPRESA PÓS-LOGIN — o mesmo cartão do login, com a faixa
+     da marca em cima. -->
+<div id="selecaoEmpresaOverlay" class="modal-overlay login-overlay" style="display:none">
+    <div class="login-cartao login-cartao--uma-coluna">
+        <section class="login-marca login-marca--faixa">
+            <img src="logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
+        </section>
+        <section class="login-form">
+            <h2 class="login-titulo">Olá, <span id="selecaoEmpresaNome">—</span>!</h2>
+            <p class="login-subtitulo">Escolha a empresa que deseja acessar.</p>
+            <div id="selecaoEmpresaLista" class="pilha mb-4"></div>
+            <button class="btn-secundario btn-bloco" onclick="fazerLogout()">Sair</button>
+        </section>
     </div>
 </div>
 <div id="appContainer" style="display:none;">
