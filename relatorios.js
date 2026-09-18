@@ -1261,12 +1261,16 @@ function compartilharWhatsApp(contexto) {
     const lista = dadosRelatorioValidos;
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
     const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
-    const dataHoje   = new Date().toLocaleDateString("pt-BR");
-    let mensagem = `⛽ *Controle de Combustível*\n📅 ${dataHoje}\n📋 ${lista.length} lançamento(s)\n💰 Total: ${fmtR(totalGeral)}\n\n`;
-    lista.slice(-5).forEach(l => {
+    const totalLitros = lista.reduce((s, l) => s + (l.itens || []).reduce((ss, i) => ss + _litrosItem(i), 0), 0);
+    // Empresa e período no alto (a mensagem é lida fora do sistema), e as
+    // cinco notas do alto da tabela — `slice(-5)` mandava as cinco do fim,
+    // que na ordem padrão são as mais antigas (18/09/2026).
+    let mensagem = `⛽ *Controle de Combustível*${empresaFiltroGlobal ? ` — ${empresaFiltroGlobal}` : ""}\n`
+        + `📅 ${_descricaoPeriodoRelatorio()}\n📋 ${lista.length} nota(s) · ${fmtL(totalLitros)}\n💰 Total: ${fmtR(totalGeral)}\n\n`;
+    lista.slice(0, 5).forEach(l => {
         mensagem += `• ${formatarData(l.dataNota)} | ${l.numeroNota} | ${l.motorista || "—"} | ${fmtR(l.total)}\n`;
     });
-    if (lista.length > 5) mensagem += `\n... e mais ${lista.length - 5} registro(s).`;
+    if (lista.length > 5) mensagem += `\n... e mais ${lista.length - 5} nota(s).`;
     window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, "_blank");
 }
 
@@ -1288,7 +1292,8 @@ function compartilharEmail(contexto) {
     // tem Excel, PDF e CSV ao lado.
     const LIMITE_URL = 1900;
 
-    const cabecalho = `Controle de Entradas de Combustível\nData: ${dataHoje}\n`
+    const cabecalho = `Controle de Entradas de Combustível${empresaFiltroGlobal ? ` — ${empresaFiltroGlobal}` : ""}\n`
+                    + `${_descricaoPeriodoRelatorio()}\nData: ${dataHoje}\n`
                     + `Registros: ${lista.length}\nTotal: ${fmtR(totalGeral)}\n\n${"=".repeat(60)}\n\n`;
     const rodape = n => n > 0
         ? `\n(+ ${n} nota(s) não cabem num e-mail. O total acima considera todas as `
