@@ -366,11 +366,10 @@ function _renderAlertas(lancDescarga, lancEmissao) {
             alertas.push({
                 tipo: 'preco', chave: chavePreco,
                 icone: '', cor: 'laranja',
-                titulo: `Preço ${juizo.acima ? 'alto' : 'baixo'} — ${escapeHtml(i.tipo)}`,
-                msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
-                     `<strong>${fmtRL(i.valor)}/L</strong> — ` +
-                     `${difTxt.replace(' ', '&nbsp;')}/L ${sentido} da referência dos ${ref.dias} dias até a emissão ` +
-                     `(${fmtRL(ref.mediana)}/L, ${ref.amostras} ${ref.amostras === 1 ? 'nota' : 'notas'})`,
+                titulo: `${juizo.acima ? 'Acima' : 'Abaixo'} da referência · ${escapeHtml(i.tipo)}`,
+                msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> de ${formatarData(l.dataNota)}: ` +
+                     `<strong>${fmtRL(i.valor)}/L</strong>, ${difTxt.replace(' ', '&nbsp;')}/L ${sentido} ` +
+                     `da mediana dos ${ref.dias} dias (${fmtRL(ref.mediana)}/L em ${ref.amostras} ${ref.amostras === 1 ? 'nota' : 'notas'})`,
                 id: l.id,
                 notificacao: `Preço ${juizo.acima ? 'alto' : 'baixo'} em ${l.numeroNota}: ${fmtRL(i.valor)}/L (${difTxt}/L ${sentido} da referência)`
             });
@@ -388,11 +387,10 @@ function _renderAlertas(lancDescarga, lancEmissao) {
                         alertas.push({
                             tipo: 'volume', chave: chaveVol,
                             icone: '', cor: 'azul',
-                            titulo: `Volume acima do usual — ${escapeHtml(i.tipo)}`,
+                            titulo: `Acima do usual · ${escapeHtml(i.tipo)}`,
                             msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong>: ` +
-                                 `<strong>${fmtL3(i.qtd)}</strong> — ` +
-                                 `${varPerc.toFixed(0)}% acima da média histórica ` +
-                                 `(média: ${fmtL3(mediaVol)}/nota)`,
+                                 `<strong>${fmtL(i.qtd)}</strong>, ${varPerc.toFixed(0)}% acima da média ` +
+                                 `(${fmtL(mediaVol)} por nota)`,
                             id: l.id,
                             notificacao: `Volume alto em ${l.numeroNota}: ${fmtL3(i.qtd)} (${varPerc.toFixed(0)}% acima da média)`
                         });
@@ -400,11 +398,10 @@ function _renderAlertas(lancDescarga, lancEmissao) {
                         alertas.push({
                             tipo: 'volume', chave: chaveVol,
                             icone: '', cor: 'azul',
-                            titulo: `Volume abaixo do usual — ${escapeHtml(i.tipo)}`,
+                            titulo: `Abaixo do usual · ${escapeHtml(i.tipo)}`,
                             msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong>: ` +
-                                 `<strong>${fmtL3(i.qtd)}</strong> — ` +
-                                 `${Math.abs(varPerc).toFixed(0)}% abaixo da média histórica ` +
-                                 `(média: ${fmtL3(mediaVol)}/nota)`,
+                                 `<strong>${fmtL(i.qtd)}</strong>, ${Math.abs(varPerc).toFixed(0)}% abaixo da média ` +
+                                 `(${fmtL(mediaVol)} por nota)`,
                             id: l.id,
                             notificacao: `Volume baixo em ${l.numeroNota}: ${fmtL3(i.qtd)} (${Math.abs(varPerc).toFixed(0)}% abaixo da média)`
                         });
@@ -439,7 +436,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
                     alertas.push({
                         tipo: 'data', chave: chaveData,
                         icone: '', cor: 'vermelho',
-                        titulo: `Data suspeita — nota ${escapeHtml(l.numeroNota)}`,
+                        titulo: `Nota ${escapeHtml(l.numeroNota)}`,
                         msg: motivo.join(' · '),
                         id: l.id,
                         notificacao: `Data suspeita na nota ${l.numeroNota}: ${motivo.join(', ')}`,
@@ -482,21 +479,24 @@ function _renderAlertas(lancDescarga, lancEmissao) {
     const nomesTipo = { data: "data suspeita", preco: "preço", volume: "volume" };
     const resumoTipos = Object.entries(porTipo).map(([t, n]) => `${n} de ${nomesTipo[t] || t}`).join(", ");
 
+    // Cada alerta numa linha (18/09/2026): etiqueta do tipo no lugar do ⚠
+    // solto, título curto, o detalhe embaixo e as duas ações à direita.
+    const rotuloTipo = { preco: "Preço", volume: "Volume", data: "Data" };
+    const iconeAbrir = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
     el.innerHTML = `<p class="dica alertas-resumo">${alertas.length} alerta(s) no período: ${escapeHtml(resumoTipos)}.</p>` + visiveis.map(a => {
-        const { icone, cor, titulo, msg, chave, id, confirmarLabel } = a;
+        const { tipo, titulo, msg, chave, id, confirmarLabel } = a;
         return `
-        <div class="alerta-card alerta-card--${cor} alerta-clicavel">
-            <div class="alerta-corpo"
-                 onclick="editarLancamento('${escapeJsAttr(id)}')"
-                 title="Clique para editar o lançamento">
-                ${icone} <strong class="alerta-titulo">${titulo}</strong> —
-                <span class="alerta-msg">${msg}</span>
-                <span class="alerta-link">Ver →</span>
+        <div class="alerta-item alerta-item--${tipo}">
+            <span class="alerta-tipo">${rotuloTipo[tipo] || tipo}</span>
+            <div class="alerta-conteudo" onclick="editarLancamento('${escapeJsAttr(id)}')" title="Abrir a nota">
+                <div class="alerta-item-titulo">${titulo}</div>
+                <div class="alerta-item-msg">${msg}</div>
             </div>
-            <button class="alerta-ignorar"
+            <button class="btn-icone" onclick="editarLancamento('${escapeJsAttr(id)}')" title="Abrir a nota" aria-label="Abrir a nota">${iconeAbrir}</button>
+            <button class="alerta-confirmar"
                     onclick="ignorarAlerta('${escapeJsAttr(chave)}'); carregarDashboard();"
                     title="Marcar como verificado e não exibir mais">
-                ✓ ${confirmarLabel || 'Confirmar'}
+                ${confirmarLabel || 'Confirmar'}
             </button>
         </div>`;
     }).join('') + (escondidos > 0

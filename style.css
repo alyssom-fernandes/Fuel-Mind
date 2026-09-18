@@ -2614,3 +2614,36 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 /* O `pre-wrap` é para as quebras de linha das observações; no histórico e nos
    anexos ele transformava a indentação do HTML em linhas em branco. */
 .detalhe-obs.detalhe-obs--historico { white-space: normal; }
+
+/* Alertas do Dashboard: uma linha por alerta, com etiqueta do tipo */
+.alertas-container { gap: 6px; }
+.alerta-item {
+    display: grid; grid-template-columns: 76px minmax(0, 1fr) auto auto; align-items: center;
+    gap: var(--space-3); padding: 10px 12px 10px 14px;
+    background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius);
+    transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+.alerta-item:hover { border-color: var(--border); background: var(--surface-alt); }
+.alerta-tipo {
+    justify-self: start; padding: 3px 9px; border-radius: 999px;
+    font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+}
+.alerta-item--preco  .alerta-tipo { background: var(--warning-light); color: var(--warning); }
+.alerta-item--volume .alerta-tipo { background: var(--info-light);    color: var(--info); }
+.alerta-item--data   .alerta-tipo { background: var(--danger-light);  color: var(--danger); }
+.alerta-conteudo { min-width: 0; cursor: pointer; }
+.alerta-item-titulo { font-weight: 600; font-size: 0.875rem; color: var(--text); }
+.alerta-item-msg { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alerta-item-msg strong { color: var(--text); font-weight: 600; }
+.alerta-confirmar {
+    padding: 6px 12px; font-size: 0.78rem; font-weight: 600;
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.alerta-confirmar:hover { color: var(--success); border-color: var(--success); background: var(--success-light); }
+@media (max-width: 700px) {
+    .alerta-item { grid-template-columns: auto minmax(0, 1fr); }
+    .alerta-item .btn-icone { display: none; }
+    .alerta-confirmar { grid-column: 1 / -1; justify-self: end; }
+    .alerta-item-msg { white-space: normal; }
+}
