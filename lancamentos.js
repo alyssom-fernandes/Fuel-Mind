@@ -863,7 +863,10 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         // Após edição, reaplica os filtros que o usuário tinha montado em vez de
         // deixar o recarregamento padrão zerá-los.
         if (eraEdicao && typeof recarregarRelatorioSemZerarFiltros === 'function') {
-            setTimeout(() => recarregarRelatorioSemZerarFiltros(), 0);
+            setTimeout(() => {
+                recarregarRelatorioSemZerarFiltros();
+                destacarLinhaRelatorio(lancamento.id);
+            }, 0);
         }
         return;
     }
@@ -973,6 +976,11 @@ function _sessaoRegistrar(lancamento) {
         hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     });
     _sessaoRenderizar();
+    // A nota que acabou de entrar pisca no alto da lista: é a confirmação no
+    // lugar para onde o operador olha, e vale também para o Ctrl+Enter.
+    if (typeof confirmarNoLocal === 'function') {
+        confirmarNoLocal(document.querySelector('#sessaoLista .sessao-item'));
+    }
 }
 
 function _sessaoRenderizar() {
@@ -1488,6 +1496,7 @@ async function excluirLancamento(id, contexto = 'relatorio') {
         if (!_marcarEstadoLancamento(l, null, 'Restaurado (desfazer)')) return;
         recarregarRelatorioSemZerarFiltros();
         mostrarToast("Exclusão desfeita: o lançamento voltou.", "sucesso", 3500);
+        destacarLinhaRelatorio(id);
     });
 }
 
@@ -1526,6 +1535,7 @@ async function restaurarLancamento(id, contexto = 'relatorio') {
     if (!_marcarEstadoLancamento(atual, null, 'Restaurado')) return;
     recarregarRelatorioSemZerarFiltros();
     mostrarToast("Lançamento restaurado.", "sucesso", 4000);
+    destacarLinhaRelatorio(id);
 }
 
 /**

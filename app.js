@@ -1422,7 +1422,7 @@ function _executarSaveLegado() {
             _setStatusConexao("erro");
             clearTimeout(_timerRetry);
             _timerRetry = setTimeout(() => { if (_pendentesSincronizacao) salvarDB(); }, 30000);
-            mostrarToast("Erro ao salvar na nuvem. Tentando novamente em 30s…", "erro", 6000);
+            mostrarToast("Erro ao salvar na nuvem. Tentando novamente em 30s…", "erro", 6000, { fixar: false });
         });
 }
 
@@ -1713,7 +1713,7 @@ async function _aoFalharListener(nome, erro) {
 
     if (erro?.code === 'resource-exhausted') {
         _setStatusConexao("erro");
-        if (n === 1) mostrarToast("A cota diária da nuvem foi atingida. Os dados podem ficar desatualizados até amanhã.", "erro", 10000);
+        if (n === 1) mostrarToast("A cota diária da nuvem foi atingida. Os dados podem ficar desatualizados até amanhã.", "erro", 10000, { fixar: false });
         return;
     }
     if (erro?.code === 'permission-denied') {
@@ -1994,7 +1994,17 @@ function mostrarToastComAcao(mensagem, tipo, duracao, rotulo, aoClicar) {
     toast.appendChild(botao);
 }
 
-function mostrarToast(mensagem, tipo = "sucesso", duracao = 3000) {
+function mostrarToast(mensagem, tipo = "sucesso", duracao = 3000, opcoes = {}) {
+    // O toast avisa no canto; a ação responde também no lugar dela (ui.js,
+    // 18/09/2026). Erro fica escrito na tela onde falhou; sucesso pisca o
+    // botão clicado e apaga os erros daquele lugar. `fixar: false` é para o
+    // que não é de tela nenhuma (a nuvem tentando de novo sozinha).
+    if (tipo === "erro" && opcoes.fixar !== false && typeof fixarErroNoLocal === "function") {
+        fixarErroNoLocal(mensagem);
+    } else if (tipo === "sucesso" && opcoes.local !== false && typeof confirmarNoLocal === "function") {
+        confirmarNoLocal(_botaoDaAcao());
+        limparErrosNoLocal();
+    }
     let pilha = document.getElementById("toastPilha");
     if (!pilha) {
         pilha = document.createElement("div");

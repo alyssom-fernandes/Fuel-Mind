@@ -852,3 +852,166 @@ document.addEventListener("DOMContentLoaded", function() {
 
     sincronizarBaseEntrada();
 });
+
+/* ── A AÇÃO RESPONDE ONDE ACONTECEU (programa 3.5, 3.6 e 3.7 — 18/09/2026) ──
+   O toast fala no canto e some em 3 segundos. Três coisas passam a ficar no
+   lugar da ação:
+   - confirmação: o botão que o operador clicou pisca em verde com um ✓;
+   - erro: fica escrito no alto da tela (ou do modal) onde falhou, com a
+     hora, até ser fechado ou até a próxima ação dar certo ali;
+   - recálculo: ao mudar um filtro, os números da tela esmaecem e aparece
+     "Recalculando…" — só se a conta passar de um décimo de segundo. */
+
+let _acaoBotao = null;
+let _acaoBotaoEm = 0;
+document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button');
+    if (b) { _acaoBotao = b; _acaoBotaoEm = performance.now(); }
+}, true);
+// Tecla fora de botão (Ctrl+Enter, digitar a próxima nota) encerra a ação do
+// clique: o ✓ não pode cair num botão que não foi o que salvou.
+document.addEventListener('keydown', e => {
+    const b = e.target.closest && e.target.closest('button');
+    if (b && (e.key === 'Enter' || e.key === ' ')) { _acaoBotao = b; _acaoBotaoEm = performance.now(); }
+    else if (!['Shift', 'Tab'].includes(e.key)) _acaoBotao = null;
+}, true);
+
+/** O botão da última ação, se ainda estiver na tela e tiver sido clicado há pouco. */
+function _botaoDaAcao() {
+    const b = _acaoBotao;
+    if (!b || !b.isConnected || !b.offsetParent) return null;
+    return performance.now() - _acaoBotaoEm < 8000 ? b : null;
+}
+
+/** Pisca um elemento em verde, com ✓ — botão, linha de tabela, item de lista. */
+function confirmarNoLocal(el) {
+    if (!el || !el.isConnected) return;
+    // Deu certo aqui: o erro que estava escrito neste lugar deixou de valer.
+    limparErrosNoLocal();
+    el.classList.remove('confirmado-local');
+    void el.offsetWidth;   // reinicia a animação se o mesmo botão for clicado de novo
+    el.classList.add('confirmado-local');
+    clearTimeout(el._confirmadoTimer);
+    el._confirmadoTimer = setTimeout(() => el.classList.remove('confirmado-local'), 1800);
+}
+
+/** O modal aberto por cima de tudo, se houver. */
+function _modalAberto() {
+    const modais = [...document.querySelectorAll('.modal-overlay')]
+        .filter(m => m.style.display !== 'none' && getComputedStyle(m).display !== 'none');
+    const overlay = modais[modais.length - 1];
+    if (!overlay) return null;
+    // Erro de modal não sobrevive ao modal: ao fechar, sai junto, para
+    // não reaparecer velho na próxima abertura.
+    if (!overlay._vigiaErro) {
+        overlay._vigiaErro = new MutationObserver(() => {
+            if (getComputedStyle(overlay).display === 'none') {
+                overlay.querySelectorAll('.erros-locais').forEach(c => c.remove());
+            }
+        });
+        overlay._vigiaErro.observe(overlay, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+    return overlay.querySelector('.modal') || overlay.firstElementChild || overlay;
+}
+
+/**
+ * Onde a ação aconteceu. No modal: no alto dele. Na tela: logo abaixo da
+ * linha do botão clicado — o erro aparece onde o olho está, não no alto de
+ * uma página rolada. Sem botão (atalho de teclado): no alto da tela.
+ */
+function _lugarDaAcao() {
+    const modal = _modalAberto();
+    if (modal) return { pai: modal };
+    const tela = document.querySelector(".tela[style*='block']");
+    const b = _botaoDaAcao();
+    if (b && tela && tela.contains(b)) {
+        // Numa tabela o erro não cabe entre as linhas: vai para baixo dela.
+        const ancora = b.closest('.tabela-container') || b.closest('li') || b.parentElement;
+        return { ancora };
+    }
+    return tela ? { pai: tela } : null;
+}
+
+function _caixaDeErros(lugar, criar) {
+    const nova = () => {
+        const c = document.createElement('div');
+        c.className = 'erros-locais';
+        c.setAttribute('role', 'alert');
+        return c;
+    };
+    if (lugar.ancora) {
+        const prox = lugar.ancora.nextElementSibling;
+        if (prox && prox.classList.contains('erros-locais')) return prox;
+        if (!criar) return null;
+        const c = nova();
+        lugar.ancora.after(c);
+        return c;
+    }
+    const existente = lugar.pai.querySelector(':scope > .erros-locais');
+    if (existente || !criar) return existente;
+    const c = nova();
+    lugar.pai.prepend(c);
+    return c;
+}
+
+/** Fixa um erro no lugar onde a ação falhou. */
+function fixarErroNoLocal(msg) {
+    const lugar = _lugarDaAcao();
+    if (!lugar) return;
+    const caixa = _caixaDeErros(lugar, true);
+    // A mesma mensagem não empilha: sobe para o topo com a hora nova.
+    [...caixa.children].forEach(c => { if (c.dataset.msg === msg) c.remove(); });
+    while (caixa.children.length >= 3) caixa.lastElementChild.remove();
+
+    const item = document.createElement('div');
+    item.className = 'erro-local';
+    item.dataset.msg = msg;
+    const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    item.innerHTML = `<span class="erro-local-icone" aria-hidden="true">✕</span>`
+        + `<span class="erro-local-msg">${escapeHtml(msg)}</span>`
+        + `<span class="erro-local-hora">${hora}</span>`
+        + `<button type="button" class="erro-local-fechar" title="Fechar" aria-label="Fechar este erro">×</button>`;
+    item.querySelector('button').onclick = () => {
+        item.remove();
+        if (!caixa.children.length) caixa.remove();
+    };
+    caixa.prepend(item);
+    caixa.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/** A ação deu certo: o erro que estava escrito naquele lugar deixa de valer. */
+function limparErrosNoLocal() {
+    const lugar = _lugarDaAcao();
+    const caixa = lugar && _caixaDeErros(lugar, false);
+    if (caixa) caixa.remove();
+}
+
+/**
+ * Recalcula uma tela deixando o sinal à vista. A conta continua a mesma e
+ * síncrona; a diferença é esperar um quadro para o navegador pintar o
+ * esmaecido antes. Pedidos seguidos (duas datas trocadas de uma vez) viram
+ * uma conta só, que lê os filtros no momento em que roda.
+ */
+function recalcularTela(telaId, fn) {
+    const tela = document.getElementById(telaId);
+    if (!tela) return fn();
+    if (tela._recalculoPendente) return;
+    tela._recalculoPendente = true;
+    tela.classList.add('recalculando');
+    tela.setAttribute('aria-busy', 'true');
+    let feito = false;
+    const rodar = () => {
+        if (feito) return;
+        feito = true;
+        try { fn(); }
+        finally {
+            tela._recalculoPendente = false;
+            tela.classList.remove('recalculando');
+            tela.removeAttribute('aria-busy');
+        }
+    };
+    requestAnimationFrame(() => setTimeout(rodar, 0));
+    // Com a aba escondida o navegador não entrega quadro nenhum; a conta não
+    // pode ficar esperando por isso.
+    setTimeout(rodar, 50);
+}

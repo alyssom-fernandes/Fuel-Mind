@@ -204,7 +204,7 @@ function grupoFiltroRapido(periodo) {
     }
     document.getElementById("grupoInicio").value = inicio;
     document.getElementById("grupoFim").value    = fim;
-    carregarGrupo();
+    recalcularTela('grupo', carregarGrupo);
 }
 
 /** Da comparação para a empresa: troca a ativa pela porta única e abre o Dashboard. */

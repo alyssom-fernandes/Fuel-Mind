@@ -382,7 +382,7 @@ function _freteAbrirMes(mes) {
     const sel = document.getElementById("fretesSelectMes");
     if (!sel) return;
     sel.value = mes;
-    calcularEExibirFretes();
+    recalcularTela('fretes', calcularEExibirFretes);
 }
 
 /* ── FRETE NOTA A NOTA (17/09/2026) ─────────────────────────────────

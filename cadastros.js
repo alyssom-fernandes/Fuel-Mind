@@ -375,6 +375,9 @@ function confirmarEdicao() {
     salvarDB();
     fecharModal();
     atualizarListas();
+    // Editar sem renomear não dizia nada: o modal fechava e só. A linha
+    // editada pisca no lugar (18/09/2026).
+    _destacarCadastro(lista, id);
     // Renomear a empresa que está ativa é uma troca de empresa que ninguém
     // pediu: sem isto a global ficava com o nome velho.
     if (lista === "empresas" && typeof _reconciliarEmpresaAtiva === "function") _reconciliarEmpresaAtiva();
@@ -388,6 +391,15 @@ function confirmarEdicao() {
 }
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") fecharModal(); });
+
+/** A linha do cadastro que acabou de ser criado ou editado pisca, à vista. */
+function _destacarCadastro(lista, id) {
+    const btn = document.querySelector(`button[data-lista="${lista}"][data-id="${CSS.escape(String(id))}"]`);
+    const linha = btn && btn.closest('li, tr');
+    if (!linha) return;
+    linha.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (typeof confirmarNoLocal === "function") confirmarNoLocal(linha);
+}
 
 // ========== MOTORISTAS ==========
 function salvarMotorista() {
@@ -410,12 +422,7 @@ function salvarMotorista() {
     input.value = "";
     salvarDB();
     atualizarListas();
-    setTimeout(() => {
-        const ul = document.getElementById("listaMotoristas");
-        if (ul && ul.lastElementChild) {
-            ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-    }, 100);
+    _destacarCadastro("motoristas", db.motoristas[db.motoristas.length - 1].id);
 }
 
 // ========== VEÍCULOS (com validação de placa) ==========
@@ -453,10 +460,7 @@ async function salvarVeiculo() {
     input.value = "";
     salvarDB();
     atualizarListas();
-    setTimeout(() => {
-        const ul = document.getElementById("listaVeiculos");
-        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
+    _destacarCadastro("veiculos", db.veiculos[db.veiculos.length - 1].id);
 }
 
 /**
@@ -555,10 +559,7 @@ function salvarEmpresa() {
     if (inputTaxa) inputTaxa.value = "";
     salvarDB();
     atualizarListas();
-    setTimeout(() => {
-        const ul = document.getElementById("listaEmpresas");
-        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
+    _destacarCadastro("empresas", db.empresas[db.empresas.length - 1].id);
 }
 
 // ========== COMBUSTÍVEIS ==========
@@ -585,10 +586,7 @@ function salvarCombustivel() {
     inputNome.value = ""; inputPerda.value = "";
     salvarDB();
     atualizarListas();
-    setTimeout(() => {
-        const ul = document.getElementById("listaCombustiveis");
-        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
+    _destacarCadastro("combustiveis", db.combustiveis[db.combustiveis.length - 1].id);
 }
 
 // ========== BASES ==========
@@ -621,10 +619,7 @@ function salvarBase() {
     input.value = "";
     salvarDB();
     atualizarListas();
-    setTimeout(() => {
-        const ul = document.getElementById("listaBases");
-        if (ul && ul.lastElementChild) ul.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
+    _destacarCadastro("bases", db.bases[db.bases.length - 1].id);
 }
 
 // ========== INATIVAR / REATIVAR ==========
@@ -640,6 +635,13 @@ async function toggleAtivo(lista, id) {
     item.logs.push(`${acao === 'inativar' ? 'Inativado' : 'Reativado'} em ${new Date().toLocaleString('pt-BR')}`);
     salvarDB();
     atualizarListas();
+    // Inativado com "mostrar inativos" desligado some da lista; aí o aviso
+    // é o único rastro de que a ação aconteceu.
+    if (acao === 'inativar' && !document.getElementById("mostrarInativos")?.checked) {
+        mostrarToast(`"${item.nome}" inativado. Marque "mostrar inativos" para vê-lo.`, "info", 4000);
+    } else {
+        _destacarCadastro(lista, id);
+    }
     if (lista === "empresas" && typeof _reconciliarEmpresaAtiva === "function") _reconciliarEmpresaAtiva();
 }
 

@@ -1531,7 +1531,7 @@ function filtroRapido(arg1, arg2) {
         const elF = document.getElementById("analiticoFim");
         if (elI) elI.value = inicio;
         if (elF) elF.value = fim;
-        if (typeof carregarAnalitico === 'function') carregarAnalitico();
+        if (typeof carregarAnalitico === 'function') recalcularTela('analitico', carregarAnalitico);
     }
 }
 
@@ -1549,4 +1549,12 @@ function exportarPeriodoRapido(periodo) {
         }
         exportarPDF('relatorio');
     }, 300);
+}
+
+/** A linha da nota que acabou de ser editada ou restaurada pisca na tabela (18/09/2026). */
+function destacarLinhaRelatorio(id) {
+    const linha = document.querySelector(`#tabelaRelatorio > tr[data-id="${CSS.escape(String(id))}"]`);
+    if (!linha) return;
+    linha.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (typeof confirmarNoLocal === "function") confirmarNoLocal(linha);
 }

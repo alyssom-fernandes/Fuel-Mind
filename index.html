@@ -273,8 +273,8 @@
   <h2 id="tituloGrupo" style="display:block;">Comparação do Grupo</h2>
   <p class="dica">Todas as empresas que este perfil enxerga, lado a lado, sem trocar de empresa. Somente leitura: litros e frete contam pela <strong>data da descarga</strong>; gasto e preço médio, pela <strong>data de emissão</strong>. Clique numa empresa para abrir o Dashboard dela.</p>
   <div class="filtros">
-    <div class="campo"><label for="grupoInicio">De</label><input type="date" id="grupoInicio" onchange="carregarGrupo()"></div>
-    <div class="campo"><label for="grupoFim">Até</label><input type="date" id="grupoFim" onchange="carregarGrupo()"></div>
+    <div class="campo"><label for="grupoInicio">De</label><input type="date" id="grupoInicio" onchange="recalcularTela('grupo', carregarGrupo)"></div>
+    <div class="campo"><label for="grupoFim">Até</label><input type="date" id="grupoFim" onchange="recalcularTela('grupo', carregarGrupo)"></div>
   </div>
   <div class="filtros-acoes">
     <span class="filtros-rapidos-sep">Período rápido:</span>
@@ -289,10 +289,10 @@
 <div id="fretes" class="tela">
   <h2 id="tituloFretes" style="display:block;">Resumo de Fretes</h2>
   <p class="dica">Dados calculados automaticamente a partir das notas <strong>descarregadas</strong> no mês selecionado: o frete é do que foi transportado na competência, pela data da descarga. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
-  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+  <div class="fretes-filtro" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
     <label for="fretesSelectMes" style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês da descarga:</label>
-    <input type="month" id="fretesSelectMes" onchange="calcularEExibirFretes()" style="max-width:180px">
-    <button class="btn-primario" onclick="calcularEExibirFretes()">Atualizar</button>
+    <input type="month" id="fretesSelectMes" onchange="recalcularTela('fretes', calcularEExibirFretes)" style="max-width:180px">
+    <button class="btn-primario" onclick="recalcularTela('fretes', calcularEExibirFretes)">Atualizar</button>
   </div>
   <div id="fretesResumoMes" class="resumo" style="margin-bottom:16px"></div>
   <h3 style="margin-top:4px">Frete mês a mês — últimos 6 meses</h3>
@@ -399,7 +399,7 @@
       <div class="campo"><label for="analiticoInicio" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão de</label><input type="date" id="analiticoInicio"></div>
       <div class="campo"><label for="analiticoFim" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão até</label><input type="date" id="analiticoFim"></div>
       <div class="campo"><label for="analiticoCombustivel">Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
-      <div class="campo" style="justify-content:flex-end; padding-top:18px"><button class="btn-primario" onclick="carregarAnalitico()">Atualizar</button></div>
+      <div class="campo" style="justify-content:flex-end; padding-top:18px"><button class="btn-primario" onclick="recalcularTela('analitico', carregarAnalitico)">Atualizar</button></div>
     </div>
     <div class="filtros-rapidos-linha">
       <span class="filtros-rapidos-sep">Período rápido:</span>

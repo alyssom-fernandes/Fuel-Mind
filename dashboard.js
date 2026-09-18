@@ -70,7 +70,7 @@ function dashFiltroRapido(periodo) {
     const f = document.getElementById('dashFim');
     if (i) i.value = inicio;
     if (f) f.value = fim;
-    carregarDashboard();
+    recalcularTela('dashboard', carregarDashboard);
 }
 
 // ─── Garante filtros de período no DOM (cria se ainda não existir) ───────────
@@ -87,11 +87,11 @@ function _garantirFiltrosDashboard() {
     filtrosDiv.innerHTML = `
         <div class="campo" style="min-width:140px">
             <label for="dashInicio">Período — início</label>
-            <input type="date" id="dashInicio" value="${inicioMesStr}" onchange="carregarDashboard()">
+            <input type="date" id="dashInicio" value="${inicioMesStr}" onchange="recalcularTela('dashboard', carregarDashboard)">
         </div>
         <div class="campo" style="min-width:140px">
             <label for="dashFim">Período — fim</label>
-            <input type="date" id="dashFim" value="${fimHojeStr}" onchange="carregarDashboard()">
+            <input type="date" id="dashFim" value="${fimHojeStr}" onchange="recalcularTela('dashboard', carregarDashboard)">
         </div>
         <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;padding-bottom:2px;">
             <span class="filtros-rapidos-sep" style="align-self:center;">Rápido:</span>
