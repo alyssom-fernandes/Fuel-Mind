@@ -614,22 +614,22 @@
       <p class="dica">Importe lançamentos históricos das suas planilhas Excel (.xlsx, .xls) ou CSV. Notas novas são acrescentadas. Uma nota que já existe só é substituída se você marcar "Reimportar" no resumo, e a anterior fica registrada como excluída. A empresa de cada linha precisa estar cadastrada.</p>
     </div>
     <div class="sistema-secao mb-5">
-      <h3>Antes de começar</h3>
+      <h3>1. Antes de começar</h3>
       <p class="dica mb-2">Sua planilha deve ter <strong>uma linha por combustível</strong>. Se uma nota tiver S10 e Gasolina, serão duas linhas com o mesmo número de nota — o sistema agrupa automaticamente.</p>
       <button class="btn-secundario" onclick="baixarModeloPlanilha()">Baixar modelo de planilha</button>
     </div>
     <div class="sistema-secao mb-5">
-      <h3>Selecionar arquivo</h3>
+      <h3>2. Selecionar arquivo</h3>
       <input type="file" id="importacaoArquivo" aria-label="Arquivo de planilha para importar" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" class="input-arquivo">
       <p class="dica mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
     </div>
     <div id="importacaoEtapas" style="display:none">
       <div class="sistema-secao mb-5">
-        <h3>Pré-visualização do arquivo</h3>
+        <h3>3. Pré-visualização do arquivo</h3>
         <div id="importacaoPreview"></div>
       </div>
       <div class="sistema-secao mb-5">
-        <h3>Mapeamento de colunas</h3>
+        <h3>4. Mapeamento de colunas</h3>
         <div id="importacaoMapeamento"></div>
       </div>
       <div class="linha-acoes">

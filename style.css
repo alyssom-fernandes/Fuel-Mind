@@ -2713,7 +2713,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 
 /* Campo de arquivo: o botão do navegador vira um botão do sistema, em
    Backup, Importar Planilha, Conferências e logo do PDF. */
-input[type="file"] { width: auto; font-size: 0.8rem; color: var(--text-muted); font-family: inherit; max-width: 100%; padding: 0; background: none; border: none; }
+input[type="file"] { width: 100%; max-width: 440px; font-size: 0.8rem; color: var(--text-muted); font-family: inherit; max-width: 100%; padding: 0; background: none; border: none; }
 input[type="file"]::file-selector-button {
     margin-right: var(--space-3); padding: 8px 16px; cursor: pointer;
     border: 1px solid var(--border); border-radius: var(--radius);
@@ -2764,3 +2764,33 @@ input[type="checkbox"], input[type="radio"] {
 }
 /* Os interruptores do modal de alertas escondem a caixa de propósito. */
 ._cfg-toggle input { width: 0; height: 0; min-width: 0; opacity: 0; }
+
+/* Celular: o cabeçalho tinha 502 px numa tela de 375 e empurrava a página
+   para o lado. Fica o essencial — menu, empresa, busca, sair e tema. */
+@media (max-width: 768px) {
+    .header-actions { gap: 6px; min-width: 0; }
+    .header-empresa-rotulo, .header-sep, .header-usuario, .header-action-btn--atalhos, .busca-kbd { display: none; }
+    .header-empresa { min-width: 0; }
+    .empresa-ativa-badge { max-width: 150px; }
+    .empresa-ativa-badge #empresaAtivaLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-busca-global { padding: 7px 9px; }
+    /* Atalhos de período no tamanho natural, como na barra de filtros. */
+    .dash-filtros-rapidos .btn-filtro-rapido { flex: 0 0 auto; }
+    .dash-filtros-rapidos .filtros-rapidos-sep { flex-basis: 100%; }
+    #dashFiltrosPeriodo .campo-data { flex: 1 1 130px; min-width: 0; }
+}
+/* O campo de arquivo escondido fica preso dentro da faixa do XML (solto,
+   ele empurrava a página 30 px para o lado no celular). */
+.importar-xml-bloco { position: relative; }
+.input-arquivo-oculto { left: 0; top: 0; }
+/* Celular: os filtros do Relatório em duas colunas (eram oito campos
+   empilhados, uma tela inteira antes da primeira nota). */
+@media (max-width: 768px) {
+    #relatorios .filtros { grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); padding: var(--space-3); }
+    #relatorios .filtros .campo input[type="date"] { font-size: 0.78rem; padding: 8px 8px; }
+    #relatorios .filtros .campo-checkbox { grid-column: 1 / -1; }
+}
+@media (max-width: 768px) {
+    .rel-kpis { grid-template-columns: 1fr 1fr; }
+    .rel-kpi-valor { font-size: 1.05rem; }
+}
