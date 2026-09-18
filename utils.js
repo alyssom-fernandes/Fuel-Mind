@@ -342,6 +342,13 @@ function fmtPct(v, casas = 1) {
     return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
 }
 
+/** Imprime a folha montada em #areaImpressao (e não a tela aberta). */
+function imprimirAreaDeImpressao() {
+    document.body.classList.add("imprimindo");
+    window.addEventListener("afterprint", () => document.body.classList.remove("imprimindo"), { once: true });
+    window.print();
+}
+
 /* ══ NÚMERO EM PORTUGUÊS ═════════════════════════════════════════════
    Por que isto existe (tema 05 da pesquisa).
 
@@ -811,11 +818,65 @@ function garantirBiblioteca(nome) {
         const el = document.createElement("script");
         el.src = b.src;
         el.async = false;
-        el.onload = () => resolve();
+        el.onload = () => { if (nome === "xlsx") _prepararGravacaoPlanilha(); resolve(); };
         el.onerror = () => { delete _bibliotecaPromessa[nome]; reject(new Error("Falha ao carregar " + nome)); };
         document.head.appendChild(el);
     });
     return _bibliotecaPromessa[nome];
+}
+
+/* ── ACABAMENTO DAS PLANILHAS (18/09/2026) ─────────────────────────
+   Toda planilha saía sem largura de coluna (nomes cortados, "####" nos
+   valores) e sem formato de número (117460,2 em vez de 117.460,20). Em vez
+   de mexer em cada uma das nove exportações, a gravação passa por aqui:
+   cada aba ganha largura pelo conteúdo e formato pelo cabeçalho da coluna —
+   reais com 2 casas, litros com 3 (inteiros sem casas), preço e taxa por
+   litro com 3. A célula continua NÚMERO: soma e ordena no Excel. */
+function ajustarPlanilha(ws) {
+    if (!ws || !ws["!ref"] || typeof XLSX === "undefined") return;
+    const faixa = XLSX.utils.decode_range(ws["!ref"]);
+    const larguras = [];
+    let cabecalho = [];
+    for (let R = faixa.s.r; R <= faixa.e.r; R++) {
+        const linha = [];
+        for (let C = faixa.s.c; C <= faixa.e.c; C++) linha.push(ws[XLSX.utils.encode_cell({ r: R, c: C })]);
+        const preenchidas = linha.filter(c => c && c.v !== "" && c.v != null);
+        // Linha de cabeçalho: três ou mais textos e nenhum número. Planilhas
+        // com várias seções (Fretes) trocam de cabeçalho no meio.
+        const ehCabecalho = preenchidas.length >= 3 && preenchidas.every(c => c.t === "s");
+        if (ehCabecalho) cabecalho = linha.map(c => (c ? String(c.v) : "").toLowerCase());
+        linha.forEach((cel, i) => {
+            if (!cel || cel.v === "" || cel.v == null) return;
+            // Título de uma célula só (primeira coluna, linha sem mais nada)
+            // não alarga a coluna: ele transborda para as vizinhas.
+            if (i === 0 && preenchidas.length === 1 && cel.t === "s") return;
+            if (cel.t === "n" && !ehCabecalho) {
+                const h = cabecalho[i] || "";
+                // A ordem importa: "Frete (descarga)" é dinheiro, não litro;
+                // "Total litros (L)" é litro, não dinheiro.
+                if (/\/l\b|taxa|pre[çc]o|unit/.test(h))                    cel.z = "#,##0.000";
+                else if (/r\$|frete|gasto|valor/.test(h))                   cel.z = "#,##0.00";
+                else if (/litro|\(l\)|carga|descarga|entrada|diferen/.test(h)) cel.z = Number.isInteger(cel.v) ? "#,##0" : "#,##0.000";
+                else if (/total/.test(h) || !Number.isInteger(cel.v))       cel.z = "#,##0.00";
+            }
+            const texto = cel.t === "n"
+                ? cel.v.toLocaleString("pt-BR", { minimumFractionDigits: cel.z && cel.z.includes(".000") ? 3 : (cel.z ? 2 : 0) })
+                : String(cel.v);
+            larguras[i] = Math.max(larguras[i] || 8, Math.min(texto.length + 2, 48));
+        });
+    }
+    ws["!cols"] = larguras.map(w => ({ wch: w || 8 }));
+}
+
+function _prepararGravacaoPlanilha() {
+    if (typeof XLSX === "undefined" || XLSX.__acabamento) return;
+    XLSX.__gravarOriginal = XLSX.writeFile;
+    XLSX.writeFile = function (wb, nome, opcoes) {
+        try { (wb.SheetNames || []).forEach(n => ajustarPlanilha(wb.Sheets[n])); }
+        catch (e) { console.warn("Acabamento da planilha:", e); }
+        return XLSX.__gravarOriginal(wb, nome, opcoes);
+    };
+    XLSX.__acabamento = true;
 }
 
 /** Em sequência: o plugin de tabela precisa do jsPDF antes dele. */

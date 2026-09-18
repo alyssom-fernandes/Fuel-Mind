@@ -1304,7 +1304,6 @@ function _autoExportarExcel(comb) {
     mostrarToast('Excel exportado!', 'sucesso');
 }
 
-function _conferenciaImprimir() { window.print(); }
 
 /* ========== INICIALIZAÇÃO ========== */
 document.addEventListener('DOMContentLoaded', () => {

@@ -937,8 +937,11 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 @media print {
     .sidebar, .app-header, .filtros, .filtros-acoes, .barra-exportacao, .acoes-lancamento, .acoes-lista, .btn-excluir, .btn-editar, .btn-secundario, .btn-clonar, .painel-detalhes, .no-print { display: none !important; }
     .main-area { margin-left: 0 !important; }
-    .tela { display: none !important; }
-    .area-impressao { display: block !important; }
+    /* A folha montada (Relatório, Fretes) só substitui a tela quando o
+       sistema pediu a impressão. No Ctrl+P de qualquer outra tela saía uma
+       folha em branco — ou o último relatório impresso (18/09/2026). */
+    body.imprimindo .tela { display: none !important; }
+    body.imprimindo .area-impressao { display: block !important; }
     body { background: white; color: black; font-size: 11px; font-family: Arial, sans-serif; }
     table { border-collapse: collapse; width: 100%; font-size: 10px; }
     th, td { border: 1px solid #aaa; padding: 5px 8px; }
@@ -1705,7 +1708,23 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 }
 
 @media print {
-    .page-footer, #demoFaixa { display: none !important; }
+    .page-footer, #demoFaixa, #toastPilha, .modal-overlay { display: none !important; }
+    /* A folha é a mesma em qualquer tema: texto preto, cabeçalho cinza-claro.
+       Antes o cabeçalho herdava a cor do tema — texto escuro sobre a faixa
+       escura, ou cinza-claro no papel quando o tema era o escuro. */
+    .area-impressao, .area-impressao * { color: #111 !important; }
+    .area-impressao th {
+        background: #e9ecef !important; font-weight: 700; text-transform: none; letter-spacing: 0;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .area-impressao thead tr { background: none !important; }
+    .area-impressao tbody tr, .area-impressao td { background: transparent !important; }
+    .area-impressao tr.imp-grupo td, .area-impressao tfoot td {
+        background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .area-impressao .imp-subitem td { color: #555 !important; }
+    .imp-num-2 th:nth-last-child(-n+2), .imp-num-2 td:nth-last-child(-n+2),
+    .imp-num-resto th:nth-child(n+2), .imp-num-resto td:nth-child(n+2) { text-align: right; white-space: nowrap; }
 }
 
 /* Pilha de mensagens: o posicionamento saiu do .toast individual para o

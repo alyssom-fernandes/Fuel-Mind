@@ -28,8 +28,17 @@ function baixarGrafico(nomeGrafico) {
     };
     const chart = charts[nomeGrafico]?.();
     if (!chart) { mostrarToast('Gráfico ainda não carregado.', 'aviso'); return; }
+    // Fundo pintado com a cor do cartão: o PNG saía transparente e, no tema
+    // escuro, os rótulos claros sumiam ao abrir a imagem num fundo branco.
+    const origem = chart.canvas;
+    const tela = document.createElement('canvas');
+    tela.width = origem.width; tela.height = origem.height;
+    const ctx = tela.getContext('2d');
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff';
+    ctx.fillRect(0, 0, tela.width, tela.height);
+    ctx.drawImage(origem, 0, 0);
     const link = document.createElement('a');
-    link.href = chart.toBase64Image('image/png', 1);
+    link.href = tela.toDataURL('image/png');
     link.download = `${nomeGrafico}-${_hojeISO()}.png`;
     document.body.appendChild(link);
     link.click();

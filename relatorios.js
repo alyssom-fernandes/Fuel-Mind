@@ -809,7 +809,7 @@ function exportarExcel(contexto) {
 
     const linhas = dados.map(l => {
         const totalLitros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
-        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toFixed(3)} L`).join(" | ");
+        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} L`).join(" | ");
         return [
             formatarData(l.dataNota),
             l.dataDescarga ? formatarData(l.dataDescarga) : "",
@@ -1028,6 +1028,23 @@ async function exportarPDF(contexto) {
         [head.length - 2]: { halign: 'right' },
         [head.length - 1]: { halign: 'right' }
     };
+    // O cabeçalho das duas colunas de número acompanha os valores, à
+    // direita; antes ficava à esquerda, longe do número (18/09/2026).
+    const alinharCabecalhoNumeros = data => {
+        if ((data.section === 'head' || data.section === 'foot') && data.column.index >= head.length - 2) {
+            data.cell.styles.halign = 'right';
+        }
+    };
+    // Linha de total no fim da tabela, só na última página: o total estava
+    // só no alto da primeira página, e quem lia o fim do PDF não o via.
+    const fmtLitrosPdf = v => v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    const fmtReaisPdf  = v => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const linhaTotal = (rotulo, litros, total) => [[
+        { content: rotulo, colSpan: head.length - 2 },
+        fmtLitrosPdf(litros),
+        fmtReaisPdf(total)
+    ]];
+    const estiloTotal = { fillColor: [236, 239, 243], textColor: [30, 30, 30], fontStyle: 'bold', fontSize: 8.5 };
 
     const totalGeral  = dados.reduce((s, l) => s + (l.total || 0), 0);
     const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
@@ -1047,11 +1064,15 @@ async function exportarPDF(contexto) {
         doc.autoTable({
             head: [head],
             body: dados.map(buildRow),
+            foot: linhaTotal(`Total — ${dados.length} lançamento(s)`, totalLitros, totalGeral),
+            showFoot: 'lastPage',
             startY,
             theme: 'striped',
             headStyles: { fillColor: corRGB, fontSize: 9, font: cfg.fonte },
             bodyStyles: { fontSize: 8, font: cfg.fonte },
+            footStyles: { ...estiloTotal, font: cfg.fonte },
             columnStyles: colStyles,
+            didParseCell: alinharCabecalhoNumeros,
             margin: { left: mL, right: mR, bottom: mRod + 8 },
             didDrawPage: (data) => {
                 desenharRodape(doc.internal.getCurrentPageInfo().pageNumber, '?');
@@ -1094,11 +1115,15 @@ async function exportarPDF(contexto) {
             doc.autoTable({
                 head: [head],
                 body: lans.map(buildRow),
+                foot: linhaTotal(`Total de ${nomeMes(mes)} — ${lans.length} lançamento(s)`, subTotLitros, subTotGeral),
+                showFoot: 'lastPage',
                 startY,
                 theme: 'striped',
                 headStyles: { fillColor: corRGB, fontSize: 9, font: cfg.fonte },
                 bodyStyles: { fontSize: 8, font: cfg.fonte },
+                footStyles: { ...estiloTotal, font: cfg.fonte },
                 columnStyles: colStyles,
+                didParseCell: alinharCabecalhoNumeros,
                 margin: { left: mL, right: mR, bottom: mRod + 8 },
                 didDrawPage: (data) => {
                     desenharRodape(doc.internal.getCurrentPageInfo().pageNumber, '?');
@@ -1152,7 +1177,7 @@ function exportarCSV(contexto) {
 
     const linhas = dados.map(l => {
         const totalLitros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
-        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toFixed(3)} L`).join(" | ");
+        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} L`).join(" | ");
         return [
             formatarData(l.dataNota),
             l.dataDescarga ? formatarData(l.dataDescarga) : "",
@@ -1198,13 +1223,15 @@ function imprimirRelatorio() {
 
     document.getElementById("impressaoTitulo").textContent = titulo;
     // O papel também precisa dizer de que período é (17/09/2026).
-    document.getElementById("impressaoData").textContent   = `${_descricaoPeriodoRelatorio()} | Impresso em: ${dataHoje} | ${dados.length} registros | Total: ${fmtR(totalGeral)} | Litros: ${totalLitros.toFixed(3)} L`;
+    // A empresa vai no cabeçalho da folha, e não numa coluna repetida em
+    // todas as linhas — como na tela (18/09/2026).
+    document.getElementById("impressaoData").textContent   = `${empresaFiltroGlobal ? empresaFiltroGlobal + " | " : ""}${_descricaoPeriodoRelatorio()} | Impresso em: ${dataHoje} | ${dados.length} registros | Total: ${fmtR(totalGeral)} | Litros: ${fmtL3(totalLitros)}`;
 
     document.getElementById("impressaoConteudo").innerHTML = `
-        <table>
+        <table class="imp-num-2">
             <thead><tr>
-                <th>Data Nota</th><th>Data Desc.</th><th>Nota</th><th>Base</th>
-                <th>Empresa</th><th>Motorista</th><th>Placa</th><th>Litros (L)</th><th>Total (R$)</th>
+                <th>Emissão</th><th>Descarga</th><th>Nota</th><th>Base</th>
+                <th>Motorista</th><th>Placa</th><th>Litros</th><th>Total</th>
             </tr></thead>
             <tbody>
                 ${dados.map(l => {
@@ -1213,20 +1240,20 @@ function imprimirRelatorio() {
                         <td>${formatarData(l.dataNota)}</td>
                         <td>${l.dataDescarga ? formatarData(l.dataDescarga) : ""}</td>
                         <td>${escapeHtml(l.numeroNota)}</td><td>${escapeHtml(l.base) || ""}</td>
-                        <td>${escapeHtml(l.empresa) || ""}</td><td>${escapeHtml(l.motorista) || ""}</td><td>${escapeHtml(l.placa) || ""}</td>
+                        <td>${escapeHtml(l.motorista) || ""}</td><td>${escapeHtml(l.placa) || ""}</td>
                         <td>${tl.toLocaleString("pt-BR", {minimumFractionDigits:3,maximumFractionDigits:3})}</td>
                         <td>R$ ${l.total.toLocaleString("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2})}</td>
                     </tr>`;
                 }).join("")}
             </tbody>
             <tfoot><tr>
-                <td colspan="7"><strong>Total Geral</strong></td>
+                <td colspan="6"><strong>Total</strong></td>
                 <td><strong>${dados.reduce((s,l)=>s+l.itens.reduce((ss,i)=>ss+_litrosItem(i),0),0).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L</strong></td>
                 <td><strong>${fmtR(totalGeral)}</strong></td>
             </tr></tfoot>
         </table>
     `;
-    window.print();
+    imprimirAreaDeImpressao();
 }
 
 // ========== WHATSAPP ==========
@@ -1397,7 +1424,8 @@ function _executarRelatorioMensal() {
         { label: 'Total de Notas',      valor: String(totalNotas) },
         { label: 'Total de Litros',     valor: totalLitros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L' },
         { label: 'Total Gasto',         valor: 'R$ ' + totalGasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) },
-        { label: 'Preço Médio de Compra / L', valor: fmtRL(custoMedio) },
+        // Rótulo curto: "Preço médio de compra / L" passava da borda do cartão.
+        { label: 'Preço médio / L', valor: fmtRL(custoMedio) },
     ];
     const colW = (W - 28) / 4;
     kpis.forEach((k, i) => {
@@ -1416,8 +1444,8 @@ function _executarRelatorioMensal() {
         const varLitros = totLitrosAnt > 0 ? ((totalLitros-totLitrosAnt)/totLitrosAnt*100) : null;
         doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...cinza);
         const partes = [];
-        if (varGasto  !== null) partes.push(`Gasto: ${varGasto>=0?'+':''}${varGasto.toFixed(1)}% vs. ${nomeMes(mesAnterior)}`);
-        if (varLitros !== null) partes.push(`Litros: ${varLitros>=0?'+':''}${varLitros.toFixed(1)}% vs. ${nomeMes(mesAnterior)}`);
+        if (varGasto  !== null) partes.push(`Gasto: ${varGasto>=0?'+':''}${fmtPct(varGasto)} vs. ${nomeMes(mesAnterior)}`);
+        if (varLitros !== null) partes.push(`Litros: ${varLitros>=0?'+':''}${fmtPct(varLitros)} vs. ${nomeMes(mesAnterior)}`);
         doc.text('Variação: ' + partes.join('   |   '), 14, y); y += 8;
     }
 
@@ -1439,7 +1467,7 @@ function _executarRelatorioMensal() {
             litros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L',
             fmtRL(custo),
             'R$ ' + gasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
-            varL !== null ? `${varL>=0?'+':''}${varL.toFixed(1)}%` : '—',
+            varL !== null ? `${varL>=0?'+':''}${fmtPct(varL)}` : '—',
         ];
     }).filter(r => r[1] !== '0');
 
@@ -1448,7 +1476,9 @@ function _executarRelatorioMensal() {
         body: combRows, startY: y + 2, theme: 'grid',
         headStyles: { fillColor: azul, fontSize: 8, fontStyle: 'bold' },
         bodyStyles: { fontSize: 8.5 },
-        columnStyles: { 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',fontStyle:'bold'}, 5:{halign:'center'} },
+        columnStyles: { 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',fontStyle:'bold'}, 5:{halign:'right'} },
+        // Cabeçalho das colunas de número à direita, sobre os valores.
+        didParseCell: d => { if (d.section === 'head' && d.column.index >= 1) d.cell.styles.halign = 'right'; },
         margin: { left: 14, right: 14 },
         didDrawPage: d => { d.settings.margin.top = 14; },
     });
@@ -1474,11 +1504,15 @@ function _executarRelatorioMensal() {
                 totalLitros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}),
                 {content:'R$ '+totalGasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}), styles:{fontStyle:'bold'}},
             ]],
+            // O total só no fim: repetido no pé de cada página, parecia o
+            // total daquela página (18/09/2026).
+            showFoot: 'lastPage',
             startY: y + 2, theme: 'striped',
             headStyles: { fillColor: azulClaro, fontSize: 7.5 },
             bodyStyles: { fontSize: 7.5 },
             footStyles: { fillColor: [235,240,248], textColor: azul, fontSize: 8 },
             columnStyles: { 6:{halign:'right'}, 7:{halign:'right',fontStyle:'bold'} },
+            didParseCell: d => { if ((d.section === 'head' || d.section === 'foot') && d.column.index >= 6) d.cell.styles.halign = 'right'; },
             margin: { left: 14, right: 14 },
             didDrawPage: d => { d.settings.margin.top = 14; },
         });

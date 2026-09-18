@@ -62,12 +62,6 @@ function _fmtTaxaGrupo(grupo) {
     return taxa > 0 ? fmtRL(taxa) : "—";
 }
 
-/** Taxa do grupo em texto puro, para Excel e CSV. */
-function _taxaGrupoTexto(grupo) {
-    const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? taxa.toFixed(3) : "";
-}
-
 /** Taxa do grupo como NÚMERO, para a célula da planilha somar e ordenar.
     Vazio quando o grupo mistura taxas diferentes. */
 function _taxaGrupoNum(grupo) {
@@ -595,7 +589,7 @@ function exportarFretesExcel() {
     const linhas = [];
 
     linhas.push([`RESUMO DE FRETES — ${mesLabel}`]);
-    linhas.push([`Notas: ${d.totalNotas}`, `Litros: ${d.totalLitros.toFixed(0)} L`, `Frete Total: R$ ${d.totalFrete.toFixed(2)}`]);
+    linhas.push([`Notas: ${d.totalNotas}`, `Litros: ${fmtL(d.totalLitros)}`, `Frete total: ${fmtR(d.totalFrete)}`]);
     linhas.push([]);
 
     linhas.push(["POR PLACA"]);
@@ -742,18 +736,22 @@ function exportarFretesPDF() {
     doc.setTextColor(60, 60, 60);
     doc.text(`Notas: ${d.totalNotas}  |  Litros (carga): ${fmtL3(d.totalLitros)}  |  Frete total: ${fmtR(d.totalFrete)}`, 14, yCab);
 
-    const cabecalho = ["Nome", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"];
+    const cabecalho = ["Nome", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
 
+    // Números em português ("158.500 L", "R$ 42.140,00"): com `toFixed` o
+    // PDF saía "158500.000" e "R$ 42140.00". E as sublinhas usam "·": o
+    // "↳" não existe na fonte padrão do PDF e virava lixo (18/09/2026).
+    const sub = { fontSize: 7.5, textColor: [90, 90, 90] };
     const montarCorpo = (lista) => {
         const rows = [];
         lista.forEach(item => {
-            rows.push([item.nome, item.viagens, item.litros.toFixed(3), _taxaGrupoMoeda(item), `R$ ${item.frete.toFixed(2)}`]);
+            rows.push([{ content: item.nome, styles: { fontStyle: "bold" } }, item.viagens, _fmtLitrosFrete(item.litros), _taxaGrupoMoeda(item), { content: fmtR(item.frete), styles: { fontStyle: "bold" } }]);
             Object.entries(item.detalhes).forEach(([tipo, det]) => {
                 rows.push([
-                    `  ↳ ${tipo}`, "",
-                    det.litros.toFixed(3),
+                    { content: `   · ${tipo}`, styles: sub }, "",
+                    { content: _fmtLitrosFrete(det.litros), styles: sub },
                     "",
-                    det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"
+                    { content: det.frete > 0 ? fmtR(det.frete) : "—", styles: sub }
                 ]);
             });
         });
@@ -763,12 +761,12 @@ function exportarFretesPDF() {
     const montarCorpoConjuntos = (lista) => {
         const rows = [];
         lista.forEach(c => {
-            rows.push([`${c.nome}`, c.viagens, c.litros.toFixed(3), _taxaGrupoMoeda(c), `R$ ${c.frete.toFixed(2)}`]);
+            rows.push([{ content: c.nome, styles: { fontStyle: "bold" } }, c.viagens, _fmtLitrosFrete(c.litros), _taxaGrupoMoeda(c), { content: fmtR(c.frete), styles: { fontStyle: "bold" } }]);
             Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
-                rows.push([`  ${placa}`, det.viagens, det.litros.toFixed(3), "", det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"]);
+                rows.push([`   ${placa}`, det.viagens, _fmtLitrosFrete(det.litros), "", det.frete > 0 ? fmtR(det.frete) : "—"]);
             });
             Object.entries(c.detalhes).forEach(([tipo, det]) => {
-                rows.push([`    ↳ ${tipo}`, "", det.litros.toFixed(3), "", det.frete > 0 ? `R$ ${det.frete.toFixed(2)}` : "—"]);
+                rows.push([{ content: `      · ${tipo}`, styles: sub }, "", { content: _fmtLitrosFrete(det.litros), styles: sub }, "", { content: det.frete > 0 ? fmtR(det.frete) : "—", styles: sub }]);
             });
         });
         return rows;
@@ -777,10 +775,10 @@ function exportarFretesPDF() {
     let startY = yCab + 4;
 
     const secoes = [
-        { titulo: "Por Conjunto",   corpo: montarCorpoConjuntos(d.porConjunto) },
-        { titulo: "Por Placa",      corpo: montarCorpo(d.porPlaca) },
-        { titulo: "Por Motorista",  corpo: montarCorpo(d.porMotorista) },
-        { titulo: "Por Empresa",    corpo: montarCorpo(d.porEmpresa) }
+        { titulo: "Por conjunto",   corpo: montarCorpoConjuntos(d.porConjunto) },
+        { titulo: "Por placa",      corpo: montarCorpo(d.porPlaca) },
+        { titulo: "Por motorista",  corpo: montarCorpo(d.porMotorista) },
+        { titulo: "Por empresa",    corpo: montarCorpo(d.porEmpresa) }
     ];
 
     secoes.forEach(s => {
@@ -797,6 +795,10 @@ function exportarFretesPDF() {
             headStyles: { fillColor: cor },
             margin: { left: 14, right: 14 },
             styles: { fontSize: 8 },
+            // Larguras fixas nas colunas de número: as quatro tabelas ficam
+            // alinhadas umas com as outras na página.
+            columnStyles: { 1: { halign: "right", cellWidth: 20 }, 2: { halign: "right", cellWidth: 32 }, 3: { halign: "right", cellWidth: 28 }, 4: { halign: "right", cellWidth: 34 } },
+            didParseCell: function(data) { if (data.section === "head" && data.column.index >= 1) data.cell.styles.halign = "right"; },
             didDrawPage: function(data) { data.settings.margin.top = 10; }
         });
 
@@ -829,8 +831,10 @@ function exportarFretesCSV() {
             : ["TOTAL", viagens, br(litros, 3), "", br(frete, 2)];
     };
 
-    linhas.push(['"RESUMO DE FRETES"', `"${nomeMes(d.mes)}"`, "", "", ""]);
-    linhas.push([`"Notas: ${d.totalNotas}"`, `"Litros: ${br(d.totalLitros, 3)} L"`, `"Frete Total: R$ ${br(d.totalFrete, 2)}"`, "", ""]);
+    // Sem aspas à mão: `_celulaCSV` já põe as aspas, e as duas juntas saíam
+    // no Excel como texto "entre aspas" (18/09/2026).
+    linhas.push(["RESUMO DE FRETES", nomeMes(d.mes), "", "", ""]);
+    linhas.push([`Notas: ${d.totalNotas}`, `Litros: ${fmtL3(d.totalLitros)}`, `Frete total: ${fmtR(d.totalFrete)}`, "", ""]);
     linhas.push([]);
 
     linhas.push(["POR PLACA"]);
@@ -898,31 +902,31 @@ function imprimirFretes() {
     const dataHoje = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
 
     document.getElementById("impressaoTitulo").textContent = `Fretes — ${mesLabel}`;
-    document.getElementById("impressaoData").textContent = `Impresso em: ${dataHoje} | ${d.totalNotas} nota(s) | ${d.totalLitros.toFixed(0)} L | Frete Total: R$ ${d.totalFrete.toFixed(2)}`;
+    document.getElementById("impressaoData").textContent = `${empresaFiltroGlobal ? empresaFiltroGlobal + " | " : ""}Pela data da descarga | Impresso em: ${dataHoje} | ${d.totalNotas} nota(s) | ${fmtL(d.totalLitros)} | Frete total: ${fmtR(d.totalFrete)}`;
 
     const montarTabela = (titulo, lista) => {
         const linhas = lista.map(item => `
             <tr>
                 <td><strong>${escapeHtml(item.nome)}</strong></td>
                 <td>${item.viagens}</td>
-                <td>${item.litros.toFixed(3)} L</td>
+                <td>${_fmtLitrosFrete(item.litros)}</td>
                 <td>${_taxaGrupoMoeda(item)}</td>
-                <td><strong>R$ ${item.frete.toFixed(2)}</strong></td>
+                <td><strong>${fmtR(item.frete)}</strong></td>
             </tr>
             ${Object.entries(item.detalhes).map(([tipo, det]) => `
                 <tr class="imp-subitem">
-                    <td class="imp-recuo">↳ ${escapeHtml(tipo)}</td>
+                    <td class="imp-recuo">· ${escapeHtml(tipo)}</td>
                     <td></td>
-                    <td>${det.litros.toFixed(3)} L</td>
+                    <td>${_fmtLitrosFrete(det.litros)}</td>
                     <td></td>
-                    <td>${det.frete > 0 ? "R$ " + det.frete.toFixed(2) : "—"}</td>
+                    <td>${det.frete > 0 ? fmtR(det.frete) : "—"}</td>
                 </tr>
             `).join("")}
         `).join("");
 
         return `
             <h3 class="imp-titulo">${titulo}</h3>
-            <table>
+            <table class="imp-num-resto">
                 <thead><tr>
                     <th>Nome</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete (R$)</th>
                 </tr></thead>
@@ -937,24 +941,24 @@ function imprimirFretes() {
             <tr class="imp-grupo">
                 <td><strong>${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
-                <td><strong>${c.litros.toFixed(3)} L</strong></td>
+                <td><strong>${_fmtLitrosFrete(c.litros)}</strong></td>
                 <td>${_taxaGrupoMoeda(c)}</td>
-                <td><strong>R$ ${c.frete.toFixed(2)}</strong></td>
+                <td><strong>${fmtR(c.frete)}</strong></td>
             </tr>
             ${Object.entries(c.porPlacaInterna).map(([placa, det]) => `
                 <tr class="imp-subitem imp-subitem--escuro">
                     <td class="imp-recuo">${escapeHtml(placa)}</td>
 
                     <td>${det.viagens}</td>
-                    <td>${det.litros.toFixed(3)} L</td>
+                    <td>${_fmtLitrosFrete(det.litros)}</td>
                     <td></td>
-                    <td>${det.frete > 0 ? "R$ " + det.frete.toFixed(2) : "—"}</td>
+                    <td>${det.frete > 0 ? fmtR(det.frete) : "—"}</td>
                 </tr>
             `).join("")}
         `).join("");
         return `
-            <h3 class="imp-titulo">Por Conjunto</h3>
-            <table>
+            <h3 class="imp-titulo">Por conjunto</h3>
+            <table class="imp-num-resto">
                 <thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros</th><th>Taxa</th><th>Frete (R$)</th></tr></thead>
                 <tbody>${linhas}</tbody>
             </table>
@@ -963,9 +967,9 @@ function imprimirFretes() {
 
     document.getElementById("impressaoConteudo").innerHTML =
         montarTabelaConjuntos() +
-        montarTabela("Por Placa",     d.porPlaca) +
-        montarTabela("Por Motorista", d.porMotorista) +
-        montarTabela("Por Empresa",   d.porEmpresa);
+        montarTabela("Por placa",     d.porPlaca) +
+        montarTabela("Por motorista", d.porMotorista) +
+        montarTabela("Por empresa",   d.porEmpresa);
 
-    window.print();
+    imprimirAreaDeImpressao();
 }
