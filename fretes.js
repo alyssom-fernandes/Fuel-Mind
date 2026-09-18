@@ -729,7 +729,7 @@ function exportarFretesPDF() {
     const cor = estilo ? estilo.cor : [26, 58, 92];
     let yCab = 28;
     if (estilo) {
-        yCab = _pdfCabecalho(doc, estilo, `Resumo de Fretes — ${mesLabel}`,
+        yCab = _pdfCabecalho(doc, estilo, `Resumo de fretes — ${mesLabel}`,
             `${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${new Date().toLocaleDateString("pt-BR")}`);
     }
     doc.setFontSize(9);

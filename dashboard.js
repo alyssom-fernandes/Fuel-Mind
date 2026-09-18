@@ -210,13 +210,13 @@ function carregarDashboard() {
     const freteAnt     = _freteDoPeriodo(descAnt);
 
     document.getElementById("kpiDashboard").innerHTML = `
-        <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre o Resumo de Fretes, que também conta pela data da descarga.">
+        <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre Fretes, que também conta pela data da descarga.">
             <div class="kpi-valor">${totalNotas}</div>
             <div class="kpi-label">Notas Descarregadas</div>
             <div class="kpi-base">pela data da descarga</div>
             ${htmlVariacao(totalNotas, descAnt.length, rotAnt, false)}
         </div>
-        <div class="kpi-card verde kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre o Resumo de Fretes, que também conta pela data da descarga.">
+        <div class="kpi-card verde kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre Fretes, que também conta pela data da descarga.">
             <div class="kpi-valor">${fmtL(totalLitros)}</div>
             <div class="kpi-label">Litros Descarregados</div>
             <div class="kpi-base">pela data da descarga</div>

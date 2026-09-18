@@ -258,7 +258,7 @@ async function fmRascunhoRestaurar() {
     if (r.editandoId && (db.lancamentos || []).some(l => l.id === r.editandoId && lancamentoAtivo(l))) {
         lancamentoEditandoId = r.editandoId;
         isClonando = false;
-        document.getElementById('tituloLancamentos').textContent = 'Editando Lançamento';
+        document.getElementById('tituloLancamentos').textContent = 'Editando lançamento';
         document.getElementById('btnSalvarLancamento').textContent = 'Salvar';
         const bs = document.getElementById('btnSalvarSair');
         if (bs) bs.textContent = 'Salvar e voltar';

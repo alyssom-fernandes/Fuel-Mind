@@ -34,17 +34,19 @@ let _importacaoEmpresa = null;
   CAMPOS DO SISTEMA (para mapeamento manual)
 ─────────────────────────────────────────────*/
 const CAMPOS_IMPORTACAO = [
-    { id: "dataNota",      label: "Data da Nota *",          obrigatorio: true  },
-    { id: "dataDescarga",  label: "Data da Descarga *",      obrigatorio: true  },
-    { id: "numeroNota",    label: "Número da Nota *",        obrigatorio: true  },
-    { id: "base",          label: "Base (Distribuidora)",    obrigatorio: false },
-    { id: "empresa",       label: "Empresa / Fornecedor",    obrigatorio: false },
-    { id: "motorista",     label: "Motorista *",             obrigatorio: true  },
-    { id: "placa",         label: "Placa do Veículo *",      obrigatorio: true  },
-    { id: "combustivel",   label: "Tipo de Combustível *",   obrigatorio: true  },
-    { id: "qtd",           label: "Quantidade (Litros) *",   obrigatorio: true  },
-    { id: "qtdDescargada", label: "Qtd Descargada (L)",      obrigatorio: false },
-    { id: "valor",         label: "Valor Unitário (R$/L) *", obrigatorio: true  },
+    // Sem "*" no texto: o asterisco vermelho vem do CSS (.obrigatorio), e os
+    // dois juntos apareciam como "Data da Nota * *" (18/09/2026).
+    { id: "dataNota",      label: "Data da nota",            obrigatorio: true  },
+    { id: "dataDescarga",  label: "Data da descarga",        obrigatorio: true  },
+    { id: "numeroNota",    label: "Número da nota",          obrigatorio: true  },
+    { id: "base",          label: "Base (distribuidora)",    obrigatorio: false },
+    { id: "empresa",       label: "Empresa / fornecedor",    obrigatorio: false },
+    { id: "motorista",     label: "Motorista",               obrigatorio: true  },
+    { id: "placa",         label: "Placa do veículo",        obrigatorio: true  },
+    { id: "combustivel",   label: "Tipo de combustível",     obrigatorio: true  },
+    { id: "qtd",           label: "Quantidade (litros)",     obrigatorio: true  },
+    { id: "qtdDescargada", label: "Quantidade descarregada (L)", obrigatorio: false },
+    { id: "valor",         label: "Valor unitário (R$/L)",   obrigatorio: true  },
     { id: "observacoes",   label: "Observações",             obrigatorio: false },
 ];
 
@@ -873,14 +875,16 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
     const temNovos = empresasNovas.length || motoristasNovos.length || placasNovas.length || combustiveisNovos.length;
 
     container.innerHTML = `
-        <h3>Resumo da Importação</h3>
+        <h3>Resumo da importação</h3>
 
+        <!-- Cor só onde pede atenção: itens de combustível em laranja pareciam
+             aviso, e não são (18/09/2026). -->
         <div class="resumo-cards">
             <div class="resumo-card verde">
                 <div class="resumo-valor">${novas.length}</div>
                 <div class="resumo-label">Nota(s) para importar</div>
             </div>
-            <div class="resumo-card laranja">
+            <div class="resumo-card cinza">
                 <div class="resumo-valor">${novas.reduce((s,n) => s + n.itens.length, 0)}</div>
                 <div class="resumo-label">Item(ns) de combustível</div>
             </div>
@@ -976,9 +980,9 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
         <div class="linha-acoes mt-5">
             ${novas.length > 0 || duplicatas.length > 0 ? `
             <button class="btn-primario" onclick="importacaoConfirmar()">
-                Confirmar e Importar
+                Confirmar e importar
             </button>` : ""}
-            <button class="btn-secundario" onclick="importacaoReiniciar()">↩ Voltar e Ajustar</button>
+            <button class="btn-secundario" onclick="importacaoReiniciar()">↩ Voltar e ajustar</button>
             <button class="btn-cancelar"   onclick="importacaoCancelar()">Cancelar</button>
         </div>
     `;

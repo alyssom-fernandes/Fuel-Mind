@@ -193,7 +193,7 @@
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="tela">
-  <h2 id="tituloDashboard">Visão Geral</h2>
+  <h2 id="tituloDashboard">Visão geral</h2>
   <div id="kpiDashboard" class="kpi-container"></div>
   <h3>Alertas rápidos</h3>
   <div id="alertasDashboard" class="alertas-container"></div>
@@ -211,7 +211,7 @@
     </table>
   </div>
   <div id="painelDetalhesDashboard" class="painel-detalhes" style="display:none">
-    <h3>Detalhes da Entrada</h3>
+    <h3>Detalhes da entrada</h3>
     <div id="conteudoDetalhesDashboard"></div>
     <button class="btn-secundario" onclick="fecharDetalhes('dashboard')">Fechar</button>
   </div>
@@ -219,7 +219,7 @@
 
 <!-- LANÇAMENTOS -->
 <div id="lancamentos" class="tela">
-  <h2 id="tituloLancamentos">Lançamento de Entrada</h2>
+  <h2 id="tituloLancamentos">Lançamento de entrada</h2>
   <div id="bannerRascunho" class="banner-rascunho" style="display:none"></div>
   <div id="bannerEdicao" class="banner-edicao"></div>
   <div id="bannerXML" class="banner-xml" style="display:none"></div>
@@ -304,7 +304,7 @@
 
 <!-- FRETES -->
 <div id="grupo" class="tela">
-  <h2 id="tituloGrupo">Comparação do Grupo</h2>
+  <h2 id="tituloGrupo">Comparação do grupo</h2>
   <p class="dica">Todas as empresas que este perfil enxerga, lado a lado, sem trocar de empresa. Somente leitura: litros e frete contam pela <strong>data da descarga</strong>; gasto e preço médio, pela <strong>data de emissão</strong>. Clique numa empresa para abrir o Dashboard dela.</p>
   <div class="barra-filtros">
     <div class="barra-filtros-campos">
@@ -328,7 +328,7 @@
 </div>
 
 <div id="fretes" class="tela">
-  <h2 id="tituloFretes">Resumo de Fretes</h2>
+  <h2 id="tituloFretes">Resumo de fretes</h2>
   <p class="dica">Dados calculados automaticamente a partir das notas <strong>descarregadas</strong> no mês selecionado: o frete é do que foi transportado na competência, pela data da descarga. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
   <div class="fretes-filtro">
     <label for="fretesSelectMes" class="fretes-filtro-rotulo">Mês da descarga:</label>
@@ -844,7 +844,7 @@
     <ul id="listaVeiculos"></ul>
   </div>
   <div id="cad-combustiveis" class="aba-conteudo" style="display:none">
-    <h3>Tipos de Combustível</h3>
+    <h3>Tipos de combustível</h3>
     <div class="form-linha">
       <input id="nomeCombustivel" aria-label="Nome do combustível" placeholder="Tipo (ex: S10)">
       <input id="perdaCombustivel" aria-label="Percentual de perda tolerada" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-curto" placeholder="% perda tolerada">
@@ -865,10 +865,10 @@
     <ul id="listaBases"></ul>
   </div>
   <div id="cad-conjuntos" class="aba-conteudo" style="display:none">
-    <h3>Conjuntos de Veículos</h3>
+    <h3>Conjuntos de veículos</h3>
     <p class="dica">Agrupe placas que formam um conjunto (cavalo + caçambas). O sistema calcula fretes e viagens por conjunto além de individualmente por placa.</p>
     <div class="linha-acoes mb-4">
-      <button class="btn-primario" onclick="abrirNovoConjunto()">Novo Conjunto</button>
+      <button class="btn-primario" onclick="abrirNovoConjunto()">+ Novo conjunto</button>
       <button class="btn-secundario" onclick="converterTodasPlacasMercosul()">Converter placas para Mercosul</button>
     </div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosConjuntos" onchange="renderizarConjuntos()"> Mostrar inativos</label></div>
@@ -981,7 +981,7 @@
 <!-- MODAL CONJUNTOS DE VEÍCULOS -->
 <div id="conjuntoFormOverlay" class="modal-overlay modal-overlay--desfoque-leve" style="display:none" onclick="if(event.target===this)fecharFormConjunto()">
   <div class="modal modal--largo" onclick="event.stopPropagation()">
-    <h3 id="conjuntoFormTitulo">Conjunto de Veículos</h3>
+    <h3 id="conjuntoFormTitulo">Conjunto de veículos</h3>
     <div class="campo mb-3">
       <label for="conjuntoNomeInput">Nome do conjunto <span class="rotulo-nota">(opcional)</span></label>
       <input id="conjuntoNomeInput" type="text" placeholder="Ex: Conjunto Volvo 01">

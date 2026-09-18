@@ -924,7 +924,7 @@ function limparFormularioParcial() {
     const bannerXML = document.getElementById("bannerXML");
     if (bannerXML) { bannerXML.style.display = "none"; bannerXML.innerHTML = ""; }
     document.getElementById("bannerEdicao").style.display = "none";
-    document.getElementById("tituloLancamentos").textContent  = "Lançamento de Entrada";
+    document.getElementById("tituloLancamentos").textContent  = "Lançamento de entrada";
     document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";
     const btnSair = document.getElementById("btnSalvarSair");
     if (btnSair) btnSair.textContent = "Salvar e sair";
@@ -1287,7 +1287,7 @@ async function editarLancamento(id) {
         if (l.anexos && l.anexos.length > 0)
             bannerHtml += `<br><small>Este lançamento possui ${l.anexos.length} anexo(s). Você pode substituí-los ao salvar.</small>`;
         banner.innerHTML = bannerHtml;
-        document.getElementById("tituloLancamentos").textContent  = "Editando Lançamento";
+        document.getElementById("tituloLancamentos").textContent  = "Editando lançamento";
         _aplicarMarcadorSujo();   // trocar o texto do título apagava o marcador
         // Na edição o primário fica sendo só "Salvar", para correção em
         // cadeia: uma nota com dois erros não obriga a reabrir a tela.
@@ -1359,7 +1359,7 @@ async function clonarLancamento(id) {
     const itensClonados = (l.itens || []).map(({ qtdDescargada, ...resto }) => resto);
     _ajustarDescargaPorItens(itensClonados);
     itensClonados.forEach(item => adicionarCombustivelNota(item));
-    document.getElementById("tituloLancamentos").textContent  = "Novo Lançamento (Clonado)";
+    document.getElementById("tituloLancamentos").textContent  = "Novo lançamento (cópia)";
     _aplicarMarcadorSujo();   // idem: o clone já nasce sujo
     document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";
     const btnSairCl = document.getElementById("btnSalvarSair");
@@ -1397,7 +1397,7 @@ function limparFormulario(opcoes) {
     document.getElementById("combustiveisNota").innerHTML = "";
     document.getElementById("motoristaInput").classList.remove("campo-sugerido");
     document.getElementById("placaInput").classList.remove("campo-sugerido");
-    document.getElementById("tituloLancamentos").textContent  = "Lançamento de Entrada";
+    document.getElementById("tituloLancamentos").textContent  = "Lançamento de entrada";
     document.getElementById("btnSalvarLancamento").textContent = "Salvar e lançar próxima";
     const btnSairLimpo = document.getElementById("btnSalvarSair");
     if (btnSairLimpo) btnSairLimpo.textContent = "Salvar e sair";
