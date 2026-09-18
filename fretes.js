@@ -576,10 +576,77 @@ function exportarFretesExcel() {
     });
     linhas.push(_totalSecao(d.porEmpresa, 5));
 
+    if (_so_linhas_fretes) return linhas;
     const ws = XLSX.utils.aoa_to_sheet(linhas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Fretes");
     XLSX.writeFile(wb, `fretes-${d.mes}.xlsx`);
+}
+
+/* ── FECHAMENTO DO MÊS, NUM ARQUIVO SÓ (18/09/2026) ────────────────
+   O que a pesquisa de relatórios achou de mais elogiado, e que dá para
+   fazer sem servidor: o "pacote pronto" — tudo o que fecha o mês num
+   clique, em vez de três exportações separadas. Um Excel com três abas:
+   o resumo de fretes (por placa, conjunto, motorista e empresa), o frete
+   nota a nota e as notas do mês pela emissão. Um arquivo só também evita
+   o navegador bloquear vários downloads seguidos. */
+let _so_linhas_fretes = false;
+
+function exportarFechamentoDoMes() {
+    if (adiarAteBibliotecas(["xlsx"], () => exportarFechamentoDoMes())) return;
+    if (!dadosFretesAtual || !dadosFretesAtual.mes) return mostrarToast("Escolha o mês primeiro.", "aviso", 4000);
+    const mes = dadosFretesAtual.mes;
+    const wb = XLSX.utils.book_new();
+
+    // 1) Resumo de fretes — as mesmas linhas do Excel de Fretes
+    _so_linhas_fretes = true;
+    let resumo;
+    try { resumo = exportarFretesExcel(); } finally { _so_linhas_fretes = false; }
+    if (Array.isArray(resumo)) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo de fretes");
+
+    // 2) Frete nota a nota
+    const notas = _freteNotaANota(mes);
+    const aoaNotas = [
+        [`FRETE NOTA A NOTA — ${nomeMes(mes)}`],
+        [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga`],
+        [],
+        ["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
+    ];
+    notas.forEach(x => aoaNotas.push([formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa,
+        x.motorista, x.placa, x.conjunto, _num(x.litros, 3), _num(x.taxa, 4), _num(x.frete, 2)]));
+    aoaNotas.push([]);
+    aoaNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "",
+        _num(notas.reduce((s2, x) => s2 + x.litros, 0), 3), "", _num(notas.reduce((s2, x) => s2 + x.frete, 0), 2)]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaNotas), "Frete nota a nota");
+
+    // 3) Notas do mês pela emissão (a base do gasto e do preço)
+    const doMes = db.lancamentos.filter(l => lancamentoAtivo(l)
+        && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
+        && dataEmissaoDe(l).startsWith(mes))
+        .sort((a, b) => dataEmissaoDe(a).localeCompare(dataEmissaoDe(b)));
+    const m = metricasPreco(doMes.flatMap(l => l.itens || []));
+    const aoaEntradas = [
+        [`NOTAS DE ENTRADA — ${nomeMes(mes)}, pela data de emissão`],
+        [`Preço médio de compra: ${fmtR4(m.precoCompra)}/L sobre ${fmtL3(m.litrosNota)} faturados`],
+        [],
+        ["Emissão", "Descarga", "Nota", "Base", "Empresa", "Motorista", "Placa", "Litros (carga)", "Litros descarregados", "Total (R$)"]
+    ];
+    doMes.forEach(l => aoaEntradas.push([
+        formatarData(dataEmissaoDe(l)), formatarData(dataDescargaDe(l)), l.numeroNota || "", l.base || "",
+        l.empresa || "", l.motorista || "", l.placa || "",
+        _num((l.itens || []).reduce((s2, i) => s2 + (Number(i.qtd) || 0), 0), 3),
+        _num((l.itens || []).reduce((s2, i) => s2 + _litrosItem(i), 0), 3),
+        _num(l.total || 0, 2)
+    ]));
+    aoaEntradas.push([]);
+    aoaEntradas.push(["TOTAL", "", `${doMes.length} nota(s)`, "", "", "", "",
+        _num(m.litrosNota, 3),
+        _num(doMes.reduce((s2, l) => s2 + (l.itens || []).reduce((ss, i) => ss + _litrosItem(i), 0), 0), 3),
+        _num(doMes.reduce((s2, l) => s2 + (l.total || 0), 0), 2)]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaEntradas), "Notas do mês");
+
+    XLSX.writeFile(wb, `fechamento-${mes}${empresaFiltroGlobal ? "-" + normalizarTexto(empresaFiltroGlobal).replace(/\s+/g, "-") : ""}.xlsx`);
+    mostrarToast(`Fechamento de ${nomeMes(mes)} gerado: resumo de fretes, frete nota a nota e notas do mês, num arquivo só.`, "sucesso", 5000);
 }
 
 // ========== EXPORTAÇÃO PDF ==========
