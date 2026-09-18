@@ -601,6 +601,125 @@ function julgarPreco(valor, mediana) {
     return { diferenca, acima: diferenca > 0, limite };
 }
 
+
+/* ── MOTOR DE FRETE (extraído em 18/09/2026) ────────────────────────
+   Até aqui a conta do frete morava dentro de `calcularEExibirFretes`,
+   que lia o mês de um campo da tela, dependia das globais `db` e
+   `empresaFiltroGlobal` e terminava desenhando quatro tabelas — não havia
+   como chamá-la com dados e conferir o resultado. Agora a conta é esta
+   função, sem DOM e sem global: recebe as notas e as duas funções de
+   que depende (achar a empresa da nota e o conjunto da placa na data) e
+   devolve o mesmo objeto que as abas sempre usaram.
+
+   Regras, todas decisões do dono já registradas:
+   - só nota válida (`lancamentoAtivo`) gera frete;
+   - o mês é o da DESCARGA (rodada 11);
+   - a quantidade é a da NOTA, a carga (08/09/2026);
+   - a taxa é a que VALIA na data da descarga (vigência, 17/09/2026);
+   - o conjunto é o que continha a placa NAQUELA data. */
+function calcularFretesDoMes(opts) {
+    const o = opts || {};
+    const mes = o.mes;
+    const empresaDe = o.empresaDoLancamento || (() => null);
+    const resolver  = o.resolverConjunto || null;
+
+    let semTaxa = 0, taxaZero = 0;
+    const empresasTaxaZero = new Set();
+
+    const lancamentosMes = (o.lancamentos || []).filter(l => {
+        if (!lancamentoAtivo(l)) return false;
+        if (o.empresaFiltro && l.empresa !== o.empresaFiltro) return false;
+        const d = dataDescargaDe(l);
+        return !!d && d.startsWith(mes);
+    });
+
+    const porPlaca = {}, porMotorista = {}, porEmpresa = {}, porConjunto = {};
+    let totalLitros = 0, totalFrete = 0;
+
+    const acumular = (grupo, tipo, litros, frete) => {
+        grupo.litros += litros;
+        grupo.frete  += frete;
+        if (!grupo.detalhes[tipo]) grupo.detalhes[tipo] = { litros: 0, frete: 0 };
+        grupo.detalhes[tipo].litros += litros;
+        grupo.detalhes[tipo].frete  += frete;
+    };
+
+    lancamentosMes.forEach(l => {
+        const placa      = l.placa     || "(sem placa)";
+        const motorista  = l.motorista || "(sem motorista)";
+        const cadEmpresa = empresaDe(l);
+        const empresa    = (cadEmpresa && cadEmpresa.nome) || l.empresa || "(sem empresa)";
+        const dataRef    = dataDescargaDe(l) || mes + "-01";
+        const taxa       = _taxaFreteDaEmpresaNaData(cadEmpresa, dataRef);
+        if (!cadEmpresa) semTaxa++;
+        else if (!(taxa > 0)) { taxaZero++; empresasTaxaZero.add(cadEmpresa.nome); }
+
+        const resolvido     = resolver ? resolver(placa, dataRef) : null;
+        const conjObj       = (resolvido && resolvido.conj) || null;
+        const placasPeriodo = (resolvido && resolvido.periodo && resolvido.periodo.placas)
+                           || (conjObj && conjObj.composicaoAtual) || [];
+        const conjKey   = conjObj ? conjObj.id : null;
+        const conjLabel = conjObj ? (conjObj.nome || `Conjunto ${placasPeriodo[0] || ""}`) : null;
+
+        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set(), conjunto: conjLabel };
+        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista, viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set() };
+        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,   viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set() };
+        if (conjKey && !porConjunto[conjKey]) {
+            porConjunto[conjKey] = {
+                id: conjKey, nome: conjLabel, placas: placasPeriodo.slice(),
+                viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set(), porPlacaInterna: {}
+            };
+        }
+
+        // Uma viagem por nota, e não uma por combustível da nota.
+        porPlaca[placa].viagens++;
+        porMotorista[motorista].viagens++;
+        porEmpresa[empresa].viagens++;
+        porPlaca[placa].empresas.add(empresa);
+        porMotorista[motorista].empresas.add(empresa);
+        porEmpresa[empresa].empresas.add(empresa);
+        if (conjKey) {
+            const conj = porConjunto[conjKey];
+            conj.viagens++;
+            conj.empresas.add(empresa);
+            if (!conj.porPlacaInterna[placa]) conj.porPlacaInterna[placa] = { viagens: 0, litros: 0, frete: 0 };
+            conj.porPlacaInterna[placa].viagens++;
+        }
+
+        (l.itens || []).forEach(item => {
+            const litros = Number(item.qtd) || 0;
+            const frete  = litros * taxa;
+            const tipo   = item.tipo || "Desconhecido";
+            totalLitros += litros;
+            totalFrete  += frete;
+            acumular(porPlaca[placa], tipo, litros, frete);
+            acumular(porMotorista[motorista], tipo, litros, frete);
+            acumular(porEmpresa[empresa], tipo, litros, frete);
+            if (conjKey) {
+                const conj = porConjunto[conjKey];
+                acumular(conj, tipo, litros, frete);
+                conj.porPlacaInterna[placa].litros += litros;
+                conj.porPlacaInterna[placa].frete  += frete;
+            }
+        });
+    });
+
+    const porNome = obj => Object.values(obj).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    return {
+        mes,
+        totalNotas: lancamentosMes.length,
+        totalLitros,
+        totalFrete,
+        semTaxa,
+        taxaZero,
+        empresasTaxaZero: [...empresasTaxaZero],
+        porPlaca:     porNome(porPlaca),
+        porMotorista: porNome(porMotorista),
+        porEmpresa:   porNome(porEmpresa),
+        porConjunto:  porNome(porConjunto)
+    };
+}
+
 // ========== ALERTAS IGNORADOS ==========
 function alertasIgnorados() {
     try { return JSON.parse(localStorage.getItem("alertasIgnorados") || "{}"); }
