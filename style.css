@@ -78,6 +78,19 @@
     --duration-base:   0.2s;    /* abrir lista, trocar aba */
     --duration-slow:   0.3s;    /* entrada de tela e de modal */
     --ease-standard:   cubic-bezier(0.2, 0, 0.2, 1);
+
+    /* ── ESPAÇAMENTO (programa 3.3 — 18/09/2026) ────────────────────
+       Uma escala só, de 4 em 4. O arquivo usava 6, 7, 10, 14, 18 e 22
+       ao lado de 8, 12, 16, 20 e 24; o que sai do estilo inline entra
+       por aqui, arredondado para o degrau mais perto. */
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
 }
 
 /* Quem pede menos movimento no sistema operacional recebe menos
@@ -2000,3 +2013,163 @@ button.confirmado-local::after {
 }
 @keyframes recalculoEsmaece { from { opacity: 1; } to { opacity: 0.45; } }
 @keyframes recalculoAviso   { from { opacity: 0; } to { opacity: 1; } }
+
+/* ══ REDESENHO: O QUE SAIU DO ESTILO INLINE (programa 3.2 e 3.3 — 18/09/2026) ══
+   Token não vence valor inline, por isso o inline saiu primeiro. Os
+   espaços vêm da escala `--space-*`; os `display:none` que o JS liga e
+   desliga continuam no HTML, porque são estado e não aparência. */
+
+/* Utilitários de margem — só para o caso solto; padrão que se repete ganha nome.
+   `!important` de propósito: substituem o estilo inline, que vencia qualquer
+   regra de componente (`.tela h3`, `.sistema-secao h3`); sem isso o h3 dos
+   Fretes, que tinha 4px, voltaria a ter os 28px do componente. */
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: var(--space-1) !important; }
+.mt-2 { margin-top: var(--space-2) !important; }
+.mt-3 { margin-top: var(--space-3) !important; }
+.mt-4 { margin-top: var(--space-4) !important; }
+.mt-5 { margin-top: var(--space-5) !important; }
+.mt-7 { margin-top: var(--space-7) !important; }
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: var(--space-1) !important; }
+.mb-2 { margin-bottom: var(--space-2) !important; }
+.mb-3 { margin-bottom: var(--space-3) !important; }
+.mb-4 { margin-bottom: var(--space-4) !important; }
+.mb-5 { margin-bottom: var(--space-5) !important; }
+.mb-6 { margin-bottom: var(--space-6) !important; }
+
+/* Arranjos que se repetem */
+.pilha        { display: flex; flex-direction: column; gap: var(--space-2); }
+.linha-flex   { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.linha-acoes  { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.acoes-grafico { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.grade-2      { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.lista-limpa  { list-style: none; padding: 0; }
+.largura-total { width: 100%; box-sizing: border-box; }
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.sep-vertical { width: 1px; background: var(--border); margin: 0 var(--space-1); align-self: stretch; }
+@media (max-width: 768px) { .grade-2 { grid-template-columns: 1fr; } }
+
+/* Texto */
+.rotulo-suave { font-size: 0.85rem; color: var(--text-muted); }
+.rotulo-nota  { font-size: 0.8rem; color: var(--text-muted); font-weight: 400; }
+.rotulo-nota--perigo { color: var(--danger); }
+/* `.dica` tem uma cor com !important lá em cima (tema claro); o aviso de perigo precisa vencê-la. */
+.dica.dica--perigo { color: var(--danger) !important; }
+.dica--nota   { font-size: 0.75rem; margin: 0; }
+.dica--colada { margin-top: calc(-1 * var(--space-1)); }
+.sistema-descricao { color: var(--text-muted); font-size: 0.88rem; margin-bottom: var(--space-4); }
+
+/* Ícones dentro de botão e de aba */
+.icone-btn { width: 13px; height: 13px; margin-right: 5px; vertical-align: middle; }
+.icone-aba { width: 16px; height: 16px; margin-right: 6px; vertical-align: middle; }
+
+/* Modais */
+.modal-overlay--desfoque-forte { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.modal-overlay--desfoque-leve  { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal--centro { max-width: 380px; text-align: center; }
+.modal--medio  { max-width: 420px; }
+.modal--largo  { max-width: 520px; width: 92%; }
+.busca-global-modal { max-width: 800px; width: 90%; }
+.modal-subtitulo { color: var(--text-muted); font-size: 0.85rem; margin-bottom: var(--space-6); }
+
+/* Login e escolha de empresa */
+.modal--login { padding: var(--space-8) var(--space-7); }
+.modal--login label { font-size: 0.78rem; }
+.modal--login .campo { text-align: left; }
+.login-icone { width: 52px; height: 52px; color: var(--primary); margin-bottom: var(--space-3); }
+.login-icone--menor { width: 40px; height: 40px; }
+.login-titulo { margin-bottom: var(--space-1); font-size: 1.4rem; }
+.login-subtitulo { color: var(--text-muted); margin-bottom: var(--space-7); font-size: 0.82rem; }
+.btn-bloco  { width: 100%; justify-content: center; }
+.btn-grande { padding: var(--space-3); font-size: 1rem; }
+.login-msg  { font-size: 0.82rem; margin-top: var(--space-3); }
+.login-msg--erro { color: var(--danger); }
+.login-msg--ok   { color: var(--success); }
+.btn-link {
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+    color: var(--text-muted); font-size: 0.78rem; margin-top: var(--space-2);
+}
+.login-demo { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.login-demo .btn-secundario { width: 100%; justify-content: center; padding: 10px; font-size: 0.88rem; }
+.login-demo-nota { color: var(--text-muted); font-size: 0.72rem; margin-top: var(--space-2); line-height: 1.4; }
+.pf-assinatura .pf-afn, .pf-assinatura .pf-sys { font-size: 13px; }
+.page-footer .pf-afn, .page-footer .pf-sys { font-size: 10px; }
+.page-footer .pf-pipe { font-size: 13px; }
+.page-footer .pf-info { font-size: 11px; }
+
+/* Cabeçalho */
+.sidebar-logo { cursor: pointer; }
+.header-empresa { display: flex; align-items: center; gap: var(--space-2); }
+.header-empresa-rotulo { font-size: 0.8rem; color: var(--text-light); }
+.icone-chevron { width: 12px; height: 12px; flex-shrink: 0; opacity: 0.6; }
+.icone-busca   { width: 15px; height: 15px; flex-shrink: 0; }
+.header-usuario { font-size: 0.82rem; color: var(--text-muted); }
+.header-action-btn--atalhos { font-size: 0.9rem; font-weight: 700; padding: 4px 9px; opacity: 0.7; font-family: monospace; letter-spacing: -0.5px; }
+.header-action-btn--texto   { font-size: 0.75rem; padding: 4px 8px; opacity: 0.7; }
+
+/* O título de cada tela mora no cabeçalho; o h2 interno nasce escondido
+   em vez de piscar até o JS escondê-lo (defeito visual listado em 0.5). */
+.tela > h2[id^="titulo"] { display: none; }
+
+/* Fretes */
+.fretes-filtro { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.fretes-filtro-rotulo { font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+.campo-mes { max-width: 180px; }
+
+/* Analítico */
+.campo--botao { justify-content: flex-end; padding-top: var(--space-5); }
+.linha-metrica { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); align-items: center; }
+.btn-metrica.ativo { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* Conferência e importação */
+.input-arquivo { display: block; margin-top: var(--space-2); }
+
+/* Sistema */
+.campo--restaurar { max-width: 360px; }
+.input-cor { height: 38px; width: 60px; padding: 2px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
+.campo-medio { max-width: 420px; }
+.pdf-logo-placeholder {
+    width: 80px; height: 80px; padding: var(--space-1); box-sizing: border-box;
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 0.75rem; text-align: center; cursor: pointer;
+}
+.pdf-logo-preview { max-height: 80px; max-width: 200px; border-radius: 6px; border: 1px solid var(--border); }
+.pdf-grade-titulo  { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }
+.pdf-grade-margens { display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }
+.form-linha--opcoes { gap: var(--space-5); margin-top: var(--space-2); }
+@media (max-width: 768px) {
+    .pdf-grade-titulo, .pdf-grade-margens { grid-template-columns: 1fr 1fr; }
+}
+
+/* Cadastros */
+/* Mais específico que `.form-linha input`, como o inline era. */
+.form-linha .flex-1 { flex: 1; }
+.form-linha .flex-2 { flex: 2; }
+.form-linha .campo-taxa { flex: 0 0 130px; }
+.campo-curto { max-width: 200px; }
+.conjunto-historico {
+    margin-bottom: var(--space-3); padding: 10px; font-size: 0.8rem;
+    background: var(--surface-alt); border-radius: 6px;
+}
+
+/* Dashboard */
+.dash-filtros { display: flex; gap: var(--space-3); align-items: flex-end; flex-wrap: wrap; margin-bottom: var(--space-2); }
+.dash-filtros-rapidos { display: flex; gap: 6px; align-items: flex-end; flex-wrap: wrap; padding-bottom: 2px; }
+.dash-filtros-rapidos .filtros-rapidos-sep { align-self: center; }
+.campo-data { min-width: 140px; }
+.dica--pequena { font-size: 0.8rem; }
+.dica--legenda { margin: 0 0 var(--space-2); }
+.kpi-base--alerta { color: var(--danger); }
+.celula-num { text-align: right; }
+.variacao-mini { font-size: 0.7rem; margin-left: var(--space-1); }
+.variacao-mini--danger  { color: var(--danger); }
+.variacao-mini--success { color: var(--success); }
+.dash-comb-kpi-label--nota { opacity: 0.8; }
+.grafico-wrapper--comparativo { height: 200px; margin-bottom: var(--space-4); }
+.grafico-wrapper--pizza { max-width: 400px; margin: 0 auto; }
+.titulo-nota { font-weight: 400; font-size: 0.72rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.modal--detalhe { max-width: 680px; width: 100%; max-height: 85vh; overflow-y: auto; }
+.alerta-corpo { cursor: pointer; }

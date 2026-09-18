@@ -20,31 +20,30 @@
 </head>
 <body>
 <!-- LOGIN -->
-<div id="loginOverlay" class="modal-overlay" style="display:flex; backdrop-filter:blur(8px);">
-    <div class="modal" style="max-width:380px; text-align:center; padding:32px 28px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:52px;height:52px;color:var(--primary);margin-bottom:12px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
-        <h2 style="margin-bottom:4px; font-size:1.4rem;">Fuel Mind</h2>
-        <p style="color:var(--text-muted); margin-bottom:28px; font-size:0.82rem;">Sistema de Gestão de Combustível</p>
-        <div class="campo" style="text-align:left; margin-bottom:12px;">
-            <label for="loginEmail" style="font-size:0.78rem;">E-mail ou usuário</label>
-            <input type="text" id="loginEmail" placeholder="seu@email.com ou @usuario" autocomplete="username" style="width:100%;box-sizing:border-box;">
+<div id="loginOverlay" class="modal-overlay modal-overlay--desfoque-forte" style="display:flex">
+    <div class="modal modal--centro modal--login">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="login-icone"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+        <h2 class="login-titulo">Fuel Mind</h2>
+        <p class="login-subtitulo">Sistema de Gestão de Combustível</p>
+        <div class="campo mb-3">
+            <label for="loginEmail">E-mail ou usuário</label>
+            <input type="text" id="loginEmail" placeholder="seu@email.com ou @usuario" autocomplete="username" class="largura-total">
         </div>
-        <div class="campo" style="text-align:left; margin-bottom:20px;">
-            <label for="loginSenha" style="font-size:0.78rem;">Senha</label>
-            <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" style="width:100%;box-sizing:border-box;">
+        <div class="campo mb-5">
+            <label for="loginSenha">Senha</label>
+            <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" class="largura-total">
         </div>
-        <button id="btnLogin" class="btn-primario" onclick="fazerLogin()" style="width:100%;padding:12px;font-size:1rem;">Entrar</button>
-        <p id="loginErro" style="color:var(--danger);font-size:0.82rem;margin-top:12px;display:none;"></p>
-        <p id="loginAviso" style="color:var(--success);font-size:0.82rem;margin-top:12px;display:none;"></p>
-        <button type="button" onclick="esqueciMinhaSenha()"
-                style="background:none;border:none;color:var(--text-muted);font-size:0.78rem;margin-top:10px;cursor:pointer;text-decoration:underline">
+        <button id="btnLogin" class="btn-primario btn-bloco btn-grande" onclick="fazerLogin()">Entrar</button>
+        <p id="loginErro" class="login-msg login-msg--erro" style="display:none"></p>
+        <p id="loginAviso" class="login-msg login-msg--ok" style="display:none"></p>
+        <button type="button" class="btn-link" onclick="esqueciMinhaSenha()">
           Esqueci minha senha
         </button>
-        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-          <button class="btn-secundario" onclick="abrirModoDemo()" style="width:100%;padding:10px;font-size:0.88rem;">
+        <div class="login-demo">
+          <button class="btn-secundario" onclick="abrirModoDemo()">
             Acessar modo demo
           </button>
-          <p style="color:var(--text-muted);font-size:0.72rem;margin-top:8px;line-height:1.4">
+          <p class="login-demo-nota">
             Dados fictícios, sem login. Nada é gravado na nuvem.
           </p>
         </div>
@@ -52,9 +51,9 @@
         <!-- Assinatura AFN Systems — padrão do brand guide -->
         <div class="pf-assinatura">
           <div class="pf-marca">
-            <span class="pf-afn" style="font-size:13px">AFN</span>
+            <span class="pf-afn">AFN</span>
             <span class="pf-gap"></span>
-            <span class="pf-sys" style="font-size:13px">SYSTEMS</span>
+            <span class="pf-sys">SYSTEMS</span>
           </div>
           <span class="pf-by">by Alyssom Fernandes</span>
         </div>
@@ -62,19 +61,19 @@
 </div>
 
 <!-- SELEÇÃO DE EMPRESA PÓS-LOGIN -->
-<div id="selecaoEmpresaOverlay" class="modal-overlay" style="display:none; backdrop-filter:blur(8px);">
-    <div class="modal" style="max-width:380px; text-align:center;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--primary);margin-bottom:12px;"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0H5m-2 0h2M9 7h1m-1 4h1m4-4h1m-1 4h1M9 15h6v6H9z"/></svg>
-        <h3 style="margin-bottom:6px;">Olá, <span id="selecaoEmpresaNome">—</span>!</h3>
-        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:24px;">Selecione a empresa que deseja acessar:</p>
-        <div id="selecaoEmpresaLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
-        <button class="btn-secundario" onclick="fazerLogout()" style="width:100%;">Sair</button>
+<div id="selecaoEmpresaOverlay" class="modal-overlay modal-overlay--desfoque-forte" style="display:none">
+    <div class="modal modal--centro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="login-icone login-icone--menor"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0H5m-2 0h2M9 7h1m-1 4h1m4-4h1m-1 4h1M9 15h6v6H9z"/></svg>
+        <h3 class="mb-2">Olá, <span id="selecaoEmpresaNome">—</span>!</h3>
+        <p class="modal-subtitulo">Selecione a empresa que deseja acessar:</p>
+        <div id="selecaoEmpresaLista" class="pilha mb-4"></div>
+        <button class="btn-secundario btn-bloco" onclick="fazerLogout()">Sair</button>
     </div>
 </div>
 <div id="appContainer" style="display:none;">
 <div class="app-wrapper">
 <aside class="sidebar" id="sidebar">
-<div class="sidebar-logo" onclick="mostrarTela('dashboard')" style="cursor:pointer">
+<div class="sidebar-logo" onclick="mostrarTela('dashboard')">
   <!-- Uma imagem só: as duas ficavam no DOM e o navegador baixava as duas
        (120 KB somados) para mostrar uma. O `src` é trocado no tema. -->
   <img src="logo-light.svg" alt="Fuel Mind" class="sidebar-logo-img" id="sidebarLogo">
@@ -148,24 +147,24 @@
   </button>
   <h1 class="header-page-title" id="headerPageTitle">Dashboard</h1>
   <div class="header-actions">
-    <div style="display:flex; align-items:center; gap:8px;">
-      <span style="font-size:0.8rem; color:var(--text-light);">Empresa:</span>
+    <div class="header-empresa">
+      <span class="header-empresa-rotulo">Empresa:</span>
       <button type="button" id="empresaAtivaHeader" class="empresa-ativa-badge" onclick="abrirTrocarEmpresa()" title="Clique para trocar de empresa">
         <span id="empresaAtivaLabel">—</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;opacity:0.6"><polyline points="6,9 12,15 18,9"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-chevron"><polyline points="6,9 12,15 18,9"/></svg>
       </button>
     </div>
     <button class="btn-busca-global" onclick="abrirBuscaGlobal()" title="Busca global (Ctrl+K)" id="btnBuscaGlobal">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-busca"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span>Busca global</span>
       <kbd class="busca-kbd">Ctrl K</kbd>
     </button>
     <span class="header-datetime" id="headerDatetime"></span>
     <div class="header-sep"></div>
-    <span id="headerNomeUsuario" style="font-size:0.82rem;color:var(--text-muted);"></span>
+    <span id="headerNomeUsuario" class="header-usuario"></span>
     <!-- BOTÃO ATALHOS — abre modal de atalhos de teclado (ui.js:abrirAtalhos) -->
-    <button class="header-action-btn" onclick="abrirAtalhos()" title="Atalhos de teclado" aria-label="Atalhos de teclado" style="font-size:0.9rem;font-weight:700;padding:4px 9px;opacity:0.7;font-family:monospace;letter-spacing:-0.5px;">?</button>
-    <button class="header-action-btn" onclick="fazerLogout()" title="Sair" aria-label="Sair do sistema" style="font-size:0.75rem;padding:4px 8px;opacity:0.7;">Sair</button>
+    <button class="header-action-btn header-action-btn--atalhos" onclick="abrirAtalhos()" title="Atalhos de teclado" aria-label="Atalhos de teclado">?</button>
+    <button class="header-action-btn header-action-btn--texto" onclick="fazerLogout()" title="Sair" aria-label="Sair do sistema">Sair</button>
     <button class="header-action-btn" onclick="toggleModoEscuro()" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro" id="btnTema"><span id="iconeTema"></span></button>
   </div>
 </header>
@@ -173,15 +172,15 @@
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="tela">
-  <h2 id="tituloDashboard" style="display:block;">Visão Geral</h2>
+  <h2 id="tituloDashboard">Visão Geral</h2>
   <div id="kpiDashboard" class="kpi-container"></div>
   <h3>Alertas Rápidos</h3>
   <div id="alertasDashboard" class="alertas-container"></div>
-  <h3 style="margin-top:28px">Por Combustível — no Período</h3>
+  <h3 class="mt-7">Por Combustível — no Período</h3>
   <div id="dashCombustiveisContainer" class="dash-combs-wrapper"></div>
-  <h3 style="margin-top:28px">Comparativo Mês a Mês — Últimos 6 Meses</h3>
+  <h3 class="mt-7">Comparativo Mês a Mês — Últimos 6 Meses</h3>
   <div id="dashComparativoContainer"></div>
-  <h3 style="margin-top:28px">Últimas Entradas</h3>
+  <h3 class="mt-7">Últimas Entradas</h3>
   <div class="tabela-container">
     <table>
       <thead><tr><th>Data Nota</th><th>Data Desc.</th><th>Nota</th><th>Base</th><th>Empresa</th><th>Motorista</th><th>Placa</th><th>Litros (L)</th><th>Total (R$)</th><th class="no-print">Ações</th></tr></thead>
@@ -197,7 +196,7 @@
 
 <!-- LANÇAMENTOS -->
 <div id="lancamentos" class="tela">
-  <h2 id="tituloLancamentos" style="display:block;">Lançamento de Entrada</h2>
+  <h2 id="tituloLancamentos">Lançamento de Entrada</h2>
   <div id="bannerRascunho" class="banner-rascunho" style="display:none"></div>
   <div id="bannerEdicao" class="banner-edicao"></div>
   <div id="bannerXML" class="banner-xml" style="display:none"></div>
@@ -270,7 +269,7 @@
 
 <!-- FRETES -->
 <div id="grupo" class="tela">
-  <h2 id="tituloGrupo" style="display:block;">Comparação do Grupo</h2>
+  <h2 id="tituloGrupo">Comparação do Grupo</h2>
   <p class="dica">Todas as empresas que este perfil enxerga, lado a lado, sem trocar de empresa. Somente leitura: litros e frete contam pela <strong>data da descarga</strong>; gasto e preço médio, pela <strong>data de emissão</strong>. Clique numa empresa para abrir o Dashboard dela.</p>
   <div class="filtros">
     <div class="campo"><label for="grupoInicio">De</label><input type="date" id="grupoInicio" onchange="recalcularTela('grupo', carregarGrupo)"></div>
@@ -287,17 +286,17 @@
 </div>
 
 <div id="fretes" class="tela">
-  <h2 id="tituloFretes" style="display:block;">Resumo de Fretes</h2>
+  <h2 id="tituloFretes">Resumo de Fretes</h2>
   <p class="dica">Dados calculados automaticamente a partir das notas <strong>descarregadas</strong> no mês selecionado: o frete é do que foi transportado na competência, pela data da descarga. A taxa de cada empresa é definida em <strong>Cadastros &rsaquo; Empresas</strong>.</p>
-  <div class="fretes-filtro" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
-    <label for="fretesSelectMes" style="font-weight:600; color:var(--text-muted); font-size:0.85rem; text-transform:uppercase">Mês da descarga:</label>
-    <input type="month" id="fretesSelectMes" onchange="recalcularTela('fretes', calcularEExibirFretes)" style="max-width:180px">
+  <div class="fretes-filtro">
+    <label for="fretesSelectMes" class="fretes-filtro-rotulo">Mês da descarga:</label>
+    <input type="month" id="fretesSelectMes" class="campo-mes" onchange="recalcularTela('fretes', calcularEExibirFretes)">
     <button class="btn-primario" onclick="recalcularTela('fretes', calcularEExibirFretes)">Atualizar</button>
   </div>
-  <div id="fretesResumoMes" class="resumo" style="margin-bottom:16px"></div>
-  <h3 style="margin-top:4px">Frete mês a mês — últimos 6 meses</h3>
+  <div id="fretesResumoMes" class="resumo mb-4"></div>
+  <h3 class="mt-1">Frete mês a mês — últimos 6 meses</h3>
   <p class="dica">Pela data da descarga, com a taxa que valia em cada mês. Clique numa barra ou numa linha para abrir aquele mês.</p>
-  <div id="freteHistoricoContainer" style="margin-bottom:22px"></div>
+  <div id="freteHistoricoContainer" class="mb-6"></div>
   <div class="barra-exportacao" id="fretesBarraExportacao">
     <span class="exportacao-titulo">Exportar:</span>
     <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: resumo de fretes, frete nota a nota e as notas do mês pela emissão.">Fechamento do mês</button>
@@ -307,7 +306,7 @@
     <button class="btn-export btn-csv" onclick="exportarFretesCSV()">CSV</button>
     <button class="btn-export btn-print" onclick="imprimirFretes()">Imprimir</button>
   </div>
-  <div class="analitico-abas" id="fretesAbas" style="margin-top:16px">
+  <div class="analitico-abas mt-4" id="fretesAbas">
     <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por Placa</button>
     <button class="aba-btn" onclick="trocarAbaFretes('motoristas', this)">Por Motorista</button>
     <button class="aba-btn" onclick="trocarAbaFretes('empresas', this)">Por Empresa</button>
@@ -334,7 +333,7 @@
 
 <!-- RELATÓRIOS -->
 <div id="relatorios" class="tela">
-  <h2 id="tituloRelatorios" style="display:block;">Relatórios</h2>
+  <h2 id="tituloRelatorios">Relatórios</h2>
   <div class="filtros">
       <div class="campo"><label for="filtroDataInicio" title="O período do relatório é pela data de emissão da nota: é o valor da compra naquela data.">Emissão de</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
       <div class="campo"><label for="filtroDataFim" title="O período do relatório é pela data de emissão da nota: é o valor da compra naquela data.">Emissão até</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
@@ -369,12 +368,12 @@
       <button class="btn-export btn-print" onclick="imprimirRelatorio()">Imprimir</button>
       <button class="btn-export btn-wpp" onclick="compartilharWhatsApp()">WhatsApp</button>
       <button class="btn-export btn-email" onclick="compartilharEmail()">E-mail</button>
-      <span style="width:1px;background:var(--border);margin:0 4px;align-self:stretch"></span>
+      <span class="sep-vertical"></span>
       <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes')" title="Aplica filtro deste mês e exporta PDF">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:4px;vertical-align:middle"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Este mês
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Este mês
       </button>
       <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes_anterior')" title="Aplica filtro do mês anterior e exporta PDF">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:4px;vertical-align:middle"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Mês anterior
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Mês anterior
       </button>
     </div>
     <div class="tabela-container">
@@ -394,12 +393,12 @@
 
 <!-- ANALÍTICO -->
 <div id="analitico" class="tela">
-  <h2 id="tituloAnalitico" style="display:block;">Analítico</h2>
+  <h2 id="tituloAnalitico">Analítico</h2>
     <div class="analitico-filtros">
       <div class="campo"><label for="analiticoInicio" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão de</label><input type="date" id="analiticoInicio"></div>
       <div class="campo"><label for="analiticoFim" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão até</label><input type="date" id="analiticoFim"></div>
       <div class="campo"><label for="analiticoCombustivel">Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
-      <div class="campo" style="justify-content:flex-end; padding-top:18px"><button class="btn-primario" onclick="recalcularTela('analitico', carregarAnalitico)">Atualizar</button></div>
+      <div class="campo campo--botao"><button class="btn-primario" onclick="recalcularTela('analitico', carregarAnalitico)">Atualizar</button></div>
     </div>
     <div class="filtros-rapidos-linha">
       <span class="filtros-rapidos-sep">Período rápido:</span>
@@ -407,10 +406,10 @@
       <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes_anterior')">Mês anterior</button>
       <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','ano')">Este ano</button>
     </div>
-    <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center;">
-      <span style="font-size:0.85rem; color:var(--text-muted);">Visualizar por:</span>
-      <button class="btn-secundario" id="btnMetricaGasto" style="background:var(--primary); color:white;">Valor (R$)</button>
-      <button class="btn-secundario" id="btnMetricaLitros">Litros (L)</button>
+    <div class="linha-metrica">
+      <span class="rotulo-suave">Visualizar por:</span>
+      <button class="btn-secundario btn-metrica ativo" id="btnMetricaGasto">Valor (R$)</button>
+      <button class="btn-secundario btn-metrica" id="btnMetricaLitros">Litros (L)</button>
     </div>
     <p class="dica">Clique numa barra dos gráficos para abrir o Relatório já filtrado por aquele mês, motorista, veículo ou combustível.</p>
     <div id="analiticoPeriodoLabel" style="display:none"></div>
@@ -428,56 +427,56 @@
       <h3>Resumo Mensal</h3>
       <p class="dica">Total gasto e litros por mês, pela data de emissão. O preço médio divide o gasto pelos litros <strong>faturados</strong> nas notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoMensal" height="280"></canvas></div>
-      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('mensal')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('mensal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês / Ano</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
+      <div class="tabela-container mt-4"><table><thead><tr><th>Mês / Ano</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
     </div>
     <div id="aba-motoristas" class="aba-conteudo" style="display:none">
       <h3>Resumo por Motorista</h3>
       <div class="grafico-wrapper"><canvas id="graficoMotoristas" height="280"></canvas></div>
-      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('motoristas')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('motoristas')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Motorista</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
+      <div class="tabela-container mt-4"><table><thead><tr><th>Motorista</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
     </div>
     <div id="aba-veiculos" class="aba-conteudo" style="display:none">
       <h3>Resumo por Veículo</h3>
       <div class="grafico-wrapper"><canvas id="graficoVeiculos" height="280"></canvas></div>
-      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('veiculos')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('veiculos')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Placa</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
+      <div class="tabela-container mt-4"><table><thead><tr><th>Placa</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
     </div>
     <div id="aba-combustivel" class="aba-conteudo" style="display:none">
       <h3>Resumo por Tipo de Combustível</h3>
       <div class="grafico-wrapper"><canvas id="graficoCombustivel" height="280"></canvas></div>
-      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('combustivel')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('combustivel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Combustível</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Mín / Máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
+      <div class="tabela-container mt-4"><table><thead><tr><th>Combustível</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Mín / Máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
     </div>
     <div id="aba-comparativo" class="aba-conteudo" style="display:none">
       <h3>Comparativo Mês a Mês</h3>
       <p class="dica">Evolução do custo médio por litro ao longo dos meses.</p>
       <div class="grafico-wrapper"><canvas id="graficoComparativo" height="300"></canvas></div>
       <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
-      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('comparativo')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('comparativo')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container" style="margin-top:16px"><table><thead><tr><th>Mês</th><th>Preço Médio / L</th><th>vs. mês anterior</th><th>Total Litros</th><th>Total Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
+      <div class="tabela-container mt-4"><table><thead><tr><th>Mês</th><th>Preço Médio / L</th><th>vs. mês anterior</th><th>Total Litros</th><th>Total Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
     </div>
     <div id="aba-distribuicao" class="aba-conteudo" style="display:none">
       <h3>Distribuição de Gastos</h3>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+      <div class="grade-2">
         <div><h4>Por Combustível</h4><div class="grafico-wrapper"><canvas id="graficoPizzaCombustivel" height="200"></canvas></div>
-          <button class="btn-secundario" style="margin-top:10px" onclick="baixarGrafico('pizzaCombustivel')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+          <button class="btn-secundario mt-2" onclick="baixarGrafico('pizzaCombustivel')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
           </button>
         </div>
         <div><h4>Por Motorista (top 5)</h4><div class="grafico-wrapper"><canvas id="graficoPizzaMotoristas" height="200"></canvas></div>
-          <button class="btn-secundario" style="margin-top:10px" onclick="baixarGrafico('pizzaMotorista')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+          <button class="btn-secundario mt-2" onclick="baixarGrafico('pizzaMotorista')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
           </button>
         </div>
       </div>
@@ -486,15 +485,15 @@
       <h3>Evolução de Preços por Combustível</h3>
       <p class="dica">Preço médio de compra por litro, mês a mês — média <strong>ponderada</strong> pelos litros faturados, não média simples das notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
-      <div style="display:flex; gap:10px; margin-top:10px;"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
     </div>
 </div>
 
 <!-- CONFERÊNCIAS -->
 <div id="conferencia" class="tela">
-  <h2 id="tituloConferencia" style="display:block;">Conferências</h2>
+  <h2 id="tituloConferencia">Conferências</h2>
   <div id="_confSub-autosystem" class="_conf-sub-conteudo">
     <div class="sistema-secao">
       <h3>Conferência das notas com o AutoSystem</h3>
@@ -503,31 +502,31 @@
         (.xlsx, .xls ou .csv). O sistema compara as <strong>entradas</strong> com os lançamentos
         do sistema.
       </p>
-      <div style="margin-top:16px">
+      <div class="mt-4">
         <label>Selecionar relatório AutoSystem</label>
-        <input type="file" accept=".xlsx,.xls,.csv" style="margin-top:6px;display:block"
+        <input type="file" accept=".xlsx,.xls,.csv" class="input-arquivo"
                onchange="autosystemLerArquivo(this)">
-        <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv</p>
+        <p class="dica mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
       </div>
-      <div id="_confAutoResultado" style="margin-top:20px"></div>
+      <div id="_confAutoResultado" class="mt-5"></div>
     </div>
   </div>
 </div>
 
 <!-- SISTEMA -->
 <div id="sistema" class="tela">
-  <h2 id="tituloSistema" style="display:block;">Sistema</h2>
+  <h2 id="tituloSistema">Sistema</h2>
   <div class="analitico-abas" id="sistemaAbas">
     <button class="aba-btn ativa" data-aba="backup" data-papel="admin" onclick="trocarAbaSistema('backup', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Backup
     </button>
     <button class="aba-btn" data-aba="importar" onclick="trocarAbaSistema('importar', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Importar Planilha
     </button>
     <button class="aba-btn" data-aba="config" onclick="trocarAbaSistema('config', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
       Configurações
     </button>
   </div>
@@ -537,7 +536,7 @@
       <p class="dica">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga — guarde-o fora do computador de vez em quando.</p>
       <div class="sistema-acoes">
         <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
-        <div class="campo" style="max-width:360px; margin-top:12px" data-papel="supremo">
+        <div class="campo campo--restaurar mt-3" data-papel="supremo">
           <label for="inputBackup">Restaurar a partir de backup (.json)</label>
           <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
         </div>
@@ -547,58 +546,58 @@
       <h3>Backups Automáticos</h3>
       <p class="dica">Este navegador guarda uma cópia dos seus dados a cada 3 dias, para o seu usuário. As 3 últimas ficam.</p>
       <div id="listaBackupsAuto"></div>
-      <button class="btn-secundario" style="margin-top:8px" onclick="renderBackupsAuto()">Atualizar lista</button>
+      <button class="btn-secundario mt-2" onclick="renderBackupsAuto()">Atualizar lista</button>
     </div>
     <div class="sistema-secao">
       <h3>Informações do Sistema</h3>
       <div id="infoSistema" class="info-sistema"></div>
-      <h3 style="margin-top:20px">Falhas registradas</h3>
+      <h3 class="mt-5">Falhas registradas</h3>
       <div id="infoErros"></div>
       <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
     </div>
     <div class="sistema-secao" id="secaoMigracaoEmpresa" style="display:none">
       <h3>Isolamento por Empresa</h3>
-      <p class="dica" style="margin-bottom:12px">
+      <p class="dica mb-3">
         Reparte os lançamentos em um documento por empresa, para que a regra de segurança
         do servidor — e não a tela — decida quem enxerga o quê. O documento antigo não é
         apagado. Rode a migração, confira o resultado e só então publique as regras novas.
       </p>
-      <div class="sistema-acoes" style="flex-wrap:wrap;gap:10px">
+      <div class="sistema-acoes">
         <button class="btn-primario"   onclick="migrarParaIsolamentoPorEmpresa()">Migrar dados</button>
         <button class="btn-secundario" onclick="conferirMigracao()">Conferir migração</button>
       </div>
     </div>
     <div class="sistema-secao zona-perigo" data-papel="supremo">
       <h3>Zona de Perigo</h3>
-      <p class="dica" style="color:var(--danger); margin-bottom:12px">As ações abaixo são irreversíveis. Faça um backup antes de continuar.</p>
+      <p class="dica dica--perigo mb-3">As ações abaixo são irreversíveis. Faça um backup antes de continuar.</p>
       <div class="sistema-acoes"><button class="btn-reset" onclick="resetSeguro()">Apagar Todos os Dados</button></div>
     </div>
   </div>
   <div id="sistemaAba-importar" class="sistema-aba-conteudo" style="display:none">
-    <div class="sistema-secao" style="margin-bottom:20px">
+    <div class="sistema-secao mb-5">
       <h3>Importar Histórico de Planilha</h3>
       <p class="dica">Importe lançamentos históricos das suas planilhas Excel (.xlsx, .xls) ou CSV. Notas novas são acrescentadas. Uma nota que já existe só é substituída se você marcar "Reimportar" no resumo, e a anterior fica registrada como excluída. A empresa de cada linha precisa estar cadastrada.</p>
     </div>
-    <div class="sistema-secao" style="margin-bottom:20px">
+    <div class="sistema-secao mb-5">
       <h3>Antes de começar</h3>
-      <p class="dica" style="margin-bottom:10px">Sua planilha deve ter <strong>uma linha por combustível</strong>. Se uma nota tiver S10 e Gasolina, serão duas linhas com o mesmo número de nota — o sistema agrupa automaticamente.</p>
+      <p class="dica mb-2">Sua planilha deve ter <strong>uma linha por combustível</strong>. Se uma nota tiver S10 e Gasolina, serão duas linhas com o mesmo número de nota — o sistema agrupa automaticamente.</p>
       <button class="btn-secundario" onclick="baixarModeloPlanilha()">Baixar modelo de planilha</button>
     </div>
-    <div class="sistema-secao" style="margin-bottom:20px">
+    <div class="sistema-secao mb-5">
       <h3>Selecionar arquivo</h3>
-      <input type="file" id="importacaoArquivo" aria-label="Arquivo de planilha para importar" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" style="margin-top:6px">
-      <p class="dica" style="margin-top:6px">Formatos aceitos: .xlsx, .xls, .csv</p>
+      <input type="file" id="importacaoArquivo" aria-label="Arquivo de planilha para importar" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" class="input-arquivo">
+      <p class="dica mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
     </div>
     <div id="importacaoEtapas" style="display:none">
-      <div class="sistema-secao" style="margin-bottom:20px">
+      <div class="sistema-secao mb-5">
         <h3>Pré-visualização do arquivo</h3>
         <div id="importacaoPreview"></div>
       </div>
-      <div class="sistema-secao" style="margin-bottom:20px">
+      <div class="sistema-secao mb-5">
         <h3>Mapeamento de colunas</h3>
         <div id="importacaoMapeamento"></div>
       </div>
-      <div style="display:flex; gap:12px; flex-wrap:wrap">
+      <div class="linha-acoes">
         <button class="btn-primario" onclick="importacaoProcessar()">Validar e continuar</button>
         <button class="btn-cancelar" onclick="importacaoCancelar()">Cancelar</button>
       </div>
@@ -609,7 +608,7 @@
     <div class="sistema-secao">
       <h3>Tema Personalizado</h3>
       <p class="dica">Escolha a cor principal do sistema (afeta botões, abas ativas, etc.)</p>
-      <div style="display:flex; gap:10px; align-items:center;">
+      <div class="linha-flex">
         <input type="color" id="corPrimaria" aria-label="Cor principal do sistema" value="#a02828" onchange="aplicarCorPersonalizada(this.value)">
         <button class="btn-secundario" onclick="resetarCorPadrao()">Restaurar padrão</button>
       </div>
@@ -620,32 +619,28 @@
       <p class="dica">Personalize a aparência dos relatórios em PDF.</p>
 
       <!-- Logo -->
-      <div class="campo" style="margin-bottom:16px;">
+      <div class="campo mb-4">
         <label>Logo (cabeçalho do PDF)</label>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div id="pdfLogoPlaceholder"
-               style="width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;
-                      display:flex;align-items:center;justify-content:center;color:var(--text-muted);
-                      font-size:0.75rem;text-align:center;cursor:pointer;padding:4px;box-sizing:border-box;"
+        <div class="linha-flex">
+          <div id="pdfLogoPlaceholder" class="pdf-logo-placeholder"
                onclick="document.getElementById('pdfLogoInput').click()">
             Clique para<br>adicionar logo
           </div>
-          <img id="pdfLogoPreview" src="" alt="Logo"
-               style="display:none;max-height:80px;max-width:200px;border-radius:6px;border:1px solid var(--border)">
-          <div style="display:flex;flex-direction:column;gap:6px">
+          <img id="pdfLogoPreview" src="" alt="Logo" class="pdf-logo-preview" style="display:none">
+          <div class="pilha">
             <button class="btn-secundario" data-papel="admin" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
             <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
             <input id="pdfLogoInput" aria-label="Arquivo de imagem da logo" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
           </div>
-          <span class="dica" style="font-size:0.75rem;margin:0">PNG ou JPG, até 2 MB (é reduzida ao salvar).<br>Aparece no canto esquerdo do cabeçalho.</span>
+          <span class="dica dica--nota">PNG ou JPG, até 2 MB (é reduzida ao salvar).<br>Aparece no canto esquerdo do cabeçalho.</span>
         </div>
       </div>
 
       <!-- Título, orientação e fonte -->
-      <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;flex-wrap:wrap;">
+      <div class="pdf-grade-titulo">
         <div class="campo">
           <label for="pdfTitulo">Título do relatório</label>
-          <input type="text" id="pdfTitulo" value="Controle de Entradas de Combustível" style="width:100%;box-sizing:border-box;">
+          <input type="text" id="pdfTitulo" value="Controle de Entradas de Combustível" class="largura-total">
         </div>
         <div class="campo">
           <label for="pdfOrientacao">Orientação</label>
@@ -665,11 +660,10 @@
       </div>
 
       <!-- Cor de destaque e margens -->
-      <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:12px;align-items:end;margin-bottom:16px;flex-wrap:wrap;">
+      <div class="pdf-grade-margens">
         <div class="campo">
           <label for="pdfCorDestaque">Cor de destaque</label>
-          <input type="color" id="pdfCorDestaque" value="#1a3a5c"
-                 style="height:38px;width:60px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
+          <input type="color" id="pdfCorDestaque" value="#1a3a5c" class="input-cor">
         </div>
         <div class="campo">
           <label for="pdfMargemEsq">Margem esq. (mm)</label>
@@ -690,9 +684,9 @@
       </div>
 
       <!-- Colunas visíveis e opções -->
-      <div class="campo" style="margin-bottom:16px;">
+      <div class="campo mb-4">
         <label>Colunas e opções do PDF</label>
-        <div class="form-linha" style="gap:20px;flex-wrap:wrap;margin-top:6px;">
+        <div class="form-linha form-linha--opcoes">
           <label><input type="checkbox" id="pdfMostrarBase" checked> Mostrar coluna Base</label>
           <label><input type="checkbox" id="pdfMostrarEmpresa" checked> Mostrar Empresa</label>
           <label><input type="checkbox" id="pdfMostrarMotorista" checked> Mostrar Motorista</label>
@@ -702,22 +696,22 @@
       </div>
 
       <!-- Rodapé customizável -->
-      <div class="campo" style="margin-bottom:16px;">
+      <div class="campo mb-4">
         <label for="pdfRodapeTexto">Texto do rodapé (opcional)</label>
-        <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial" style="max-width:420px;">
+        <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial" class="campo-medio">
       </div>
 
       <button class="btn-secundario" data-papel="admin" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
     </div>
     <div class="sistema-secao">
       <h3>Configurações de Alertas</h3>
-      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Os critérios que acionam os alertas — iguais para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.</p>
+      <p class="sistema-descricao">Os critérios que acionam os alertas — iguais para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.</p>
       <div class="sistema-acoes"><button class="btn-primario" onclick="abrirConfigAlertas()">Ajustar Alertas</button></div>
     </div>
     <div class="sistema-secao">
       <h3>Correções em Massa</h3>
-      <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Corrija campos em lote nos lançamentos. <span class="fm-so-nao-supremo">A correção em massa é só do usuário supremo; a verificação de datas é de todos.</span></p>
-      <div class="sistema-acoes" style="flex-wrap:wrap;gap:10px">
+      <p class="sistema-descricao">Corrija campos em lote nos lançamentos. <span class="fm-so-nao-supremo">A correção em massa é só do usuário supremo; a verificação de datas é de todos.</span></p>
+      <div class="sistema-acoes">
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('empresa')">Corrigir Empresa</button>
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('motorista')">Corrigir Motorista</button>
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('placa')">Corrigir Placa</button>
@@ -731,42 +725,42 @@
 
 <!-- USUÁRIOS E PERMISSÕES -->
 <div id="usuarios" class="tela">
-  <h2 id="tituloUsuarios" style="display:none;">Usuários e Permissões</h2>
+  <h2 id="tituloUsuarios">Usuários e Permissões</h2>
   <div id="usuariosConteudo"><p class="dica">Carregando...</p></div>
 </div>
 
 <!-- CADASTROS -->
 <div id="cadastros" class="tela">
-  <h2 id="tituloCadastros" style="display:block;">Cadastros</h2>
+  <h2 id="tituloCadastros">Cadastros</h2>
   <div class="analitico-abas">
     <button class="aba-btn ativa" onclick="trocarAbaCadastro('empresas', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M12 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/></svg>Empresas
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M12 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/></svg>Empresas
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('motoristas', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Motoristas
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Motoristas
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('veiculos', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Veículos
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Veículos
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('combustiveis', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Combustíveis
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Combustíveis
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('bases', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Bases
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Bases
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('conjuntos', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Conjuntos
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Conjuntos
     </button>
   </div>
   <div id="cad-empresas" class="aba-conteudo">
     <h3>Empresas</h3>
-    <div class="form-linha" style="flex-wrap:wrap">
-      <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" style="flex:2">
-      <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município/UF (ex: São Paulo, SP)" style="flex:1">
-      <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Frete R$/L" style="flex:0 0 130px">
+    <div class="form-linha">
+      <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" class="flex-2">
+      <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município/UF (ex: São Paulo, SP)" class="flex-1">
+      <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="Frete R$/L">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
-    <p class="dica" style="margin-top:-4px">A taxa de frete é o valor pago por litro transportado para a empresa e pode ser ajustada depois em Editar.</p>
+    <p class="dica dica--colada">A taxa de frete é o valor pago por litro transportado para a empresa e pode ser ajustada depois em Editar.</p>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaEmpresas"></ul>
   </div>
@@ -786,7 +780,7 @@
     <h3>Tipos de Combustível</h3>
     <div class="form-linha">
       <input id="nomeCombustivel" aria-label="Nome do combustível" placeholder="Tipo (ex: S10)">
-      <input id="perdaCombustivel" aria-label="Percentual de perda tolerada" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="% perda tolerada" style="max-width:200px">
+      <input id="perdaCombustivel" aria-label="Percentual de perda tolerada" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-curto" placeholder="% perda tolerada">
       <button class="btn-primario" onclick="salvarCombustivel()">Adicionar</button>
     </div>
     <p class="dica">A % de perda tolerada é usada para calcular automaticamente a perda esperada nos lançamentos.</p>
@@ -806,26 +800,26 @@
   <div id="cad-conjuntos" class="aba-conteudo" style="display:none">
     <h3>Conjuntos de Veículos</h3>
     <p class="dica">Agrupe placas que formam um conjunto (cavalo + caçambas). O sistema calcula fretes e viagens por conjunto além de individualmente por placa.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+    <div class="linha-acoes mb-4">
       <button class="btn-primario" onclick="abrirNovoConjunto()">Novo Conjunto</button>
       <button class="btn-secundario" onclick="converterTodasPlacasMercosul()">Converter placas para Mercosul</button>
     </div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosConjuntos" onchange="renderizarConjuntos()"> Mostrar inativos</label></div>
-    <ul id="listaConjuntos" style="list-style:none;padding:0;margin-top:12px;"></ul>
+    <ul id="listaConjuntos" class="lista-limpa mt-3"></ul>
   </div>
 </div>
 
 <!-- MODAL TROCA DE EMPRESA -->
-<div id="trocarEmpresaModal" class="modal-overlay" style="display:none; backdrop-filter:blur(4px);">
-  <div class="modal" style="max-width:340px; text-align:center;">
-    <h3 style="margin-bottom:18px;">Trocar de Empresa</h3>
-    <div id="trocarEmpresaLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+<div id="trocarEmpresaModal" class="modal-overlay modal-overlay--desfoque-leve" style="display:none">
+  <div class="modal modal--centro">
+    <h3 class="mb-5">Trocar de Empresa</h3>
+    <div id="trocarEmpresaLista" class="pilha mb-4"></div>
     <button class="btn-secundario" onclick="fecharTrocarEmpresa()">Cancelar</button>
   </div>
 </div>
 
 <!-- MODAL USUÁRIOS -->
-<div id="usuarioModalOverlay" class="modal-overlay" style="display:none;"></div>
+<div id="usuarioModalOverlay" class="modal-overlay" style="display:none"></div>
 
 <!-- MODAL ATALHOS DE TECLADO -->
 <!-- Conteúdo gerado dinamicamente por ui.js:abrirAtalhos() na primeira abertura -->
@@ -836,8 +830,8 @@
      lugar onde os atalhos do sistema sao ensinados. -->
 
 <!-- BUSCA GLOBAL -->
-<div id="buscaGlobalModal" class="modal-overlay" style="display:none;">
-  <div class="modal busca-global-modal" style="max-width:800px; width:90%;">
+<div id="buscaGlobalModal" class="modal-overlay" style="display:none">
+  <div class="modal busca-global-modal">
     <div class="busca-global-header">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="busca-global-icone"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="buscaGlobalInput" aria-label="Busca global" placeholder="Buscar nota, motorista, empresa, placa..." class="busca-global-input" oninput="executarBuscaGlobal()" autocomplete="off">
@@ -867,12 +861,12 @@
 <!-- Rodapé de página — padrão AFN Systems -->
 <footer class="page-footer">
   <div class="pf-marca">
-    <span class="pf-afn" style="font-size:10px">AFN</span>
+    <span class="pf-afn">AFN</span>
     <span class="pf-gap"></span>
-    <span class="pf-sys" style="font-size:10px">SYSTEMS</span>
+    <span class="pf-sys">SYSTEMS</span>
   </div>
-  <span class="pf-pipe" style="font-size:13px">|</span>
-  <span class="pf-info" style="font-size:11px">Fuel Mind</span>
+  <span class="pf-pipe">|</span>
+  <span class="pf-info">Fuel Mind</span>
 </footer>
 </div>
 </div>
@@ -880,14 +874,14 @@
 
 <!-- MODAL DE EDIÇÃO -->
 <div id="demoOverlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModoDemo()">
-  <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
-    <h3 style="margin-bottom:4px">Entrar na demonstração</h3>
-    <p class="dica" style="margin-bottom:16px">
+  <div class="modal modal--medio" onclick="event.stopPropagation()">
+    <h3 class="mb-1">Entrar na demonstração</h3>
+    <p class="dica mb-4">
       Escolha um perfil. Cada um enxerga um conjunto diferente de empresas —
       é assim que o controle de acesso do sistema funciona.
     </p>
-    <div id="demoListaUsuarios" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div class="modal-acoes" style="margin-top:18px">
+    <div id="demoListaUsuarios" class="pilha"></div>
+    <div class="modal-acoes">
       <button class="btn-cancelar" onclick="fecharModoDemo()">Cancelar</button>
     </div>
   </div>
@@ -897,13 +891,13 @@
   <div class="modal" onclick="event.stopPropagation()">
     <h3 id="modalTitulo">Editar</h3>
     <div class="campo"><label for="modalInput" id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
-    <div class="campo" id="modalCampoMunicipioWrapper" style="display:none; margin-top:12px;">
+    <div class="campo mt-3" id="modalCampoMunicipioWrapper" style="display:none">
       <label for="modalInputMunicipio">Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
-      <label for="modalInputTaxaFrete" style="margin-top:12px">Taxa de frete (R$/litro)</label>
+      <label for="modalInputTaxaFrete" class="mt-3">Taxa de frete (R$/litro)</label>
       <input id="modalInputTaxaFrete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="0,0000">
-      <p class="dica" style="margin-top:4px">Valor pago por litro transportado para esta empresa.</p>
+      <p class="dica mt-1">Valor pago por litro transportado para esta empresa.</p>
     </div>
-    <div class="campo" id="modalCampoPerdaWrapper" style="display:none; margin-top:12px;">
+    <div class="campo mt-3" id="modalCampoPerdaWrapper" style="display:none">
       <label for="modalInputPerda">% Perda Tolerada</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
     </div>
     <div id="modalLogs"></div>
@@ -915,25 +909,26 @@
 </div>
 
 <!-- MODAL CONJUNTOS DE VEÍCULOS -->
-<div id="conjuntoFormOverlay" class="modal-overlay" style="display:none; backdrop-filter:blur(4px);" onclick="if(event.target===this)fecharFormConjunto()">
-  <div class="modal" style="max-width:520px; width:92%;" onclick="event.stopPropagation()">
+<div id="conjuntoFormOverlay" class="modal-overlay modal-overlay--desfoque-leve" style="display:none" onclick="if(event.target===this)fecharFormConjunto()">
+  <div class="modal modal--largo" onclick="event.stopPropagation()">
     <h3 id="conjuntoFormTitulo">Conjunto de Veículos</h3>
-    <div class="campo" style="margin-bottom:12px;">
-      <label for="conjuntoNomeInput">Nome do conjunto <span style="color:var(--text-muted);font-size:0.8rem;">(opcional)</span></label>
+    <div class="campo mb-3">
+      <label for="conjuntoNomeInput">Nome do conjunto <span class="rotulo-nota">(opcional)</span></label>
       <input id="conjuntoNomeInput" type="text" placeholder="Ex: Conjunto Volvo 01">
     </div>
-    <div class="campo" style="margin-bottom:8px;">
+    <div class="campo mb-2">
       <label>Placas do conjunto</label>
-      <p class="dica" style="margin-bottom:8px;">Adicione todas as placas que fazem parte deste conjunto (mínimo 2).</p>
+      <p class="dica mb-2">Adicione todas as placas que fazem parte deste conjunto (mínimo 2).</p>
       <div id="conjuntoPlacasList"></div>
-      <button class="btn-secundario" style="margin-top:8px;" onclick="adicionarPlacaConjunto()">+ Adicionar placa</button>
+      <button class="btn-secundario mt-2" onclick="adicionarPlacaConjunto()">+ Adicionar placa</button>
     </div>
-    <div class="campo" style="margin-bottom:12px;" id="conjuntoVigenciaWrapper">
-      <label>Data de vigência da nova composição <span style="color:var(--danger);font-size:0.8rem;">(obrigatório ao alterar placas)</span></label>
+    <div class="campo mb-3" id="conjuntoVigenciaWrapper">
+      <label>Data de vigência da nova composição <span class="rotulo-nota rotulo-nota--perigo">(obrigatório ao alterar placas)</span></label>
       <input id="conjuntoDataVigencia" aria-label="Data de vigência da composição" type="date">
       <p class="dica">Lançamentos anteriores a essa data continuarão vinculados à composição anterior.</p>
     </div>
-    <div id="conjuntoHistorico" style="display:none; margin-bottom:12px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:0.8rem;"></div>
+    <div id="conjuntoHistorico" class="conjunto-historico" style="display:none"></div>
+
     <div class="modal-acoes">
       <button class="btn-primario" onclick="salvarConjunto()">Salvar</button>
       <button class="btn-cancelar" onclick="fecharFormConjunto()">Cancelar</button>

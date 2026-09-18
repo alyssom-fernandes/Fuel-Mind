@@ -57,17 +57,11 @@ function atualizarBotoesMetrica() {
     const btnLitros = document.getElementById('btnMetricaLitros');
     if (!btnGasto || !btnLitros) return;
 
-    if (metricaAtual === 'gasto') {
-        btnGasto.style.background = 'var(--primary)';
-        btnGasto.style.color = 'white';
-        btnLitros.style.background = '';
-        btnLitros.style.color = '';
-    } else {
-        btnLitros.style.background = 'var(--primary)';
-        btnLitros.style.color = 'white';
-        btnGasto.style.background = '';
-        btnGasto.style.color = '';
-    }
+    // Classe, não estilo inline: o tema e o hover continuam valendo.
+    btnGasto.classList.toggle('ativo', metricaAtual === 'gasto');
+    btnLitros.classList.toggle('ativo', metricaAtual !== 'gasto');
+    btnGasto.setAttribute('aria-pressed', String(metricaAtual === 'gasto'));
+    btnLitros.setAttribute('aria-pressed', String(metricaAtual !== 'gasto'));
 }
 
 function setMetrica(metrica) {
