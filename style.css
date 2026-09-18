@@ -2710,3 +2710,24 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 #cadastros .acoes-lista { gap: 2px; flex-wrap: nowrap; }
 .btn-icone--inativar:hover { color: var(--warning); }
 #cadastros .filtro-lista { margin: var(--space-3) 0 var(--space-2); }
+
+/* Campo de arquivo: o botão do navegador vira um botão do sistema, em
+   Backup, Importar Planilha, Conferências e logo do PDF. */
+input[type="file"] { width: auto; font-size: 0.8rem; color: var(--text-muted); font-family: inherit; max-width: 100%; padding: 0; background: none; border: none; }
+input[type="file"]::file-selector-button {
+    margin-right: var(--space-3); padding: 8px 16px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface-alt); color: var(--text);
+    font-family: 'DM Sans', inherit; font-size: 0.82rem; font-weight: 600;
+    transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+input[type="file"]::file-selector-button:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+
+/* Opções do PDF: a `.form-linha input` (flex:1; min-width:200px) esticava
+   as caixas de marcar em traços de 200 px, e o rótulo herdava a caixa-alta
+   do rótulo de campo. Caixa de marcar é caixa de marcar. */
+.form-linha--opcoes label {
+    display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
+    text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; color: var(--text); margin: 0;
+}
+.form-linha--opcoes input[type="checkbox"] { flex: 0 0 auto; min-width: 0; width: 16px; height: 16px; margin: 0; }
