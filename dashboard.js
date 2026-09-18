@@ -743,8 +743,8 @@ function renderComparativoMeses() {
                 },
                 scales: {
                     x:  { ticks: { color: cores.text }, grid: { color: cores.grid } },
-                    yL: { position: "left",  ticks: { color: cores.text, callback: v => fmtL(v) }, grid: { color: cores.grid } },
-                    yR: { position: "right", ticks: { color: cores.text, callback: v => fmtR(v) }, grid: { display: false } }
+                    yL: { position: "left",  ticks: { color: cores.text, callback: v => fmtEixoL(v) }, grid: { color: cores.grid } },
+                    yR: { position: "right", ticks: { color: cores.text, callback: v => fmtEixoR(v) }, grid: { display: false } }
                 }
             }
         });

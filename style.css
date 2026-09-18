@@ -2647,3 +2647,46 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     .alerta-confirmar { grid-column: 1 / -1; justify-self: end; }
     .alerta-item-msg { white-space: normal; }
 }
+
+/* Barra de filtros: campos e aplicar numa linha, atalhos embaixo, uma caixa só */
+.barra-filtros {
+    background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5);
+}
+.barra-filtros-campos { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.barra-filtros-campos .campo { flex: 1 1 170px; max-width: 240px; margin: 0; }
+.barra-filtros-aplicar { flex: 0 0 auto; }
+.barra-filtros-rodape {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3);
+    margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-light);
+}
+.barra-filtros-grupo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* Controle segmentado: duas opções coladas, a ativa preenchida */
+.segmentado { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface-alt); border: 1px solid var(--border-light); }
+.segmentado button {
+    padding: 5px 14px; border-radius: 999px; border: none; background: transparent;
+    color: var(--text-muted); font-size: 0.78rem; font-weight: 600;
+}
+.segmentado button:hover { color: var(--text); }
+.segmentado button.ativo { background: var(--primary); color: #fff; }
+
+/* O número do cartão cabe numa linha: a fonte acompanha a largura do cartão */
+.kpi-card { container-type: inline-size; }
+.kpi-card .kpi-valor { font-size: min(1.85rem, 10.5cqi); white-space: nowrap; }
+
+/* Analítico: nas tabelas das abas, da segunda coluna em diante é número —
+   alinhado à direita, em fonte de número, para comparar de olho. */
+#analitico .aba-conteudo table th:nth-child(n+2),
+#analitico .aba-conteudo table td:nth-child(n+2) { text-align: right; }
+#analitico .aba-conteudo table td:nth-child(n+2) { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+#analitico .aba-conteudo table td:first-child { font-weight: 600; }
+#analitico .aba-conteudo .barra-progresso { margin-left: auto; }
+/* No celular, a regra geral espicha cada atalho a meia largura; na barra
+   de filtros eles ficam no tamanho natural, e o rótulo em linha própria. */
+.barra-filtros-grupo .btn-filtro-rapido { flex: 0 0 auto; }
+@media (max-width: 768px) {
+    .barra-filtros-grupo .filtros-rapidos-sep { flex-basis: 100%; }
+    .barra-filtros-campos .campo { max-width: none; }
+    .barra-filtros-aplicar { width: 100%; justify-content: center; }
+}

@@ -314,6 +314,19 @@ function fmtL(v, decimais = 0) {
 
 function fmtL3(v) { return fmtL(v, 3); }
 
+/* Eixo de gráfico: "R$ 4,5 mi", "600 mil L". O valor inteiro com centavos
+   ("R$ 4.500.000,00") ocupava metade da largura do gráfico (18/09/2026).
+   O número exato continua na dica ao passar o mouse. */
+function _compacto(v) {
+    const a = Math.abs(v);
+    const f = (x, s) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + s;
+    if (a >= 1e6) return f(v / 1e6, " mi");
+    if (a >= 1e3) return f(v / 1e3, " mil");
+    return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+}
+function fmtEixoR(v) { return "R$ " + _compacto(v); }
+function fmtEixoL(v) { return _compacto(v) + " L"; }
+
 /* Reais por litro — preço, taxa de frete, frete por litro. Três casas,
    como a bomba mostra (R$ 5,899); valor em reais fica com duas (`fmtR`).
    Era `fmtR4`, com quatro, até 18/09/2026, a pedido do dono: "não precisam

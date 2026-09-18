@@ -375,12 +375,12 @@ function renderAbaMensal(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
+                        callback: (val) => metricaAtual === 'gasto' ? fmtEixoR(val) : fmtEixoL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
                 },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
             }
         }
     });
@@ -436,12 +436,12 @@ function renderAbaMotoristas(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
+                        callback: (val) => metricaAtual === 'gasto' ? fmtEixoR(val) : fmtEixoL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
                 },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
             }
         }
     });
@@ -497,12 +497,12 @@ function renderAbaVeiculos(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
+                        callback: (val) => metricaAtual === 'gasto' ? fmtEixoR(val) : fmtEixoL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
                 },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
             }
         }
     });
@@ -556,12 +556,12 @@ function renderAbaCombustivel(dados) {
             scales: {
                 y: { 
                     ticks: {
-                        callback: (val) => metricaAtual === 'gasto' ? fmtR(val) : fmtL(val),
+                        callback: (val) => metricaAtual === 'gasto' ? fmtEixoR(val) : fmtEixoL(val),
                         color: colors.text
                     },
                     grid: { color: colors.grid }
                 },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
             }
         }
     });
@@ -626,7 +626,7 @@ function renderAbaComparativo(dados) {
                     },
                     grid: { color: colors.grid }
                 },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
             }
         }
     });
@@ -813,7 +813,7 @@ function renderAbaEvolucaoPrecos(dados) {
                     ticks: { callback: (val) => fmtR(val), color: colors.text },
                     grid: { color: colors.grid }
                 },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 45 } }
+                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
             }
         }
     });

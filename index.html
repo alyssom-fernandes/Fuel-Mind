@@ -406,23 +406,32 @@
 <!-- ANALÍTICO -->
 <div id="analitico" class="tela">
   <h2 id="tituloAnalitico">Analítico</h2>
-    <div class="analitico-filtros">
-      <div class="campo"><label for="analiticoInicio" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão de</label><input type="date" id="analiticoInicio"></div>
-      <div class="campo"><label for="analiticoFim" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão até</label><input type="date" id="analiticoFim"></div>
-      <div class="campo"><label for="analiticoCombustivel">Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
-      <div class="campo campo--botao"><button class="btn-primario" onclick="recalcularTela('analitico', carregarAnalitico)">Atualizar</button></div>
+    <!-- Uma barra de filtros só (18/09/2026): campos e Atualizar em cima;
+         período rápido e Valor/Litros embaixo, dentro da mesma caixa. -->
+    <div class="barra-filtros">
+      <div class="barra-filtros-campos">
+        <div class="campo"><label for="analiticoInicio" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão de</label><input type="date" id="analiticoInicio"></div>
+        <div class="campo"><label for="analiticoFim" title="O Analítico é pela data de emissão da nota: gasto e preço são da compra naquela data.">Emissão até</label><input type="date" id="analiticoFim"></div>
+        <div class="campo"><label for="analiticoCombustivel">Combustível</label><select id="analiticoCombustivel"><option value="">Todos</option></select></div>
+        <button class="btn-primario barra-filtros-aplicar" onclick="recalcularTela('analitico', carregarAnalitico)">Atualizar</button>
+      </div>
+      <div class="barra-filtros-rodape">
+        <div class="barra-filtros-grupo">
+          <span class="filtros-rapidos-sep">Período rápido:</span>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes')">Este mês</button>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes_anterior')">Mês anterior</button>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','ano')">Este ano</button>
+        </div>
+        <div class="barra-filtros-grupo" role="group" aria-label="Visualizar por">
+          <span class="filtros-rapidos-sep">Visualizar por:</span>
+          <div class="segmentado">
+            <button class="btn-metrica ativo" id="btnMetricaGasto">Valor (R$)</button>
+            <button class="btn-metrica" id="btnMetricaLitros">Litros (L)</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="filtros-rapidos-linha">
-      <span class="filtros-rapidos-sep">Período rápido:</span>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes')">Este mês</button>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','mes_anterior')">Mês anterior</button>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('analitico','ano')">Este ano</button>
-    </div>
-    <div class="linha-metrica">
-      <span class="rotulo-suave">Visualizar por:</span>
-      <button class="btn-secundario btn-metrica ativo" id="btnMetricaGasto">Valor (R$)</button>
-      <button class="btn-secundario btn-metrica" id="btnMetricaLitros">Litros (L)</button>
-    </div>
+
     <p class="dica">Clique numa barra dos gráficos para abrir o Relatório já filtrado por aquele mês, motorista, veículo ou combustível.</p>
     <div id="analiticoPeriodoLabel" style="display:none"></div>
     <div id="kpiContainer" class="kpi-container"></div>

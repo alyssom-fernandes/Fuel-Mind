@@ -182,7 +182,7 @@ function carregarGrupo() {
             },
             scales: {
                 x: { ticks: { color: cores.text }, grid: { color: cores.grid } },
-                y: { ticks: { color: cores.text, callback: v => fmtR(v) }, grid: { color: cores.grid } }
+                y: { ticks: { color: cores.text, callback: v => fmtEixoR(v) }, grid: { color: cores.grid } }
             }
         }
     });
