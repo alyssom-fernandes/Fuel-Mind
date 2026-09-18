@@ -101,13 +101,15 @@ function _garantirFiltrosDashboard() {
         </div>
     `;
     // A tela mostra as duas bases, e diz qual é qual logo abaixo do período.
-    const dica = document.createElement('p');
+    // Recolhida (18/09/2026): três linhas de texto no topo empurravam os
+    // números para baixo. Quem quer saber abre; o título já diz o essencial.
+    const dica = document.createElement('details');
     dica.id = 'dashBaseDica';
-    dica.className = 'dica dica--pequena mb-5';
-    dica.innerHTML = 'Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong> — '
+    dica.className = 'dica-recolhida mb-5';
+    dica.innerHTML = '<summary>Como cada número conta as datas</summary><p class="dica dica--pequena mb-0">Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong> — '
         + 'é o que entrou nos tanques. Gasto e preço médio contam pela <strong>data de emissão</strong> e sobre os '
         + '<strong>litros faturados</strong> na nota — é o preço que o fornecedor cobrou. Quando a descarga foi '
-        + 'informada, o custo por litro recebido aparece ao lado, dizendo em quantas notas ele se apoia.';
+        + 'informada, o custo por litro recebido aparece ao lado, dizendo em quantas notas ele se apoia.</p>';
 
     const dashEl = document.getElementById('dashboard');
     const kpiEl  = document.getElementById('kpiDashboard');

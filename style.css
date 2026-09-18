@@ -2490,3 +2490,51 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .rel-kpi-valor { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.2; white-space: nowrap; }
 .rel-kpi-nota { font-size: 0.74rem; color: var(--text-muted); }
 #resumoRelatorio { padding: var(--space-4) var(--space-5); }
+
+/* Cartões de número (Dashboard, Analítico, Grupo): rótulo em cima, número
+   grande embaixo, ícone no canto — sem uma linha inteira só para o ícone. */
+.kpi-container { gap: var(--space-4); margin-bottom: var(--space-7); }
+.kpi-card { display: flex; flex-direction: column; padding: 18px 20px 16px; }
+.kpi-card::after { display: none; }
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-card .kpi-icon {
+    position: absolute; top: 14px; right: 14px; margin: 0;
+    width: 32px; height: 32px;
+}
+.kpi-card .kpi-icon svg { width: 16px; height: 16px; }
+.kpi-card .kpi-label { order: -1; padding-right: 44px; margin-bottom: 10px; color: var(--text-muted); }
+.kpi-card .kpi-valor { font-size: clamp(1.4rem, 1.05rem + 0.9vw, 1.85rem); margin-bottom: 4px; }
+.kpi-card .kpi-variacao {
+    align-self: flex-start; margin-top: var(--space-2);
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--surface-alt); font-size: 0.7rem;
+}
+.kpi-card .kpi-variacao-boa { background: var(--success-light); }
+.kpi-card .kpi-variacao-ruim { background: var(--danger-light); }
+@media (min-width: 1100px) {
+    #kpiDashboard { grid-template-columns: repeat(6, 1fr); }
+    #kpiDashboard > .kpi-card:nth-child(-n+3) { grid-column: span 2; }
+    #kpiDashboard > .kpi-card:nth-child(n+4) { grid-column: span 3; }
+}
+
+/* Explicação recolhida: uma linha que abre com um clique */
+.dica-recolhida { font-size: 0.8rem; color: var(--text-muted); }
+.dica-recolhida > summary {
+    cursor: pointer; width: fit-content; list-style: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 0; color: var(--text-muted);
+}
+.dica-recolhida > summary::-webkit-details-marker { display: none; }
+.dica-recolhida > summary::before { content: "ⓘ"; font-size: 0.9rem; color: var(--primary); }
+.dica-recolhida > summary:hover { color: var(--text); }
+.dica-recolhida[open] > summary { margin-bottom: 6px; color: var(--text); }
+.dica-recolhida > p { max-width: 900px; }
+
+/* Por combustível: os quatro cartões ocupam a largura toda, e a nota longa
+   do custo recebido fica em texto normal, não em maiúsculas espremidas. */
+.dash-comb-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.dash-comb-kpi-label.dash-comb-kpi-label--nota {
+    text-transform: none; letter-spacing: 0; font-weight: 400;
+    font-size: 0.72rem; line-height: 1.4; margin-top: 6px; color: var(--text-muted);
+}
+.dash-comb-kpi-label .variacao-mini { display: block; margin: 4px 0 0; text-transform: none; letter-spacing: 0; }
