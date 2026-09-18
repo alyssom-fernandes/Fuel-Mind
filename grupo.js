@@ -101,7 +101,7 @@ function carregarGrupo() {
     const ordenadas = [...linhas].sort((a, b) => b.frete - a.frete || b.gasto - a.gasto);
 
     container.innerHTML = `
-        <div class="kpi-container" style="margin-bottom:18px">
+        <div class="kpi-container mb-5">
             <div class="kpi-card">
                 <div class="kpi-valor">${empresas.length}</div>
                 <div class="kpi-label">Empresas no período</div>
@@ -124,7 +124,7 @@ function carregarGrupo() {
             </div>
         </div>
 
-        <div class="grafico-wrapper" style="height:240px;margin-bottom:18px"><canvas id="graficoGrupo"></canvas></div>
+        <div class="grafico-wrapper grafico-wrapper--240 mb-5"><canvas id="graficoGrupo"></canvas></div>
 
         <div class="tabela-container">
             <table><thead><tr>
@@ -139,7 +139,7 @@ function carregarGrupo() {
             <tbody>${ordenadas.map(x => `
                 <tr class="linha-clicavel" onclick="_grupoAbrirEmpresa('${escapeJsAttr(x.empresa)}')"
                     title="Trocar a empresa ativa e abrir o Dashboard dela">
-                    <td><strong>${escapeHtml(x.empresa)}</strong>${x.semTaxa ? ` <em class="tag-perda" style="color:var(--danger)">${x.semTaxa} sem taxa</em>` : ""}</td>
+                    <td><strong>${escapeHtml(x.empresa)}</strong>${x.semTaxa ? ` <em class="tag-perda tag-perda--perigo">${x.semTaxa} sem taxa</em>` : ""}</td>
                     <td>${x.notasDescarga}</td>
                     <td>${fmtL3(x.litros)}</td>
                     <td>${fmtR(x.gasto)}</td>

@@ -2173,3 +2173,55 @@ button.confirmado-local::after {
 .titulo-nota { font-weight: 400; font-size: 0.72rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
 .modal--detalhe { max-width: 680px; width: 100%; max-height: 85vh; overflow-y: auto; }
 .alerta-corpo { cursor: pointer; }
+
+/* Relatórios — o resumo acima da tabela */
+.rel-totais { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.rel-totais > span { font-size: 0.85rem; color: var(--text-muted); }
+.rel-totais > span.rel-totais-nota { font-size: 0.8rem; }
+.rel-totais strong { color: var(--text); }
+.rel-totais em { font-style: normal; opacity: 0.75; }
+.rel-fronteira { font-size: 0.78rem; margin: calc(-1 * var(--space-1)) 0 var(--space-2); }
+.rel-cards { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.rel-card {
+    flex: 1; min-width: 160px; padding: 10px 14px;
+    background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+}
+.rel-card--lista { min-width: 180px; }
+.rel-card-titulo {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--text-muted); margin-bottom: 6px;
+}
+.rel-card--lista .rel-card-titulo { margin-bottom: var(--space-2); }
+.rel-card-valor { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 700; color: var(--text); }
+.rel-card-linha { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.rel-card-linha--fraca { font-size: 0.72rem; color: var(--text-light); }
+.rel-card-item { display: flex; justify-content: space-between; align-items: center; }
+.rel-card-item + .rel-card-item { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border-light); }
+.rel-card-nome { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.rel-card-num { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-muted); margin-left: var(--space-2); white-space: nowrap; }
+.celula-detalhe { padding: 0 !important; border-top: none !important; }
+.faixa-validacao.faixa-estado { margin: 0 0 var(--space-3); }
+.detalhe-subtitulo { margin: var(--space-3) 0 6px; }
+.detalhe-inline-inner .preview-nf { max-width: 80px; max-height: 80px; margin-right: var(--space-2); cursor: pointer; }
+
+/* Fretes */
+.texto-perigo { color: var(--danger); }
+.linha-detalhe-frete td { color: var(--text-muted); font-size: 0.82rem; }
+.celula-recuada { padding-left: var(--space-6); }
+.celula-fraca { font-size: 0.78rem; color: var(--text-muted); }
+.grafico-wrapper--220 { height: 220px; }
+.modal--tabela { max-width: min(1000px, 96vw); }
+.tabela-container--rolagem { max-height: 52vh; overflow: auto; }
+
+/* Impressão dos Fretes — o conteúdo só aparece no papel */
+.imp-titulo { margin-top: 20px; }
+.area-impressao tr.imp-grupo { background: #f0f0f0; }   /* vence a listra da tabela */
+.imp-subitem { color: #666; font-size: 0.85em; }
+.imp-subitem--escuro { color: #444; }
+.imp-recuo { padding-left: 20px; }
+
+/* Grupo e Analítico */
+.grafico-wrapper--240 { height: 240px; }
+.tag-perda.tag-perda--perigo { color: var(--danger); }
+.alerta-comparativo--subiu { background: var(--danger-light);  border-color: var(--danger);  color: var(--text); }
+.alerta-comparativo--caiu  { background: var(--success-light); border-color: var(--success); color: var(--text); }

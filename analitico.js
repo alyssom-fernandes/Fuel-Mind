@@ -99,7 +99,7 @@ function carregarAnalitico() {
     if (labelPeriodo) {
         if (!inicio && !fim) {
             labelPeriodo.style.display = "block";
-            labelPeriodo.innerHTML = '<p class="dica" style="margin-bottom:12px">Nenhum período selecionado — exibindo <strong>todo o histórico</strong>.</p>';
+            labelPeriodo.innerHTML = '<p class="dica mb-3">Nenhum período selecionado — exibindo <strong>todo o histórico</strong>.</p>';
         } else {
             labelPeriodo.style.display = "none";
         }
@@ -642,10 +642,11 @@ function renderAbaComparativo(dados) {
             alerta.style.display = "block";
             if (diff > 0) {
                 alerta.innerHTML = `<strong>Atenção:</strong> O custo médio subiu <strong>${diff.toFixed(1)}%</strong> no último mês.`;
-                alerta.style.cssText = "display:block;background:#f8d7da;border-color:#f5c6c6;color:#721c24;border-radius:6px;padding:10px 14px;margin-top:12px;";
+                // Cores do tema: as fixas eram de tema claro e ofuscavam no escuro.
+                alerta.className = "alerta-comparativo alerta-comparativo--subiu";
             } else {
                 alerta.innerHTML = `<strong>Boa notícia:</strong> O custo médio caiu <strong>${Math.abs(diff).toFixed(1)}%</strong> no último mês.`;
-                alerta.style.cssText = "display:block;background:#d4edda;border-color:#b2dfcb;color:#155724;border-radius:6px;padding:10px 14px;margin-top:12px;";
+                alerta.className = "alerta-comparativo alerta-comparativo--caiu";
             }
         } else {
             alerta.style.display = "none";

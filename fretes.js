@@ -124,14 +124,14 @@ function renderFreteResumo() {
     if (!resumo || !dadosFretesAtual) return;
 
     if (dadosFretesAtual.totalNotas === 0) {
-        resumo.innerHTML = `<span class="dica" style="margin:0">Nenhum lançamento encontrado para ${nomeMes(dadosFretesAtual.mes)}.</span>`;
+        resumo.innerHTML = `<span class="dica mb-0">Nenhum lançamento encontrado para ${nomeMes(dadosFretesAtual.mes)}.</span>`;
     } else {
         resumo.innerHTML = `
             <strong>${dadosFretesAtual.totalNotas}</strong> nota(s)
             &nbsp;|&nbsp; Litros: <strong>${fmtL(dadosFretesAtual.totalLitros)}</strong>
             &nbsp;|&nbsp; Frete total: <strong>${fmtR(dadosFretesAtual.totalFrete)}</strong>
-            ${dadosFretesAtual.semTaxa ? `<br><span style="color:var(--danger)">${dadosFretesAtual.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.</span>` : ''}
-            ${dadosFretesAtual.taxaZero ? `<br><span style="color:var(--danger)">${dadosFretesAtual.taxaZero} nota(s) de ${escapeHtml((dadosFretesAtual.empresasTaxaZero || []).join(', '))}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.</span>` : ''}
+            ${dadosFretesAtual.semTaxa ? `<br><span class="texto-perigo">${dadosFretesAtual.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.</span>` : ''}
+            ${dadosFretesAtual.taxaZero ? `<br><span class="texto-perigo">${dadosFretesAtual.taxaZero} nota(s) de ${escapeHtml((dadosFretesAtual.empresasTaxaZero || []).join(', '))}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.</span>` : ''}
         `;
     }
 }
@@ -148,13 +148,12 @@ function renderFreteResumo() {
  * mais). Sem isso as sublinhas caem sob os cabeçalhos errados.
  */
 function linhasDetalhes(detalhes, colunasNome = 2) {
-    const estilo = 'color:var(--text-muted); font-size:0.85rem';
     return Object.entries(detalhes).map(([tipo, d]) => `
         <tr class="linha-detalhe-frete">
-            <td colspan="${colunasNome}" style="padding-left:24px; ${estilo}">↳ ${escapeHtml(tipo)}</td>
-            <td style="${estilo}">${fmtL3(d.litros)}</td>
+            <td colspan="${colunasNome}" class="celula-recuada">↳ ${escapeHtml(tipo)}</td>
+            <td>${fmtL3(d.litros)}</td>
             <td></td>
-            <td style="${estilo}">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
+            <td>${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
         </tr>
     `).join("");
 }
@@ -175,7 +174,7 @@ function renderAbaPlacas() {
         <tr class="linha-clicavel" onclick="_freteAbreRelatorio('placa', '${escapeJsAttr(p.nome)}')"
             title="Ver as notas desta placa no Relatório">
             <td><strong>${escapeHtml(p.nome)}</strong></td>
-            <td style="font-size:0.78rem;color:var(--text-muted)">${escapeHtml(p.conjunto) || "—"}</td>
+            <td class="celula-fraca">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
             <td>${fmtL3(p.litros)}</td>
             <td>${_fmtTaxaGrupo(p)}</td>
@@ -253,19 +252,19 @@ function renderAbaConjuntosFretes() {
         const detalhesCombs = linhasDetalhes(c.detalhes);
 
         const detalhesPlacas = Object.entries(c.porPlacaInterna).map(([placa, d]) => `
-            <tr class="linha-detalhe-frete">
-                <td style="padding-left:24px; color:var(--text-muted); font-size:0.82rem">
+            <tr class="linha-detalhe-frete linha-detalhe-frete--placa">
+                <td class="celula-recuada">
                      ${escapeHtml(placa)}
                 </td>
-                <td style="color:var(--text-muted); font-size:0.82rem">${d.viagens}</td>
-                <td style="color:var(--text-muted); font-size:0.82rem">${fmtL3(d.litros)}</td>
+                <td>${d.viagens}</td>
+                <td>${fmtL3(d.litros)}</td>
                 <td></td>
-                <td style="color:var(--text-muted); font-size:0.82rem">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
+                <td>${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
             </tr>
         `).join("");
 
         return `
-            <tr style="background:var(--bg-secondary)">
+            <tr>
                 <td><strong> ${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
                 <td><strong>${fmtL3(c.litros)}</strong></td>
@@ -330,8 +329,8 @@ function renderFreteHistorico() {
     }
 
     alvo.innerHTML = `
-        <div class="grafico-wrapper" style="height:220px"><canvas id="graficoFreteMeses"></canvas></div>
-        <div class="tabela-container" style="margin-top:10px">
+        <div class="grafico-wrapper grafico-wrapper--220"><canvas id="graficoFreteMeses"></canvas></div>
+        <div class="tabela-container mt-2">
             <table><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
             <tbody>${serie.map(x => `<tr class="linha-clicavel" onclick="_freteAbrirMes('${x.mes}')" title="Ver o detalhe deste mês">
                 <td><strong>${nomeMes(x.mes)}</strong></td>
@@ -431,10 +430,10 @@ function abrirFreteNotaANota() {
     modal.style.display = "flex";
     modal.onclick = e => { if (e.target === modal) modal.remove(); };
     modal.innerHTML = `
-        <div class="modal" style="max-width:min(1000px, 96vw)" onclick="event.stopPropagation()">
-            <h3 style="margin:0 0 4px">Frete nota a nota — ${nomeMes(dadosFretesAtual.mes)}</h3>
+        <div class="modal modal--tabela" onclick="event.stopPropagation()">
+            <h3 class="mt-0 mb-1">Frete nota a nota — ${nomeMes(dadosFretesAtual.mes)}</h3>
             <p class="dica">Pela data da descarga, com a taxa que valia em cada data. É esta lista que responde a um transportador que questiona um valor.</p>
-            <div class="tabela-container" style="max-height:52vh;overflow:auto">
+            <div class="tabela-container tabela-container--rolagem">
                 <table><thead><tr>
                     <th>Descarga</th><th>Emissão</th><th>Nota</th><th>Empresa</th>
                     <th>Motorista</th><th>Placa</th><th>Conjunto</th>
@@ -460,7 +459,7 @@ function abrirFreteNotaANota() {
                 </tr></tfoot>
                 </table>
             </div>
-            <div class="sistema-acoes" style="margin-top:14px;justify-content:flex-end">
+            <div class="modal-acoes">
                 <button class="btn-secundario" onclick="exportarFreteNotaANota()">Excel desta lista</button>
                 <button class="btn-secundario" onclick="document.getElementById('_modalFreteNotas').remove()">Fechar</button>
             </div>
@@ -842,8 +841,8 @@ function imprimirFretes() {
                 <td><strong>R$ ${item.frete.toFixed(2)}</strong></td>
             </tr>
             ${Object.entries(item.detalhes).map(([tipo, det]) => `
-                <tr style="color:#666; font-size:0.85em">
-                    <td style="padding-left:20px">↳ ${escapeHtml(tipo)}</td>
+                <tr class="imp-subitem">
+                    <td class="imp-recuo">↳ ${escapeHtml(tipo)}</td>
                     <td></td>
                     <td>${det.litros.toFixed(3)} L</td>
                     <td></td>
@@ -853,7 +852,7 @@ function imprimirFretes() {
         `).join("");
 
         return `
-            <h3 style="margin-top:20px">${titulo}</h3>
+            <h3 class="imp-titulo">${titulo}</h3>
             <table>
                 <thead><tr>
                     <th>Nome</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete (R$)</th>
@@ -866,7 +865,7 @@ function imprimirFretes() {
     const montarTabelaConjuntos = () => {
         if (!d.porConjunto || d.porConjunto.length === 0) return "";
         const linhas = d.porConjunto.map(c => `
-            <tr style="background:#f0f0f0">
+            <tr class="imp-grupo">
                 <td><strong>${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
                 <td><strong>${c.litros.toFixed(3)} L</strong></td>
@@ -874,8 +873,9 @@ function imprimirFretes() {
                 <td><strong>R$ ${c.frete.toFixed(2)}</strong></td>
             </tr>
             ${Object.entries(c.porPlacaInterna).map(([placa, det]) => `
-                <tr style="color:#444; font-size:0.85em">
-                    <td style="padding-left:16px">${escapeHtml(placa)}</td>
+                <tr class="imp-subitem imp-subitem--escuro">
+                    <td class="imp-recuo">${escapeHtml(placa)}</td>
+
                     <td>${det.viagens}</td>
                     <td>${det.litros.toFixed(3)} L</td>
                     <td></td>
@@ -884,7 +884,7 @@ function imprimirFretes() {
             `).join("")}
         `).join("");
         return `
-            <h3 style="margin-top:20px">Por Conjunto</h3>
+            <h3 class="imp-titulo">Por Conjunto</h3>
             <table>
                 <thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros</th><th>Taxa</th><th>Frete (R$)</th></tr></thead>
                 <tbody>${linhas}</tbody>

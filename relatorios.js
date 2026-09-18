@@ -352,59 +352,50 @@ function _aplicarFiltroRelatorio() {
         // Cards por combustível
         const cardsComb = Object.entries(porComb).map(([comb, d]) => {
             const pm = d.litrosNota > 0 ? d.total / d.litrosNota : 0;
-            return `<div style="background:var(--surface-alt);border:1px solid var(--border-light);
-                        border-radius:var(--radius-sm);padding:10px 14px;min-width:160px;flex:1">
-                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
-                     letter-spacing:.07em;color:var(--text-muted);margin-bottom:6px">${escapeHtml(comb)}</div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;
-                     color:var(--text)">${fmtL3(d.litros)}</div>
-                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">${fmtR(d.total)}</div>
-                <div style="font-size:0.72rem;color:var(--text-light);margin-top:2px">${fmtR4(pm)}/L</div>
+            return `<div class="rel-card">
+                <div class="rel-card-titulo">${escapeHtml(comb)}</div>
+                <div class="rel-card-valor">${fmtL3(d.litros)}</div>
+                <div class="rel-card-linha">${fmtR(d.total)}</div>
+                <div class="rel-card-linha rel-card-linha--fraca">${fmtR4(pm)}/L</div>
             </div>`;
         }).join('');
 
         // Top motoristas
         const topMotHtml = topMotoristas.length ? `
-            <div style="background:var(--surface-alt);border:1px solid var(--border-light);
-                        border-radius:var(--radius-sm);padding:10px 14px;min-width:180px;flex:1">
-                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
-                     letter-spacing:.07em;color:var(--text-muted);margin-bottom:8px">Top Motoristas</div>
-                ${topMotoristas.map(([nome, litros], idx) => `
-                    <div style="display:flex;justify-content:space-between;align-items:center;
-                         ${idx > 0 ? 'margin-top:5px;padding-top:5px;border-top:1px solid var(--border-light)' : ''}">
-                        <span style="font-size:0.8rem;color:var(--text);white-space:nowrap;
-                              overflow:hidden;text-overflow:ellipsis;max-width:120px"
-                              title="${escapeHtml(nome)}">${escapeHtml(nome)}</span>
-                        <span style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
-                              color:var(--text-muted);margin-left:8px;white-space:nowrap">${fmtL(litros, 0)}</span>
+            <div class="rel-card rel-card--lista">
+                <div class="rel-card-titulo">Top Motoristas</div>
+                ${topMotoristas.map(([nome, litros]) => `
+                    <div class="rel-card-item">
+                        <span class="rel-card-nome" title="${escapeHtml(nome)}">${escapeHtml(nome)}</span>
+                        <span class="rel-card-num">${fmtL(litros, 0)}</span>
                     </div>`).join('')}
             </div>` : '';
 
         resumo.style.display = "block";
         resumo.innerHTML = `
-            <div style="margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-                <span style="font-size:0.85rem;color:var(--text-muted)">
-                    <strong style="color:var(--text)">${dadosRelatorioValidos.length}</strong> lançamento(s)
+            <div class="rel-totais">
+                <span>
+                    <strong>${dadosRelatorioValidos.length}</strong> lançamento(s)
                 </span>
-                ${foraDaConta > 0 ? `<span style="font-size:0.8rem;color:var(--text-muted)">
+                ${foraDaConta > 0 ? `<span class="rel-totais-nota">
                     · ${foraDaConta} na tela fora dos totais
                 </span>` : ''}
-                <span style="font-size:0.85rem;color:var(--text-muted)">
-                    Total: <strong style="color:var(--text)">${fmtR(totalGeral)}</strong>
+                <span>
+                    Total: <strong>${fmtR(totalGeral)}</strong>
                 </span>
-                <span style="font-size:0.85rem;color:var(--text-muted)">
-                    Litros: <strong style="color:var(--text)">${fmtL3(totalLitros)}</strong>
+                <span>
+                    Litros: <strong>${fmtL3(totalLitros)}</strong>
                 </span>
-                ${precoMedio > 0 ? `<span style="font-size:0.85rem;color:var(--text-muted)" title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
-                    Preço médio de compra: <strong style="color:var(--text)">${fmtR4(precoMedio)}/L</strong>
-                    <em style="font-style:normal;opacity:.75">· sobre ${fmtL3(mPreco.litrosNota)} faturados</em>
+                ${precoMedio > 0 ? `<span title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
+                    Preço médio de compra: <strong>${fmtR4(precoMedio)}/L</strong>
+                    <em>· sobre ${fmtL3(mPreco.litrosNota)} faturados</em>
                 </span>` : ''}
-                ${mPreco.custoRecebido > 0 ? `<span style="font-size:0.8rem;color:var(--text-muted)" title="Valor das notas com descarga informada ÷ litros medidos.">
+                ${mPreco.custoRecebido > 0 ? `<span class="rel-totais-nota" title="Valor das notas com descarga informada ÷ litros medidos.">
                     ${escapeHtml(textoCustoRecebido(mPreco))}
                 </span>` : ''}
             </div>
             ${_textoFronteiraRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora)}
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div class="rel-cards">
                 ${cardsComb}
                 ${topMotHtml}
             </div>`;
@@ -418,7 +409,7 @@ function _textoFronteiraRelatorio(temPeriodo, emitidasFora, descarregadasFora) {
     const partes = [];
     if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele (incluída${emitidasFora > 1 ? 's' : ''})`);
     if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele (não incluída${descarregadasFora > 1 ? 's' : ''})`);
-    return `<div class="dica" style="font-size:0.78rem;margin:-4px 0 10px">
+    return `<div class="dica rel-fronteira">
         Período pela <strong>data de emissão</strong>.${partes.length ? ' Notas da fronteira: ' + partes.join(' · ') + '.' : ''}
     </div>`;
 }
@@ -511,7 +502,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
             <td>${escapeHtml(l.empresa) || '—'}</td>
             <td>${escapeHtml(l.motorista) || '—'}</td>
             <td>${escapeHtml(l.placa) || '—'}</td>
-            <td style="text-align:right">${fmtL(totalLitros)}</td>
+            <td class="celula-num">${fmtL(totalLitros)}</td>
             <td>${fmtR(l.total)}</td>
             <td class="no-print">
                 ${morto ? '' : `
@@ -532,7 +523,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
 
         const linhaDetalhe = estaAberto ? `
         <tr class="linha-detalhe-inline no-print">
-            <td colspan="10" style="padding:0;border-top:none;">
+            <td colspan="10" class="celula-detalhe">
                 <div class="detalhe-inline-container" id="detalheInline_${l.id}">
                     ${_buildConteudoDetalhe(l)}
                 </div>
@@ -576,19 +567,19 @@ function _buildConteudoDetalhe(l) {
 
     let anexosHtml = '';
     if (l.anexos && l.anexos.length > 0) {
-        anexosHtml = '<ul style="list-style:none; padding-left:0; margin:0">';
+        anexosHtml = '<ul class="lista-limpa mb-0">';
         l.anexos.forEach(a => {
             const href = escapeHtml(a.url || a.dados || '');
             const isImagem = a.tipo && a.tipo.startsWith('image/');
             if (isImagem) {
-                anexosHtml += `<li><a href="${href}" target="_blank"><img src="${href}" class="preview-nf" style="max-width:80px;max-height:80px;margin-right:8px;cursor:pointer;"></a></li>`;
+                anexosHtml += `<li><a href="${href}" target="_blank"><img src="${href}" class="preview-nf"></a></li>`;
             } else {
                 anexosHtml += `<li><a href="${href}" target="_blank">${escapeHtml(a.nome)}</a></li>`;
             }
         });
         anexosHtml += '</ul>';
     } else {
-        anexosHtml = '<span style="color:var(--text-muted)">—</span>';
+        anexosHtml = '<span class="rotulo-suave">—</span>';
     }
 
     // A faixa de estado, quando existe, é a primeira coisa do painel: o
@@ -604,13 +595,13 @@ function _buildConteudoDetalhe(l) {
 
     let faixaEstado = '';
     if (l.estado === 'cancelado') {
-        faixaEstado = `<div class="faixa-validacao faixa-bloqueio" style="margin:0 0 12px">
+        faixaEstado = `<div class="faixa-validacao faixa-bloqueio faixa-estado">
             <strong>Cancelada na origem.</strong> Fora dos litros, do custo médio e do frete.
             ${quandoEstado ? `<br><small>Marcada em ${quandoEstado}.</small>` : ''}
             ${ultimoEstado && ultimoEstado.motivo ? `<br><small>Motivo: ${escapeHtml(ultimoEstado.motivo)}</small>` : ''}
         </div>`;
     } else if (l.estado === 'excluido') {
-        faixaEstado = `<div class="faixa-validacao faixa-alerta" style="margin:0 0 12px">
+        faixaEstado = `<div class="faixa-validacao faixa-alerta faixa-estado">
             <strong>Excluída.</strong> Fora dos relatórios e de todos os totais, e pode ser restaurada.
             ${quandoEstado ? `<br><small>Excluída em ${quandoEstado}.</small>` : ''}
         </div>`;
@@ -630,7 +621,7 @@ function _buildConteudoDetalhe(l) {
                 <div><span>Total</span><strong>${fmtR(l.total)}</strong></div>
             </div>
 
-            <h4 style="margin:12px 0 6px">Combustíveis</h4>
+            <h4 class="detalhe-subtitulo">Combustíveis</h4>
             <table class="detalhe-tabela">
                 <thead><tr>
                     <th>Tipo</th><th>Qtd Carga</th><th>Qtd Descarga</th>
@@ -1277,33 +1268,28 @@ function gerarRelatorioMensalPDF() {
     }
 
     modal.innerHTML = `
-        <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
-            <h3 style="margin:0 0 8px">Relatório Mensal Gerencial</h3>
-            <p style="color:var(--text-muted);font-size:0.88rem;margin:0 0 20px">
+        <div class="modal modal--medio" onclick="event.stopPropagation()">
+            <h3 class="mt-0 mb-2">Relatório Mensal Gerencial</h3>
+            <p class="sistema-descricao mb-5">
                 Gera um PDF formatado com resumo executivo, detalhamento por combustível e comparativo com o mês anterior.
                 O mês é o da <strong>data de emissão</strong> das notas.
             </p>
-            <div class="campo" style="margin-bottom:8px">
+            <div class="campo mb-2">
                 <label for="_selMesRelMensal">Mês de referência</label>
-                <select id="_selMesRelMensal" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
+                <select id="_selMesRelMensal" class="largura-total">
                     ${opcoes.join('')}
                 </select>
             </div>
-            <div class="campo" style="margin-bottom:20px">
+            <div class="campo">
                 <label for="_nomeEmpresaRel">Nome do posto / empresa (cabeçalho)</label>
-                <input id="_nomeEmpresaRel" type="text" value="${escapeHtml(empresaFiltroNome || db.empresas?.[0]?.nome || '')}"
-                    style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-sizing:border-box">
+                <input id="_nomeEmpresaRel" type="text" class="largura-total" value="${escapeHtml(empresaFiltroNome || db.empresas?.[0]?.nome || '')}">
             </div>
-            <div style="display:flex;gap:10px;justify-content:flex-end">
-                <button onclick="document.getElementById('_modalRelMensal').remove()"
-                    style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">
-                    Cancelar
-                </button>
-                <button onclick="_executarRelatorioMensal()"
-                    style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:600">
-                    Gerar PDF
-                </button>
+            <!-- Os mesmos botões dos outros modais, em vez de dois desenhados à mão. -->
+            <div class="modal-acoes">
+                <button class="btn-primario" onclick="_executarRelatorioMensal()">Gerar PDF</button>
+                <button class="btn-cancelar" onclick="document.getElementById('_modalRelMensal').remove()">Cancelar</button>
             </div>
+
         </div>
     `;
     document.body.appendChild(modal);
