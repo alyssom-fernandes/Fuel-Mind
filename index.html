@@ -474,73 +474,81 @@
     <div id="kpiContainer" class="kpi-container"></div>
     <div class="analitico-abas" id="analiticoAbas">
       <button class="aba-btn ativa" data-aba="mensal" onclick="trocarAba('mensal', this)">Mensal</button>
-      <button class="aba-btn" data-aba="motoristas" onclick="trocarAba('motoristas', this)">Por Motorista</button>
-      <button class="aba-btn" data-aba="veiculos" onclick="trocarAba('veiculos', this)">Por Veículo</button>
-      <button class="aba-btn" data-aba="combustivel" onclick="trocarAba('combustivel', this)">Por Combustível</button>
+      <button class="aba-btn" data-aba="motoristas" onclick="trocarAba('motoristas', this)">Por motorista</button>
+      <button class="aba-btn" data-aba="veiculos" onclick="trocarAba('veiculos', this)">Por veículo</button>
+      <button class="aba-btn" data-aba="combustivel" onclick="trocarAba('combustivel', this)">Por combustível</button>
       <button class="aba-btn" data-aba="comparativo" onclick="trocarAba('comparativo', this)">Comparativo</button>
       <button class="aba-btn" data-aba="distribuicao" onclick="trocarAba('distribuicao', this)">Distribuição</button>
-      <button class="aba-btn" data-aba="evolucaoPrecos" onclick="trocarAba('evolucaoPrecos', this)">Evolução Preços</button>
+      <button class="aba-btn" data-aba="evolucaoPrecos" onclick="trocarAba('evolucaoPrecos', this)">Evolução de preços</button>
     </div>
     <div id="aba-mensal" class="aba-conteudo">
-      <h3>Resumo Mensal</h3>
+      <h3>Resumo mensal</h3>
       <p class="dica">Total gasto e litros por mês, pela data de emissão. O preço médio divide o gasto pelos litros <strong>faturados</strong> nas notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoMensal" height="280"></canvas></div>
+      <p class="dica dica--pequena dica--legenda">* O mês em andamento vai só até hoje.</p>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('mensal')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container mt-4"><table><thead><tr><th>Mês / Ano</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
+      <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Mês</th><th>Notas</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
     </div>
     <div id="aba-motoristas" class="aba-conteudo" style="display:none">
-      <h3>Resumo por Motorista</h3>
+      <h3>Resumo por motorista</h3>
       <div class="grafico-wrapper"><canvas id="graficoMotoristas" height="280"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('motoristas')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container mt-4"><table><thead><tr><th>Motorista</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
+      <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>% do total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
     </div>
     <div id="aba-veiculos" class="aba-conteudo" style="display:none">
-      <h3>Resumo por Veículo</h3>
+      <h3>Resumo por veículo</h3>
       <div class="grafico-wrapper"><canvas id="graficoVeiculos" height="280"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('veiculos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container mt-4"><table><thead><tr><th>Placa</th><th>Nº Viagens</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>% do Total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
+      <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Placa</th><th>Viagens</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>% do total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
     </div>
     <div id="aba-combustivel" class="aba-conteudo" style="display:none">
-      <h3>Resumo por Tipo de Combustível</h3>
+      <h3>Resumo por combustível</h3>
       <div class="grafico-wrapper"><canvas id="graficoCombustivel" height="280"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('combustivel')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container mt-4"><table><thead><tr><th>Combustível</th><th>Nº Notas</th><th>Total Litros (L)</th><th>Total Gasto (R$)</th><th>Preço Médio / L</th><th>Mín / Máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
+      <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Combustível</th><th>Notas</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>Mín / máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
     </div>
     <div id="aba-comparativo" class="aba-conteudo" style="display:none">
-      <h3>Comparativo Mês a Mês</h3>
+      <h3>Custo médio mês a mês</h3>
       <p class="dica">Evolução do custo médio por litro ao longo dos meses.</p>
       <div class="grafico-wrapper"><canvas id="graficoComparativo" height="300"></canvas></div>
       <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('comparativo')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
-      <div class="tabela-container mt-4"><table><thead><tr><th>Mês</th><th>Preço Médio / L</th><th>vs. mês anterior</th><th>Total Litros</th><th>Total Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
+      <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Mês</th><th>Preço médio/L</th><th>vs. mês anterior</th><th>Litros</th><th>Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
     </div>
     <div id="aba-distribuicao" class="aba-conteudo" style="display:none">
-      <h3>Distribuição de Gastos</h3>
-      <div class="grade-2">
-        <div><h4>Por Combustível</h4><div class="grafico-wrapper"><canvas id="graficoPizzaCombustivel" height="200"></canvas></div>
-          <button class="btn-secundario mt-2" onclick="baixarGrafico('pizzaCombustivel')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
-          </button>
-        </div>
-        <div><h4>Por Motorista (top 5)</h4><div class="grafico-wrapper"><canvas id="graficoPizzaMotoristas" height="200"></canvas></div>
-          <button class="btn-secundario mt-2" onclick="baixarGrafico('pizzaMotorista')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
-          </button>
-        </div>
+      <h3>Distribuição <small class="titulo-nota">· no período, pela data de emissão</small></h3>
+      <!-- Anel com a lista de valores ao lado, como no Dashboard. -->
+      <h4 class="mt-4">Por combustível</h4>
+      <div class="distribuicao-cartao">
+        <div class="distribuicao-grafico"><canvas id="graficoPizzaCombustivel"></canvas>
+          <div class="distribuicao-centro"><span>Total</span><strong></strong></div></div>
+        <ul class="distribuicao-lista"></ul>
       </div>
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('pizzaCombustivel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      </button></div>
+      <h4 class="mt-5">Por motorista <small class="titulo-nota">· os 5 maiores</small></h4>
+      <div class="distribuicao-cartao">
+        <div class="distribuicao-grafico"><canvas id="graficoPizzaMotoristas"></canvas>
+          <div class="distribuicao-centro"><span>Total</span><strong></strong></div></div>
+        <ul class="distribuicao-lista"></ul>
+      </div>
+      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('pizzaMotorista')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+      </button></div>
     </div>
     <div id="aba-evolucaoPrecos" class="aba-conteudo" style="display:none">
-      <h3>Evolução de Preços por Combustível</h3>
+      <h3>Evolução de preços por combustível</h3>
       <p class="dica">Preço médio de compra por litro, mês a mês — média <strong>ponderada</strong> pelos litros faturados, não média simples das notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">

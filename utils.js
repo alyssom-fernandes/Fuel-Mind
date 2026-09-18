@@ -336,6 +336,12 @@ function fmtRL(v) {
     return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:3, maximumFractionDigits:3 });
 }
 
+/* Porcentagem em português: "2,4%". `toFixed(1) + "%"` escrevia "2.4%" nas
+   variações e fatias do Analítico (18/09/2026). */
+function fmtPct(v, casas = 1) {
+    return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
+}
+
 /* ══ NÚMERO EM PORTUGUÊS ═════════════════════════════════════════════
    Por que isto existe (tema 05 da pesquisa).
 

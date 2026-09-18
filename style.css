@@ -2273,6 +2273,10 @@ button.confirmado-local::after {
 .distribuicao-lista li:last-child { border-bottom: 0; }
 .distribuicao-lista li:hover { background: none; }
 .distribuicao-cor { width: 12px; height: 12px; border-radius: 3px; }
+.distribuicao-lista li.distribuicao-vazia { display: block; color: var(--text-muted); font-style: italic; border: 0; }
+.distribuicao-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Coluna de porcentagem com barrinha: número e barra alinhados à direita. */
+.tabela-numeros td.celula-pct .barra-progresso { margin-left: auto; width: 100%; max-width: 120px; }
 .distribuicao-nome { color: var(--text); font-weight: 600; }
 .distribuicao-valor { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text); text-align: right; }
 .distribuicao-pct { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); text-align: right; }

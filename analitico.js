@@ -237,19 +237,19 @@ function renderKPIs(dados) {
     document.getElementById("kpiContainer").innerHTML = `
         <div class="kpi-card">
             <div class="kpi-valor">${dados.numNotas}</div>
-            <div class="kpi-label">Total de Notas</div>
+            <div class="kpi-label">Notas</div>
         </div>
         <div class="kpi-card verde">
             <div class="kpi-valor">${fmtR(dados.totalGasto)}</div>
-            <div class="kpi-label">Total Gasto no Período</div>
+            <div class="kpi-label">Gasto no período</div>
         </div>
         <div class="kpi-card laranja">
             <div class="kpi-valor">${fmtL(dados.totalLitros)}</div>
-            <div class="kpi-label">Total de Litros</div>
+            <div class="kpi-label">Litros</div>
         </div>
         <div class="kpi-card roxo" title="Preço médio de compra: valor das notas ÷ litros faturados nelas, no período filtrado pela emissão.">
             <div class="kpi-valor">${dados.custoMedio > 0 ? fmtRL(dados.custoMedio) : "—"}</div>
-            <div class="kpi-label">Preço Médio de Compra / L</div>
+            <div class="kpi-label">Preço médio / L</div>
             <div class="kpi-base">sobre ${fmtL(dados.totalLitrosNota || 0)} faturados</div>
         </div>
     `;
@@ -352,7 +352,7 @@ function renderAbaMensal(dados) {
     chartMensal = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: meses.map(m => nomeMes(m.mes)),
+            labels: meses.map(m => _rotuloMesGrafico(m.mes)),
             datasets: [{
                 label: metricaAtual === 'gasto' ? 'Gasto Total (R$)' : 'Litros Totais',
                 data: meses.map(m => metricaAtual === 'gasto' ? m.gasto : m.litros),
@@ -401,7 +401,7 @@ function renderAbaMotoristas(dados) {
         return `<tr>
             <td>${escapeHtml(m.nome)}</td><td>${m.viagens}</td><td>${fmtL(m.litros)}</td>
             <td>${fmtR(m.gasto)}</td><td>${cm>0?fmtRL(cm):"—"}</td>
-            <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
+            <td class="celula-pct">${fmtPct(pct)}<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
     }).join("");
     
@@ -462,7 +462,7 @@ function renderAbaVeiculos(dados) {
         return `<tr>
             <td>${escapeHtml(v.nome)}</td><td>${v.viagens}</td><td>${fmtL(v.litros)}</td>
             <td>${fmtR(v.gasto)}</td><td>${cm>0?fmtRL(cm):"—"}</td>
-            <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
+            <td class="celula-pct">${fmtPct(pct)}<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
     }).join("");
     
@@ -538,8 +538,10 @@ function renderAbaCombustivel(dados) {
             datasets: [{
                 label: metricaAtual === 'gasto' ? 'Gasto (R$)' : 'Litros',
                 data: lista.map(c => metricaAtual === 'gasto' ? c.gasto : c.litros),
-                backgroundColor: colors.info + '80',
-                borderColor: colors.info,
+                // Cor fixa de cada combustível, a mesma do resto do site;
+                // antes as quatro barras eram azuis.
+                backgroundColor: lista.map(c => corDoCombustivel(c.nome) + 'cc'),
+                borderColor: lista.map(c => corDoCombustivel(c.nome)),
                 borderWidth: 1
             }]
         },
@@ -547,6 +549,7 @@ function renderAbaCombustivel(dados) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')
@@ -595,9 +598,9 @@ function renderAbaComparativo(dados) {
     chartComparativo = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: meses.map(m => nomeMes(m.mes)),
+            labels: meses.map(m => _rotuloMesGrafico(m.mes)),
             datasets: [{
-                label: 'Custo Médio (R$/L)',
+                label: 'Custo médio (R$/L)',
                 data: custosMedias,
                 borderColor: colors.primary,
                 backgroundColor: colors.primary + '20',
@@ -612,6 +615,7 @@ function renderAbaComparativo(dados) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => fmtRL(ctx.raw)
@@ -641,11 +645,11 @@ function renderAbaComparativo(dados) {
         if (Math.abs(diff) >= 1) {
             alerta.style.display = "block";
             if (diff > 0) {
-                alerta.innerHTML = `<strong>Atenção:</strong> O custo médio subiu <strong>${diff.toFixed(1)}%</strong> no último mês.`;
+                alerta.innerHTML = `<strong>Atenção:</strong> o custo médio subiu <strong>${fmtPct(diff)}</strong> no último mês.`;
                 // Cores do tema: as fixas eram de tema claro e ofuscavam no escuro.
                 alerta.className = "alerta-comparativo alerta-comparativo--subiu";
             } else {
-                alerta.innerHTML = `<strong>Boa notícia:</strong> O custo médio caiu <strong>${Math.abs(diff).toFixed(1)}%</strong> no último mês.`;
+                alerta.innerHTML = `<strong>Boa notícia:</strong> o custo médio caiu <strong>${fmtPct(Math.abs(diff))}</strong> no último mês.`;
                 alerta.className = "alerta-comparativo alerta-comparativo--caiu";
             }
         } else {
@@ -660,82 +664,82 @@ function renderAbaDistribuicao(dados) {
     const canvasComb = _graficoPronto("graficoPizzaCombustivel");
     const canvasMotor = _graficoPronto("graficoPizzaMotoristas");
     if (!canvasComb || !canvasMotor) return;
-    
-    const colors = getChartColors();
-    
-    // Pizza por combustível
-    let combData = dados.porCombustivel.map(c => ({ 
-        label: c.nome, 
-        value: metricaAtual === 'gasto' ? c.gasto : c.litros 
-    }));
-    combData.sort((a,b) => b.value - a.value);
-    if (combData.length > 5) {
-        const top5 = combData.slice(0,5);
-        const outros = combData.slice(5).reduce((acc, c) => acc + c.value, 0);
-        combData = top5.concat([{ label: 'Outros', value: outros }]);
+
+    const unidade = metricaAtual === 'gasto' ? 'R$' : 'L';
+    const fmtValor = v => metricaAtual === 'gasto' ? fmtR(v) : fmtL(v);
+
+    if (!dados.porCombustivel.length) {
+        if (chartPizzaComb)  { chartPizzaComb.destroy();  chartPizzaComb = null; }
+        if (chartPizzaMotor) { chartPizzaMotor.destroy(); chartPizzaMotor = null; }
+        document.querySelectorAll('#aba-distribuicao .distribuicao-centro strong').forEach(el => el.textContent = '—');
+        document.querySelectorAll('#aba-distribuicao .distribuicao-lista').forEach(ul =>
+            ul.innerHTML = '<li class="distribuicao-vazia">Nenhuma compra emitida no período.</li>');
+        return;
     }
-    
-    if (chartPizzaComb) chartPizzaComb.destroy();
-    chartPizzaComb = new Chart(canvasComb.getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: combData.map(d => d.label),
-            datasets: [{
-                data: combData.map(d => d.value),
-                // Cor fixa por combustível, a mesma de todas as telas.
-                backgroundColor: combData.map(d => corDoCombustivel(d.label)),
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { color: colors.text } },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => `${ctx.label}: ${formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')}`
+    const topCinco = lista => {
+        let d = lista.slice().sort((a, b) => b.value - a.value);
+        if (d.length > 5) {
+            const outros = d.slice(5).reduce((acc, x) => acc + x.value, 0);
+            d = d.slice(0, 5).concat([{ label: 'Outros', value: outros }]);
+        }
+        return d;
+    };
+
+    const combData = topCinco(dados.porCombustivel.map(c => ({
+        label: c.nome, value: metricaAtual === 'gasto' ? c.gasto : c.litros })));
+    const motorData = topCinco(dados.porMotorista.map(m => ({
+        label: m.nome, value: metricaAtual === 'gasto' ? m.gasto : m.litros })));
+
+    // Anel com o total no meio e, ao lado, cada fatia com valor e
+    // porcentagem — o mesmo desenho do Dashboard. As pizzas soltas só davam
+    // o número passando o mouse (18/09/2026).
+    const coresMotor = ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'];
+    const desenhar = (canvas, antigo, itens, cores) => {
+        if (antigo) antigo.destroy();
+        const total = itens.reduce((s, d) => s + d.value, 0);
+        const pct = v => fmtPct(total > 0 ? v / total * 100 : 0);
+        const cartao = canvas.closest('.distribuicao-cartao');
+        if (cartao) {
+            const centro = cartao.querySelector('.distribuicao-centro strong');
+            if (centro) centro.textContent = fmtValor(total);
+            const lista = cartao.querySelector('.distribuicao-lista');
+            if (lista) lista.innerHTML = itens.map((d, i) => `<li>
+                <span class="distribuicao-cor" style="background:${cores[i]}"></span>
+                <span class="distribuicao-nome" title="${escapeHtml(d.label)}">${escapeHtml(d.label)}</span>
+                <span class="distribuicao-valor">${fmtValor(d.value)}</span>
+                <span class="distribuicao-pct">${pct(d.value)}</span>
+            </li>`).join('');
+        }
+        return new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: itens.map(d => d.label),
+                datasets: [{
+                    data: itens.map(d => d.value),
+                    backgroundColor: cores,
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || 'transparent',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.label}: ${formatarTooltipValor(ctx.raw, unidade)} (${pct(ctx.raw)})`
+                        }
                     }
                 }
             }
-        }
-    });
-    
-    // Pizza por motorista
-    let motorData = dados.porMotorista.map(m => ({ 
-        label: m.nome, 
-        value: metricaAtual === 'gasto' ? m.gasto : m.litros 
-    }));
-    motorData.sort((a,b) => b.value - a.value);
-    if (motorData.length > 5) {
-        const top5 = motorData.slice(0,5);
-        const outros = motorData.slice(5).reduce((acc, m) => acc + m.value, 0);
-        motorData = top5.concat([{ label: 'Outros', value: outros }]);
-    }
-    if (chartPizzaMotor) chartPizzaMotor.destroy();
-    chartPizzaMotor = new Chart(canvasMotor.getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: motorData.map(d => d.label),
-            datasets: [{
-                data: motorData.map(d => d.value),
-                backgroundColor: ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { color: colors.text } },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => `${ctx.label}: ${formatarTooltipValor(ctx.raw, metricaAtual === 'gasto' ? 'R$' : 'L')}`
-                    }
-                }
-            }
-        }
-    });
+        });
+    };
+
+    // Cor fixa por combustível, a mesma de todas as telas.
+    chartPizzaComb  = desenhar(canvasComb,  chartPizzaComb,  combData,  combData.map(d => corDoCombustivel(d.label)));
+    chartPizzaMotor = desenhar(canvasMotor, chartPizzaMotor, motorData, motorData.map((d, i) => coresMotor[i % coresMotor.length]));
 }
 
 // Nova aba: Evolução de Preços
@@ -792,7 +796,7 @@ function renderAbaEvolucaoPrecos(dados) {
                 // escondia a clicada, e com quatro linhas o que se quer
                 // é ver uma sozinha (18/09/2026).
                 legend: {
-                    labels: { color: colors.text },
+                    labels: { color: colors.text, usePointStyle: true, pointStyle: 'line', boxWidth: 28, padding: 16 },
                     onClick: (e, item, legend) => {
                         const ch = legend.chart;
                         const sozinha = ch.data.datasets.every((ds, i) =>
@@ -819,12 +823,18 @@ function renderAbaEvolucaoPrecos(dados) {
     });
 }
 
+/** Mês no eixo dos gráficos; o mês em andamento ganha "*": a barra dele é
+ *  menor só porque o mês ainda não acabou. */
+function _rotuloMesGrafico(mes) {
+    return mes === _hojeISO().slice(0, 7) ? nomeMes(mes) + "*" : nomeMes(mes);
+}
+
 function badgeVariacao(atual, anterior) {
     if (anterior <= 0) return "";
     const diff = (atual - anterior) / anterior * 100;
     if (Math.abs(diff) < 0.01) return `<span class="badge-var igual">= 0%</span>`;
-    if (diff > 0) return `<span class="badge-var alta">▲ +${diff.toFixed(1)}%</span>`;
-    return `<span class="badge-var baixa">▼ ${diff.toFixed(1)}%</span>`;
+    if (diff > 0) return `<span class="badge-var alta">▲ +${fmtPct(diff)}</span>`;
+    return `<span class="badge-var baixa">▼ ${fmtPct(diff)}</span>`;
 }
 
 function trocarAba(nomeAba, botao) {
