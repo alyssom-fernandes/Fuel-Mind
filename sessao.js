@@ -49,6 +49,12 @@ window.addEventListener("firebaseReady", () => {
             _escutarPerfil(user.uid);
             await _mostrarSelecaoEmpresa(perfil);
         } else {
+            // Quem entrou no modo demo antes de o Firebase terminar de
+            // carregar (clique logo que a página abre) era jogado de volta
+            // ao login quando este aviso de "ninguém logado" chegava depois.
+            // No demo não há conta: o aviso não diz respeito a ele
+            // (18/09/2026).
+            if (typeof demoAtivo === "function" && demoAtivo()) return;
             _authJaProcessado = false;
             _encerrarSessaoDados();
             window._usuarioAtual = null;

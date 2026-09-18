@@ -349,27 +349,27 @@
     <button class="btn-export btn-print" onclick="imprimirFretes()">Imprimir</button>
   </div>
   <div class="analitico-abas mt-4" id="fretesAbas">
-    <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por Placa</button>
-    <button class="aba-btn" onclick="trocarAbaFretes('motoristas', this)">Por Motorista</button>
-    <button class="aba-btn" onclick="trocarAbaFretes('empresas', this)">Por Empresa</button>
-    <button class="aba-btn" onclick="trocarAbaFretes('conjuntos', this)">Por Conjunto</button>
+    <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por placa</button>
+    <button class="aba-btn" onclick="trocarAbaFretes('motoristas', this)">Por motorista</button>
+    <button class="aba-btn" onclick="trocarAbaFretes('empresas', this)">Por empresa</button>
+    <button class="aba-btn" onclick="trocarAbaFretes('conjuntos', this)">Por conjunto</button>
   </div>
   <div id="frete-aba-placas" class="aba-conteudo">
-    <h3>Resumo por Placa</h3>
-    <div class="tabela-container"><table class="tabela-numeros tabela-numeros--3"><thead><tr><th>Placa</th><th>Conjunto</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFretePlacas"></tbody></table></div>
+    <h3>Resumo por placa</h3>
+    <div class="tabela-container"><table class="tabela-numeros tabela-numeros--3 tabela-fretes"><thead><tr><th>Placa</th><th>Conjunto</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete</th></tr></thead><tbody id="tabelaFretePlacas"></tbody></table></div>
   </div>
   <div id="frete-aba-motoristas" class="aba-conteudo" style="display:none">
-    <h3>Resumo por Motorista</h3>
-    <div class="tabela-container"><table class="tabela-numeros"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
+    <h3>Resumo por motorista</h3>
+    <div class="tabela-container"><table class="tabela-numeros tabela-fretes"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
   </div>
   <div id="frete-aba-empresas" class="aba-conteudo" style="display:none">
-    <h3>Resumo por Empresa</h3>
-    <div class="tabela-container"><table class="tabela-numeros"><thead><tr><th>Empresa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteEmpresas"></tbody></table></div>
+    <h3>Resumo por empresa</h3>
+    <div class="tabela-container"><table class="tabela-numeros tabela-fretes"><thead><tr><th>Empresa</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete</th></tr></thead><tbody id="tabelaFreteEmpresas"></tbody></table></div>
   </div>
   <div id="frete-aba-conjuntos" class="aba-conteudo" style="display:none">
-    <h3>Resumo por Conjunto</h3>
+    <h3>Resumo por conjunto</h3>
     <p class="dica">Agrupa viagens e litros de todas as placas do conjunto, respeitando a composição vigente na data de cada lançamento.</p>
-    <div class="tabela-container"><table class="tabela-numeros"><thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteConjuntos"></tbody></table></div>
+    <div class="tabela-container"><table class="tabela-numeros tabela-fretes"><thead><tr><th>Conjunto / placa</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete</th></tr></thead><tbody id="tabelaFreteConjuntos"></tbody></table></div>
   </div>
 </div>
 

@@ -778,6 +778,14 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .grafico-wrapper { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 20px; overflow-x: auto; min-height: 200px; display: flex; align-items: center; justify-content: center; }
 .grafico-wrapper canvas { max-width: 100%; display: block; }
 .grafico-vazio { color: var(--text-light); font-style: italic; font-size: 0.9rem; text-align: center; padding: 40px 0; }
+/* Estado vazio de uma tela inteira (mês sem nota etc.): um cartão, não uma
+   frase solta. */
+.estado-vazio-cartao {
+    display: flex; flex-direction: column; gap: 4px; padding: var(--space-5) var(--space-6);
+    background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-lg);
+    color: var(--text-muted); font-size: 0.88rem; margin-bottom: var(--space-4);
+}
+.estado-vazio-cartao strong { color: var(--text); font-size: 0.95rem; }
 
 /* ══ MODAL ═══════════════════════════════════ */
 /* Modal mais alto que a tela: o fundo rola e a margem automática centraliza
@@ -2340,6 +2348,14 @@ button.confirmado-local::after {
 .texto-perigo { color: var(--danger); }
 .linha-detalhe-frete td { color: var(--text-muted); font-size: 0.82rem; }
 .celula-recuada { padding-left: var(--space-6); }
+/* Sublinhas de frete: mais baixas que a linha do grupo, números alinhados
+   com os dela, bolinha na cor do combustível. */
+.tabela-fretes tr.linha-detalhe-frete td { padding-top: 5px; padding-bottom: 5px; font-size: 0.78rem; }
+.tabela-numeros tr.linha-detalhe-frete td.celula-num { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; }
+.tabela-fretes tr.linha-detalhe-frete td.celula-recuada { padding-left: 28px; }
+.frete-sub-cor { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+.frete-sub-placa { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: var(--text); }
+.tabela-fretes tr.linha-detalhe-frete--placa td { background: var(--surface) !important; }
 .celula-fraca { font-size: 0.78rem; color: var(--text-muted); }
 .grafico-wrapper--220 { height: 220px; }
 .modal--tabela { max-width: min(1000px, 96vw); }

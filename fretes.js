@@ -129,8 +129,15 @@ function renderFreteResumo() {
     if (!resumo || !dadosFretesAtual) return;
     const d = dadosFretesAtual;
 
+    // Mês sem descarga: um aviso de verdade, e a barra de exportar some —
+    // antes ela ficava ali para exportar um mês vazio.
+    const barra = document.getElementById("fretesBarraExportacao");
+    if (barra) barra.style.display = d.totalNotas === 0 ? "none" : "";
     if (d.totalNotas === 0) {
-        resumo.innerHTML = `<p class="dica mb-0">Nenhuma nota descarregada em ${nomeMes(d.mes)}.</p>`;
+        resumo.innerHTML = `<div class="estado-vazio-cartao">
+            <strong>Nenhuma nota descarregada em ${nomeMes(d.mes)}</strong>
+            <span>O frete conta pela data da descarga. Escolha outro mês acima ou confira os lançamentos.</span>
+        </div>`;
         return;
     }
 
@@ -195,14 +202,25 @@ function renderFreteResumo() {
  * mais). Sem isso as sublinhas caem sob os cabeçalhos errados.
  */
 function linhasDetalhes(detalhes, colunasNome = 2) {
+    // Bolinha na cor do combustível (a mesma dos gráficos) no lugar do "↳",
+    // e as células de número pela classe: na tabela Por Placa a 2ª coluna
+    // é texto, e a célula de litros da sublinha — que é a 2ª dela, por causa
+    // do colspan — saía à esquerda, desalinhada da linha de cima.
     return Object.entries(detalhes).map(([tipo, d]) => `
         <tr class="linha-detalhe-frete">
-            <td colspan="${colunasNome}" class="celula-recuada">↳ ${escapeHtml(tipo)}</td>
-            <td>${fmtL3(d.litros)}</td>
-            <td></td>
-            <td>${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
+            <td colspan="${colunasNome}" class="celula-recuada"><span class="frete-sub-cor" style="background:${corDoCombustivel(tipo)}"></span>${escapeHtml(tipo)}</td>
+            <td class="celula-num">${_fmtLitrosFrete(d.litros)}</td>
+            <td class="celula-num"></td>
+            <td class="celula-num">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
         </tr>
     `).join("");
+}
+
+/** Litros nas tabelas de frete: sem as três casas quando o número é
+ *  inteiro ("158.500 L"); com fração, as três da NF-e. */
+function _fmtLitrosFrete(v) {
+    const n = Number(v) || 0;
+    return fmtL(n, Math.abs(n - Math.round(n)) < 0.0005 ? 0 : 3);
 }
 
 function renderAbaPlacas() {
@@ -223,7 +241,7 @@ function renderAbaPlacas() {
             <td><strong>${escapeHtml(p.nome)}</strong></td>
             <td class="celula-fraca">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
-            <td>${fmtL3(p.litros)}</td>
+            <td>${_fmtLitrosFrete(p.litros)}</td>
             <td>${_fmtTaxaGrupo(p)}</td>
             <td><strong>${fmtR(p.frete)}</strong></td>
         </tr>
@@ -248,7 +266,7 @@ function renderAbaMotoristasFrete() {
             title="Ver as notas deste motorista no Relatório">
             <td><strong>${escapeHtml(m.nome)}</strong></td>
             <td>${m.viagens}</td>
-            <td>${fmtL3(m.litros)}</td>
+            <td>${_fmtLitrosFrete(m.litros)}</td>
             <td>${_fmtTaxaGrupo(m)}</td>
             <td><strong>${fmtR(m.frete)}</strong></td>
         </tr>
@@ -272,7 +290,7 @@ function renderAbaEmpresasFrete() {
         <tr>
             <td><strong>${escapeHtml(e.nome)}</strong></td>
             <td>${e.viagens}</td>
-            <td>${fmtL3(e.litros)}</td>
+            <td>${_fmtLitrosFrete(e.litros)}</td>
             <td>${_fmtTaxaGrupo(e)}</td>
             <td><strong>${fmtR(e.frete)}</strong></td>
         </tr>
@@ -299,22 +317,20 @@ function renderAbaConjuntosFretes() {
         const detalhesCombs = linhasDetalhes(c.detalhes);
 
         const detalhesPlacas = Object.entries(c.porPlacaInterna).map(([placa, d]) => `
-            <tr class="linha-detalhe-frete">
-                <td class="celula-recuada">
-                     ${escapeHtml(placa)}
-                </td>
-                <td>${d.viagens}</td>
-                <td>${fmtL3(d.litros)}</td>
-                <td></td>
-                <td>${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
+            <tr class="linha-detalhe-frete linha-detalhe-frete--placa">
+                <td class="celula-recuada"><span class="frete-sub-placa">${escapeHtml(placa)}</span></td>
+                <td class="celula-num">${d.viagens}</td>
+                <td class="celula-num">${_fmtLitrosFrete(d.litros)}</td>
+                <td class="celula-num"></td>
+                <td class="celula-num">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
             </tr>
         `).join("");
 
         return `
             <tr>
-                <td><strong> ${escapeHtml(c.nome)}</strong></td>
+                <td><strong>${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
-                <td><strong>${fmtL3(c.litros)}</strong></td>
+                <td><strong>${_fmtLitrosFrete(c.litros)}</strong></td>
                 <td>${_fmtTaxaGrupo(c)}</td>
                 <td><strong>${fmtR(c.frete)}</strong></td>
             </tr>
@@ -377,11 +393,12 @@ function renderFreteHistorico() {
 
     alvo.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--220"><canvas id="graficoFreteMeses"></canvas></div>
+        ${meses.includes(_hojeISO().slice(0, 7)) ? `<p class="dica dica--pequena dica--legenda">* ${nomeMes(_hojeISO().slice(0, 7))} vai só até hoje.</p>` : ''}
         <div class="tabela-container mt-2">
             <table class="tabela-numeros"><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
             <tbody>${serie.map(x => `<tr class="linha-clicavel" onclick="_freteAbrirMes('${x.mes}')" title="Ver o detalhe deste mês">
                 <td><strong>${nomeMes(x.mes)}</strong></td>
-                <td>${fmtL3(x.litros)}</td>
+                <td>${_fmtLitrosFrete(x.litros)}</td>
                 <td><strong>${fmtR(x.frete)}</strong></td>
                 <td>${x.porLitro > 0 ? fmtRL(x.porLitro) : "—"}</td>
             </tr>`).join("")}</tbody></table>
@@ -393,7 +410,9 @@ function renderFreteHistorico() {
     window._chartFreteMeses = new Chart(document.getElementById("graficoFreteMeses").getContext("2d"), {
         type: "bar",
         data: {
-            labels: serie.map(x => nomeMes(x.mes)),
+            // Mês em andamento com asterisco: a barra dele é menor só porque o
+            // mês ainda não acabou.
+            labels: serie.map(x => x.mes === _hojeISO().slice(0, 7) ? nomeMes(x.mes) + "*" : nomeMes(x.mes)),
             datasets: [{
                 label: "Frete (R$)",
                 data: serie.map(x => x.frete),
@@ -416,7 +435,7 @@ function renderFreteHistorico() {
                 } }
             },
             scales: {
-                x: { ticks: { color: cores.text }, grid: { color: cores.grid } },
+                x: { ticks: { color: cores.text, maxRotation: 0, autoSkip: true }, grid: { color: cores.grid } },
                 y: { ticks: { color: cores.text, callback: v => fmtEixoR(v) }, grid: { color: cores.grid } }
             }
         }

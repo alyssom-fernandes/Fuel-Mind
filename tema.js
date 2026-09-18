@@ -37,9 +37,13 @@ function toggleModoEscuro() {
     // Os gráficos leem a cor do tema na hora em que são criados: quem
     // trocava o tema com o Dashboard ou o Analítico aberto ficava com eixo
     // e legenda na cor antiga até sair e voltar (17/09/2026).
+    // Fretes e Grupo também têm gráfico: no tema claro os rótulos do eixo,
+    // desenhados em cinza-claro, sumiam (18/09/2026).
     const tela = document.querySelector(".tela[style*='block']")?.id;
     if (tela === "dashboard" && typeof carregarDashboard === "function") carregarDashboard();
     if (tela === "analitico" && typeof carregarAnalitico === "function") carregarAnalitico();
+    if (tela === "fretes"    && typeof carregarFretes    === "function") carregarFretes();
+    if (tela === "grupo"     && typeof carregarGrupo     === "function") carregarGrupo();
 }
 
 /** A sidebar tem uma imagem só; o tema decide qual arquivo ela usa.
