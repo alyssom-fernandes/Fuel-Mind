@@ -321,31 +321,31 @@ function abrirModalEditarProprioPerfil() {
     const overlay = document.getElementById("usuarioModalOverlay");
     overlay.innerHTML = `
     <div class="modal modal--medio">
-        <div class="modal-header"><h3>Editar Meu Perfil</h3></div>
+        <div class="modal-cabecalho"><h3>Editar meu perfil</h3><button class="modal-fechar" onclick="fecharUsuarioModal()" aria-label="Fechar" title="Fechar">✕</button></div>
         <div class="modal-corpo modal-corpo--pilha">
             <div class="campo">
                 <label for="perfilNomeInput">Nome completo *</label>
                 <input type="text" id="perfilNomeInput" value="${escapeHtml(u.nome || '')}" placeholder="Seu nome completo">
             </div>
             <div class="campo">
-                <label>Usuário <span class="rotulo-nota">(opcional — para login sem e-mail)</span></label>
+                <label for="perfilUsernameInput">Usuário <span class="rotulo-nota">(opcional)</span></label>
                 <div class="campo-arroba">
                     <span class="campo-arroba-sinal">@</span>
                     <input type="text" id="perfilUsernameInput" value="${escapeHtml(u.username || '')}"
                         placeholder="seunome"
                         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
                 </div>
-                <p class="dica mt-1">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
+                <p class="dica mt-1">Para entrar sem o e-mail. Letras minúsculas, números, ponto, traço e sublinhado.</p>
             </div>
             <div class="campo">
-                <label>E-mail</label>
-                <input type="text" value="${escapeHtml(u.email || '')}" disabled>
-                <p class="dica mt-1">E-mail não pode ser alterado.</p>
+                <label for="perfilEmailInput">E-mail</label>
+                <input type="text" id="perfilEmailInput" value="${escapeHtml(u.email || '')}" disabled>
+                <p class="dica mt-1">O e-mail não pode ser alterado.</p>
             </div>
         </div>
         <div class="modal-acoes">
             <button class="btn-primario" onclick="confirmarEditarProprioPerfil()">Salvar</button>
-            <button class="btn-secundario" onclick="fecharUsuarioModal()">Cancelar</button>
+            <button class="btn-cancelar" onclick="fecharUsuarioModal()">Cancelar</button>
         </div>
     </div>`;
     overlay.style.display = "flex";
@@ -418,10 +418,14 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
     const isNovo     = !usuario;
     const supremoAtual = window._usuarioAtual?.role === "supremo";
 
-    const rolesOpts = Object.entries(ROLES)
-        .filter(([r]) => supremoAtual || r !== "supremo")
-        .map(([r, info]) =>
-            `<option value="${r}" ${usuario?.role === r ? "selected" : ""}>${info.label} — ${info.desc}</option>`
+    // Do menor para o maior acesso, e um usuário NOVO começa como Operador.
+    // Antes a lista abria em Supremo (o primeiro da tabela): bastava não
+    // mexer no campo para criar alguém com acesso total (18/09/2026).
+    const papelMarcado = usuario?.role || "usuario";
+    const rolesOpts = ["usuario", "admin", "supremo"]
+        .filter(r => ROLES[r] && (supremoAtual || r !== "supremo"))
+        .map(r =>
+            `<option value="${r}" ${papelMarcado === r ? "selected" : ""}>${ROLES[r].label} — ${ROLES[r].desc}</option>`
         ).join("");
 
     const nomesDoAlvo = usuario ? _nomesDasEmpresasDoPerfil(usuario) : [];
@@ -440,11 +444,13 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
 
     const overlay = document.getElementById("usuarioModalOverlay");
     overlay.innerHTML = `
-    <div class="modal modal--500">
-        <div class="modal-header">
-            <h3>${isNovo ? "Novo Usuário" : "Editar Usuário"}</h3>
+    <div class="modal modal--largo-640">
+        <div class="modal-cabecalho">
+            <h3>${isNovo ? "Novo usuário" : "Editar usuário"}</h3>
+            <button class="modal-fechar" onclick="fecharUsuarioModal()" aria-label="Fechar" title="Fechar">✕</button>
         </div>
         <div class="modal-corpo modal-corpo--pilha">
+            <div class="grade-2 grade-2--apertada">
             <div class="campo">
                 <label for="usuarioNomeInput">Nome completo *</label>
                 <input type="text" id="usuarioNomeInput" value="${escapeHtml(usuario?.nome || '')}" placeholder="Ex: João Silva">
@@ -452,24 +458,27 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
             <div class="campo">
                 <label for="usuarioEmailInput">E-mail *</label>
                 <input type="email" id="usuarioEmailInput" value="${escapeHtml(usuario?.email || '')}" placeholder="email@exemplo.com" ${!isNovo ? 'disabled' : ''}>
-                ${!isNovo ? '<p class="dica mt-1">E-mail não pode ser alterado.</p>' : ''}
+                ${!isNovo ? '<p class="dica mt-1">O e-mail não pode ser alterado.</p>' : ''}
             </div>
+            </div>
+            <div class="${isNovo ? 'grade-2 grade-2--apertada' : ''}">
             ${isNovo ? `
             <div class="campo">
                 <label for="usuarioSenhaInput">Senha temporária *</label>
-                <input type="text" id="usuarioSenhaInput" value="${_senhaTemporaria()}" placeholder="Mínimo 6 caracteres">
-                <p class="dica mt-1">Sorteada agora. Passe ao usuário por um canal
-                seguro e peça que troque no primeiro acesso, em Usuários &rsaquo; Alterar senha.</p>
+                <input type="text" id="usuarioSenhaInput" value="${_senhaTemporaria()}" placeholder="Mínimo 6 caracteres" class="campo-senha-sorteada">
+                <p class="dica mt-1">Sorteada agora. Passe por um canal seguro e peça
+                que troque no primeiro acesso.</p>
             </div>` : ''}
             <div class="campo">
-                <label>Usuário <span class="rotulo-nota">(opcional — para login sem e-mail)</span></label>
+                <label for="usuarioUsernameInput">Usuário <span class="rotulo-nota">(opcional)</span></label>
                 <div class="campo-arroba">
                     <span class="campo-arroba-sinal">@</span>
                     <input type="text" id="usuarioUsernameInput" value="${escapeHtml(usuario?.username || '')}"
                         placeholder="seunome"
                         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
                 </div>
-                <p class="dica mt-1">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
+                <p class="dica mt-1">Para entrar sem o e-mail. Letras minúsculas, números, ponto, traço e sublinhado.</p>
+            </div>
             </div>
             <div class="campo">
                 <label for="usuarioRoleSelect">Nível de acesso *</label>
@@ -490,9 +499,9 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
         </div>
         <div class="modal-acoes">
             <button class="btn-primario" onclick="${isNovo ? 'confirmarNovoUsuario()' : `confirmarEditarUsuario('${usuario.uid}')`}">
-                ${isNovo ? "Criar Usuário" : "Salvar Alterações"}
+                ${isNovo ? "Criar usuário" : "Salvar alterações"}
             </button>
-            <button class="btn-secundario" onclick="fecharUsuarioModal()">Cancelar</button>
+            <button class="btn-cancelar" onclick="fecharUsuarioModal()">Cancelar</button>
         </div>
     </div>`;
     overlay.style.display = "flex";
@@ -542,7 +551,7 @@ async function confirmarNovoUsuario() {
     if (role !== "supremo" && empresas.length === 0) return mostrarToast("Selecione ao menos uma empresa.", "aviso");
 
     const btn = document.querySelector("#usuarioModalOverlay .btn-primario");
-    if (btn) mostrarSpinner(btn, "Criar Usuário");
+    if (btn) mostrarSpinner(btn, "Criar usuário");
 
     try {
         // Valida unicidade do username antes de criar
@@ -638,7 +647,7 @@ async function confirmarEditarUsuario(uid) {
     }
 
     const btn = document.querySelector("#usuarioModalOverlay .btn-primario");
-    if (btn) mostrarSpinner(btn, "Salvar Alterações");
+    if (btn) mostrarSpinner(btn, "Salvar alterações");
 
     try {
         // Valida unicidade do username (ignora o próprio uid)
@@ -739,7 +748,7 @@ function abrirModalAlterarSenha() {
     const overlay = document.getElementById("usuarioModalOverlay");
     overlay.innerHTML = `
     <div class="modal">
-        <div class="modal-header"><h3>Alterar Minha Senha</h3></div>
+        <div class="modal-cabecalho"><h3>Alterar minha senha</h3><button class="modal-fechar" onclick="fecharUsuarioModal()" aria-label="Fechar" title="Fechar">✕</button></div>
         <div class="modal-corpo modal-corpo--pilha">
             <div class="campo">
                 <label for="novaSenhaInput">Nova senha *</label>
@@ -751,8 +760,8 @@ function abrirModalAlterarSenha() {
             </div>
         </div>
         <div class="modal-acoes">
-            <button class="btn-primario" onclick="confirmarAlterarSenha()">Alterar Senha</button>
-            <button class="btn-secundario" onclick="fecharUsuarioModal()">Cancelar</button>
+            <button class="btn-primario" onclick="confirmarAlterarSenha()">Alterar senha</button>
+            <button class="btn-cancelar" onclick="fecharUsuarioModal()">Cancelar</button>
         </div>
     </div>`;
     overlay.style.display = "flex";
@@ -767,7 +776,7 @@ async function confirmarAlterarSenha() {
     if (nova !== confirmar)       return mostrarToast("As senhas não conferem.", "aviso");
 
     const btn = document.querySelector("#usuarioModalOverlay .btn-primario");
-    if (btn) mostrarSpinner(btn, "Alterar Senha");
+    if (btn) mostrarSpinner(btn, "Alterar senha");
 
     try {
         await window._firestore.authAlterarSenha(nova);

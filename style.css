@@ -618,12 +618,17 @@ button {
 }
 .btn-primario:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 18px var(--primary-glow); }
 .btn-primario:active { transform: translateY(0); }
+/* Secundário com texto na cor normal: em cinza sobre cinza ele parecia
+   desabilitado nos dois temas. Cancelar não fica vermelho ao passar o
+   mouse — vermelho é de apagar, e cancelar não apaga nada. */
 .btn-secundario {
-    background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border);
+    background: var(--surface-alt); color: var(--text); border: 1px solid var(--border);
 }
 .btn-secundario:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-strong); }
+[data-theme="light"] .btn-secundario { background: var(--surface-raised); border-color: var(--border-strong); }
+[data-theme="light"] .btn-secundario:hover { background: var(--surface-hover); }
 .btn-cancelar { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-.btn-cancelar:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+.btn-cancelar:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-strong); }
 .btn-excluir  { background: transparent; color: var(--danger); font-size: 0.75rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-weight: 600; }
 .btn-excluir:hover  { background: var(--danger-light); border-color: var(--danger); }
 .btn-editar   { background: transparent; color: var(--success); font-size: 0.75rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-weight: 600; }
@@ -775,8 +780,15 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .grafico-vazio { color: var(--text-light); font-style: italic; font-size: 0.9rem; text-align: center; padding: 40px 0; }
 
 /* ══ MODAL ═══════════════════════════════════ */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.modal { background: var(--surface-raised); border-radius: var(--radius-xl); padding: 28px 30px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+/* Modal mais alto que a tela: o fundo rola e a margem automática centraliza
+   só quando cabe. Com `align-items: center` sozinho, o topo do modal (título
+   incluído) ficava fora da tela, sem como chegar nele (18/09/2026). No modo
+   demo a camada começa abaixo da faixa vermelha, que cobria o título. */
+.modal-overlay { position: fixed; top: var(--faixa-demo-h); left: 0; width: 100%; height: calc(100% - var(--faixa-demo-h)); background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; overflow-y: auto; }
+.modal { background: var(--surface-raised); border-radius: var(--radius-xl); padding: 28px 30px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1); margin: auto; }
+/* No tema claro o fundo do modal escurece menos: preto a 85 % pesava como
+   se a tela tivesse apagado. */
+[data-theme="light"] .modal-overlay { background: rgba(33,37,41,0.5); }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.93) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 .modal h3 { color: var(--text); margin-bottom: 20px; font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; text-transform: none; letter-spacing: 0; }
 .modal-acoes { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
@@ -1305,8 +1317,11 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 .btn-empresa-troca.ativa {
     border-color:var(--primary);
     background: var(--primary-subtle2);
-    color:var(--primary); font-weight:600;
+    color:var(--text); font-weight:600;
 }
+/* O nome em vermelho-vinho sobre o fundo escuro quase sumia; o destaque
+   fica na borda, no fundo e no ✓. */
+.btn-empresa-troca.ativa .icone-check { color: var(--primary-mid); }
 
 /* =====================================================
    USUÁRIOS — Badges de role e status
@@ -1498,9 +1513,13 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
         width: 100% !important;
         max-width: 100% !important;
         border-radius: var(--radius) var(--radius) 0 0;
-        margin-top: auto;
+        margin: auto 0 0;
     }
-    .modal-overlay { align-items: flex-end; }
+    /* A folha encosta nas laterais e no pé da tela, como folha de celular. */
+    .modal-overlay { align-items: flex-end; padding: 20px 0 0; }
+    /* A busca fica no alto: no pé da tela o teclado aberto espremia o campo. */
+    #buscaGlobalModal { padding: 0; }
+    #buscaGlobalModal .modal { margin: 0 0 auto; border-radius: 0 0 var(--radius) var(--radius); }
 }
 
 /* ══════════════════════════════════════════════
@@ -2259,6 +2278,13 @@ button.confirmado-local::after {
 .grafico-wrapper--220 { height: 220px; }
 .modal--tabela { max-width: min(1000px, 96vw); }
 .tabela-container--rolagem { max-height: 52vh; overflow: auto; }
+/* Frete nota a nota: uma nota por linha, números à direita em fonte de
+   número; nomes longos com reticências (o nome inteiro no `title`). */
+.tabela-frete-notas td, .tabela-frete-notas th { white-space: nowrap; padding-left: 12px; padding-right: 12px; }
+.tabela-frete-notas td.celula-num { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+.tabela-frete-notas .celula-texto-longo { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.tabela-frete-notas thead th { position: sticky; top: 0; z-index: 1; }
+.tabela-frete-notas tfoot td { position: sticky; bottom: 0; background: var(--surface-alt); }
 
 /* Impressão dos Fretes — o conteúdo só aparece no papel */
 .imp-titulo { margin-top: 20px; }
@@ -2275,8 +2301,13 @@ button.confirmado-local::after {
 
 /* Cadastros */
 .historico-cadastro {
-    margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--border);
-    font-size: 0.75rem; color: var(--text-muted);
+    margin-top: var(--space-4); padding: var(--space-3) var(--space-4);
+    background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius);
+    font-size: 0.78rem; color: var(--text-muted); max-height: 160px; overflow-y: auto;
+}
+.historico-cadastro-titulo {
+    display: block; font-size: 0.63rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text-light);
 }
 .vazio.vazio--conjuntos { padding: var(--space-3) !important; color: var(--text-muted); }
 .conjunto-placas { font-size: 0.82rem; color: var(--text-muted); margin-top: 3px; }
@@ -2284,7 +2315,8 @@ button.confirmado-local::after {
 .conjunto-historico-item { font-size: 0.78rem; color: var(--text-muted); padding: 3px 0; }
 .conjunto-historico-vigencia { margin-left: 6px; opacity: 0.7; }
 .form-linha.form-linha--placa { gap: var(--space-2); margin-bottom: 6px; }
-.form-linha .campo-placa { text-transform: uppercase; flex: 1; }
+.form-linha .campo-placa { text-transform: uppercase; flex: 1; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+.campo-data-curta { max-width: 200px; }
 
 /* Importação */
 .rolagem-x { overflow-x: auto; }
@@ -2320,9 +2352,13 @@ button.confirmado-local::after {
 .modal--500 { max-width: 500px; }
 .modal--520 { max-width: 520px; }
 .modal--largo-800 { max-width: 800px; width: 90%; }
+.modal--largo-640 { max-width: 640px; }
+.campo-senha-sorteada { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
 .modal--rolagem { max-height: 90vh; overflow-y: auto; }
 .modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
 .modal-cabecalho h3 { margin: 0; }
+.modal-cabecalho--colado { margin-bottom: var(--space-1); }
+.cfg-campos input[type="number"] { text-align: right; font-family: 'JetBrains Mono', monospace; }
 .modal-fechar { border: none; background: none; font-size: 1.2rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; color: var(--text-muted); line-height: 1; }
 .modal-fechar:hover, .modal-fechar:focus-visible { color: var(--text); }
 .modal-acoes--separadas { justify-content: space-between; }
@@ -2374,12 +2410,17 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .busca-item:hover { background: var(--surface-raised); }
 .busca-item-texto { font-size: 0.85rem; color: var(--text); }
 .busca-item-acao  { font-size: 0.72rem; color: var(--primary); }
+/* "Enter ↵" só no item em foco: repetido em todas as linhas era ruído. */
+.busca-item-acao--enter { opacity: 0; transition: opacity var(--duration-fast); }
+.busca-item:hover .busca-item-acao--enter, .busca-item-ativo .busca-item-acao--enter { opacity: 1; }
 .busca-item-corpo { min-width: 0; }
 .busca-item-titulo { font-weight: 600; font-size: 0.85rem; color: var(--text); }
 .busca-item-data  { font-weight: 400; color: var(--text-muted); font-size: 0.78rem; margin-left: 6px; }
 .busca-item-marca { margin-left: 6px; }
 .busca-item-linha { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.busca-item-tipos { margin-left: 6px; color: var(--primary); font-size: 0.7rem; }
+.busca-item-tipos { margin-left: 6px; color: var(--text-light); font-size: 0.7rem; }
+.busca-vazio { margin: 0; padding: var(--space-3) var(--space-2) var(--space-4); font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+.busca-vazio strong { display: block; color: var(--text); font-weight: 600; }
 .busca-item-numeros { text-align: right; flex-shrink: 0; }
 .busca-item-valor { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600; color: var(--text); }
 .busca-item-litros { font-size: 0.7rem; color: var(--text-muted); }
@@ -2677,6 +2718,39 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 /* O `pre-wrap` é para as quebras de linha das observações; no histórico e nos
    anexos ele transformava a indentação do HTML em linhas em branco. */
 .detalhe-obs.detalhe-obs--historico { white-space: normal; }
+/* Números da tabela de combustíveis à direita e numa linha só
+   ("23.000,000 L" quebrava em duas). */
+.detalhe-tabela th:nth-child(n+2):nth-child(-n+5),
+.detalhe-tabela td:nth-child(n+2):nth-child(-n+5) { text-align: right; }
+.detalhe-inline-inner .detalhe-tabela td:nth-child(n+2):nth-child(-n+5) {
+    white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+}
+/* O mesmo conteúdo dentro de um modal (detalhe da entrada no Dashboard):
+   sem a moldura de painel aberto na tabela. */
+.modal--detalhe { max-width: 780px; }
+.modal--detalhe .detalhe-inline-inner {
+    margin: 0; padding: 0; background: none; border: none; border-radius: 0; animation: none;
+}
+.modal--detalhe .detalhe-inline-inner .detalhe-info strong { white-space: normal; }
+.detalhe-tabela-rolagem { overflow-x: auto; }
+@media (max-width: 560px) {
+    .detalhe-tabela thead { display: none; }
+    .detalhe-tabela, .detalhe-tabela tbody, .detalhe-tabela tr { display: block; width: 100%; }
+    .detalhe-tabela tr { padding: var(--space-2) 0; border-bottom: 1px solid var(--border-light); }
+    .detalhe-tabela tr:last-child { border-bottom: none; }
+    .detalhe-tabela td,
+    .detalhe-inline-inner .detalhe-tabela td:nth-child(n+2):nth-child(-n+5) {
+        display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
+        padding: 4px var(--space-3); border: none; text-align: right; white-space: normal;
+    }
+    .detalhe-tabela td::before {
+        content: attr(data-rotulo); font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); text-align: left;
+    }
+    .detalhe-tabela td:first-child { font-weight: 600; color: var(--text); }
+}
+.modal-titulo-apoio { font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 0.85rem; color: var(--text-muted); margin-left: var(--space-2); }
+@media (max-width: 560px) { .modal-titulo-apoio { display: block; margin: 2px 0 0; } }
 
 /* Alertas do Dashboard: uma linha por alerta, com etiqueta do tipo */
 .alertas-container { gap: 6px; }
@@ -2833,6 +2907,8 @@ input[type="checkbox"], input[type="radio"] {
 @media (max-width: 768px) {
     .header-actions { gap: 6px; min-width: 0; }
     .header-empresa-rotulo, .header-sep, .header-usuario, .header-action-btn--atalhos, .busca-kbd { display: none; }
+    /* Sem as teclas, o rodapé da busca virava "navegar abrir fechar" solto. */
+    .busca-global-footer { display: none; }
     .header-empresa { min-width: 0; }
     .empresa-ativa-badge { max-width: 150px; }
     .empresa-ativa-badge #empresaAtivaLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

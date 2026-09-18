@@ -582,14 +582,16 @@ function toggleDetalheInline(id, contexto) {
 }
 
 function _buildConteudoDetalhe(l) {
+    // `data-rotulo`: no celular cada combustível vira uma lista de rótulo e
+    // valor, em vez de uma tabela de seis colunas rolando para o lado.
     let htmlItens = (l.itens || []).map(item => `
         <tr>
-            <td>${escapeHtml(item.tipo)}</td>
-            <td>${fmtL3(item.qtd)}</td>
-            <td>${item.qtdDescargada ? fmtL3(item.qtdDescargada) : "—"}</td>
-            <td>${fmtRL(item.valor)}</td>
-            <td>${fmtR(item.total)}</td>
-            <td>${calcularPerdaBadge(item.tipo, item.qtd, item.qtdDescargada)}</td>
+            <td data-rotulo="Tipo">${escapeHtml(item.tipo)}</td>
+            <td data-rotulo="Carga">${fmtL3(item.qtd)}</td>
+            <td data-rotulo="Descarga">${item.qtdDescargada ? fmtL3(item.qtdDescargada) : "—"}</td>
+            <td data-rotulo="Valor unit.">${fmtRL(item.valor)}</td>
+            <td data-rotulo="Total">${fmtR(item.total)}</td>
+            <td data-rotulo="Perda">${calcularPerdaBadge(item.tipo, item.qtd, item.qtdDescargada) || "—"}</td>
         </tr>
     `).join("");
 
@@ -650,13 +652,15 @@ function _buildConteudoDetalhe(l) {
             </div>
 
             <h4 class="detalhe-subtitulo">Combustíveis</h4>
+            <div class="detalhe-tabela-rolagem">
             <table class="detalhe-tabela">
                 <thead><tr>
-                    <th>Tipo</th><th>Qtd Carga</th><th>Qtd Descarga</th>
-                    <th>Valor Unit.</th><th>Total</th><th>Perda</th>
+                    <th>Tipo</th><th>Carga</th><th>Descarga</th>
+                    <th>Valor unit.</th><th>Total</th><th>Perda</th>
                 </tr></thead>
                 <tbody>${htmlItens}</tbody>
             </table>
+            </div>
 
             ${l.observacoes ? `<div class="detalhe-obs"><strong>Observações</strong><br>${escapeHtml(l.observacoes)}</div>` : ''}
 
@@ -1292,12 +1296,15 @@ function gerarRelatorioMensalPDF() {
     for (let i = 0; i < 24; i++) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
         const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        opcoes.push(`<option value="${val}" ${i===0?'selected':''}>${nomeMes(val)}</option>`);
+        // O mês por extenso na lista ("Setembro de 2026"): "Set/26" é bom em
+        // cabeçalho de tabela, não para escolher entre 24 opções.
+        const porExtenso = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        opcoes.push(`<option value="${val}" ${i===0?'selected':''}>${porExtenso.charAt(0).toUpperCase() + porExtenso.slice(1)}</option>`);
     }
 
     modal.innerHTML = `
         <div class="modal modal--medio" onclick="event.stopPropagation()">
-            <h3 class="mt-0 mb-2">Relatório Mensal Gerencial</h3>
+            <h3 class="mt-0 mb-2">Relatório mensal gerencial</h3>
             <p class="sistema-descricao mb-5">
                 Gera um PDF formatado com resumo executivo, detalhamento por combustível e comparativo com o mês anterior.
                 O mês é o da <strong>data de emissão</strong> das notas.

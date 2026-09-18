@@ -477,38 +477,41 @@ function abrirFreteNotaANota() {
     modal.style.display = "flex";
     modal.onclick = e => { if (e.target === modal) modal.remove(); };
     modal.innerHTML = `
-        <div class="modal modal--tabela" onclick="event.stopPropagation()">
-            <h3 class="mt-0 mb-1">Frete nota a nota — ${nomeMes(dadosFretesAtual.mes)}</h3>
-            <p class="dica">Pela data da descarga, com a taxa que valia em cada data. É esta lista que responde a um transportador que questiona um valor.</p>
+        <div class="modal modal--tabela" role="dialog" aria-label="Frete nota a nota" onclick="event.stopPropagation()">
+            <div class="modal-cabecalho">
+                <h3>Frete nota a nota — ${nomeMes(dadosFretesAtual.mes)} <span class="modal-titulo-apoio">${escapeHtml(empresaFiltroGlobal || '')}</span></h3>
+                <button class="modal-fechar" aria-label="Fechar" title="Fechar" onclick="document.getElementById('_modalFreteNotas').remove()">✕</button>
+            </div>
+            <p class="dica mb-3">Pela data da descarga, com a taxa que valia em cada data. É esta lista que responde a um transportador que questiona um valor.</p>
             <div class="tabela-container tabela-container--rolagem">
-                <table><thead><tr>
-                    <th>Descarga</th><th>Emissão</th><th>Nota</th><th>Empresa</th>
+                <!-- Sem a coluna Empresa: a lista é sempre da empresa ativa, que
+                     está no título (o Excel continua com ela). -->
+                <table class="tabela-frete-notas"><thead><tr>
+                    <th>Descarga</th><th>Emissão</th><th>Nota</th>
                     <th>Motorista</th><th>Placa</th><th>Conjunto</th>
-                    <th>Litros (carga)</th><th>Taxa</th><th>Frete</th>
+                    <th class="celula-num">Litros (carga)</th><th class="celula-num">Taxa</th><th class="celula-num">Frete</th>
                 </tr></thead>
                 <tbody>${linhas.map(x => `<tr>
                     <td>${formatarData(x.descarga)}</td>
                     <td>${formatarData(x.emissao)}</td>
                     <td>${escapeHtml(x.nota)}</td>
-                    <td>${escapeHtml(x.empresa)}</td>
-                    <td>${escapeHtml(x.motorista)}</td>
+                    <td class="celula-texto-longo" title="${escapeHtml(x.motorista)}">${escapeHtml(x.motorista)}</td>
                     <td>${escapeHtml(x.placa)}</td>
-                    <td>${escapeHtml(x.conjunto) || "—"}</td>
-                    <td>${fmtL3(x.litros)}</td>
-                    <td>${x.taxa > 0 ? fmtRL(x.taxa) : "—"}</td>
-                    <td><strong>${fmtR(x.frete)}</strong></td>
+                    <td class="celula-texto-longo" title="${escapeHtml(x.conjunto)}">${escapeHtml(x.conjunto) || "—"}</td>
+                    <td class="celula-num">${fmtL(x.litros, Number.isInteger(x.litros) ? 0 : 3)}</td>
+                    <td class="celula-num">${x.taxa > 0 ? fmtRL(x.taxa) : "—"}</td>
+                    <td class="celula-num"><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
-                    <td colspan="7"><strong>TOTAL — ${linhas.length} nota(s)</strong></td>
-                    <td><strong>${fmtL3(totalLitros)}</strong></td>
+                    <td colspan="6"><strong>Total — ${linhas.length} nota(s)</strong></td>
+                    <td class="celula-num"><strong>${fmtL(totalLitros, Number.isInteger(totalLitros) ? 0 : 3)}</strong></td>
                     <td></td>
-                    <td><strong>${fmtR(totalFrete)}</strong></td>
+                    <td class="celula-num"><strong>${fmtR(totalFrete)}</strong></td>
                 </tr></tfoot>
                 </table>
             </div>
             <div class="modal-acoes">
                 <button class="btn-secundario" onclick="exportarFreteNotaANota()">Excel desta lista</button>
-                <button class="btn-secundario" onclick="document.getElementById('_modalFreteNotas').remove()">Fechar</button>
             </div>
         </div>`;
     document.body.appendChild(modal);

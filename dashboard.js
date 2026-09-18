@@ -852,13 +852,12 @@ function _verDetalheDashboard(id) {
         : `<p>Nota: <strong>${escapeHtml(l.numeroNota)}</strong> — ${escapeHtml(l.empresa) || '—'} — ${fmtR(l.total)}</p>`;
 
     div.innerHTML = `
-        <div class="modal modal--detalhe">
-            <h3 class="mt-0 mb-4">Detalhes da Entrada</h3>
-            ${conteudo}
-            <div class="modal-acoes mt-4">
-
-                <button class="btn-secundario" onclick="document.getElementById('_modalDetalheDash').remove()">Fechar</button>
+        <div class="modal modal--detalhe" role="dialog" aria-label="Detalhes da nota ${escapeHtml(l.numeroNota)}">
+            <div class="modal-cabecalho">
+                <h3>Nota ${escapeHtml(l.numeroNota) || '—'} <span class="modal-titulo-apoio">${escapeHtml(l.empresa) || ''}</span></h3>
+                <button class="modal-fechar" aria-label="Fechar" title="Fechar" onclick="document.getElementById('_modalDetalheDash').remove()">✕</button>
             </div>
+            ${conteudo}
         </div>`;
 
     document.body.appendChild(div);

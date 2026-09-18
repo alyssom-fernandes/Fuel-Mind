@@ -866,11 +866,14 @@
 </div>
 
 <!-- MODAL TROCA DE EMPRESA -->
-<div id="trocarEmpresaModal" class="modal-overlay modal-overlay--desfoque-leve" style="display:none">
-  <div class="modal modal--centro">
-    <h3 class="mb-5">Trocar de Empresa</h3>
-    <div id="trocarEmpresaLista" class="pilha mb-4"></div>
-    <button class="btn-secundario" onclick="fecharTrocarEmpresa()">Cancelar</button>
+<div id="trocarEmpresaModal" class="modal-overlay modal-overlay--desfoque-leve" style="display:none" onclick="if(event.target===this)fecharTrocarEmpresa()">
+  <div class="modal modal--medio" role="dialog" aria-labelledby="trocarEmpresaTitulo">
+    <div class="modal-cabecalho modal-cabecalho--colado">
+      <h3 id="trocarEmpresaTitulo">Trocar de empresa</h3>
+      <button class="modal-fechar" onclick="fecharTrocarEmpresa()" aria-label="Fechar" title="Fechar">✕</button>
+    </div>
+    <p class="modal-subtitulo">Todas as telas passam a mostrar a empresa escolhida.</p>
+    <div id="trocarEmpresaLista" class="pilha"></div>
   </div>
 </div>
 
@@ -954,7 +957,7 @@
       <p class="dica mt-1">Valor pago por litro transportado para esta empresa.</p>
     </div>
     <div class="campo mt-3" id="modalCampoPerdaWrapper" style="display:none">
-      <label for="modalInputPerda">% Perda Tolerada</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
+      <label for="modalInputPerda">Perda tolerada (%)</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
     </div>
     <div id="modalLogs"></div>
     <div class="modal-acoes">
@@ -974,14 +977,14 @@
     </div>
     <div class="campo mb-2">
       <label>Placas do conjunto</label>
-      <p class="dica mb-2">Adicione todas as placas que fazem parte deste conjunto (mínimo 2).</p>
+      <p class="dica mb-2">Cavalo e carretas, uma placa por linha (mínimo 2).</p>
       <div id="conjuntoPlacasList"></div>
-      <button class="btn-secundario mt-2" onclick="adicionarPlacaConjunto()">+ Adicionar placa</button>
+      <button class="btn-secundario btn-pequeno mt-2" onclick="adicionarPlacaConjunto()">+ Adicionar placa</button>
     </div>
     <div class="campo mb-3" id="conjuntoVigenciaWrapper">
-      <label>Data de vigência da nova composição <span class="rotulo-nota rotulo-nota--perigo">(obrigatório ao alterar placas)</span></label>
-      <input id="conjuntoDataVigencia" aria-label="Data de vigência da composição" type="date">
-      <p class="dica">Lançamentos anteriores a essa data continuarão vinculados à composição anterior.</p>
+      <label for="conjuntoDataVigencia" id="conjuntoVigenciaRotulo">Vigência da nova composição</label>
+      <input id="conjuntoDataVigencia" type="date" class="campo-data-curta">
+      <p class="dica" id="conjuntoVigenciaDica">Lançamentos anteriores a essa data continuam na composição anterior.</p>
     </div>
     <div id="conjuntoHistorico" class="conjunto-historico" style="display:none"></div>
 

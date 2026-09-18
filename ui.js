@@ -225,8 +225,36 @@ function abrirBuscaGlobal() {
     modal.style.display = "flex";
     const input = document.getElementById("buscaGlobalInput");
     input.value = "";
-    document.getElementById("buscaGlobalResultados").innerHTML = "";
+    document.getElementById("buscaGlobalResultados").innerHTML = _buscaSugestoesIniciais();
+    _buscaIndiceAtivo = -1;
     input.focus();
+}
+
+/* Seções e itens da busca (18/09/2026): o hover é do CSS, e não mais de
+   `onmouseenter` trocando o fundo à mão. */
+function _buscaSecao(titulo, itens) {
+    return `<div class="busca-secao">
+            <span class="busca-secao-titulo">${titulo}</span>
+            ${itens}
+        </div>`;
+}
+function _buscaItemSimples(onclick, texto, acao) {
+    return `
+                <div class="busca-item" onclick="${onclick}">
+                    <span class="busca-item-texto">${texto}</span>
+                    <span class="busca-item-acao${acao === 'Enter ↵' ? ' busca-item-acao--enter' : ''}">${acao}</span>
+                </div>`;
+}
+
+/** Com o campo vazio a caixa abria em branco. Agora diz o que dá para
+ *  buscar e oferece os comandos de todo dia. */
+function _buscaSugestoesIniciais() {
+    const preferidos = ["Novo lançamento", "Ir para Relatórios", "Ir para Fretes",
+        "Fechamento do mês de fretes (Excel)", "Ver os atalhos de teclado"];
+    const cmds = _comandosPaleta().filter(c => c.disponivel() && preferidos.includes(c.rotulo));
+    return `<p class="busca-vazio">Busque pelo número da nota, motorista, placa ou empresa — ou pelo nome de uma tela.</p>`
+        + (cmds.length ? _buscaSecao('Sugestões', cmds.map(c =>
+            _buscaItemSimples(`fecharBuscaGlobal(); ${escapeHtml(c.acao)};`, escapeHtml(c.rotulo), 'Enter ↵')).join('')) : '');
 }
 
 function fecharBuscaGlobal() {
@@ -308,8 +336,14 @@ function _realizarBusca() {
     const termo = normalizarTexto(document.getElementById("buscaGlobalInput").value);
     const resultadosDiv = document.getElementById("buscaGlobalResultados");
 
+    if (!termo) {
+        resultadosDiv.innerHTML = _buscaSugestoesIniciais();
+        _buscaIndiceAtivo = -1;
+        return;
+    }
     if (termo.length < 2) {
-        resultadosDiv.innerHTML = "<p class='dica'>Digite pelo menos 2 caracteres...</p>";
+        resultadosDiv.innerHTML = "<p class='busca-vazio'>Digite pelo menos 2 letras ou números.</p>";
+        _buscaIndiceAtivo = -1;
         return;
     }
 
@@ -318,10 +352,15 @@ function _realizarBusca() {
     // responder "onde está aquela nota?", e a resposta "não existe" seria
     // falsa. O que muda é que o resultado diz o estado, para ninguém sair
     // daqui achando que encontrou um lançamento que conta.
-    const lancamentos = db.lancamentos.filter(l => {
+    // As mais recentes primeiro: quem procura uma nota quase sempre procura
+    // uma nota recente, e a ordem de gravação trazia as de meses atrás.
+    const lancamentosAchados = db.lancamentos.filter(l => {
         const s = normalizarTexto(`${l.numeroNota} ${l.empresa || ''} ${l.motorista || ''} ${l.placa || ''} ${l.base || ''} ${l.observacoes || ''}`);
         return s.includes(termo);
-    }).slice(0, 20);
+    });
+    const lancamentos = lancamentosAchados.slice()
+        .sort((a, b) => String(b.dataNota || '').localeCompare(String(a.dataNota || '')))
+        .slice(0, 20);
 
     // ── Motoristas ──
     const motoristas = (db.motoristas || []).filter(m =>
@@ -341,21 +380,14 @@ function _realizarBusca() {
     const comandos = _comandosQueCasam(termo);
 
     if (!comandos.length && !lancamentos.length && !motoristas.length && !placas.length && !empresas.length) {
-        resultadosDiv.innerHTML = "<p class='dica'>Nenhum resultado encontrado.</p>";
+        const digitado = document.getElementById("buscaGlobalInput").value.trim();
+        resultadosDiv.innerHTML = `<p class="busca-vazio"><strong>Nada encontrado para “${escapeHtml(digitado)}”.</strong>
+            Tente o número da nota, parte do nome do motorista ou a placa.</p>`;
+        _buscaIndiceAtivo = -1;
         return;
     }
 
-    // Seções e itens por classe (18/09/2026): o hover é do CSS, e não mais
-    // de `onmouseenter` trocando o fundo à mão.
-    const secao = (titulo, itens) => `<div class="busca-secao">
-            <span class="busca-secao-titulo">${titulo}</span>
-            ${itens}
-        </div>`;
-    const itemSimples = (onclick, texto, acao) => `
-                <div class="busca-item" onclick="${onclick}">
-                    <span class="busca-item-texto">${texto}</span>
-                    <span class="busca-item-acao">${acao}</span>
-                </div>`;
+    const secao = _buscaSecao, itemSimples = _buscaItemSimples;
 
     let html = '';
 
@@ -367,7 +399,10 @@ function _realizarBusca() {
 
     // Lançamentos
     if (lancamentos.length) {
-        html += secao(`Lançamentos (${lancamentos.length})`, lancamentos.map(l => {
+        const tituloLanc = lancamentosAchados.length > lancamentos.length
+            ? `Lançamentos (${lancamentos.length} mais recentes de ${lancamentosAchados.length})`
+            : `Lançamentos (${lancamentos.length})`;
+        html += secao(tituloLanc, lancamentos.map(l => {
                 const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
                 const tipos  = [...new Set(l.itens.map(i => i.tipo).filter(Boolean))].join(', ');
                 return `<div class="busca-item" onclick="irParaLancamento('${l.id}'); fecharBuscaGlobal();">
@@ -476,16 +511,17 @@ const _ATALHOS = [
     {
         grupo: "Navegação",
         itens: [
-            { teclas: ["Ctrl", "K"],   descricao: "Busca global" },
-            { teclas: ["Escape"],      descricao: "Fechar modal aberto" },
+            { teclas: ["Ctrl", "K"],   descricao: "Buscar nota, motorista, placa ou ir para uma tela" },
+            { teclas: ["Escape"],      descricao: "Fechar o modal aberto" },
         ]
     },
     {
         grupo: "Lançamentos",
         itens: [
+            { teclas: ["Enter"],         descricao: "Ir para o próximo campo da nota" },
             { teclas: ["Ctrl", "Enter"], descricao: "Salvar e lançar a próxima nota" },
             { teclas: ["Ctrl", "S"],     descricao: "Salvar (mesma ação do botão principal)" },
-            { teclas: ["↓", "↑"],        descricao: "Percorrer sugestões de motorista, placa e base" },
+            { teclas: ["↓", "↑"], ou: true, descricao: "Percorrer sugestões de motorista, placa e base" },
             { teclas: ["Enter"],         descricao: "Escolher a sugestão destacada" },
             { teclas: ["Escape"],        descricao: "Fechar a lista de sugestões" },
         ]
@@ -493,7 +529,9 @@ const _ATALHOS = [
     {
         grupo: "Relatórios",
         itens: [
-            { teclas: ["Ctrl", "F"],   descricao: "Focar campo de busca rápida" },
+            { teclas: ["Ctrl", "F"],   descricao: "Ir para a busca rápida" },
+            { teclas: ["↓", "↑"], ou: true, descricao: "Percorrer as notas da tabela" },
+            { teclas: ["Enter"],       descricao: "Abrir ou fechar o detalhe da nota" },
         ]
     },
 ];
@@ -517,7 +555,7 @@ function abrirAtalhos() {
                 <div class="atalho-linha">
                     <span class="atalho-descricao">${item.descricao}</span>
                     <span class="atalho-teclas">
-                        ${item.teclas.map(tecla).join('<span class="atalho-mais">+</span>')}
+                        ${item.teclas.map(tecla).join(item.ou ? '<span class="atalho-mais">ou</span>' : '<span class="atalho-mais">+</span>')}
                     </span>
                 </div>
             `).join("")}
@@ -532,7 +570,7 @@ function abrirAtalhos() {
                         <rect x="2" y="4" width="20" height="16" rx="2"/>
                         <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
                     </svg>
-                    Atalhos de Teclado
+                    Atalhos de teclado
                 </h3>
                 <button class="modal-fechar" onclick="fecharAtalhos()" title="Fechar" aria-label="Fechar">✕</button>
             </div>

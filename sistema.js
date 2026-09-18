@@ -512,27 +512,25 @@ function auditarDatas() {
     modal.className = 'modal-overlay modal-overlay--desfoque-leve';
     modal.innerHTML = `
         <div class="modal modal--rolagem modal--largo-800">
-            <div class="modal-cabecalho">
-                <h3>Lançamentos com datas suspeitas</h3>
-                <button class="modal-fechar" aria-label="Fechar" onclick="this.closest('#_modalAuditoria').remove()">✕</button>
+            <div class="modal-cabecalho modal-cabecalho--colado">
+                <h3>Notas com datas suspeitas <span class="modal-titulo-apoio">${escapeHtml(empresaFiltroGlobal || '')}</span></h3>
+                <button class="modal-fechar" aria-label="Fechar" title="Fechar" onclick="this.closest('#_modalAuditoria').remove()">✕</button>
             </div>
+            <p class="dica mb-3">${suspeitos.length} ${suspeitos.length === 1 ? 'nota' : 'notas'}. Os limites são os do alerta de data (Sistema › Configurações › Ajustar alertas).</p>
             <table class="tabela-simples">
-                <thead><tr><th>Nota</th><th>Data Nota</th><th>Data Descarga</th><th>Problema</th><th></th></tr></thead>
+                <thead><tr><th>Nota</th><th>Emissão</th><th>Descarga</th><th>Problema</th><th></th></tr></thead>
                 <tbody>
                     ${suspeitos.map(l => {
                         const problema = problemasDe(l);
                         return `<tr>
                             <td>${escapeHtml(l.numeroNota)}</td><td>${formatarData(l.dataNota)}</td>
                             <td>${l.dataDescarga ? formatarData(l.dataDescarga) : '—'}</td>
-                            <td class="texto-perigo">${problema.join(', ')}</td>
-                            <td><button class="btn-secundario" onclick="irParaLancamento('${escapeJsAttr(l.id)}');document.getElementById('_modalAuditoria').remove()">Ver</button></td>
+                            <td class="texto-perigo">${problema.join(' · ')}</td>
+                            <td class="celula-num"><button class="btn-icone" title="Abrir a nota" aria-label="Abrir a nota ${escapeHtml(l.numeroNota)}" onclick="irParaLancamento('${escapeJsAttr(l.id)}');document.getElementById('_modalAuditoria').remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></button></td>
                         </tr>`;
                     }).join('')}
                 </tbody>
             </table>
-            <div class="modal-acoes">
-                <button class="btn-secundario" onclick="document.getElementById('_modalAuditoria').remove()">Fechar</button>
-            </div>
         </div>
     `;
     document.body.appendChild(modal);
@@ -606,7 +604,7 @@ function corrigirCampoEmMassa(campo) {
     modal.className = 'modal-overlay';
     modal.innerHTML = `
         <div role="dialog" aria-modal="true" aria-labelledby="correcaoMassaTitulo" class="modal modal--500">
-            <h3 id="correcaoMassaTitulo" class="mt-0 mb-2">Corrigir ${escapeHtml(rotulo)}</h3>
+            <h3 id="correcaoMassaTitulo" class="mt-0 mb-2">Corrigir ${escapeHtml(rotulo.toLowerCase())}</h3>
             <p class="sistema-descricao mb-5">
                 Troca o valor escolhido por outro em todos os lançamentos que o têm, inclusive os excluídos e cancelados.
             </p>
@@ -1358,27 +1356,27 @@ function abrirConfigAlertas() {
     modal.innerHTML = `
         <div class="modal modal--rolagem modal--520">
             <div class="modal-cabecalho">
-                <h3>Configurações de Alertas</h3>
+                <h3>Configurações de alertas</h3>
                 <button class="modal-fechar" onclick="document.getElementById('_modalConfigAlertas').remove()" aria-label="Fechar">✕</button>
             </div>
             <p class="cfg-introducao">Valem para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.${podeAlterar ? '' : ' <strong>Só administradores alteram.</strong>'}</p>
 
             <fieldset id="_cfgCampos" ${podeAlterar ? '' : 'disabled'} class="cfg-campos">
-            ${bloco('Preco', 'Alerta de Preço',
+            ${bloco('Preco', 'Alerta de preço',
                 'Compara o preço/L de cada nota com a mediana das notas emitidas nos dias anteriores. Avisa acima ou abaixo.',
                 cfg.precoAtivo, `
                         <div class="campo"><label for="_cfgPrecoDif">Diferença mínima (R$/L)</label>
                         <input type="text" class="fm-numero largura-total" id="_cfgPrecoDif" value="${escapeHtml(fmtNumeroExibicao(cfg['precoDiferencaR$'], 2))}" oninput="_cfgPreview()"></div>
                         <div class="campo"><label for="_cfgPrecoPer">Período de referência</label>
                         <select id="_cfgPrecoPer" class="largura-total" onchange="_cfgPreview()">${periodOpts}</select></div>`)}
-            ${bloco('Vol', 'Alerta de Volume Suspeito',
+            ${bloco('Vol', 'Alerta de volume suspeito',
                 'Avisa quando a quantidade está muito acima ou abaixo do habitual.',
                 cfg.volumeAtivo, `
                         <div class="campo"><label for="_cfgVolAcima">% acima da média histórica</label>
                         <input type="number" id="_cfgVolAcima" class="largura-total" value="${cfg.volumeAcimaPerc}" min="10" max="500" step="5" oninput="_cfgPreview()"></div>
                         <div class="campo"><label for="_cfgVolAbaixo">% abaixo da média histórica</label>
                         <input type="number" id="_cfgVolAbaixo" class="largura-total" value="${cfg.volumeAbaixoPerc}" min="10" max="99" step="5" oninput="_cfgPreview()"></div>`)}
-            ${bloco('Data', 'Alerta de Data Suspeita',
+            ${bloco('Data', 'Alerta de data suspeita',
                 'Avisa quando a data de descarga ou nota parece incorreta.',
                 cfg.dataAtivo, `
                         <div class="campo"><label for="_cfgDataToler">Tolerância de data futura (dias)</label>
@@ -1426,12 +1424,12 @@ function _cfgPreview() {
     if(document.getElementById('_cfgVolAtivo')?.checked) {
         const ac=document.getElementById('_cfgVolAcima')?.value||50;
         const ab=document.getElementById('_cfgVolAbaixo')?.value||50;
-        partes.push(`Volume: avisa se >${ac}% acima ou >${ab}% abaixo da média histórica`);
+        partes.push(`Volume: avisa se a quantidade passar de ${escapeHtml(ac)}% acima ou de ${escapeHtml(ab)}% abaixo da média histórica`);
     }
     if(document.getElementById('_cfgDataAtivo')?.checked) {
         const tol=document.getElementById('_cfgDataToler')?.value||0;
         const mx=document.getElementById('_cfgDataMaxDiff')?.value||30;
-        partes.push(`Data: avisa se futura (tolerância ${tol} dia(s)) ou descarga >${mx} dias após nota`);
+        partes.push(`Data: avisa se a data for futura (tolerância de ${escapeHtml(tol)} ${Number(tol) === 1 ? 'dia' : 'dias'}) ou se a descarga vier mais de ${escapeHtml(mx)} dias depois da nota`);
     }
     el.innerHTML=partes.length>0?''+partes.join('<br>'):'Todos os alertas estão desativados.';
 }

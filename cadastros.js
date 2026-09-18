@@ -138,11 +138,12 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     const item = db[lista].find(i => String(i.id) === String(id));
     const logsDiv = document.getElementById("modalLogs");
     if (logsDiv) {
-        logsDiv.innerHTML = item?.logs ?
+        // Sem linhas, nada: "Histórico:" sozinho aparecia em cadastro sem log.
+        logsDiv.innerHTML = item?.logs?.length ?
             `<div class="historico-cadastro">
-                <strong>Histórico:</strong>
-                <ul class="lista-limpa mt-1">
-                    ${item.logs.map(log => `<li>• ${escapeHtml(log)}</li>`).join('')}
+                <span class="historico-cadastro-titulo">Histórico</span>
+                <ul class="lista-limpa log-list">
+                    ${item.logs.map(log => `<li>${escapeHtml(log)}</li>`).join('')}
                 </ul>
             </div>` : '';
     }
@@ -780,21 +781,40 @@ async function excluirConjunto(id) {
     renderizarConjuntos();
 }
 
+/* O modal é um só para criar e editar: título, rótulo da data e a própria
+   data são postos a cada abertura. A data ficava com o valor da abertura
+   anterior — uma data digitada num conjunto e cancelada era usada, sem
+   aviso, como vigência do próximo conjunto alterado (18/09/2026). */
+function _prepararFormConjunto(editando) {
+    document.getElementById("conjuntoFormTitulo").textContent = editando ? "Editar conjunto" : "Novo conjunto de veículos";
+    const data = document.getElementById("conjuntoDataVigencia");
+    if (data) data.value = "";
+    const rotulo = document.getElementById("conjuntoVigenciaRotulo");
+    const dica = document.getElementById("conjuntoVigenciaDica");
+    if (rotulo) rotulo.innerHTML = editando
+        ? 'Vigência da nova composição <span class="rotulo-nota rotulo-nota--perigo">(obrigatória se mudar as placas)</span>'
+        : 'Vale a partir de <span class="rotulo-nota">(em branco: hoje)</span>';
+    if (dica) dica.textContent = editando
+        ? "Lançamentos anteriores a essa data continuam na composição anterior."
+        : "Lançamentos a partir dessa data entram neste conjunto.";
+}
+
 function abrirEditarConjunto(id) {
     _conjuntoEditandoId = id;
     const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(id));
     if (!conj) return;
 
+    _prepararFormConjunto(true);
     document.getElementById("conjuntoNomeInput").value = conj.nome || "";
     _renderizarPlacasConjunto(conj.composicaoAtual.slice());
 
     const histDiv = document.getElementById("conjuntoHistorico");
     if (histDiv && conj.historico && conj.historico.length > 0) {
         histDiv.innerHTML = `
-            <p class="conjunto-historico-titulo">Histórico de composições:</p>
+            <p class="conjunto-historico-titulo">Histórico de composições</p>
             ${conj.historico.map((h, i) => {
-                const de = h.vigenciaDe || "—";
-                const ate = h.vigenciaAte || "atual";
+                const de = h.vigenciaDe ? formatarData(h.vigenciaDe) : "—";
+                const ate = h.vigenciaAte ? formatarData(h.vigenciaAte) : "hoje";
                 return `<div class="conjunto-historico-item">
                     <strong>${i+1}.</strong> ${h.placas.map(escapeHtml).join(", ")}
                     <span class="conjunto-historico-vigencia">(${de} → ${ate})</span>
@@ -809,6 +829,7 @@ function abrirEditarConjunto(id) {
 
 function abrirNovoConjunto() {
     _conjuntoEditandoId = null;
+    _prepararFormConjunto(false);
     document.getElementById("conjuntoNomeInput").value = "";
     _renderizarPlacasConjunto([""]);
     const histDiv = document.getElementById("conjuntoHistorico");
@@ -832,7 +853,7 @@ function _renderizarPlacasConjunto(placas) {
             <input type="text" value="${escapeHtml(p)}" maxlength="8" placeholder="Ex: ABC1D23"
                    class="campo-placa"
                    oninput="this.value=this.value.toUpperCase().replace(/[-\\s]/g,''); _placasTemp[${i}]=this.value;">
-            <button class="btn-excluir" onclick="_removerPlacaConjunto(${i})">✕</button>
+            <button class="btn-icone btn-icone--excluir" title="Tirar a placa do conjunto" aria-label="Tirar a placa ${escapeHtml(p) || 'vazia'} do conjunto" onclick="_removerPlacaConjunto(${i})">✕</button>
 
         </div>
     `).join("");
@@ -1143,11 +1164,11 @@ document.addEventListener('click', function(e) {
     } else if (acao === 'excluir') {
         excluirCadastro(lista, id);
     } else if (acao === 'editar') {
-        if (lista === 'motoristas') abrirModal('Editar Motorista',  'Nome',  item.nome, lista, id);
-        else if (lista === 'veiculos')    abrirModal('Editar Veículo',    'Placa', item.nome, lista, id);
-        else if (lista === 'empresas')    abrirModal('Editar Empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '', item.taxaFrete ?? '');
-        else if (lista === 'combustiveis') abrirModal('Editar Combustível','Nome',  item.nome, lista, id, item.perda);
-        else if (lista === 'bases')       abrirModal('Editar Base',       'Nome',  item.nome, lista, id);
+        if (lista === 'motoristas') abrirModal('Editar motorista',  'Nome',  item.nome, lista, id);
+        else if (lista === 'veiculos')    abrirModal('Editar veículo',    'Placa', item.nome, lista, id);
+        else if (lista === 'empresas')    abrirModal('Editar empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '', item.taxaFrete ?? '');
+        else if (lista === 'combustiveis') abrirModal('Editar combustível','Nome',  item.nome, lista, id, item.perda);
+        else if (lista === 'bases')       abrirModal('Editar base',       'Nome',  item.nome, lista, id);
     }
 });
 

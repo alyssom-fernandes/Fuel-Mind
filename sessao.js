@@ -621,10 +621,10 @@ function abrirTrocarEmpresa() {
     lista.innerHTML = empresasDisponiveis.map(emp => `
         <button class="btn-empresa-troca ${emp === empresaFiltroNome ? 'ativa' : ''}"
                 onclick="selecionarEmpresaModal('${escapeJsAttr(emp)}')">
-            <span>${escapeHtml(emp)}</span>
+            <span>${escapeHtml(emp)}${emp === empresaFiltroNome ? ' <small class="empresa-ultima">· atual</small>' : ''}</span>
             ${emp === empresaFiltroNome
                 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icone-check"><polyline points="20,6 9,17 4,12"/></svg>'
-                : ''}
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-seta"><polyline points="9,18 15,12 9,6"/></svg>'}
         </button>`).join("");
     modal.style.display = "flex";
 }

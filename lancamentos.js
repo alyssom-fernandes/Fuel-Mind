@@ -277,17 +277,21 @@ function importarXMLNFe(input) {
 function calcularPerdaBadge(nomeCombustivel, qtd, qtdDescargada) {
     const cad = db.combustiveis.find(c => c.nome === nomeCombustivel);
     if (!cad || !qtd || qtd <= 0) return "";
+    // Em pt-BR: `toFixed(3)` escrevia "69.000 L (0.3%)", que aqui se lê
+    // sessenta e nove MIL litros (18/09/2026).
+    const litros = v => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 3 }) + " L";
+    const pct    = v => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 3 }) + "%";
     const perdaToleravel = qtd * (cad.perda / 100);
     if (!qtdDescargada || isNaN(qtdDescargada) || qtdDescargada <= 0) {
         if (cad.perda <= 0) return "";
-        return `<span class="badge-perda ok">Tol.: ${perdaToleravel.toFixed(3)} L (${cad.perda}%)</span>`;
+        return `<span class="badge-perda ok" title="Perda tolerada para ${escapeHtml(nomeCombustivel)}">Tolerado: ${litros(perdaToleravel)} (${pct(cad.perda)})</span>`;
     }
     const perdaReal   = qtd - qtdDescargada;
-    const percentReal = (perdaReal / qtd * 100).toFixed(3);
-    if (perdaReal < 0)               return `<span class="badge-perda alerta">Descarga > Carga?</span>`;
-    if (cad.perda <= 0)              return `<span class="badge-perda alerta">Perda: ${perdaReal.toFixed(3)} L (${percentReal}%)</span>`;
-    if (perdaReal <= perdaToleravel) return `<span class="badge-perda ok">Perda: ${perdaReal.toFixed(3)} L (${percentReal}%)</span>`;
-    return `<span class="badge-perda excesso">Perda: ${perdaReal.toFixed(3)} L (${percentReal}%) — Acima do tolerado (${cad.perda}%)</span>`;
+    const percentReal = perdaReal / qtd * 100;
+    if (perdaReal < 0)               return `<span class="badge-perda alerta">Descarga maior que a carga</span>`;
+    if (cad.perda <= 0)              return `<span class="badge-perda alerta">Perda: ${litros(perdaReal)} (${pct(percentReal)})</span>`;
+    if (perdaReal <= perdaToleravel) return `<span class="badge-perda ok">Perda: ${litros(perdaReal)} (${pct(percentReal)})</span>`;
+    return `<span class="badge-perda excesso">Perda: ${litros(perdaReal)} (${pct(percentReal)}) — acima do tolerado (${pct(cad.perda)})</span>`;
 }
 
 /* ── ENTER AVANÇA DE CAMPO (17/09/2026) ─────────────────────────────
