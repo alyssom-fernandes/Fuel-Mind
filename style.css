@@ -2583,7 +2583,13 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .celula-fraca--italico { font-style: italic; }
 .usuario-arroba { color: var(--primary); opacity: 0.8; }
 .acoes-celula { display: flex; gap: 6px; flex-wrap: wrap; }
-.usuarios-topo { display: flex; justify-content: flex-end; gap: var(--space-2); margin-bottom: var(--space-4); }
+.acoes-celula.acoes-celula--icones { gap: 2px; flex-wrap: nowrap; justify-content: flex-end; }
+.usuarios-topo { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+/* Celular: nome, nível e ações cabem; as empresas ficam no Editar. */
+@media (max-width: 480px) {
+    #usuariosConteudo table thead th:nth-child(3),
+    #usuariosConteudo table tbody td:nth-child(3) { display: none; }
+}
 .modal-corpo--pilha { display: flex; flex-direction: column; gap: 14px; }
 .campo-arroba { position: relative; }
 .campo-arroba-sinal { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }

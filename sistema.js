@@ -437,7 +437,7 @@ function _faixaEspaco() {
 function atualizarInfoSistema() {
     const el = document.getElementById("infoSistema");
     if (!el) return;
-    const tamanhoKB = (JSON.stringify(db).length / 1024).toFixed(1);
+    const tamanhoKB = (JSON.stringify(db).length / 1024).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const o = _ocupacaoEspaco();
     el.innerHTML = _faixaEspaco() + `
         <div class="info-card"><div class="info-card-valor">${db.lancamentos.filter(lancamentoAtivo).length}</div><div class="info-card-label">Lançamentos</div></div>

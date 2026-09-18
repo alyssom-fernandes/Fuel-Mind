@@ -234,6 +234,14 @@ async function _recarregarListaUsuarios() {
     }
 }
 
+const _ICONE_USUARIO = {
+    editar:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    senha:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3"/><path d="m16 7 3 3"/><path d="m19 4 2 2"/></svg>',
+    inativar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>',
+    reativar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+    excluir:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+};
+
 function _renderUsuarios() {
     const container = document.getElementById("usuariosConteudo");
     if (!container) return;
@@ -264,18 +272,22 @@ function _renderUsuarios() {
         const editorRole   = window._usuarioAtual?.role;
         const alvoBloqueado = u.role === "supremo" && editorRole === "admin";
 
+        // Ações em ícones, lado a lado — o mesmo desenho do Relatório e de
+        // Cadastros (18/09/2026). O nome da ação fica no `title`.
+        const uidJs = escapeJsAttr(u.uid);
+        const nomeAttr = escapeHtml(u.nome || u.email || "");
         const acoes = isSelf
-            ? `<button class="btn-editar" onclick="abrirModalEditarProprioPerfil()">Editar perfil</button>
-               <button class="btn-secundario" onclick="abrirModalAlterarSenha()">Alterar senha</button>`
+            ? `<button class="btn-icone btn-icone--editar" title="Editar meu perfil" aria-label="Editar meu perfil" onclick="abrirModalEditarProprioPerfil()">${_ICONE_USUARIO.editar}</button>
+               <button class="btn-icone" title="Alterar minha senha" aria-label="Alterar minha senha" onclick="abrirModalAlterarSenha()">${_ICONE_USUARIO.senha}</button>`
             : alvoBloqueado
             ? `<span class="celula-fraca celula-fraca--italico">Sem permissão</span>`
-            : `<button class="btn-editar" onclick="abrirModalEditarUsuario('${escapeJsAttr(u.uid)}')">Editar</button>
+            : `<button class="btn-icone btn-icone--editar" title="Editar" aria-label="Editar ${nomeAttr}" onclick="abrirModalEditarUsuario('${uidJs}')">${_ICONE_USUARIO.editar}</button>
                ${u.ativo !== false
-                   ? `<button class="btn-inativar" onclick="toggleAtivoUsuario('${escapeJsAttr(u.uid)}')">Inativar</button>`
-                   : `<button class="btn-secundario" onclick="toggleAtivoUsuario('${escapeJsAttr(u.uid)}')">Reativar</button>`
+                   ? `<button class="btn-icone btn-icone--inativar" title="Inativar: a pessoa não entra mais" aria-label="Inativar ${nomeAttr}" onclick="toggleAtivoUsuario('${uidJs}')">${_ICONE_USUARIO.inativar}</button>`
+                   : `<button class="btn-icone btn-icone--editar" title="Reativar" aria-label="Reativar ${nomeAttr}" onclick="toggleAtivoUsuario('${uidJs}')">${_ICONE_USUARIO.reativar}</button>`
                }
                ${supremoAtual && u.role !== "supremo"
-                   ? `<button class="btn-excluir" onclick="excluirUsuario('${escapeJsAttr(u.uid)}')">Excluir</button>`
+                   ? `<button class="btn-icone btn-icone--excluir" title="Excluir" aria-label="Excluir ${nomeAttr}" onclick="excluirUsuario('${uidJs}')">${_ICONE_USUARIO.excluir}</button>`
                    : ""}`;
 
         return `<tr class="${u.ativo === false ? 'linha-inativo' : ''}">
@@ -283,7 +295,7 @@ function _renderUsuarios() {
             <td>${badges}</td>
             <td>${empresasStr}</td>
             <td class="celula-fraca">${escapeHtml(ultimoAcesso)}</td>
-            <td class="no-print"><div class="acoes-celula">${acoes}</div></td>
+            <td class="no-print celula-acoes"><div class="acoes-celula acoes-celula--icones">${acoes}</div></td>
         </tr>`;
     }).join("");
 
@@ -297,16 +309,16 @@ function _renderUsuarios() {
                        Reconstruir índice de @usuarios
                    </button>`
                 : ''}
-            <button class="btn-primario" onclick="abrirModalNovoUsuario()">Novo Usuário</button>
+            <button class="btn-primario" onclick="abrirModalNovoUsuario()">+ Novo usuário</button>
         </div>
         <div class="tabela-container">
             <table>
                 <thead><tr>
                     <th>Nome / E-mail</th>
                     <th>Nível</th>
-                    <th>Empresas com Acesso</th>
-                    <th>Último Acesso</th>
-                    <th class="no-print">Ações</th>
+                    <th>Empresas com acesso</th>
+                    <th>Último acesso</th>
+                    <th class="no-print"><span class="sr-only">Ações</span></th>
                 </tr></thead>
                 <tbody>${linhas || '<tr><td colspan="5" class="td-vazio">Nenhum usuário cadastrado.</td></tr>'}</tbody>
             </table>

@@ -590,7 +590,7 @@
     </button>
     <button class="aba-btn" data-aba="importar" onclick="trocarAbaSistema('importar', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Importar Planilha
+      Importar planilha
     </button>
     <button class="aba-btn" data-aba="config" onclick="trocarAbaSistema('config', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
@@ -599,10 +599,10 @@
   </div>
   <div id="sistemaAba-backup" class="sistema-aba-conteudo" data-papel="admin">
     <div class="sistema-secao">
-      <h3>Backup dos Dados</h3>
+      <h3>Backup dos dados</h3>
       <p class="dica">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga — guarde-o fora do computador de vez em quando.</p>
       <div class="sistema-acoes">
-        <button class="btn-primario" onclick="baixarBackup()">Baixar Backup (.json)</button>
+        <button class="btn-primario" onclick="baixarBackup()">Baixar backup (.json)</button>
         <div class="campo campo--restaurar mt-3" data-papel="supremo">
           <label for="inputBackup">Restaurar a partir de backup (.json)</label>
           <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
@@ -610,20 +610,20 @@
       </div>
     </div>
     <div class="sistema-secao">
-      <h3>Backups Automáticos</h3>
+      <h3>Backups automáticos</h3>
       <p class="dica">Este navegador guarda uma cópia dos seus dados a cada 3 dias, para o seu usuário. As 3 últimas ficam.</p>
       <div id="listaBackupsAuto"></div>
       <button class="btn-secundario mt-2" onclick="renderBackupsAuto()">Atualizar lista</button>
     </div>
     <div class="sistema-secao">
-      <h3>Informações do Sistema</h3>
+      <h3>Informações do sistema</h3>
       <div id="infoSistema" class="info-sistema"></div>
       <h3 class="mt-5">Falhas registradas</h3>
       <div id="infoErros"></div>
       <button class="btn-secundario" onclick="atualizarInfoSistema()">Atualizar</button>
     </div>
     <div class="sistema-secao" id="secaoMigracaoEmpresa" style="display:none">
-      <h3>Isolamento por Empresa</h3>
+      <h3>Isolamento por empresa</h3>
       <p class="dica mb-3">
         Reparte os lançamentos em um documento por empresa, para que a regra de segurança
         do servidor — e não a tela — decida quem enxerga o quê. O documento antigo não é
@@ -635,14 +635,14 @@
       </div>
     </div>
     <div class="sistema-secao zona-perigo" data-papel="supremo">
-      <h3>Zona de Perigo</h3>
+      <h3>Zona de perigo</h3>
       <p class="dica dica--perigo mb-3">As ações abaixo são irreversíveis. Faça um backup antes de continuar.</p>
-      <div class="sistema-acoes"><button class="btn-reset" onclick="resetSeguro()">Apagar Todos os Dados</button></div>
+      <div class="sistema-acoes"><button class="btn-reset" onclick="resetSeguro()">Apagar todos os dados</button></div>
     </div>
   </div>
   <div id="sistemaAba-importar" class="sistema-aba-conteudo" style="display:none">
     <div class="sistema-secao mb-5">
-      <h3>Importar Histórico de Planilha</h3>
+      <h3>Importar histórico de planilha</h3>
       <p class="dica">Importe lançamentos históricos das suas planilhas Excel (.xlsx, .xls) ou CSV. Notas novas são acrescentadas. Uma nota que já existe só é substituída se você marcar "Reimportar" no resumo, e a anterior fica registrada como excluída. A empresa de cada linha precisa estar cadastrada.</p>
     </div>
     <div class="sistema-secao mb-5">
@@ -673,7 +673,7 @@
   </div>
   <div id="sistemaAba-config" class="sistema-aba-conteudo" style="display:none">
     <div class="sistema-secao">
-      <h3>Tema Personalizado</h3>
+      <h3>Tema personalizado</h3>
       <p class="dica">Escolha a cor principal do sistema (afeta botões, abas ativas, etc.)</p>
       <div class="linha-flex">
         <input type="color" id="corPrimaria" class="input-cor" aria-label="Cor principal do sistema" value="#a02828" onchange="aplicarCorPersonalizada(this.value)">
@@ -681,7 +681,7 @@
       </div>
     </div>
     <div class="sistema-secao">
-      <h3>Layout do Relatório PDF</h3>
+      <h3>Layout do relatório em PDF</h3>
       <p class="dica fm-so-operador">Só administradores alteram o layout do PDF e a logo: valem para todos.</p>
       <p class="dica">Personalize a aparência dos relatórios em PDF.</p>
 
@@ -755,9 +755,9 @@
         <label>Colunas e opções do PDF</label>
         <div class="form-linha form-linha--opcoes">
           <label><input type="checkbox" id="pdfMostrarBase" checked> Mostrar coluna Base</label>
-          <label><input type="checkbox" id="pdfMostrarEmpresa" checked> Mostrar Empresa</label>
-          <label><input type="checkbox" id="pdfMostrarMotorista" checked> Mostrar Motorista</label>
-          <label><input type="checkbox" id="pdfMostrarPlaca" checked> Mostrar Placa</label>
+          <label><input type="checkbox" id="pdfMostrarEmpresa" checked> Mostrar empresa</label>
+          <label><input type="checkbox" id="pdfMostrarMotorista" checked> Mostrar motorista</label>
+          <label><input type="checkbox" id="pdfMostrarPlaca" checked> Mostrar placa</label>
           <label><input type="checkbox" id="pdfQuebrarPorMes"> Quebrar página por mês</label>
         </div>
       </div>
@@ -771,20 +771,20 @@
       <button class="btn-secundario" data-papel="admin" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
     </div>
     <div class="sistema-secao">
-      <h3>Configurações de Alertas</h3>
+      <h3>Configurações de alertas</h3>
       <p class="sistema-descricao">Os critérios que acionam os alertas — iguais para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.</p>
-      <div class="sistema-acoes"><button class="btn-primario" onclick="abrirConfigAlertas()">Ajustar Alertas</button></div>
+      <div class="sistema-acoes"><button class="btn-primario" onclick="abrirConfigAlertas()">Ajustar alertas</button></div>
     </div>
     <div class="sistema-secao">
-      <h3>Correções em Massa</h3>
+      <h3>Correções em massa</h3>
       <p class="sistema-descricao">Corrija campos em lote nos lançamentos. <span class="fm-so-nao-supremo">A correção em massa é só do usuário supremo; a verificação de datas é de todos.</span></p>
       <div class="sistema-acoes">
-        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('empresa')">Corrigir Empresa</button>
-        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('motorista')">Corrigir Motorista</button>
-        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('placa')">Corrigir Placa</button>
-        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('base')">Corrigir Base</button>
-        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('combustivel')">Corrigir Combustível</button>
-        <button class="btn-secundario" onclick="auditarDatas()">Verificar Datas Suspeitas</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('empresa')">Corrigir empresa</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('motorista')">Corrigir motorista</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('placa')">Corrigir placa</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('base')">Corrigir base</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('combustivel')">Corrigir combustível</button>
+        <button class="btn-secundario" onclick="auditarDatas()">Verificar datas suspeitas</button>
       </div>
     </div>
   </div>
@@ -792,7 +792,7 @@
 
 <!-- USUÁRIOS E PERMISSÕES -->
 <div id="usuarios" class="tela">
-  <h2 id="tituloUsuarios">Usuários e Permissões</h2>
+  <h2 id="tituloUsuarios">Usuários e permissões</h2>
   <div id="usuariosConteudo"><p class="dica">Carregando...</p></div>
 </div>
 

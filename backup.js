@@ -82,7 +82,7 @@ function listarBackupsAutomaticos() {
     if (!prefixo) return [];
     return Object.keys(localStorage)
         .filter(k => k.startsWith(prefixo)).sort().reverse()
-        .map(chave => ({ chave, data: chave.slice(prefixo.length), tamanhoKB: (localStorage.getItem(chave).length/1024).toFixed(1) }));
+        .map(chave => ({ chave, data: chave.slice(prefixo.length), tamanhoKB: (localStorage.getItem(chave).length/1024).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }));
 }
 
 /* ── RESTAURAR UM BACKUP ─────────────────────────────────────────────

@@ -15,10 +15,10 @@ const TITULOS_TELAS = {
     fretes:       "Fretes",
     grupo:        "Grupo",
     conferencia:  "Conferências",
-    importacao:   "Importar Planilha",
+    importacao:   "Importar planilha",
     cadastros:    "Cadastros",
     sistema:      "Sistema",
-    usuarios:     "Usuários e Permissões",
+    usuarios:     "Usuários e permissões",
 };
 
 /* ========== SIDEBAR ========== */
