@@ -2538,3 +2538,44 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     font-size: 0.72rem; line-height: 1.4; margin-top: 6px; color: var(--text-muted);
 }
 .dash-comb-kpi-label .variacao-mini { display: block; margin: 4px 0 0; text-transform: none; letter-spacing: 0; }
+
+/* Lançamento: faixa do XML, dois painéis e a barra de salvar sempre à vista */
+.importar-xml-bloco {
+    display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    padding: 10px 14px; margin-bottom: var(--space-4);
+    border: 1px dashed var(--border); border-left: 1px dashed var(--border);
+    background: transparent; border-radius: var(--radius-md);
+}
+.importar-xml-icone { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; }
+.importar-xml-texto { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.importar-xml-bloco .importar-xml-label { display: inline; margin: 0; font-size: 0.74rem; }
+.importar-xml-dica { font-size: 0.78rem; color: var(--text-muted); }
+/* `label` com cara de botão: a regra geral de `button` não vale para ele. */
+.btn-arquivo {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap;
+    padding: 9px 18px; border-radius: var(--radius);
+    font-size: 0.875rem; font-weight: 600; font-family: 'DM Sans', inherit; letter-spacing: 0.01em;
+    text-transform: none; margin: 0;
+}
+.input-arquivo-oculto {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+.input-arquivo-oculto:focus-visible + *, .btn-arquivo:has(+ .input-arquivo-oculto:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.lanc-painel {
+    background: var(--surface); border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    padding: var(--space-5) var(--space-6) var(--space-6);
+    margin-bottom: var(--space-4);
+}
+.tela h3.lanc-painel-titulo { margin: 0 0 var(--space-4); }
+.lanc-painel .form-grid { margin-bottom: 0; }
+
+/* Os botões de salvar ficam presos ao pé da tela enquanto se rola o formulário. */
+.acoes-lancamento {
+    position: sticky; bottom: 0; z-index: 20;
+    margin-top: var(--space-4); padding: var(--space-3) 0;
+    background: linear-gradient(to top, var(--bg) 75%, transparent);
+    border-top: none; align-items: center;
+}

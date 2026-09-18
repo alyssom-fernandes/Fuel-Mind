@@ -200,11 +200,19 @@
   <div id="bannerRascunho" class="banner-rascunho" style="display:none"></div>
   <div id="bannerEdicao" class="banner-edicao"></div>
   <div id="bannerXML" class="banner-xml" style="display:none"></div>
+  <!-- Uma faixa só (18/09/2026): o XML é opcional e ocupava um bloco
+       inteiro no alto, com o botão de arquivo cru do navegador. -->
   <div class="importar-xml-bloco">
-    <label class="importar-xml-label">Importar XML da NF-e <span class="tag-opcional">opcional</span></label>
-    <p class="dica">Selecione o arquivo .xml da nota fiscal para pré-preencher o formulário automaticamente.</p>
-    <input type="file" id="xmlNFe" aria-label="Arquivo XML da NF-e" accept=".xml" onchange="importarXMLNFe(this)">
+    <svg class="importar-xml-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+    <div class="importar-xml-texto">
+      <span class="importar-xml-label">Importar XML da NF-e <span class="tag-opcional">opcional</span></span>
+      <span class="importar-xml-dica">Preenche o formulário a partir do arquivo .xml da nota fiscal.</span>
+    </div>
+    <label class="btn-secundario btn-arquivo" for="xmlNFe">Escolher arquivo .xml</label>
+    <input type="file" id="xmlNFe" class="input-arquivo-oculto" aria-label="Arquivo XML da NF-e" accept=".xml" onchange="importarXMLNFe(this)">
   </div>
+  <section class="lanc-painel" aria-labelledby="lancPainelNota">
+  <h3 class="lanc-painel-titulo" id="lancPainelNota">Dados da nota</h3>
   <div class="form-grid">
     <div class="campo"><label for="dataNota">Data da Nota Fiscal <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label><input type="date" id="dataNota" oninput="marcarFormularioSujo()"></div>
     <div class="campo">
@@ -235,7 +243,9 @@
     </div>
     <div class="campo"><label for="observacoes">Observações</label><textarea id="observacoes" placeholder="Anotações adicionais..." oninput="marcarFormularioSujo()"></textarea></div>
   </div>
-  <h3 class="titulo-com-opcao">
+  </section>
+  <section class="lanc-painel">
+  <h3 class="titulo-com-opcao lanc-painel-titulo">
     Combustíveis desta Nota
     <!-- A quantidade descarregada quase sempre é igual à carregada, e o
          sistema já trata "não informada" como igual. O campo fica fora do
@@ -248,6 +258,8 @@
   <div id="combustiveisNota"></div>
   <button class="btn-secundario" onclick="adicionarCombustivelNota()">Adicionar Combustível</button>
   <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
+  </section>
+
   <!-- Faixa de validação: fica junto dos botões, e não no topo da tela,
        porque é para o botão que o operador olha na hora de salvar. -->
   <div id="faixaValidacao" class="faixa-validacao" style="display:none"></div>
