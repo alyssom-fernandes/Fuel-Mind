@@ -1024,9 +1024,9 @@ function _sessaoRenderizar() {
         return `<div class="sessao-item${desfeita || cancelada ? " sessao-item-desfeita" : ""}">
             <span class="sessao-hora">${escapeHtml(hora)}</span>
             <span class="sessao-nota">${escapeHtml(l.numeroNota || "sem número")}</span>
-            <span class="sessao-empresa">${escapeHtml(l.empresa || "")}</span>
+            <span class="sessao-empresa" title="Motorista">${escapeHtml(l.motorista || "—")}</span>
             <span class="sessao-base">${escapeHtml(l.base || "—")}</span>
-            <span class="sessao-litros">${fmtL3(litros)}</span>
+            <span class="sessao-litros">${fmtL(litros, Number.isInteger(litros) ? 0 : 3)}</span>
             <span class="sessao-total">${fmtR(l.total || 0)}</span>
             ${cancelada
                 ? `<span class="tag-inativo" title="Marcada como cancelada na origem">cancelada</span>`

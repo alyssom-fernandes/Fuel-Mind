@@ -1448,6 +1448,9 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
     color: #fff;
     background: rgba(255,255,255,0.1);
 }
+/* No tema claro a barra é branca: o × branco sumia (18/09/2026). */
+[data-theme="light"] .btn-fechar-sidebar { color: #64748b; }
+[data-theme="light"] .btn-fechar-sidebar:hover { color: #0f172a; background: #f1f5f9; }
 @media (max-width: 768px) {
     .btn-fechar-sidebar { display: flex; }
     /* Garante que logo e botão fechar fiquem lado a lado */
