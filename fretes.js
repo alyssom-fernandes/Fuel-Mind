@@ -119,21 +119,68 @@ function calcularEExibirFretes() {
     renderAbaConjuntosFretes();
 }
 
+/* ── O MÊS EM NÚMEROS (18/09/2026) ─────────────────────────────────
+   Este resumo nunca apareceu: a classe `.resumo` nasce escondida e nada
+   aqui a mostrava — o frete total do mês, o número que a tela existe para
+   dar, ficava invisível. Agora são cartões no topo, cada um comparado ao
+   mês anterior pela MESMA conta (`calcularFretesDoMes`). */
 function renderFreteResumo() {
     const resumo = document.getElementById("fretesResumoMes");
     if (!resumo || !dadosFretesAtual) return;
+    const d = dadosFretesAtual;
 
-    if (dadosFretesAtual.totalNotas === 0) {
-        resumo.innerHTML = `<span class="dica mb-0">Nenhum lançamento encontrado para ${nomeMes(dadosFretesAtual.mes)}.</span>`;
-    } else {
-        resumo.innerHTML = `
-            <strong>${dadosFretesAtual.totalNotas}</strong> nota(s)
-            &nbsp;|&nbsp; Litros: <strong>${fmtL(dadosFretesAtual.totalLitros)}</strong>
-            &nbsp;|&nbsp; Frete total: <strong>${fmtR(dadosFretesAtual.totalFrete)}</strong>
-            ${dadosFretesAtual.semTaxa ? `<br><span class="texto-perigo">${dadosFretesAtual.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.</span>` : ''}
-            ${dadosFretesAtual.taxaZero ? `<br><span class="texto-perigo">${dadosFretesAtual.taxaZero} nota(s) de ${escapeHtml((dadosFretesAtual.empresasTaxaZero || []).join(', '))}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.</span>` : ''}
-        `;
+    if (d.totalNotas === 0) {
+        resumo.innerHTML = `<p class="dica mb-0">Nenhuma nota descarregada em ${nomeMes(d.mes)}.</p>`;
+        return;
     }
+
+    const [ano, mes] = d.mes.split("-").map(Number);
+    const ref = new Date(ano, mes - 2, 1);
+    const mesAnt = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
+    const ant = calcularFretesDoMes({
+        lancamentos: db.lancamentos,
+        mes: mesAnt,
+        empresaFiltro: empresaFiltroGlobal,
+        empresaDoLancamento: _empresaDoLancamentoFrete,
+        resolverConjunto: typeof resolverConjuntoEPeriodo === 'function' ? resolverConjuntoEPeriodo : null
+    });
+    const rot = nomeMes(mesAnt);
+    const porLitro    = d.totalLitros > 0 ? d.totalFrete / d.totalLitros : 0;
+    const porLitroAnt = ant.totalLitros > 0 ? ant.totalFrete / ant.totalLitros : 0;
+
+    const avisos = [
+        d.semTaxa ? `${d.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.` : '',
+        d.taxaZero ? `${d.taxaZero} nota(s) de ${(d.empresasTaxaZero || []).join(', ')}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.` : '',
+    ].filter(Boolean);
+
+    resumo.innerHTML = `
+        <div class="kpi-container kpi-container--fretes">
+            <div class="kpi-card">
+                <div class="kpi-valor">${fmtR(d.totalFrete)}</div>
+                <div class="kpi-label">Frete de ${escapeHtml(nomeMes(d.mes))}</div>
+                <div class="kpi-base">pela data da descarga, com a taxa de cada data</div>
+                ${htmlVariacao(d.totalFrete, ant.totalFrete, rot, true)}
+            </div>
+            <div class="kpi-card verde">
+                <div class="kpi-valor">${fmtL(d.totalLitros)}</div>
+                <div class="kpi-label">Litros transportados</div>
+                <div class="kpi-base">a carga das notas</div>
+                ${htmlVariacao(d.totalLitros, ant.totalLitros, rot, false)}
+            </div>
+            <div class="kpi-card laranja">
+                <div class="kpi-valor">${d.totalNotas}</div>
+                <div class="kpi-label">Notas descarregadas</div>
+                <div class="kpi-base">no mês</div>
+                ${htmlVariacao(d.totalNotas, ant.totalNotas, rot, false)}
+            </div>
+            <div class="kpi-card roxo">
+                <div class="kpi-valor">${fmtR4(porLitro)}</div>
+                <div class="kpi-label">Frete por litro</div>
+                <div class="kpi-base">frete ÷ litros do mês</div>
+                ${htmlVariacao(porLitro, porLitroAnt, rot, true)}
+            </div>
+        </div>
+        ${avisos.map(t => `<div class="faixa-validacao faixa-bloqueio faixa-estado">${escapeHtml(t)}</div>`).join('')}`;
 }
 
 /**

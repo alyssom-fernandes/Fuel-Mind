@@ -2579,3 +2579,19 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     background: linear-gradient(to top, var(--bg) 75%, transparent);
     border-top: none; align-items: center;
 }
+
+/* Fretes: o mês em cartões, o frete em destaque */
+.kpi-container--fretes { margin-bottom: var(--space-4); }
+@media (min-width: 1100px) {
+    .kpi-container--fretes { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+}
+.kpi-container--fretes .kpi-card:first-child .kpi-valor { color: var(--primary-mid); }
+
+/* Títulos de seção legíveis: eram 0,66rem, maiúsculas e cinza-claro — o
+   olho não achava onde começava cada bloco. Agora seguem o título das
+   seções do Sistema: fonte de título, cor do texto, tamanho de leitura. */
+.tela h3 {
+    font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+    color: var(--text); text-transform: none; letter-spacing: -0.01em;
+}
+.tela h3 .titulo-nota { font-family: 'DM Sans', sans-serif; }
