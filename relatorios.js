@@ -395,10 +395,7 @@ function _aplicarFiltroRelatorio() {
                     <span class="rel-kpi-nota">sobre ${fmtL3(mPreco.litrosNota)} faturados</span>
                 </div>` : ''}
             </div>
-            ${mPreco.custoRecebido > 0 ? `<div class="rel-fronteira" title="Valor das notas com descarga informada ÷ litros medidos.">
-                ${escapeHtml(textoCustoRecebido(mPreco))}
-            </div>` : ''}
-            ${_textoFronteiraRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora)}
+            ${_chipsResumoRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora, mPreco)}
             <div class="rel-cards">
                 ${cardsComb}
                 ${topMotHtml}
@@ -407,15 +404,30 @@ function _aplicarFiltroRelatorio() {
     }
 }
 
-/** A linha do resumo que diz de que data é o período e quem ficou na fronteira. */
-function _textoFronteiraRelatorio(temPeriodo, emitidasFora, descarregadasFora) {
-    if (!temPeriodo) return '';
-    const partes = [];
-    if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele (incluída${emitidasFora > 1 ? 's' : ''})`);
-    if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele (não incluída${descarregadasFora > 1 ? 's' : ''})`);
-    return `<div class="dica rel-fronteira">
-        Período pela <strong>data de emissão</strong>.${partes.length ? ' Notas da fronteira: ' + partes.join(' · ') + '.' : ''}
-    </div>`;
+/** O que antes eram duas linhas de texto miúdo abaixo dos totais — de que
+ *  data é o período, quem ficou na fronteira e o custo recebido — virou uma
+ *  fila de etiquetas curtas; a explicação inteira abre com um clique
+ *  (18/09/2026). `<details>` e não `title`: no celular não há mouse. */
+function _chipsResumoRelatorio(temPeriodo, emitidasFora, descarregadasFora, mPreco) {
+    const chips = [];
+    if (temPeriodo) {
+        chips.push(`<span class="rel-chip">Período pela data de emissão</span>`);
+        const partes = [];
+        if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele — <strong>incluída${emitidasFora > 1 ? 's' : ''}</strong>`);
+        if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele — <strong>não incluída${descarregadasFora > 1 ? 's' : ''}</strong>`);
+        const n = emitidasFora + descarregadasFora;
+        if (n) chips.push(`<details class="rel-chip-detalhe">
+            <summary class="rel-chip rel-chip--aviso">${n} ${n > 1 ? 'notas' : 'nota'} na fronteira do período</summary>
+            <p>${partes.join('<br>')}.</p>
+        </details>`);
+    }
+    if (mPreco.custoRecebido > 0) {
+        chips.push(`<details class="rel-chip-detalhe">
+            <summary class="rel-chip">Recebido ${escapeHtml(fmtRL(mPreco.custoRecebido))}/L</summary>
+            <p>Valor das notas com descarga informada ÷ litros medidos: ${escapeHtml(textoCustoRecebido(mPreco))}.</p>
+        </details>`);
+    }
+    return chips.length ? `<div class="rel-chips">${chips.join('')}</div>` : '';
 }
 
 function limparFiltros(contexto) {
@@ -514,7 +526,6 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
             <td class="celula-nota">${escapeHtml(l.numeroNota)}${morto
                 ? ` <span class="badge-inativo-user">${rotulo}</span>` : ''}</td>
             ${celTexto(l.base)}
-            ${celTexto(l.empresa)}
             ${celTexto(l.motorista)}
             <td class="celula-placa">${escapeHtml(l.placa) || '—'}</td>
             <td class="celula-num">${fmtL(totalLitros)}</td>
@@ -540,7 +551,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
 
         const linhaDetalhe = estaAberto ? `
         <tr class="linha-detalhe-inline no-print">
-            <td colspan="10" class="celula-detalhe">
+            <td colspan="9" class="celula-detalhe">
                 <div class="detalhe-inline-container" id="detalheInline_${l.id}">
                     ${_buildConteudoDetalhe(l)}
                 </div>

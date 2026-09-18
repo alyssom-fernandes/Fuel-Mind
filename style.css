@@ -839,6 +839,8 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 
 /* ══ PAGINAÇÃO ═══════════════════════════════ */
 .paginacao { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border-light); border-top: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); font-size: 0.82rem; }
+/* Sem páginas, sem barra: vazia ela aparecia como uma tira solta sob a tabela. */
+.paginacao:empty { display: none; }
 .pag-info { color: var(--text-muted); }
 .pag-controles { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .pag-btn { padding: 5px 10px; min-width: 32px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.12s; font-family: inherit; }
@@ -1454,9 +1456,10 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
         display: block;
     }
 
-    /* Colunas secundárias nas tabelas de relatório — ocultar em telas pequenas */
-    #tabelaRelatorio td:nth-child(4),
-    #tabelaRelatorio td:nth-child(6),
+    /* Colunas secundárias nas tabelas de relatório — ocultar em telas pequenas.
+       No Relatório (sem a coluna Empresa desde 18/09/2026): base e placa. */
+    #tabelaRelatorio > tr.linha-nota > td:nth-child(4),
+    #tabelaRelatorio > tr.linha-nota > td:nth-child(6),
     #tabelaHistorico td:nth-child(4),
     #tabelaHistorico td:nth-child(6),
     #tabelaRelatorioEl thead th:nth-child(4),
@@ -1497,10 +1500,14 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
     /* KPI em coluna única em telas muito pequenas */
     .kpi-container { grid-template-columns: 1fr; }
 
-    /* Ocultar mais colunas secundárias */
-    #tabelaRelatorio td:nth-child(3),
-    #tabelaHistorico td:nth-child(3),
-    #tabelaRelatorioEl thead th:nth-child(3) {
+    /* Ocultar mais colunas secundárias. No Relatório fica o essencial —
+       emissão, NOTA, litros, total e ações; antes o número da nota era
+       justamente o que sumia. */
+    #tabelaRelatorio > tr.linha-nota > td:nth-child(2),
+    #tabelaRelatorio > tr.linha-nota > td:nth-child(5),
+    #tabelaRelatorioEl thead th:nth-child(2),
+    #tabelaRelatorioEl thead th:nth-child(5),
+    #tabelaHistorico td:nth-child(3) {
         display: none;
     }
 
@@ -2276,7 +2283,27 @@ button.confirmado-local::after {
 .rel-totais > span.rel-totais-nota { font-size: 0.8rem; }
 .rel-totais strong { color: var(--text); }
 .rel-totais em { font-style: normal; opacity: 0.75; }
-.rel-fronteira { font-size: 0.78rem; margin: calc(-1 * var(--space-1)) 0 var(--space-2); }
+/* Etiquetas abaixo dos totais do Relatório; a explicação abre no clique. */
+.rel-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; margin: 0 0 var(--space-3); }
+.rel-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    font-size: 0.74rem; color: var(--text-muted); background: var(--surface-alt); border: 1px solid var(--border-light);
+    white-space: nowrap;
+}
+.rel-chip--aviso { color: var(--warning); background: var(--warning-light); border-color: transparent; }
+.rel-chip-detalhe { position: relative; display: inline-block; }
+.rel-chip-detalhe > summary { cursor: pointer; list-style: none; }
+.rel-chip-detalhe > summary::-webkit-details-marker { display: none; }
+.rel-chip-detalhe > summary::after { content: "ⓘ"; font-size: 0.8rem; opacity: 0.7; }
+.rel-chip-detalhe[open] > summary { color: var(--text); border-color: var(--border-strong); }
+.rel-chip-detalhe > p {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+    width: max-content; max-width: min(440px, 82vw); margin: 0; padding: var(--space-3) var(--space-4);
+    font-size: 0.8rem; line-height: 1.5; color: var(--text-muted); white-space: normal;
+    background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+}
+.rel-chip-detalhe > p strong { color: var(--text); }
 .rel-cards { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .rel-card {
     flex: 1; min-width: 160px; padding: 10px 14px;
@@ -2291,6 +2318,15 @@ button.confirmado-local::after {
 .rel-card-valor { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 700; color: var(--text); }
 .rel-card-linha { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
 .rel-card-linha--fraca { font-size: 0.72rem; color: var(--text-light); }
+/* No celular, dois combustíveis por linha: um por linha fazia o resumo ter
+   quase duas telas de altura. A lista de motoristas ocupa a linha toda. */
+@media (max-width: 480px) {
+    .rel-cards { display: grid; grid-template-columns: 1fr 1fr; }
+    .rel-card { min-width: 0; padding: 8px 10px; }
+    .rel-card--lista { grid-column: 1 / -1; }
+    .rel-card-valor { font-size: 0.82rem; white-space: nowrap; }
+    .rel-card-nome { max-width: none; }
+}
 .rel-card-item { display: flex; justify-content: space-between; align-items: center; }
 .rel-card-item + .rel-card-item { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border-light); }
 .rel-card-nome { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
@@ -2570,16 +2606,15 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 #tabelaRelatorioEl > thead th { padding: 11px 10px; }
 #tabelaRelatorio > tr.linha-nota > td { padding: 8px 10px; white-space: nowrap; }
 #tabelaRelatorioEl .celula-texto { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-#tabelaRelatorio > tr > td:nth-child(4) { max-width: 115px; }   /* base */
-#tabelaRelatorio > tr > td:nth-child(5) { max-width: 175px; }   /* empresa */
-#tabelaRelatorio > tr > td:nth-child(6) { max-width: 130px; }   /* motorista */
+#tabelaRelatorio > tr > td:nth-child(4) { max-width: 130px; }   /* base */
+#tabelaRelatorio > tr > td:nth-child(5) { max-width: 170px; }   /* motorista */
 #tabelaRelatorioEl .celula-data,
 #tabelaRelatorioEl .celula-placa { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); }
 #tabelaRelatorioEl .celula-nota { font-weight: 600; }
 #tabelaRelatorioEl .celula-num { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; text-align: right; }
 #tabelaRelatorioEl .celula-dinheiro { font-weight: 600; }
-#tabelaRelatorioEl thead th:nth-child(8),
-#tabelaRelatorioEl thead th:nth-child(9) { text-align: right; }
+#tabelaRelatorioEl thead th:nth-child(7),
+#tabelaRelatorioEl thead th:nth-child(8) { text-align: right; }
 #tabelaRelatorioEl tr.linha-nota { cursor: pointer; }
 .celula-acoes { text-align: right; }
 .celula-acoes .btn-icone + .btn-icone { margin-left: 2px; }
