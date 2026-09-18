@@ -102,7 +102,7 @@ async function firestoreSalvar(dados) {
  * @param {function(Object): void} callback - Chamado com os dados do documento
  *   a cada alteração detectada pelo Firestore
  * @param {function(Error): void} [onErro] - Chamado em caso de erro do listener.
- *   Se omitido, loga no console. Em `app.js`, o handler relga automaticamente
+ *   Se omitido, loga no console. Em `sincronizacao.js`, o handler religa automaticamente
  *   após 2s em caso de `permission-denied` transitório pós-login.
  * @returns {function} Função de unsubscribe — chame para cancelar o listener
  */

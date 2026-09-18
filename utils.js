@@ -826,5 +826,5 @@ function ignorarAlerta(chave) {
 // irParaLancamento — função canônica definida em ui.js.
 // (removida daqui para evitar conflito de versões — a última declaração no HTML vencia)
 
-// ========== TOAST (referência; implementação em app.js) ==========
-// A função mostrarToast está em app.js para evitar duplicação.
+// ========== TOAST (referência; implementação em navegacao.js) ==========
+// A função mostrarToast está em navegacao.js para evitar duplicação.

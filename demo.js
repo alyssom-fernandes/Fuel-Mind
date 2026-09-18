@@ -6,7 +6,7 @@
 
   REGRA INEGOCIÁVEL DESTE MÓDULO
   Em modo demo o Firestore NUNCA é acessado. A trava
-  vive em `salvarDB` e `carregarDB` (app.js), que
+  vive em `salvarDB` e `carregarDB` (sincronizacao.js), que
   consultam `demoAtivo()` antes de qualquer chamada de
   rede. Os dados vivem só no localStorage, sob uma
   chave própria, e são regenerados a cada dia.

@@ -4,11 +4,11 @@
  *  nenhuma tela respondia: como as empresas do grupo se comparam entre si.
  *
  *  Por que é barata: os lançamentos de TODAS as empresas permitidas já
- *  estão em memória — há um listener do Firestore por empresa (`app.js`).
+ *  estão em memória — há um listener do Firestore por empresa (`sincronizacao.js`).
  *  Não há leitura nova, custo de nuvem nem plano pago; é agregar o que já
  *  está carregado.
  *
- *  Por que é SÓ LEITURA: o topo do `app.js` registra a decisão "empresa
+ *  Por que é SÓ LEITURA: o topo do `sessao.js` (antes, do `app.js`) registra a decisão "empresa
  *  sempre filtrada — sem opção Todas", e as travas de escrita dependem
  *  dela (`lancamentos.js`, `validacao.js`). Esta tela não muda
  *  `empresaFiltroGlobal` e não oferece nenhuma ação de gravar: ela lê o

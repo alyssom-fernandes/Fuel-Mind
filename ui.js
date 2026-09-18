@@ -86,7 +86,7 @@ atualizarRelogio();
 
 /*─────────────────────────────────────────────────
   HOOK DE NAVEGAÇÃO
-  Chamado por app.js ao final de mostrarTela
+  Chamado por navegacao.js ao final de mostrarTela
 ─────────────────────────────────────────────────*/
 window._uiNavHook = function(telaId) {
     // Redireciona cadastros individuais para a tela unificada
@@ -110,7 +110,7 @@ window._uiNavHook = function(telaId) {
     }
 };
 
-/* atualizarFiltroEmpresaGlobal está em app.js */
+/* atualizarFiltroEmpresaGlobal está em sessao.js */
 
 /* ========== ABAS DOS CADASTROS UNIFICADOS ========== */
 function trocarAbaCadastro(aba, btnEl) {
@@ -569,7 +569,7 @@ function fecharAtalhos() {
     if (overlay) overlay.style.display = "none";
 }
 
-// Fecha com Escape (integrado ao handler global do app.js)
+// Fecha com Escape (integrado ao handler global do navegacao.js)
 document.addEventListener("keydown", function(e) {
     if (e.key === "Escape") {
         const m = document.getElementById("atalhosModal");
@@ -780,7 +780,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Único registro do Ctrl+K no projeto — havia um segundo, inline no fim do
-    // index.html, junto de um Escape que o app.js já tratava.
+    // index.html, junto de um Escape que o navegacao.js já trata.
     // `toLowerCase` porque `e.key` vem 'K' com Caps Lock ou Shift.
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && (e.key || '').toLowerCase() === 'k') {

@@ -939,7 +939,16 @@
 <!-- SCRIPTS -->
 <script type="module" src="firebase.js"></script>
 <script src="utils.js"></script>
-<script src="app.js"></script>
+<!-- O antigo app.js, em arquivos por responsabilidade (18/09/2026).
+     Dividem o mesmo escopo global; a ordem importa só para o que roda na
+     carga: erros primeiro, para registrar falha dos seguintes. -->
+<script src="erros.js"></script>
+<script src="sessao.js"></script>
+<script src="dados.js"></script>
+<script src="sincronizacao.js"></script>
+<script src="tema.js"></script>
+<script src="navegacao.js"></script>
+<script src="backup.js"></script>
 <script src="cadastros.js"></script>
 <script src="numerico.js"></script>
 <script src="combobox.js"></script>

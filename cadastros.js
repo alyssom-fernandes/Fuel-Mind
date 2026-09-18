@@ -335,7 +335,7 @@ function confirmarEdicao() {
         // Toca TODOS os lançamentos, inclusive os excluídos e os
         // cancelados, e isto é de propósito: renomear é reescrever uma
         // referência, não somar. Pular uma lápide a deixaria com o nome
-        // antigo da empresa — e aí `_empresaIdDoLancamento` (app.js) não a
+        // antigo da empresa — e aí `_empresaIdDoLancamento` (dados.js) não a
         // resolve mais, `_montarPayloads` a descarta em silêncio e ela
         // some da nuvem no próximo salvamento. Filtrar aqui não esconde a
         // lápide, destrói a lápide.

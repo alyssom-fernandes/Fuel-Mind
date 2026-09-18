@@ -300,7 +300,7 @@ function calcularPerdaBadge(nomeCombustivel, qtd, qtdDescargada) {
    - o combobox de motorista, placa e base, quando há item destacado
      (`combobox.js`): lá o Enter escolhe o item;
    - o modal de busca global (`ui.js`);
-   - o Enter global do login e da seleção de empresa (`app.js`).
+   - o Enter global do login e da seleção de empresa (`sessao.js`).
    Por isso o handler aqui ignora o evento que já foi tratado, sai fora
    quando a lista do combobox está aberta, e nunca salva sozinho: salvar
    continua sendo Ctrl+Enter ou Ctrl+S, decisão do dono. */
