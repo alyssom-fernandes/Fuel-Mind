@@ -489,7 +489,7 @@ function adicionarCombustivelNota(dadosIniciais = null) {
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.valor, 4))}"
                oninput="atualizarTotalizadorNota(); marcarFormularioSujo();">
         <div class="badge-wrapper"></div>
-        <button class="btn-excluir" onclick="this.parentElement.remove(); atualizarTotalizadorNota(); marcarFormularioSujo(); if (typeof validarLancamento === 'function') validarLancamento();">Remover</button>`;
+        <button class="btn-icone btn-icone--excluir" title="Tirar este combustível da nota" aria-label="Tirar este combustível da nota" onclick="this.parentElement.remove(); atualizarTotalizadorNota(); marcarFormularioSujo(); if (typeof validarLancamento === 'function') validarLancamento();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>`;
     container.appendChild(div);
     // A linha nasce depois da carga da página, então precisa ser preparada
     // aqui: é o que aplica teclado decimal, formatação e bloqueio da roda.

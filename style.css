@@ -547,19 +547,22 @@ body {
 .zona-perigo { border-color: var(--danger); background: var(--danger-light); }
 
 .info-sistema { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+/* Cartão de número pequeno (Sistema, Conferência): rótulo em cima, número
+   embaixo, como os cartões das outras telas — `column-reverse` porque no
+   HTML o número vem antes. O número não quebra linha ("L" sozinho). */
 .info-card {
+    display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 6px;
     background: var(--surface-alt); border: 1px solid var(--border-light);
-    border-radius: var(--radius-md); padding: 16px 14px; text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: var(--radius-md); padding: 14px 16px; text-align: left; min-width: 0;
 }
-.info-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 .info-card-valor {
-    font-family: 'Syne', sans-serif; font-size: 1.7rem; font-weight: 700;
-    color: var(--text); line-height: 1.2; letter-spacing: -0.03em;
+    font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700;
+    color: var(--text); line-height: 1.2; letter-spacing: -0.02em; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
 }
 .info-card-label {
-    font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.09em;
-    color: var(--text-light); margin-top: 4px; font-weight: 700;
+    font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); font-weight: 700;
 }
 
 /* ══ FORMULÁRIOS ════════════════════════════ */
@@ -825,16 +828,19 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .linha-detalhe-frete td { background: var(--surface-alt) !important; font-size: 0.8rem; }
 
 /* ══ TOAST ═══════════════════════════════════ */
-.toast { position: relative; display: flex; align-items: center; gap: 11px; padding: 13px 20px; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 600; box-shadow: var(--shadow-md); z-index: 9999; opacity: 0; transform: translateY(16px) scale(0.96); transition: opacity 0.25s ease, transform 0.25s ease; max-width: 380px; pointer-events: none; }
+.toast { position: relative; display: flex; align-items: center; gap: 11px; padding: 13px 20px; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 500; line-height: 1.4; box-shadow: var(--shadow-md); z-index: 9999; opacity: 0; transform: translateY(16px) scale(0.96); transition: opacity 0.25s ease, transform 0.25s ease; max-width: 380px; pointer-events: none; }
 .toast-visivel { opacity: 1; transform: translateY(0) scale(1); }
 .toast-icone { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
-.toast-sucesso { background: var(--surface); color: var(--success); border: 1px solid var(--success); }
+/* Texto na cor normal; o tipo fica na borda, na faixa da esquerda e no
+   ícone. A frase inteira em azul ou laranja lia mal, principalmente no tema
+   escuro (18/09/2026). */
+.toast-sucesso { background: var(--surface-raised); color: var(--text); border: 1px solid var(--success); border-left-width: 4px; }
 .toast-sucesso .toast-icone { background: var(--success); color: #fff; }
-.toast-erro    { background: var(--surface); color: var(--danger); border: 1px solid var(--danger); }
+.toast-erro    { background: var(--surface-raised); color: var(--text); border: 1px solid var(--danger); border-left-width: 4px; }
 .toast-erro    .toast-icone { background: var(--danger); color: #fff; }
-.toast-aviso   { background: var(--surface); color: var(--warning); border: 1px solid var(--warning); }
+.toast-aviso   { background: var(--surface-raised); color: var(--text); border: 1px solid var(--warning); border-left-width: 4px; }
 .toast-aviso   .toast-icone { background: var(--warning); color: #fff; }
-.toast-info    { background: var(--surface); color: var(--info); border: 1px solid var(--info); }
+.toast-info    { background: var(--surface-raised); color: var(--text); border: 1px solid var(--info); border-left-width: 4px; }
 .toast-info    .toast-icone { background: var(--info); color: #fff; }
 
 /* ══ TOTALIZADOR ════════════════════════════ */
@@ -1912,9 +1918,17 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
    exceção. Escondido, ele sai do grid e a linha fica com uma coluna a
    menos — daí os dois modelos de colunas. */
 .celula-descarga { display: none; }
-.linha-combustivel { grid-template-columns: 2fr 1fr 1fr auto auto; }
-.linha-combustivel.mostra-descarga { grid-template-columns: 2fr 1fr 1fr 1fr auto auto; }
+.linha-combustivel { grid-template-columns: 2fr 1fr 1fr auto; }
+.linha-combustivel.mostra-descarga { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
 .linha-combustivel.mostra-descarga .celula-descarga { display: block; }
+/* Perda e referência de preço numa faixa embaixo dos campos, na largura
+   toda: numa coluna estreita ao lado elas viravam três linhas espremidas
+   (18/09/2026). Sem aviso, a faixa não ocupa espaço. */
+.linha-combustivel > .badge-wrapper { order: 10; grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.linha-combustivel > .badge-wrapper:empty { display: none; }
+@media (max-width: 640px) { .linha-combustivel > .btn-icone { justify-self: end; } }
+.linha-combustivel > .badge-wrapper .ref-preco,
+.linha-combustivel > .badge-wrapper .aviso-preco { max-width: none; }
 
 .titulo-com-opcao {
     display: flex; align-items: center; justify-content: space-between;
@@ -2355,7 +2369,7 @@ button.confirmado-local::after {
 /* Sublinhas de frete: mais baixas que a linha do grupo, números alinhados
    com os dela, bolinha na cor do combustível. */
 .tabela-fretes tr.linha-detalhe-frete td { padding-top: 5px; padding-bottom: 5px; font-size: 0.78rem; }
-.tabela-numeros tr.linha-detalhe-frete td.celula-num { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; }
+.tabela-numeros.tabela-fretes tr.linha-detalhe-frete td.celula-num { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; }
 .tabela-fretes tr.linha-detalhe-frete td.celula-recuada { padding-left: 28px; }
 .frete-sub-cor { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
 .frete-sub-placa { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: var(--text); }
@@ -2463,9 +2477,25 @@ button.confirmado-local::after {
 .conf-filtros { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-4); }
 .campo-180 { min-width: 180px; }
 .valor-fixo {
-    padding: 6px 10px; border: 1px solid var(--primary); border-radius: var(--radius-sm);
-    background: var(--primary-light); color: var(--primary); font-size: 0.85rem; font-weight: 600;
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface-alt); color: var(--text); font-size: 0.875rem; font-weight: 600;
 }
+/* Passos numerados de uma tela que começa vazia (Conferências). */
+.passos-lista { margin: var(--space-3) 0 0; padding: 0; list-style: none; counter-reset: passo; display: grid; gap: var(--space-2); }
+.passos-lista li,
+.passos-lista li:first-child {
+    counter-increment: passo; display: block; position: relative; min-height: 26px;
+    padding: 2px 0 0 38px; border: 0; font-size: 0.875rem; color: var(--text-muted); line-height: 1.5;
+}
+.passos-lista li:hover { background: none; }
+.passos-lista li::before {
+    position: absolute; left: 0; top: 0;
+    content: counter(passo); width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary-subtle3); color: var(--primary-mid); font-weight: 700; font-size: 0.8rem;
+}
+.passos-lista strong { color: var(--text); }
+.tabela-notas-dia td.celula-num, .tabela-notas-dia th.celula-num { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
 .conf-origem { font-size: 0.75rem; color: var(--text-muted); margin: -6px 0 14px; }
 .conf-resumo { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
 .info-card--perigo { border-left: 3px solid var(--danger); }
@@ -2738,6 +2768,12 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     background: transparent; border-radius: var(--radius-md);
 }
 .importar-xml-icone { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; }
+/* Nota ainda sem combustível: diz o que fazer, em vez de um painel vazio. */
+#combustiveisNota:empty::before {
+    content: "Nenhum combustível ainda. Adicione o primeiro abaixo, ou importe o XML da nota lá em cima.";
+    display: block; margin-bottom: var(--space-3); padding: var(--space-3) var(--space-4);
+    border: 1px dashed var(--border); border-radius: var(--radius); color: var(--text-muted); font-size: 0.85rem;
+}
 .importar-xml-texto { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
 .importar-xml-bloco .importar-xml-label { display: inline; margin: 0; font-size: 0.74rem; }
 .importar-xml-dica { font-size: 0.78rem; color: var(--text-muted); }
@@ -2974,12 +3010,14 @@ input[type="file"]::file-selector-button:hover { background: var(--surface-hover
 
 /* Tabela de números: a primeira coluna é o nome; da segunda em diante
    (ou da terceira, com --3), número à direita em fonte de número. */
-.tabela-numeros th:nth-child(n+2), .tabela-numeros td:nth-child(n+2) { text-align: right; }
-.tabela-numeros td:nth-child(n+2) { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; white-space: nowrap; }
-.tabela-numeros.tabela-numeros--3 th:nth-child(2), .tabela-numeros.tabela-numeros--3 td:nth-child(2) {
+/* Só as células da própria tabela (`>`): uma tabela dentro dela — as notas
+   do dia na Conferência — tem colunas de texto e herdava o alinhamento. */
+.tabela-numeros > * > tr > th:nth-child(n+2), .tabela-numeros > * > tr > td:nth-child(n+2) { text-align: right; }
+.tabela-numeros > * > tr > td:nth-child(n+2) { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; white-space: nowrap; }
+.tabela-numeros.tabela-numeros--3 > * > tr > th:nth-child(2), .tabela-numeros.tabela-numeros--3 > * > tr > td:nth-child(2) {
     text-align: left; font-family: inherit;
 }
-.tabela-numeros td[colspan] { text-align: left; }
+.tabela-numeros > * > tr > td[colspan] { text-align: left; font-family: inherit; white-space: normal; }
 .filtros .filtros-rodape-grade { grid-column: 1 / -1; margin-top: 0; }
 .filtros { padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); }
 

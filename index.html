@@ -269,7 +269,7 @@
   </section>
   <section class="lanc-painel">
   <h3 class="titulo-com-opcao lanc-painel-titulo">
-    Combustíveis desta Nota
+    Combustíveis desta nota
     <!-- A quantidade descarregada quase sempre é igual à carregada, e o
          sistema já trata "não informada" como igual. O campo fica fora do
          caminho e só aparece quando houve diferença de verdade. -->
@@ -279,7 +279,7 @@
     </label>
   </h3>
   <div id="combustiveisNota"></div>
-  <button class="btn-secundario" onclick="adicionarCombustivelNota()">Adicionar Combustível</button>
+  <button class="btn-secundario" onclick="adicionarCombustivelNota()">+ Adicionar combustível</button>
   <div id="totalizadorNota" class="totalizador-nota" style="display:none"></div>
   </section>
 
@@ -563,16 +563,17 @@
   <div id="_confSub-autosystem" class="_conf-sub-conteudo">
     <div class="sistema-secao">
       <h3>Conferência das notas com o AutoSystem</h3>
-      <p class="dica">
-        Importe o relatório de <strong>Medição de Tanque por Período</strong> do AutoSystem
-        (.xlsx, .xls ou .csv). O sistema compara as <strong>entradas</strong> com os lançamentos
-        do sistema.
-      </p>
-      <div class="mt-4">
-        <label>Selecionar relatório AutoSystem</label>
-        <input type="file" accept=".xlsx,.xls,.csv" class="input-arquivo"
+      <!-- Os três passos à vista: antes, a tela era um campo de arquivo solto
+           e uma frase (18/09/2026). -->
+      <ol class="passos-lista">
+        <li><strong>No AutoSystem</strong>, gere a <strong>Medição de Tanque por Período</strong> de um combustível e salve em .xlsx, .xls ou .csv.</li>
+        <li><strong>Escolha o arquivo</strong> aqui embaixo. O combustível é reconhecido pelo cabeçalho do relatório; se não for, escolha na lista.</li>
+        <li><strong>Confira os dias</strong>: as entradas do tanque contra as notas lançadas, dia a dia pela data da descarga. Clique num dia para ver as notas dele.</li>
+      </ol>
+      <div class="campo mt-4">
+        <label for="confArquivoAutosystem">Relatório do AutoSystem</label>
+        <input type="file" id="confArquivoAutosystem" accept=".xlsx,.xls,.csv" class="input-arquivo"
                onchange="autosystemLerArquivo(this)">
-        <p class="dica mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
       </div>
       <div id="_confAutoResultado" class="mt-5"></div>
     </div>

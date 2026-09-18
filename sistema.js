@@ -1207,11 +1207,11 @@ function _autosystemAtualizarTabela() {
     const resumo = `
         <div class="conf-resumo">
             <div class="info-card"><div class="info-card-valor">${fmtL3(totalAutoEntradas)}</div><div class="info-card-label">Entradas AutoSystem</div></div>
-            <div class="info-card"><div class="info-card-valor">${fmtL3(totalSistemaEntradas)}</div><div class="info-card-label">Entradas Sistema</div></div>
+            <div class="info-card"><div class="info-card-valor">${fmtL3(totalSistemaEntradas)}</div><div class="info-card-label">Entradas no sistema</div></div>
             <div class="info-card ${Math.abs(diffTotal)>1 ? 'info-card--perigo' : 'info-card--ok'}">
                 <div class="info-card-valor">
                     ${diffTotal>0?'+':''}${fmtL3(diffTotal)}
-                </div><div class="info-card-label">Diferença Entradas</div>
+                </div><div class="info-card-label">Diferença</div>
             </div>
             <div class="info-card ${diasComDivergencia>0 ? 'info-card--aviso' : 'info-card--ok'}">
                 <div class="info-card-valor">
@@ -1230,8 +1230,8 @@ function _autosystemAtualizarTabela() {
                 ? `<strong class="texto-perigo">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
                 : `<strong class="texto-ok">Total do período confere.</strong>`}
         </p>
-        <div class="tabela-container"><table>
-            <thead><tr><th>Data</th><th>Entrada AutoSystem (L)</th><th>Entrada Sistema (L)</th><th>Diferença (L)</th></tr></thead>
+        <div class="tabela-container"><table class="tabela-numeros">
+            <thead><tr><th>Data</th><th>Entrada AutoSystem</th><th>Entrada no sistema</th><th>Diferença</th></tr></thead>
             <tbody>
                 ${linhasEntrada.map(l => `
                 <tr class="${l.sistemaVal > 0 ? 'linha-clicavel' : ''} ${l.temDiv ? 'linha-divergente' : (l.entrada===0 && l.sistemaVal===0 ? 'linha-apagada' : '')}"
@@ -1245,7 +1245,7 @@ function _autosystemAtualizarTabela() {
                     }</td>
                 </tr>`).join('')}
                 <tr class="linha-total">
-                    <td>TOTAL</td><td>${fmtL3(totalAutoEntradas)}</td><td>${fmtL3(totalSistemaEntradas)}</td>
+                    <td>Total</td><td>${fmtL3(totalAutoEntradas)}</td><td>${fmtL3(totalSistemaEntradas)}</td>
                     <td class="${Math.abs(diffTotal)>1 ? 'texto-perigo' : 'texto-ok'}">${diffTotal>0?'+':''}${fmtL3(diffTotal)}</td>
                 </tr>
             </tbody>
@@ -1276,17 +1276,17 @@ function _autoAlternarNotasDoDia(tr, data, comb) {
             <td>${escapeHtml(l.numeroNota || "—")}</td>
             <td>${escapeHtml(l.placa || "—")}</td>
             <td>${escapeHtml(l.motorista || "—")}</td>
-            <td>${fmtL3(carga)}</td>
-            <td>${fmtL3(desc)}${desc !== carga ? "" : ' <small class="rotulo-suave">(= carga)</small>'}</td>
-            <td><button class="btn-secundario" onclick="event.stopPropagation(); editarLancamento('${escapeJsAttr(l.id)}')">Abrir</button></td>
+            <td class="celula-num">${fmtL3(carga)}</td>
+            <td class="celula-num">${fmtL3(desc)}${desc !== carga ? "" : ' <small class="rotulo-suave">(= carga)</small>'}</td>
+            <td class="celula-acoes"><button class="btn-icone" title="Abrir a nota para corrigir" aria-label="Abrir a nota ${escapeHtml(l.numeroNota || '')}" onclick="event.stopPropagation(); editarLancamento('${escapeJsAttr(l.id)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></td>
         </tr>`;
     }).join("");
     const nova = document.createElement("tr");
     nova.className = "linha-notas-dia";
     nova.innerHTML = `<td colspan="4" class="celula-notas-dia">
         <div class="notas-dia-titulo">${notas.length} nota(s) de ${escapeHtml(comb)} descarregada(s) em ${formatarData(data)}</div>
-        <table class="largura-total"><thead><tr><th>Nota</th>
-<th>Placa</th><th>Motorista</th><th>Carga (L)</th><th>Descarga (L)</th><th></th></tr></thead>
+        <table class="largura-total tabela-notas-dia"><thead><tr><th>Nota</th>
+<th>Placa</th><th>Motorista</th><th class="celula-num">Carga</th><th class="celula-num">Descarga</th><th></th></tr></thead>
         <tbody>${linhas || '<tr><td colspan="6">Nenhuma nota.</td></tr>'}</tbody></table>
     </td>`;
     tr.after(nova);
