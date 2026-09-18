@@ -1300,7 +1300,9 @@ function _autosystemAtualizarTabela() {
     container.innerHTML = `
         ${resumo}
         <p class="dica" style="margin-bottom:10px">
-            Comparação entre as entradas registradas no AutoSystem e os lançamentos do sistema, dia a dia pela <strong>data da descarga</strong>.
+            Confere as <strong>notas lançadas</strong> contra o que o AutoSystem mediu, dia a dia pela <strong>data da descarga</strong> e com os <strong>litros descarregados</strong>.
+            Nota faltando ou lançada duas vezes aparece aqui — e nota a mais é frete pago a mais. O frete, esse, é calculado sobre a <strong>carga</strong> da nota.
+            Clique num dia para ver as notas que o formam.
             ${Math.abs(diffTotal)>1
                 ? `<strong style="color:var(--danger)">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
                 : `<strong style="color:var(--success)">Total do período confere.</strong>`}
@@ -1309,8 +1311,9 @@ function _autosystemAtualizarTabela() {
             <thead><tr><th>Data</th><th>Entrada AutoSystem (L)</th><th>Entrada Sistema (L)</th><th>Diferença (L)</th></tr></thead>
             <tbody>
                 ${linhasEntrada.map(l => `
-                <tr style="${l.temDiv?'background:rgba(239,68,68,0.06)':l.entrada===0&&l.sistemaVal===0?'opacity:0.5':''}">
-                    <td><strong>${formatarData(l.data)}</strong>${l.soNoSistema ? ' <small style="color:var(--warning)">só no sistema</small>' : ''}</td>
+                <tr class="${l.sistemaVal > 0 ? 'linha-clicavel' : ''}" style="${l.temDiv?'background:rgba(239,68,68,0.06)':l.entrada===0&&l.sistemaVal===0?'opacity:0.5':''}"
+                    ${l.sistemaVal > 0 ? `onclick="_autoAlternarNotasDoDia(this, '${escapeJsAttr(l.data)}', '${escapeJsAttr(comb)}')" title="Ver as notas deste dia"` : ''}>
+                    <td><strong>${formatarData(l.data)}</strong>${l.soNoSistema ? ' <small style="color:var(--warning)">só no sistema</small>' : ''}${l.temDiv && l.sistemaVal > 0 ? ' <small style="color:var(--text-muted)">▸ notas</small>' : ''}</td>
                     <td>${l.entrada>0?fmtL3(l.entrada):'—'}</td>
                     <td>${l.sistemaVal>0?fmtL3(l.sistemaVal):'—'}</td>
                     <td>${l.temDiv
@@ -1328,6 +1331,41 @@ function _autosystemAtualizarTabela() {
             <span class="exportacao-titulo">Exportar:</span>
             <button class="btn-export btn-xlsx" onclick="_autoExportarExcel('${escapeJsAttr(comb)}')">Excel</button>
         </div>`;
+}
+
+/* ── AS NOTAS DO DIA DIVERGENTE (18/09/2026) ───────────────────────
+   A tela dizia "12/03: 340 L de diferença" e parava aí: quem conferia não
+   sabia qual das notas do dia estava errada. Agora o dia abre a lista das
+   notas que o formam, com placa, motorista, carga e descarga — o
+   candidato a erro de digitação costuma saltar aos olhos. Nada é
+   gravado: continua sendo conferência, não controle de estoque. */
+function _autoAlternarNotasDoDia(tr, data, comb) {
+    const prox = tr.nextElementSibling;
+    if (prox && prox.classList.contains("linha-notas-dia")) { prox.remove(); return; }
+    const empresa = empresaFiltroGlobal || "";
+    const notas = db.lancamentos.filter(l => lancamentoAtivo(l) && l.empresa === empresa
+        && dataDescargaDe(l) === data && (l.itens || []).some(i => i.tipo === comb));
+    const linhas = notas.map(l => {
+        const itens = l.itens.filter(i => i.tipo === comb);
+        const carga = itens.reduce((s2, i) => s2 + (Number(i.qtd) || 0), 0);
+        const desc  = itens.reduce((s2, i) => s2 + _litrosItem(i), 0);
+        return `<tr>
+            <td>${escapeHtml(l.numeroNota || "—")}</td>
+            <td>${escapeHtml(l.placa || "—")}</td>
+            <td>${escapeHtml(l.motorista || "—")}</td>
+            <td>${fmtL3(carga)}</td>
+            <td>${fmtL3(desc)}${desc !== carga ? "" : ' <small style="color:var(--text-muted)">(= carga)</small>'}</td>
+            <td><button class="btn-secundario" onclick="event.stopPropagation(); editarLancamento('${escapeJsAttr(l.id)}')">Abrir</button></td>
+        </tr>`;
+    }).join("");
+    const nova = document.createElement("tr");
+    nova.className = "linha-notas-dia";
+    nova.innerHTML = `<td colspan="4" style="padding:8px 12px;background:var(--surface-alt)">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">${notas.length} nota(s) de ${escapeHtml(comb)} descarregada(s) em ${formatarData(data)}</div>
+        <table style="width:100%"><thead><tr><th>Nota</th><th>Placa</th><th>Motorista</th><th>Carga (L)</th><th>Descarga (L)</th><th></th></tr></thead>
+        <tbody>${linhas || '<tr><td colspan="6">Nenhuma nota.</td></tr>'}</tbody></table>
+    </td>`;
+    tr.after(nova);
 }
 
 function _autoExportarExcel(comb) {
