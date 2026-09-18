@@ -229,7 +229,7 @@ function carregarDashboard() {
             ${htmlVariacao(compra.gasto, compraAntK.gasto, rotAnt, true)}
         </div>
         <div class="kpi-card roxo kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
-            <div class="kpi-valor">${fmtRL(compra.custo)}</div>
+            <div class="kpi-valor">${compra.litros > 0 ? fmtRL(compra.custo) : '—'}</div>
             <div class="kpi-label">Preço Médio de Compra / L</div>
             <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)} faturados</div>
             ${htmlVariacao(compra.custo, compraAntK.custo, rotAnt, true)}
@@ -238,7 +238,7 @@ function carregarDashboard() {
         <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
             <div class="kpi-valor">${fmtR(frete.total)}</div>
             <div class="kpi-label">Frete do Período</div>
-            <div class="kpi-base">pela data da descarga · ${fmtRL(frete.porLitro)}/L</div>
+            <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtRL(frete.porLitro)}/L` : ''}</div>
             ${htmlVariacao(frete.total, freteAnt.total, rotAnt, true)}
             ${frete.semTaxa ? `<div class="kpi-base kpi-base--alerta">${frete.semTaxa} nota(s) sem taxa</div>` : ''}
         </div>
@@ -260,22 +260,22 @@ function carregarDashboard() {
         .slice(0, 5);
 
     document.getElementById("ultimasEntradasBody").innerHTML = ultimas.length === 0
-        ? `<tr><td colspan="10" class="td-vazio">Nenhum lançamento ainda.</td></tr>`
+        ? `<tr><td colspan="9" class="td-vazio">Nenhuma nota descarregada ainda. As notas lançadas aparecem aqui.</td></tr>`
         : ultimas.map(l => {
             const totalLitros = (l.itens || []).reduce((s, i) => s + _litrosItem(i), 0);
             return `
-            <tr>
+            <tr class="linha-clicavel" data-id="${escapeHtml(l.id)}" onclick="_verDetalheDashboard(this.dataset.id)" title="Abrir o detalhe da nota">
                 <td>${formatarData(l.dataNota)}</td>
                 <td>${formatarData(l.dataDescarga)}</td>
                 <td>${escapeHtml(l.numeroNota)}</td>
                 <td>${escapeHtml(l.base) || '—'}</td>
-                <td>${escapeHtml(l.empresa) || '—'}</td>
                 <td>${escapeHtml(l.motorista) || '—'}</td>
                 <td>${escapeHtml(l.placa) || '—'}</td>
-                <td class="celula-num">${totalLitros.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}</td>
-                <td>${fmtR(l.total)}</td>
-                <td class="no-print">
-                    <button class="btn-secundario" data-id="${l.id}" onclick="_verDetalheDashboard(this.dataset.id)">Ver</button>
+                <td class="celula-num">${fmtL(totalLitros)}</td>
+                <td class="celula-num">${fmtR(l.total)}</td>
+                <td class="no-print celula-acoes">
+                    <button class="btn-icone" aria-label="Abrir o detalhe da nota ${escapeHtml(l.numeroNota)}" title="Abrir o detalhe"
+                        onclick="event.stopPropagation(); _verDetalheDashboard(this.closest('tr').dataset.id)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></button>
                 </td>
             </tr>`;
         }).join('');
@@ -588,7 +588,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
         const sinal = vp > 0 ? '▲' : '▼';
         const cls   = vp > 0 ? 'danger' : 'success';
         const ref   = `${formatarData(anterior.inicio).slice(0, 5)} a ${formatarData(anterior.fim).slice(0, 5)}`;
-        variacaoHTML = `<span class="variacao-mini variacao-mini--${cls}" title="Preço médio de compra das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtRL(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
+        variacaoHTML = `<span class="kpi-variacao-chip kpi-variacao-chip--${cls}" title="Preço médio de compra das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtRL(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
     }
 
     const lancsComb = lancDescarga
@@ -598,49 +598,51 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
 
     const tabelaHTML = lancsComb.length === 0 ? '' : `
         <div class="tabela-container mt-3">
-            <table><thead><tr>
+            <table class="tabela-ultimas"><thead><tr>
                 <th>Descarga</th><th>Nota</th><th>Motorista</th>
-                <th>Qtd (L)</th><th>R$/L</th><th>Total</th>
+                <th class="celula-num">Litros</th><th class="celula-num">R$/L</th><th class="celula-num">Total</th>
             </tr></thead><tbody>
             ${lancsComb.map(l => {
                 const item = l.itens.find(i => i.tipo === nomeComb);
-                return `<tr>
+                const qtd = Number(item.qtd) || 0;
+                return `<tr class="linha-clicavel" data-id="${escapeHtml(l.id)}" onclick="_verDetalheDashboard(this.dataset.id)" title="Abrir o detalhe da nota">
                     <td>${formatarData(dataDescargaDe(l))}</td>
                     <td>${escapeHtml(l.numeroNota)}</td>
                     <td>${escapeHtml(l.motorista) || '—'}</td>
-                    <td>${fmtL3(item.qtd)}</td>
-                    <td>${fmtRL(item.valor)}</td>
-                    <td>${fmtR(item.total ?? item.qtd * item.valor)}</td>
+                    <td class="celula-num">${fmtL(qtd, Number.isInteger(qtd) ? 0 : 3)}</td>
+                    <td class="celula-num">${fmtRL(item.valor)}</td>
+                    <td class="celula-num">${fmtR(item.total ?? item.qtd * item.valor)}</td>
                 </tr>`;
             }).join('')}
             </tbody></table>
         </div>`;
 
     return `
+        <!-- Rótulo em cima e número grande embaixo, como os cartões do topo
+             da tela (18/09/2026: aqui o rótulo vinha embaixo, em outro desenho). -->
         <div class="dash-comb-kpis">
             <div class="dash-comb-kpi">
-                <div class="dash-comb-kpi-val">${r.notasDescarga}</div>
                 <div class="dash-comb-kpi-label">Notas descarregadas</div>
+                <div class="dash-comb-kpi-val">${r.notasDescarga}</div>
             </div>
             <div class="dash-comb-kpi verde">
-                <div class="dash-comb-kpi-val">${fmtL(r.litros)}</div>
                 <div class="dash-comb-kpi-label">Litros descarregados</div>
+                <div class="dash-comb-kpi-val">${fmtL(r.litros)}</div>
             </div>
             <div class="dash-comb-kpi laranja">
+                <div class="dash-comb-kpi-label">Gasto <span class="dash-comb-kpi-base">· pela emissão</span></div>
                 <div class="dash-comb-kpi-val">${fmtR(r.compra.gasto)}</div>
-                <div class="dash-comb-kpi-label">Gasto · pela emissão</div>
             </div>
             <div class="dash-comb-kpi roxo" title="${escapeHtml(explicacaoPrecoCompra(r.compra.metricas))}">
+                <div class="dash-comb-kpi-label">Preço médio / L <span class="dash-comb-kpi-base">· faturado, pela emissão</span></div>
                 <div class="dash-comb-kpi-val">${fmtRL(r.compra.custo)}</div>
-                <div class="dash-comb-kpi-label">Preço médio/L · faturado, pela emissão ${variacaoHTML}</div>
-                ${r.compra.custoRecebido > 0 ? `<div class="dash-comb-kpi-label dash-comb-kpi-label--nota">${escapeHtml(textoCustoRecebido(r.compra.metricas))}</div>` : ''}
+                ${variacaoHTML}
+                ${r.compra.custoRecebido > 0 ? `<div class="dash-comb-kpi-nota">${escapeHtml(textoCustoRecebido(r.compra.metricas))}</div>` : ''}
             </div>
         </div>
-        ${lancsComb.length ? `<div class="mt-1">
-            <span class="dica dica--pequena">
-                Últimas descargas de <strong>${escapeHtml(nomeComb)}</strong> no período
-            </span>
-        </div>` : ''}
+        ${lancsComb.length ? `<p class="dica dica--pequena dica--legenda mt-4">
+            Últimas descargas de <strong>${escapeHtml(nomeComb)}</strong> no período
+        </p>` : ''}
         ${tabelaHTML}`;
 }
 
@@ -704,17 +706,18 @@ function renderComparativoMeses() {
 
     container.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--comparativo"><canvas id="graficoComparativoDash"></canvas></div>
+        <p class="dica dica--pequena dica--legenda">* ${nomeMes(mesAtual)} vai só até hoje: a queda no fim da linha é o mês em andamento.</p>
         <p class="dica dica--pequena dica--legenda">Litros descarregados — pela <strong>data da descarga</strong></p>
         <div class="tabela-container mb-5">
             <table class="tabela-numeros">
-                <thead><tr><th>Mês</th>${combHeaders}<th>Total Litros</th></tr></thead>
+                <thead><tr><th>Mês</th>${combHeaders}<th>Total</th></tr></thead>
                 <tbody>${linhasDescarga}</tbody>
             </table>
         </div>
         <p class="dica dica--pequena dica--legenda">Compras — pela <strong>data de emissão</strong>, com os litros <strong>faturados</strong> na nota</p>
         <div class="tabela-container">
             <table class="tabela-numeros">
-                <thead><tr><th>Mês</th><th>Notas</th><th>Litros Faturados</th><th>Total Gasto</th><th>Preço Médio/L</th></tr></thead>
+                <thead><tr><th>Mês</th><th>Notas</th><th>Litros faturados</th><th>Gasto</th><th>Preço médio/L</th></tr></thead>
                 <tbody>${linhasCompra}</tbody>
             </table>
         </div>`;
@@ -725,7 +728,7 @@ function renderComparativoMeses() {
         window._chartComparativoDash = new Chart(document.getElementById("graficoComparativoDash").getContext("2d"), {
             type: "line",
             data: {
-                labels: meses.map(nomeMes),
+                labels: meses.map(m => m === mesAtual ? nomeMes(m) + "*" : nomeMes(m)),
                 datasets: [
                     { label: "Litros descarregados", data: serieLitros, yAxisID: "yL",
                       borderColor: cores.success, backgroundColor: "transparent", tension: 0.25, pointRadius: 3 },
@@ -737,12 +740,14 @@ function renderComparativoMeses() {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: "index", intersect: false },
                 plugins: {
-                    legend: { labels: { color: cores.text } },
+                    // Legenda com o traço da própria linha (cheia e tracejada),
+                    // não com um quadrado que não existe no gráfico.
+                    legend: { labels: { color: cores.text, usePointStyle: true, pointStyle: "line", boxWidth: 28, padding: 18 } },
                     tooltip: { callbacks: { label: ctx => ctx.dataset.yAxisID === "yR"
                         ? `${ctx.dataset.label}: ${fmtR(ctx.raw)}` : `${ctx.dataset.label}: ${fmtL(ctx.raw)}` } }
                 },
                 scales: {
-                    x:  { ticks: { color: cores.text }, grid: { color: cores.grid } },
+                    x:  { ticks: { color: cores.text, maxRotation: 0, autoSkip: true }, grid: { color: cores.grid } },
                     yL: { position: "left",  ticks: { color: cores.text, callback: v => fmtEixoL(v) }, grid: { color: cores.grid } },
                     yR: { position: "right", ticks: { color: cores.text, callback: v => fmtEixoR(v) }, grid: { display: false } }
                 }
@@ -780,20 +785,37 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
         const aviso = document.createElement("div");
         aviso.id = "graficoPizzaDashboard";
         aviso.className = "mt-7";
-        aviso.innerHTML = `<h3>Distribuição de Gastos no Período <small class="titulo-nota">· pela data de emissão</small></h3>
+        aviso.innerHTML = `<h3>Gasto por combustível <small class="titulo-nota">· no período, pela data de emissão</small></h3>
             <p class="grafico-vazio">Nenhuma compra emitida neste período.</p>`;
         const compar = document.getElementById("dashComparativoContainer");
         if (compar) compar.insertAdjacentElement("afterend", aviso);
         return;
     }
 
+    // Anel e, ao lado, cada combustível com o valor e a fatia do total. A
+    // pizza solta num cartão estreito deixava meia tela vazia e só dava o
+    // valor passando o mouse (18/09/2026).
+    const totalGasto = dados.reduce((s, d) => s + d.valor, 0);
+    dados.sort((a, b) => b.valor - a.valor);
+    const pct = v => (totalGasto > 0 ? v / totalGasto * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
     const pizzaContainer = document.createElement('div');
     pizzaContainer.id = 'graficoPizzaDashboard';
     pizzaContainer.className = 'mt-7';
     pizzaContainer.innerHTML = `
-        <h3>Distribuição de Gastos no Período <small class="titulo-nota">· pela data de emissão</small></h3>
-        <div class="grafico-wrapper grafico-wrapper--pizza">
-            <canvas id="canvasPizzaDash" height="220"></canvas>
+        <h3>Gasto por combustível <small class="titulo-nota">· no período, pela data de emissão</small></h3>
+        <div class="distribuicao-cartao">
+            <div class="distribuicao-grafico">
+                <canvas id="canvasPizzaDash"></canvas>
+                <div class="distribuicao-centro"><span>Total</span><strong>${fmtR(totalGasto)}</strong></div>
+            </div>
+            <ul class="distribuicao-lista">
+                ${dados.map(d => `<li>
+                    <span class="distribuicao-cor" style="background:${corDoCombustivel(d.nome)}"></span>
+                    <span class="distribuicao-nome">${escapeHtml(d.nome)}</span>
+                    <span class="distribuicao-valor">${fmtR(d.valor)}</span>
+                    <span class="distribuicao-pct">${pct(d.valor)}</span>
+                </li>`).join('')}
+            </ul>
         </div>`;
 
     const comparativo = document.getElementById("dashComparativoContainer");
@@ -808,23 +830,25 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
     const backgroundColors = dados.map(d => corDoCombustivel(d.nome));
 
     window._dashPizzaChart = new Chart(ctx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
             labels: dados.map(d => d.nome),
             datasets: [{
                 data: dados.map(d => d.valor),
                 backgroundColor: backgroundColors,
-                borderWidth: 0
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || 'transparent',
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '68%',
             plugins: {
-                legend: { position: 'bottom', labels: { color: colors.text, padding: 16 } },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: (ctx) => `${ctx.label}: ${fmtR(ctx.raw)}`
+                        label: (ctx) => `${ctx.label}: ${fmtR(ctx.raw)} (${pct(ctx.raw)})`
                     }
                 }
             }

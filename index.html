@@ -195,16 +195,18 @@
 <div id="dashboard" class="tela">
   <h2 id="tituloDashboard">Visão Geral</h2>
   <div id="kpiDashboard" class="kpi-container"></div>
-  <h3>Alertas Rápidos</h3>
+  <h3>Alertas rápidos</h3>
   <div id="alertasDashboard" class="alertas-container"></div>
-  <h3 class="mt-7">Por Combustível — no Período</h3>
+  <h3 class="mt-7">Por combustível <small class="titulo-nota">· no período</small></h3>
   <div id="dashCombustiveisContainer" class="dash-combs-wrapper"></div>
-  <h3 class="mt-7">Comparativo Mês a Mês — Últimos 6 Meses</h3>
+  <h3 class="mt-7">Mês a mês <small class="titulo-nota">· últimos 6 meses</small></h3>
   <div id="dashComparativoContainer"></div>
-  <h3 class="mt-7">Últimas Entradas</h3>
+  <h3 class="mt-7">Últimas entradas <small class="titulo-nota">· pela data da descarga</small></h3>
+  <!-- Sem a coluna Empresa: é sempre a empresa ativa. A linha abre o
+       detalhe, como no Relatório. -->
   <div class="tabela-container">
-    <table>
-      <thead><tr><th>Data Nota</th><th>Data Desc.</th><th>Nota</th><th>Base</th><th>Empresa</th><th>Motorista</th><th>Placa</th><th>Litros (L)</th><th>Total (R$)</th><th class="no-print">Ações</th></tr></thead>
+    <table class="tabela-ultimas">
+      <thead><tr><th>Emissão</th><th>Descarga</th><th>Nota</th><th>Base</th><th>Motorista</th><th>Placa</th><th class="celula-num">Litros</th><th class="celula-num">Total</th><th class="no-print"><span class="sr-only">Abrir</span></th></tr></thead>
       <tbody id="ultimasEntradasBody"></tbody>
     </table>
   </div>
