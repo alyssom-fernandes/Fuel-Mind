@@ -2444,3 +2444,49 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .td-vazio.td-vazio--ensina { padding: 26px 14px; }
 .td-vazio-titulo { display: block; color: var(--text); font-size: 0.95rem; margin-bottom: var(--space-1); }
 .acoes-celula .btn-secundario { font-size: 0.75rem; padding: 4px 10px; }   /* do tamanho dos vizinhos da linha */
+
+/* ══ REDESENHO VISÍVEL — 18/09/2026 ══════════════════════════════════
+   Depois de tirar o inline (3.2/3.3), o desenho em si, tela por tela. */
+
+/* Relatório: uma nota por linha */
+#tabelaRelatorioEl th { padding: 11px 10px; }
+#tabelaRelatorioEl td { padding: 8px 10px; white-space: nowrap; }
+#tabelaRelatorioEl .celula-texto { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+#tabelaRelatorio td:nth-child(4) { max-width: 115px; }   /* base */
+#tabelaRelatorio td:nth-child(5) { max-width: 175px; }   /* empresa */
+#tabelaRelatorio td:nth-child(6) { max-width: 130px; }   /* motorista */
+#tabelaRelatorioEl .celula-data,
+#tabelaRelatorioEl .celula-placa { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); }
+#tabelaRelatorioEl .celula-nota { font-weight: 600; }
+#tabelaRelatorioEl .celula-num { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; text-align: right; }
+#tabelaRelatorioEl .celula-dinheiro { font-weight: 600; }
+#tabelaRelatorioEl thead th:nth-child(8),
+#tabelaRelatorioEl thead th:nth-child(9) { text-align: right; }
+#tabelaRelatorioEl tr.linha-nota { cursor: pointer; }
+.celula-acoes { text-align: right; }
+.celula-acoes .btn-icone + .btn-icone { margin-left: 2px; }
+
+/* Botão de ícone: 30 px, fundo só no hover, cor pela ação */
+.btn-icone {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; vertical-align: middle;
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    background: transparent; color: var(--text-muted); cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.btn-icone svg { width: 16px; height: 16px; }
+.btn-icone:hover, .btn-icone:focus-visible { background: var(--surface-hover); color: var(--text); border-color: var(--border); }
+.btn-icone--editar:hover  { color: var(--success); }
+.btn-icone--clonar:hover  { color: var(--info); }
+.btn-icone--excluir:hover { color: var(--danger); background: var(--danger-light); border-color: var(--danger); }
+.btn-ver-inline svg { transition: transform var(--duration-base) var(--ease-standard); }
+.btn-ver-inline.btn-ver-ativo { color: var(--primary); border-color: var(--primary); }
+.btn-ver-inline.btn-ver-ativo svg { transform: rotate(180deg); }
+
+/* Relatório: totais em destaque */
+.rel-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.rel-kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rel-kpi-rotulo { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.rel-kpi-valor { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.2; white-space: nowrap; }
+.rel-kpi-nota { font-size: 0.74rem; color: var(--text-muted); }
+#resumoRelatorio { padding: var(--space-4) var(--space-5); }

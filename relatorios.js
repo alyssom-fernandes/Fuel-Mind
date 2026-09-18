@@ -373,27 +373,31 @@ function _aplicarFiltroRelatorio() {
 
         resumo.style.display = "block";
         resumo.innerHTML = `
-            <div class="rel-totais">
-                <span>
-                    <strong>${dadosRelatorioValidos.length}</strong> lançamento(s)
-                </span>
-                ${foraDaConta > 0 ? `<span class="rel-totais-nota">
-                    · ${foraDaConta} na tela fora dos totais
-                </span>` : ''}
-                <span>
-                    Total: <strong>${fmtR(totalGeral)}</strong>
-                </span>
-                <span>
-                    Litros: <strong>${fmtL3(totalLitros)}</strong>
-                </span>
-                ${precoMedio > 0 ? `<span title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
-                    Preço médio de compra: <strong>${fmtR4(precoMedio)}/L</strong>
-                    <em>· sobre ${fmtL3(mPreco.litrosNota)} faturados</em>
-                </span>` : ''}
-                ${mPreco.custoRecebido > 0 ? `<span class="rel-totais-nota" title="Valor das notas com descarga informada ÷ litros medidos.">
-                    ${escapeHtml(textoCustoRecebido(mPreco))}
-                </span>` : ''}
+            <!-- Os totais em destaque: rótulo pequeno em cima, número grande
+                 embaixo (18/09/2026). Antes eram uma linha de texto miúdo. -->
+            <div class="rel-kpis">
+                <div class="rel-kpi">
+                    <span class="rel-kpi-rotulo">Lançamentos</span>
+                    <strong class="rel-kpi-valor">${dadosRelatorioValidos.length}</strong>
+                    ${foraDaConta > 0 ? `<span class="rel-kpi-nota">+ ${foraDaConta} na tela fora dos totais</span>` : ''}
+                </div>
+                <div class="rel-kpi">
+                    <span class="rel-kpi-rotulo">Total</span>
+                    <strong class="rel-kpi-valor">${fmtR(totalGeral)}</strong>
+                </div>
+                <div class="rel-kpi">
+                    <span class="rel-kpi-rotulo">Litros</span>
+                    <strong class="rel-kpi-valor">${fmtL3(totalLitros)}</strong>
+                </div>
+                ${precoMedio > 0 ? `<div class="rel-kpi" title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
+                    <span class="rel-kpi-rotulo">Preço médio de compra</span>
+                    <strong class="rel-kpi-valor">${fmtR4(precoMedio)}/L</strong>
+                    <span class="rel-kpi-nota">sobre ${fmtL3(mPreco.litrosNota)} faturados</span>
+                </div>` : ''}
             </div>
+            ${mPreco.custoRecebido > 0 ? `<div class="rel-fronteira" title="Valor das notas com descarga informada ÷ litros medidos.">
+                ${escapeHtml(textoCustoRecebido(mPreco))}
+            </div>` : ''}
             ${_textoFronteiraRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora)}
             <div class="rel-cards">
                 ${cardsComb}
@@ -492,32 +496,45 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
         const morto  = !lancamentoAtivo(l);
         const rotulo = l.estado === 'cancelado' ? 'cancelada' : 'excluída';
 
+        // Uma nota por linha (18/09/2026). Antes a coluna de ações empilhava
+        // quatro botões e cada linha tinha quase 100 px: cabiam cinco notas
+        // na tela. Agora as ações são ícones lado a lado, texto longo é
+        // cortado com reticências (o nome inteiro fica no `title`) e clicar
+        // em qualquer ponto da linha abre o detalhe.
+        const celTexto = v => v
+            ? `<td class="celula-texto" title="${escapeHtml(v)}">${escapeHtml(v)}</td>`
+            : '<td class="celula-texto">—</td>';
+        const idJs  = escapeJsAttr(l.id);
+        const ctxJs = escapeJsAttr(contexto);
         const linhaLanc = `
-        <tr data-id="${escapeHtml(l.id)}" class="${estaAberto ? 'linha-com-detalhe-aberto' : ''}${morto ? ' linha-inativo' : ''}">
-            <td>${formatarData(l.dataNota)}</td>
-            <td>${formatarData(l.dataDescarga)}</td>
-            <td>${escapeHtml(l.numeroNota)}${morto
+        <tr data-id="${escapeHtml(l.id)}" class="linha-nota${estaAberto ? ' linha-com-detalhe-aberto' : ''}${morto ? ' linha-inativo' : ''}"
+            onclick="if (!event.target.closest('button')) toggleDetalheInline('${idJs}', '${ctxJs}')">
+            <td class="celula-data">${formatarData(l.dataNota)}</td>
+            <td class="celula-data">${formatarData(l.dataDescarga)}</td>
+            <td class="celula-nota">${escapeHtml(l.numeroNota)}${morto
                 ? ` <span class="badge-inativo-user">${rotulo}</span>` : ''}</td>
-            <td>${escapeHtml(l.base) || '—'}</td>
-            <td>${escapeHtml(l.empresa) || '—'}</td>
-            <td>${escapeHtml(l.motorista) || '—'}</td>
-            <td>${escapeHtml(l.placa) || '—'}</td>
+            ${celTexto(l.base)}
+            ${celTexto(l.empresa)}
+            ${celTexto(l.motorista)}
+            <td class="celula-placa">${escapeHtml(l.placa) || '—'}</td>
             <td class="celula-num">${fmtL(totalLitros)}</td>
-            <td>${fmtR(l.total)}</td>
-            <td class="no-print">
+            <td class="celula-num celula-dinheiro">${fmtR(l.total).replace(/^R\$\s*/, '')}</td>
+            <td class="no-print celula-acoes">
                 ${morto ? '' : `
-                <button class="btn-editar"    onclick="editarLancamento('${escapeJsAttr(l.id)}')">Editar</button>
-                <button class="btn-clonar"    onclick="clonarLancamento('${escapeJsAttr(l.id)}')">Clonar</button>`}
+                <button class="btn-icone btn-icone--editar" title="Editar" aria-label="Editar a nota ${escapeHtml(l.numeroNota)}"
+                        onclick="editarLancamento('${idJs}')">${_ICONE.editar}</button>
+                <button class="btn-icone btn-icone--clonar" title="Clonar" aria-label="Clonar a nota ${escapeHtml(l.numeroNota)}"
+                        onclick="clonarLancamento('${idJs}')">${_ICONE.clonar}</button>`}
                 ${l.estado === 'excluido'
-                    ? `<button class="btn-editar" title="Devolver este lançamento aos relatórios"
-                            onclick="restaurarLancamento('${escapeJsAttr(l.id)}', '${escapeJsAttr(contexto)}')">Restaurar</button>`
+                    ? `<button class="btn-icone btn-icone--editar" title="Restaurar: devolve este lançamento aos relatórios" aria-label="Restaurar a nota ${escapeHtml(l.numeroNota)}"
+                            onclick="restaurarLancamento('${idJs}', '${ctxJs}')">${_ICONE.restaurar}</button>`
                     : l.estado === 'cancelado'
                         ? ''
-                        : `<button class="btn-excluir" onclick="excluirLancamento('${escapeJsAttr(l.id)}', '${escapeJsAttr(contexto)}')">Excluir</button>`}
-                <button class="btn-secundario btn-ver-inline ${estaAberto ? 'btn-ver-ativo' : ''}"
-                        onclick="toggleDetalheInline('${l.id}', '${contexto}')">
-                    ${estaAberto ? '▲ Fechar' : '▼ Ver'}
-                </button>
+                        : `<button class="btn-icone btn-icone--excluir" title="Excluir" aria-label="Excluir a nota ${escapeHtml(l.numeroNota)}"
+                            onclick="excluirLancamento('${idJs}', '${ctxJs}')">${_ICONE.excluir}</button>`}
+                <button class="btn-icone btn-ver-inline${estaAberto ? ' btn-ver-ativo' : ''}" title="${estaAberto ? 'Fechar o detalhe' : 'Ver o detalhe'}"
+                        aria-expanded="${estaAberto}" aria-label="${estaAberto ? 'Fechar' : 'Ver'} o detalhe da nota ${escapeHtml(l.numeroNota)}"
+                        onclick="toggleDetalheInline('${idJs}', '${ctxJs}')">${_ICONE.abrir}</button>
             </td>
         </tr>`;
 
@@ -539,6 +556,15 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
 /*=================================================
   DETALHE INLINE
 =================================================*/
+/* Ícones das ações da tabela: traço de 2 px, 24x24, os mesmos da barra lateral. */
+const _ICONE = {
+    editar:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    clonar:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    excluir:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+    restaurar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+    abrir:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+};
+
 function toggleDetalheInline(id, contexto) {
     const jaAberto = _detalheInlineAberto.id === id && _detalheInlineAberto.contexto === contexto;
     _detalheInlineAberto = jaAberto ? { contexto: null, id: null } : { contexto, id };
