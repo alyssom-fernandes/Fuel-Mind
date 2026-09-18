@@ -179,16 +179,16 @@ async function carregarUsuarios() {
         // senha — a senha temporária manda fazer isso aqui.
         const u = window._usuarioAtual || {};
         container.innerHTML =
-            `<div class="card" style="padding:24px;max-width:520px;">
-                <h3 style="margin:0 0 6px">Meu perfil</h3>
-                <p style="margin:0 0 4px"><strong>${escapeHtml(u.nome || '')}</strong></p>
-                <p class="dica" style="margin:0 0 4px">${escapeHtml(u.email || '')}${u.username ? ` · @${escapeHtml(u.username)}` : ''}</p>
-                <p class="dica" style="margin:0 0 16px">Nível: ${escapeHtml(_rotuloPapel(u.role))} · Empresas: ${escapeHtml(_nomesDasEmpresasDoPerfil(u).join(', ') || '—')}</p>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
+            `<div class="card card--perfil">
+                <h3 class="mt-0 mb-2">Meu perfil</h3>
+                <p class="mb-1"><strong>${escapeHtml(u.nome || '')}</strong></p>
+                <p class="dica mb-1">${escapeHtml(u.email || '')}${u.username ? ` · @${escapeHtml(u.username)}` : ''}</p>
+                <p class="dica mb-4">Nível: ${escapeHtml(_rotuloPapel(u.role))} · Empresas: ${escapeHtml(_nomesDasEmpresasDoPerfil(u).join(', ') || '—')}</p>
+                <div class="linha-acoes linha-acoes--apertada">
                     <button class="btn-editar" onclick="abrirModalEditarProprioPerfil()">Editar perfil</button>
                     <button class="btn-secundario" onclick="abrirModalAlterarSenha()">Alterar senha</button>
                 </div>
-                <p class="dica" style="margin-top:16px">A lista de usuários é de administradores.</p>
+                <p class="dica mt-4">A lista de usuários é de administradores.</p>
              </div>`;
         return;
     }
@@ -225,9 +225,9 @@ async function _recarregarListaUsuarios() {
     } catch (e) {
         console.error("[Usuarios] Erro:", e);
         container.innerHTML = `
-            <div style="padding:20px;background:var(--surface-alt);border-radius:var(--radius);border:1px solid var(--border);">
-                <p style="color:var(--danger);margin-bottom:8px;">Erro ao carregar usuários:</p>
-                <code style="font-size:0.82rem;color:var(--text-muted);">${escapeHtml(e.message)}</code>
+            <div class="caixa-erro-carga">
+                <p class="texto-perigo mb-2">Erro ao carregar usuários:</p>
+                <code class="codigo-pequeno rotulo-suave">${escapeHtml(e.message)}</code>
                 <br><br>
                 <button class="btn-secundario" onclick="_recarregarListaUsuarios()">Tentar novamente</button>
             </div>`;
@@ -244,10 +244,10 @@ function _renderUsuarios() {
         const isSelf     = u.uid === window._usuarioAtual?.uid;
         const nomesEmp   = _nomesDasEmpresasDoPerfil(u);
         const empresasStr = u.role === "supremo"
-            ? "<em style='color:var(--text-muted)'>Todas</em>"
+            ? "<em class='rotulo-suave'>Todas</em>"
             : (nomesEmp.length
                 ? nomesEmp.map(e => `<span class="badge-empresa-tag">${escapeHtml(e)}</span>`).join(" ")
-                : "<em style='color:var(--text-muted)'>Nenhuma</em>");
+                : "<em class='rotulo-suave'>Nenhuma</em>");
 
         const ultimoAcesso = u.ultimoAcesso
             ? new Date(u.ultimoAcesso).toLocaleString("pt-BR")
@@ -268,7 +268,7 @@ function _renderUsuarios() {
             ? `<button class="btn-editar" onclick="abrirModalEditarProprioPerfil()">Editar perfil</button>
                <button class="btn-secundario" onclick="abrirModalAlterarSenha()">Alterar senha</button>`
             : alvoBloqueado
-            ? `<span style="font-size:0.78rem;color:var(--text-muted);font-style:italic">Sem permissão</span>`
+            ? `<span class="celula-fraca celula-fraca--italico">Sem permissão</span>`
             : `<button class="btn-editar" onclick="abrirModalEditarUsuario('${escapeJsAttr(u.uid)}')">Editar</button>
                ${u.ativo !== false
                    ? `<button class="btn-inativar" onclick="toggleAtivoUsuario('${escapeJsAttr(u.uid)}')">Inativar</button>`
@@ -279,18 +279,18 @@ function _renderUsuarios() {
                    : ""}`;
 
         return `<tr class="${u.ativo === false ? 'linha-inativo' : ''}">
-            <td><strong>${escapeHtml(u.nome)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(u.email)}</small>${u.username ? `<br><small style="color:var(--primary);opacity:0.8">@${escapeHtml(u.username)}</small>` : ''}</td>
+            <td><strong>${escapeHtml(u.nome)}</strong><br><small class="rotulo-suave">${escapeHtml(u.email)}</small>${u.username ? `<br><small class="usuario-arroba">@${escapeHtml(u.username)}</small>` : ''}</td>
             <td>${badges}</td>
             <td>${empresasStr}</td>
-            <td style="font-size:0.78rem;color:var(--text-muted)">${escapeHtml(ultimoAcesso)}</td>
-            <td class="no-print"><div style="display:flex;gap:6px;flex-wrap:wrap">${acoes}</div></td>
+            <td class="celula-fraca">${escapeHtml(ultimoAcesso)}</td>
+            <td class="no-print"><div class="acoes-celula">${acoes}</div></td>
         </tr>`;
     }).join("");
 
     const semIndice = _usuariosCache.filter(u => u.username).length;
 
     container.innerHTML = `
-        <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;">
+        <div class="usuarios-topo">
             ${supremoAtual && semIndice > 0
                 ? `<button class="btn-secundario" onclick="migrarIndiceUsernames()"
                        title="Regrava o índice público que permite login por @usuario">
@@ -320,29 +320,27 @@ function abrirModalEditarProprioPerfil() {
 
     const overlay = document.getElementById("usuarioModalOverlay");
     overlay.innerHTML = `
-    <div class="modal" style="max-width:420px;">
+    <div class="modal modal--medio">
         <div class="modal-header"><h3>Editar Meu Perfil</h3></div>
-        <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="modal-corpo modal-corpo--pilha">
             <div class="campo">
                 <label for="perfilNomeInput">Nome completo *</label>
                 <input type="text" id="perfilNomeInput" value="${escapeHtml(u.nome || '')}" placeholder="Seu nome completo">
             </div>
             <div class="campo">
-                <label>Usuário <span style="font-weight:400;opacity:0.65;font-size:0.78rem">(opcional — para login sem e-mail)</span></label>
-                <div style="position:relative">
-                    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">@</span>
+                <label>Usuário <span class="rotulo-nota">(opcional — para login sem e-mail)</span></label>
+                <div class="campo-arroba">
+                    <span class="campo-arroba-sinal">@</span>
                     <input type="text" id="perfilUsernameInput" value="${escapeHtml(u.username || '')}"
                         placeholder="seunome"
-                        style="padding-left:24px"
                         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
                 </div>
-                <p class="dica" style="margin-top:4px">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
+                <p class="dica mt-1">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
             </div>
             <div class="campo">
                 <label>E-mail</label>
-                <input type="text" value="${escapeHtml(u.email || '')}" disabled
-                    style="opacity:0.6;cursor:not-allowed;">
-                <p class="dica" style="margin-top:4px">E-mail não pode ser alterado.</p>
+                <input type="text" value="${escapeHtml(u.email || '')}" disabled>
+                <p class="dica mt-1">E-mail não pode ser alterado.</p>
             </div>
         </div>
         <div class="modal-acoes">
@@ -430,30 +428,23 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
     const empresasCheck = todasEmpresas.map(emp => {
         const marcada = nomesDoAlvo.includes(emp);
         const inativa = db.empresas.find(e => e.nome === emp)?.ativo === false;
-        const borderC = marcada ? 'var(--primary)' : 'var(--border)';
-        const bgC     = marcada ? 'var(--primary-subtle)' : 'var(--surface-alt)';
-        const dotBg   = marcada ? 'var(--primary)' : 'transparent';
+        // Marcada ou não é só a classe; a cor é do CSS (18/09/2026).
         return `<button type="button"
             class="btn-empresa-toggle${marcada ? ' selecionada' : ''}"
-            data-empresa="${escapeHtml(emp)}"
-            onclick="_toggleEmpresaBtn(this)"
-            style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;
-                   padding:8px 12px;margin-bottom:6px;border-radius:var(--radius-sm);
-                   border:1px solid ${borderC};background:${bgC};
-                   color:var(--text);cursor:pointer;transition:all 0.15s;font-size:0.88rem;">
-            <span class="emp-toggle-dot" style="width:14px;height:14px;flex-shrink:0;border-radius:50%;
-                border:2px solid ${borderC};background:${dotBg};transition:all 0.15s;"></span>
-            ${escapeHtml(emp)}${inativa ? ' <small style="opacity:0.7">(inativa)</small>' : ''}
+            data-empresa="${escapeHtml(emp)}" aria-pressed="${marcada}"
+            onclick="_toggleEmpresaBtn(this)">
+            <span class="emp-toggle-dot"></span>
+            ${escapeHtml(emp)}${inativa ? ' <small class="texto-fraco">(inativa)</small>' : ''}
         </button>`;
     }).join("");
 
     const overlay = document.getElementById("usuarioModalOverlay");
     overlay.innerHTML = `
-    <div class="modal" style="max-width:500px;">
+    <div class="modal modal--500">
         <div class="modal-header">
             <h3>${isNovo ? "Novo Usuário" : "Editar Usuário"}</h3>
         </div>
-        <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="modal-corpo modal-corpo--pilha">
             <div class="campo">
                 <label for="usuarioNomeInput">Nome completo *</label>
                 <input type="text" id="usuarioNomeInput" value="${escapeHtml(usuario?.nome || '')}" placeholder="Ex: João Silva">
@@ -461,24 +452,24 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
             <div class="campo">
                 <label for="usuarioEmailInput">E-mail *</label>
                 <input type="email" id="usuarioEmailInput" value="${escapeHtml(usuario?.email || '')}" placeholder="email@exemplo.com" ${!isNovo ? 'disabled' : ''}>
-                ${!isNovo ? '<p class="dica" style="margin-top:4px">E-mail não pode ser alterado.</p>' : ''}
+                ${!isNovo ? '<p class="dica mt-1">E-mail não pode ser alterado.</p>' : ''}
             </div>
             ${isNovo ? `
             <div class="campo">
                 <label for="usuarioSenhaInput">Senha temporária *</label>
                 <input type="text" id="usuarioSenhaInput" value="${_senhaTemporaria()}" placeholder="Mínimo 6 caracteres">
-                <p class="dica" style="margin-top:4px">Sorteada agora. Passe ao usuário por um canal
+                <p class="dica mt-1">Sorteada agora. Passe ao usuário por um canal
                 seguro e peça que troque no primeiro acesso, em Usuários &rsaquo; Alterar senha.</p>
             </div>` : ''}
             <div class="campo">
-                <label>Usuário <span style="font-weight:400;opacity:0.65;font-size:0.78rem">(opcional — para login sem e-mail)</span></label>
-                <div style="position:relative">
-                    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">@</span>
+                <label>Usuário <span class="rotulo-nota">(opcional — para login sem e-mail)</span></label>
+                <div class="campo-arroba">
+                    <span class="campo-arroba-sinal">@</span>
                     <input type="text" id="usuarioUsernameInput" value="${escapeHtml(usuario?.username || '')}"
-                        placeholder="seunome" style="padding-left:24px"
+                        placeholder="seunome"
                         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
                 </div>
-                <p class="dica" style="margin-top:4px">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
+                <p class="dica mt-1">Apenas letras minúsculas, números, ponto, traço e sublinhado.</p>
             </div>
             <div class="campo">
                 <label for="usuarioRoleSelect">Nível de acesso *</label>
@@ -488,11 +479,11 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
             </div>
             <div class="campo" id="campoEmpresasUsuario">
                 <label>Empresas com acesso</label>
-                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <div class="linha-acoes linha-acoes--apertada mb-2">
                     <button class="btn-secundario" type="button" onclick="_marcarTodasEmpresas(true)">Marcar todas</button>
                     <button class="btn-secundario" type="button" onclick="_marcarTodasEmpresas(false)">Desmarcar todas</button>
                 </div>
-                <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;">
+                <div class="caixa-empresas">
                     ${empresasCheck || '<p class="dica">Nenhuma empresa cadastrada.</p>'}
                 </div>
             </div>
@@ -517,13 +508,7 @@ function _toggleEmpresasRole() {
 
 function _toggleEmpresaBtn(btn) {
     const sel = btn.classList.toggle('selecionada');
-    const dot = btn.querySelector('.emp-toggle-dot');
-    btn.style.borderColor = sel ? 'var(--primary)' : 'var(--border)';
-    btn.style.background  = sel ? 'var(--primary-subtle)' : 'var(--surface-alt)';
-    if (dot) {
-        dot.style.background   = sel ? 'var(--primary)' : 'transparent';
-        dot.style.borderColor  = sel ? 'var(--primary)' : 'var(--border)';
-    }
+    btn.setAttribute('aria-pressed', String(sel));
 }
 
 function _marcarTodasEmpresas(marcar) {
@@ -531,15 +516,8 @@ function _marcarTodasEmpresas(marcar) {
 }
 
 function _toggleEmpresaBtnForcar(btn, marcar) {
-    const dot = btn.querySelector('.emp-toggle-dot');
-    if (marcar) btn.classList.add('selecionada');
-    else btn.classList.remove('selecionada');
-    btn.style.borderColor = marcar ? 'var(--primary)' : 'var(--border)';
-    btn.style.background  = marcar ? 'var(--primary-subtle)' : 'var(--surface-alt)';
-    if (dot) {
-        dot.style.background  = marcar ? 'var(--primary)' : 'transparent';
-        dot.style.borderColor = marcar ? 'var(--primary)' : 'var(--border)';
-    }
+    btn.classList.toggle('selecionada', !!marcar);
+    btn.setAttribute('aria-pressed', String(!!marcar));
 }
 
 function _coletarEmpresasSelecionadas() {
@@ -760,9 +738,9 @@ async function excluirUsuario(uid) {
 function abrirModalAlterarSenha() {
     const overlay = document.getElementById("usuarioModalOverlay");
     overlay.innerHTML = `
-    <div class="modal" style="max-width:400px;">
+    <div class="modal">
         <div class="modal-header"><h3>Alterar Minha Senha</h3></div>
-        <div class="modal-corpo" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="modal-corpo modal-corpo--pilha">
             <div class="campo">
                 <label for="novaSenhaInput">Nova senha *</label>
                 <input type="password" id="novaSenhaInput" placeholder="Mínimo 6 caracteres">

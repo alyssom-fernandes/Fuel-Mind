@@ -362,107 +362,67 @@ function _realizarBusca() {
         return;
     }
 
-    const secStyle = `margin-bottom:16px`;
-    const labelStyle = `font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
-                        color:var(--text-muted);margin-bottom:6px;display:block;padding:0 2px`;
-    const itemStyle = `display:flex;align-items:center;justify-content:space-between;gap:8px;
-                       padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;
-                       border:1px solid var(--border-light);background:var(--surface-alt);
-                       margin-bottom:5px;transition:background 0.12s`;
+    // Seções e itens por classe (18/09/2026): o hover é do CSS, e não mais
+    // de `onmouseenter` trocando o fundo à mão.
+    const secao = (titulo, itens) => `<div class="busca-secao">
+            <span class="busca-secao-titulo">${titulo}</span>
+            ${itens}
+        </div>`;
+    const itemSimples = (onclick, texto, acao) => `
+                <div class="busca-item" onclick="${onclick}">
+                    <span class="busca-item-texto">${texto}</span>
+                    <span class="busca-item-acao">${acao}</span>
+                </div>`;
 
     let html = '';
 
     // Comandos primeiro: quem digita "fretes" quer ir para Fretes.
     if (comandos.length) {
-        html += `<div style="${secStyle}">
-            <span style="${labelStyle}">Comandos</span>
-            ${comandos.map(c => `
-                <div style="${itemStyle}"
-                    onmouseenter="this.style.background='var(--surface-raised)'"
-                    onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="fecharBuscaGlobal(); ${escapeHtml(c.acao)};">
-                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(c.rotulo)}</span>
-                    <span style="font-size:0.72rem;color:var(--primary)">Enter ↵</span>
-                </div>`).join('')}
-        </div>`;
+        html += secao('Comandos', comandos.map(c =>
+            itemSimples(`fecharBuscaGlobal(); ${escapeHtml(c.acao)};`, escapeHtml(c.rotulo), 'Enter ↵')).join(''));
     }
 
     // Lançamentos
     if (lancamentos.length) {
-        html += `<div style="${secStyle}">
-            <span style="${labelStyle}">Lançamentos (${lancamentos.length})</span>
-            ${lancamentos.map(l => {
+        html += secao(`Lançamentos (${lancamentos.length})`, lancamentos.map(l => {
                 const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
                 const tipos  = [...new Set(l.itens.map(i => i.tipo).filter(Boolean))].join(', ');
-                return `<div style="${itemStyle}"
-                    onmouseenter="this.style.background='var(--surface-raised)'"
-                    onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="irParaLancamento('${l.id}'); fecharBuscaGlobal();">
-                    <div style="min-width:0">
-                        <div style="font-weight:600;font-size:0.85rem;color:var(--text)">
+                return `<div class="busca-item" onclick="irParaLancamento('${l.id}'); fecharBuscaGlobal();">
+                    <div class="busca-item-corpo">
+                        <div class="busca-item-titulo">
                             Nota ${escapeHtml(l.numeroNota) || '—'}
-                            <span style="font-weight:400;color:var(--text-muted);font-size:0.78rem;margin-left:6px">${formatarData(l.dataNota)}</span>
-                            ${lancamentoAtivo(l) ? '' : `<span class="badge-inativo-user" style="margin-left:6px">${l.estado === 'cancelado' ? 'cancelada' : 'excluída'}</span>`}
+                            <span class="busca-item-data">${formatarData(l.dataNota)}</span>
+                            ${lancamentoAtivo(l) ? '' : `<span class="badge-inativo-user busca-item-marca">${l.estado === 'cancelado' ? 'cancelada' : 'excluída'}</span>`}
                         </div>
-                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;
-                             white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        <div class="busca-item-linha">
                             ${[l.motorista, l.placa, l.empresa].filter(Boolean).map(escapeHtml).join(' · ')}
-                            ${tipos ? `<span style="margin-left:6px;color:var(--primary);font-size:0.7rem">${escapeHtml(tipos)}</span>` : ''}
+                            ${tipos ? `<span class="busca-item-tipos">${escapeHtml(tipos)}</span>` : ''}
                         </div>
                     </div>
-                    <div style="text-align:right;flex-shrink:0">
-                        <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
-                             font-weight:600;color:var(--text)">${fmtR(l.total)}</div>
-                        <div style="font-size:0.7rem;color:var(--text-muted)">${fmtL(litros, 0)}</div>
+                    <div class="busca-item-numeros">
+                        <div class="busca-item-valor">${fmtR(l.total)}</div>
+                        <div class="busca-item-litros">${fmtL(litros, 0)}</div>
                     </div>
                 </div>`;
-            }).join('')}
-        </div>`;
+            }).join(''));
     }
 
     // Motoristas
     if (motoristas.length) {
-        html += `<div style="${secStyle}">
-            <span style="${labelStyle}">Motoristas</span>
-            ${motoristas.map(m => `
-                <div style="${itemStyle}"
-                    onmouseenter="this.style.background='var(--surface-raised)'"
-                    onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="_buscaAbrirFiltrado('motorista','${escapeJsAttr(m.nome)}'); fecharBuscaGlobal();">
-                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(m.nome)}</span>
-                    <span style="font-size:0.72rem;color:var(--primary)">Ver histórico →</span>
-                </div>`).join('')}
-        </div>`;
+        html += secao('Motoristas', motoristas.map(m =>
+            itemSimples(`_buscaAbrirFiltrado('motorista','${escapeJsAttr(m.nome)}'); fecharBuscaGlobal();`, escapeHtml(m.nome), 'Ver histórico →')).join(''));
     }
 
     // Placas
     if (placas.length) {
-        html += `<div style="${secStyle}">
-            <span style="${labelStyle}">Placas / Veículos</span>
-            ${placas.map(v => `
-                <div style="${itemStyle}"
-                    onmouseenter="this.style.background='var(--surface-raised)'"
-                    onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="_buscaAbrirFiltrado('placa','${escapeJsAttr(v.nome)}'); fecharBuscaGlobal();">
-                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(v.nome)}</span>
-                    <span style="font-size:0.72rem;color:var(--primary)">Ver histórico →</span>
-                </div>`).join('')}
-        </div>`;
+        html += secao('Placas / Veículos', placas.map(v =>
+            itemSimples(`_buscaAbrirFiltrado('placa','${escapeJsAttr(v.nome)}'); fecharBuscaGlobal();`, escapeHtml(v.nome), 'Ver histórico →')).join(''));
     }
 
     // Empresas
     if (empresas.length) {
-        html += `<div style="${secStyle}">
-            <span style="${labelStyle}">Empresas</span>
-            ${empresas.map(e => `
-                <div style="${itemStyle}"
-                    onmouseenter="this.style.background='var(--surface-raised)'"
-                    onmouseleave="this.style.background='var(--surface-alt)'"
-                    onclick="_buscaAbrirFiltrado('empresa','${escapeJsAttr(e.nome)}'); fecharBuscaGlobal();">
-                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(e.nome)}</span>
-                    <span style="font-size:0.72rem;color:var(--primary)">Ver relatório →</span>
-                </div>`).join('')}
-        </div>`;
+        html += secao('Empresas', empresas.map(e =>
+            itemSimples(`_buscaAbrirFiltrado('empresa','${escapeJsAttr(e.nome)}'); fecharBuscaGlobal();`, escapeHtml(e.nome), 'Ver relatório →')).join(''));
     }
 
     resultadosDiv.innerHTML = html;
@@ -563,27 +523,18 @@ function abrirAtalhos() {
     const div = document.createElement("div");
     div.id = "atalhosModal";
     div.className = "modal-overlay";
-    div.style.cssText = "display:flex; backdrop-filter:blur(6px);";
+    div.style.display = "flex";
     div.onclick = function(e) { if (e.target === div) fecharAtalhos(); };
 
+    const tecla = t => `<kbd class="atalho-tecla">${t}</kbd>`;
     const grupos = _ATALHOS.map(g => `
-        <div style="margin-bottom:20px;">
-            <p style="font-size:0.7rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.08em;color:var(--text-muted);margin:0 0 10px;">
-                ${g.grupo}
-            </p>
+        <div class="atalhos-grupo">
+            <p class="atalhos-grupo-titulo">${g.grupo}</p>
             ${g.itens.map(item => `
-                <div style="display:flex;align-items:center;justify-content:space-between;
-                            padding:7px 0;border-bottom:1px solid var(--border-light, rgba(255,255,255,0.06));">
-                    <span style="font-size:0.88rem;color:var(--text);">${item.descricao}</span>
-                    <span style="display:flex;gap:4px;flex-shrink:0;margin-left:16px;">
-                        ${item.teclas.map(t =>
-                            `<kbd style="display:inline-block;padding:3px 7px;border-radius:5px;
-                                        background:var(--surface-alt, rgba(255,255,255,0.08));
-                                        border:1px solid var(--border);font-size:0.75rem;
-                                        font-family:monospace;color:var(--text-muted);
-                                        box-shadow:0 1px 0 var(--border);">${t}</kbd>`
-                        ).join('<span style="color:var(--text-muted);font-size:0.75rem;align-self:center;">+</span>')}
+                <div class="atalho-linha">
+                    <span class="atalho-descricao">${item.descricao}</span>
+                    <span class="atalho-teclas">
+                        ${item.teclas.map(tecla).join('<span class="atalho-mais">+</span>')}
                     </span>
                 </div>
             `).join("")}
@@ -591,29 +542,21 @@ function abrirAtalhos() {
     `).join("");
 
     div.innerHTML = `
-        <div class="modal" style="max-width:480px;width:92%;max-height:85vh;overflow-y:auto;"
-             onclick="event.stopPropagation()">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-                <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                         style="width:18px;height:18px;color:var(--primary);">
+        <div class="modal modal--rolagem modal--atalhos" onclick="event.stopPropagation()">
+            <div class="modal-cabecalho">
+                <h3 class="titulo-com-icone">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-titulo">
                         <rect x="2" y="4" width="20" height="16" rx="2"/>
                         <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
                     </svg>
                     Atalhos de Teclado
                 </h3>
-                <button onclick="fecharAtalhos()"
-                        style="background:none;border:none;cursor:pointer;
-                               color:var(--text-muted);font-size:1.2rem;padding:4px 8px;
-                               border-radius:6px;line-height:1;"
-                        title="Fechar">✕</button>
+                <button class="modal-fechar" onclick="fecharAtalhos()" title="Fechar" aria-label="Fechar">✕</button>
             </div>
             ${grupos}
-            <p style="margin-top:16px;font-size:0.78rem;color:var(--text-muted);text-align:center;">
-                Mac: substitua <kbd style="padding:2px 6px;border-radius:4px;background:var(--surface-alt);
-                border:1px solid var(--border);font-size:0.72rem;">Ctrl</kbd> por
-                <kbd style="padding:2px 6px;border-radius:4px;background:var(--surface-alt);
-                border:1px solid var(--border);font-size:0.72rem;">⌘ Cmd</kbd>
+            <p class="atalhos-rodape">
+                Mac: substitua <kbd class="atalho-tecla atalho-tecla--pequena">Ctrl</kbd> por
+                <kbd class="atalho-tecla atalho-tecla--pequena">⌘ Cmd</kbd>
             </p>
         </div>
     `;
@@ -677,19 +620,18 @@ document.addEventListener("keydown", function(e) {
 function fmConfirm({ titulo = 'Confirmar', msg = '', confirmTxt = 'Confirmar', cancelTxt = 'Cancelar', tipo = 'perigo' } = {}) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.style.cssText = 'z-index:2000';
+        // Acima de qualquer outro modal: a pergunta pode vir de dentro de um.
+        overlay.className = 'modal-overlay modal-overlay--dialogo';
 
-        const corMap = { perigo: 'var(--danger)', aviso: 'var(--warning)', info: 'var(--primary)' };
-        const cor = corMap[tipo] || corMap.perigo;
+        const tom = ['perigo', 'aviso', 'info'].includes(tipo) ? tipo : 'perigo';
 
         overlay.innerHTML = `
-            <div class="modal" style="max-width:420px">
-                <h3 style="margin-bottom:${msg ? '12px' : '20px'}">${escapeHtml(titulo)}</h3>
-                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:20px;white-space:pre-wrap">${escapeHtml(msg)}</p>` : ''}
+            <div class="modal modal--medio">
+                <h3 class="dialogo-titulo${msg ? ' dialogo-titulo--com-texto' : ''}">${escapeHtml(titulo)}</h3>
+                ${msg ? `<p class="dialogo-texto">${escapeHtml(msg)}</p>` : ''}
                 <div class="modal-acoes">
                     <button class="btn-secundario fm-cancel">${escapeHtml(cancelTxt)}</button>
-                    <button class="btn-primario fm-ok" style="background:${cor};border-color:${cor}">${escapeHtml(confirmTxt)}</button>
+                    <button class="btn-primario fm-ok btn-tom-${tom}">${escapeHtml(confirmTxt)}</button>
                 </div>
             </div>`;
 
@@ -720,26 +662,25 @@ function fmConfirm({ titulo = 'Confirmar', msg = '', confirmTxt = 'Confirmar', c
 function fmAlert({ titulo = 'Atenção', msg = '', tipo = 'info', btnTxt = 'OK' } = {}) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.style.cssText = 'z-index:2000';
+        // Acima de qualquer outro modal: a pergunta pode vir de dentro de um.
+        overlay.className = 'modal-overlay modal-overlay--dialogo';
 
         const icones = {
-            info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
-            aviso:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-            erro:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-            sucesso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>',
-            perigo:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+            info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+            aviso:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            erro:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            sucesso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>',
+            perigo:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
         };
-        const cores  = { info: 'var(--primary)', aviso: 'var(--warning)', erro: 'var(--danger)', sucesso: 'var(--success)' };
+        const tom    = ['info', 'aviso', 'erro', 'sucesso'].includes(tipo) ? tipo : 'info';
         const icone  = icones[tipo]  || icones.info;
-        const cor    = cores[tipo]   || cores.info;
 
         overlay.innerHTML = `
-            <div class="modal" style="max-width:420px">
-                <h3 style="display:flex;align-items:center;gap:8px;margin-bottom:${msg ? '12px' : '20px'}">
-                    <span style="color:${cor}">${icone}</span>${escapeHtml(titulo)}
+            <div class="modal modal--medio">
+                <h3 class="dialogo-titulo titulo-com-icone${msg ? ' dialogo-titulo--com-texto' : ''}">
+                    <span class="dialogo-icone dialogo-icone--${tom}">${icone}</span>${escapeHtml(titulo)}
                 </h3>
-                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:20px;white-space:pre-wrap">${escapeHtml(msg)}</p>` : ''}
+                ${msg ? `<p class="dialogo-texto">${escapeHtml(msg)}</p>` : ''}
                 <div class="modal-acoes">
                     <button class="btn-primario fm-ok">${btnTxt}</button>
                 </div>
@@ -776,23 +717,21 @@ function fmPrompt({ titulo = 'Confirmar', msg = '', label = '', minimo = 1,
                     cancelTxt = 'Cancelar', tipo = 'perigo' } = {}) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.style.cssText = 'z-index:2000';
+        // Acima de qualquer outro modal: a pergunta pode vir de dentro de um.
+        overlay.className = 'modal-overlay modal-overlay--dialogo';
 
-        const corMap = { perigo: 'var(--danger)', aviso: 'var(--warning)', info: 'var(--primary)' };
-        const cor = corMap[tipo] || corMap.perigo;
+        const tom = ['perigo', 'aviso', 'info'].includes(tipo) ? tipo : 'perigo';
 
         overlay.innerHTML = `
-            <div class="modal" style="max-width:460px">
-                <h3 style="margin-bottom:${msg ? '12px' : '20px'}">${escapeHtml(titulo)}</h3>
-                ${msg ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:16px;white-space:pre-wrap">${escapeHtml(msg)}</p>` : ''}
-                <label class="fm-prompt-label" style="display:block;font-size:0.85rem;margin-bottom:6px">${escapeHtml(label)}</label>
-                <textarea class="fm-prompt-input" rows="2" placeholder="${escapeHtml(placeholder)}"
-                          style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
-                <div class="fm-prompt-erro" style="display:none;color:var(--danger);font-size:0.8rem;margin-top:6px"></div>
-                <div class="modal-acoes" style="margin-top:16px">
+            <div class="modal modal--460">
+                <h3 class="dialogo-titulo${msg ? ' dialogo-titulo--com-texto' : ''}">${escapeHtml(titulo)}</h3>
+                ${msg ? `<p class="dialogo-texto mb-4">${escapeHtml(msg)}</p>` : ''}
+                <label class="fm-prompt-label">${escapeHtml(label)}</label>
+                <textarea class="fm-prompt-input" rows="2" placeholder="${escapeHtml(placeholder)}"></textarea>
+                <div class="fm-prompt-erro" style="display:none"></div>
+                <div class="modal-acoes mt-4">
                     <button class="btn-secundario fm-cancel">${escapeHtml(cancelTxt)}</button>
-                    <button class="btn-primario fm-ok" style="background:${cor};border-color:${cor}">${escapeHtml(confirmTxt)}</button>
+                    <button class="btn-primario fm-ok btn-tom-${tom}">${escapeHtml(confirmTxt)}</button>
                 </div>
             </div>`;
 

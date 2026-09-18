@@ -338,8 +338,8 @@ async function _mostrarSelecaoEmpresa(perfil) {
     lista.innerHTML = empresasDisponiveis.map(emp => `
         <button class="btn-empresa-troca" onclick="confirmarSelecaoEmpresa('${escapeJsAttr(emp)}')">
             <span>${escapeHtml(emp)}${emp === ultima
-                ? ' <small style="opacity:0.6;font-weight:400">· última usada</small>' : ''}</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;opacity:0.5"><polyline points="9,18 15,12 9,6"/></svg>
+                ? ' <small class="empresa-ultima">· última usada</small>' : ''}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-seta"><polyline points="9,18 15,12 9,6"/></svg>
         </button>`).join("");
 
     overlay.style.display = "flex";
@@ -600,7 +600,7 @@ function abrirTrocarEmpresa() {
                 onclick="selecionarEmpresaModal('${escapeJsAttr(emp)}')">
             <span>${escapeHtml(emp)}</span>
             ${emp === empresaFiltroNome
-                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="20,6 9,17 4,12"/></svg>'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icone-check"><polyline points="20,6 9,17 4,12"/></svg>'
                 : ''}
         </button>`).join("");
     modal.style.display = "flex";
@@ -768,8 +768,8 @@ function aplicarTemaInicial() {
     }
     const icone = document.getElementById("iconeTema");
     if (icone) icone.innerHTML = document.documentElement.getAttribute("data-theme") === "dark"
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 }
 aplicarTemaInicial();
 
@@ -1805,17 +1805,10 @@ function _mostrarLoading(visivel) {
         el = document.createElement("div");
         el.id = "_loadingOverlay";
         el.innerHTML = `
-            <div style="position:fixed;inset:0;background:var(--bg,#18181b);
-                display:flex;flex-direction:column;align-items:center;
-                justify-content:center;z-index:9999;gap:16px;">
-                <div style="width:40px;height:40px;border:3px solid var(--border,#3f3f46);
-                    border-top-color:var(--primary,#7c1d2e);border-radius:50%;
-                    animation:_spin 0.8s linear infinite;"></div>
-                <span style="color:var(--text-muted,#a1a1aa);font-size:0.9rem;font-family:DM Sans,sans-serif">
-                    Carregando dados da nuvem…
-                </span>
-            </div>
-            <style>@keyframes _spin{to{transform:rotate(360deg)}}</style>`;
+            <div class="carregando-tela" role="status">
+                <div class="carregando-roda" aria-hidden="true"></div>
+                <span class="carregando-texto">Carregando dados da nuvem…</span>
+            </div>`;
         document.body.appendChild(el);
     } else {
         if (el) el.remove();
@@ -1826,18 +1819,9 @@ function _criarIndicadorConexao() {
     if (document.getElementById("_statusConexao")) return;
     const el = document.createElement("div");
     el.id = "_statusConexao";
-    el.style.cssText = `
-        position:fixed; bottom:16px; right:16px;
-        display:none; align-items:center; gap:6px;
-        background:var(--surface); border:1px solid var(--border-light);
-        border-radius:20px; padding:5px 10px;
-        font-size:0.72rem; color:var(--text-muted);
-        font-family:DM Sans,sans-serif; z-index:900;
-        transition:opacity 0.2s; opacity:1; cursor:pointer;
-        box-shadow:0 2px 8px rgba(0,0,0,0.15);
-    `;
-    el.onmouseenter = () => el.style.opacity = "1";
-    el.onmouseleave = () => el.style.opacity = "0.85";
+    el.className = "status-conexao";
+    el.style.display = "none";
+    el.title = "Clique para sincronizar agora";
     el.onclick = () => sincronizarAgora();
     document.body.appendChild(el);
     _setStatusConexao("conectando");
@@ -1847,21 +1831,22 @@ function _setStatusConexao(status) {
     const el = document.getElementById("_statusConexao");
     if (!el) return;
     const cfg = {
-        conectando:   { cor:"#a1a1aa", icone:"○", texto:"Conectando…"   },
-        sincronizado: { cor:"#22c55e", icone:"●", texto:"Sincronizado"  },
-        salvando:     { cor:"#f59e0b", icone:"●", texto:"Salvando…"     },
-        offline:      { cor:"#ef4444", icone:"●", texto:"Offline"       },
-        pendente:     { cor:"#f97316", icone:"▲", texto:"Pendente"      },
-        erro:         { cor:"#ef4444", icone:"●", texto:"Erro na nuvem" },
+        conectando:   { icone:"○", texto:"Conectando…"   },
+        sincronizado: { icone:"●", texto:"Sincronizado"  },
+        salvando:     { icone:"●", texto:"Salvando…"     },
+        offline:      { icone:"●", texto:"Offline"       },
+        pendente:     { icone:"▲", texto:"Pendente"      },
+        erro:         { icone:"●", texto:"Erro na nuvem" },
     };
-    const c = cfg[status] || cfg.conectando;
-    el.innerHTML = `<span style="color:${c.cor};font-size:8px">${c.icone}</span>${c.texto}`;
+    const chave = cfg[status] ? status : "conectando";
+    const c = cfg[chave];
+    // A cor de cada estado mora no CSS (`.status-conexao-ponto--*`).
+    el.innerHTML = `<span class="status-conexao-ponto status-conexao-ponto--${chave}">${c.icone}</span>${c.texto}`;
 
     // Visível apenas quando há algo relevante a comunicar;
     // quando sincronizado, some completamente (sem área clicável invisível)
     if (['offline','pendente','erro','salvando','conectando'].includes(status)) {
         el.style.display = "flex";
-        el.style.opacity = "1";
     }
     // 'sincronizado' → display:none aplicado pelo setTimeout em _executarSave
 }
@@ -1889,8 +1874,8 @@ function toggleModoEscuro() {
     html.setAttribute("data-theme", novo);
     const icone = document.getElementById("iconeTema");
     if (icone) icone.innerHTML = novo === "dark"
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     localStorage.setItem("tema", novo);
     _aplicarLogoDoTema(novo);
     // Os gráficos leem a cor do tema na hora em que são criados: quem

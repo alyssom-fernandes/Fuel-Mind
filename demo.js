@@ -321,12 +321,12 @@ function abrirModoDemo() {
     if (!overlay || !lista) return;
 
     lista.innerHTML = DEMO_USUARIOS.map(u => `
-        <button class="btn-empresa-troca" style="flex-direction:column;align-items:flex-start;gap:2px"
+        <button class="btn-empresa-troca btn-empresa-troca--perfil"
                 onclick="entrarModoDemo('${escapeJsAttr(u.uid)}')">
-            <span style="font-weight:600">${escapeHtml(u.nome)}
-                <em style="font-style:normal;opacity:0.6;font-size:0.78rem">— ${escapeHtml((typeof ROLES !== 'undefined' && ROLES[u.role]?.label) || u.role)}</em>
+            <span class="demo-perfil-nome">${escapeHtml(u.nome)}
+                <em class="demo-perfil-papel">— ${escapeHtml((typeof ROLES !== 'undefined' && ROLES[u.role]?.label) || u.role)}</em>
             </span>
-            <span style="font-size:0.76rem;color:var(--text-muted)">${escapeHtml(u.descricao)}</span>
+            <span class="demo-perfil-descricao">${escapeHtml(u.descricao)}</span>
         </button>`).join("");
 
     overlay.style.display = "flex";
@@ -392,7 +392,7 @@ function _demoMostrarFaixa() {
     faixa.id = "demoFaixa";
     faixa.innerHTML = `
         <span><strong>Modo demonstração</strong> — dados fictícios, restaurados todo dia. Nada aqui é gravado na nuvem.</span>
-        <span style="display:flex;gap:8px">
+        <span class="demo-faixa-acoes">
             <button onclick="demoResetarDados(false)">Restaurar dados</button>
             <button onclick="sairModoDemo()">Sair da demo</button>
         </span>`;

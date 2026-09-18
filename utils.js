@@ -59,10 +59,10 @@ function _litrosItem(i) {
    `acao` é opcional: `{ texto, onclick }`. */
 function linhaTabelaVazia(colunas, titulo, motivo, acao) {
     const botao = acao
-        ? `<div style="margin-top:10px"><button class="btn-secundario" onclick="${escapeHtml(acao.onclick)}">${escapeHtml(acao.texto)}</button></div>`
+        ? `<div class="mt-2"><button class="btn-secundario" onclick="${escapeHtml(acao.onclick)}">${escapeHtml(acao.texto)}</button></div>`
         : "";
-    return `<tr><td colspan="${colunas}" class="td-vazio" style="padding:26px 14px">
-        <strong style="display:block;color:var(--text);font-size:0.95rem;margin-bottom:4px">${escapeHtml(titulo)}</strong>
+    return `<tr><td colspan="${colunas}" class="td-vazio td-vazio--ensina">
+        <strong class="td-vazio-titulo">${escapeHtml(titulo)}</strong>
         <span>${escapeHtml(motivo)}</span>${botao}
     </td></tr>`;
 }
