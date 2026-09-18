@@ -262,6 +262,62 @@ function executarBuscaGlobal() {
     _buscaDebounceTimer = setTimeout(_realizarBusca, 300);
 }
 
+/* ── COMANDOS NO Ctrl+K (18/09/2026) ────────────────────────────────
+   O Ctrl+K já estava na cabeça de quem usa o sistema. Linear, Slack,
+   Raycast e Superhuman fazem do mesmo atalho o lugar para ir quando não se
+   sabe onde clicar: busca e ação na mesma caixa. Aqui, digitar "fretes",
+   "novo", "grupo" ou o nome de uma empresa já oferece o comando, antes
+   dos resultados de busca. Os comandos respeitam o papel (`data-papel`
+   do botão da sidebar) e a troca de empresa passa pela porta única. */
+function _comandosPaleta() {
+    const irPara = (id, rotulo, palavras) => ({
+        rotulo, palavras, acao: `mostrarTela('${id}')`,
+        disponivel: () => {
+            const nav = document.getElementById("nav-" + id);
+            return !nav || !nav.classList.contains("fm-sem-permissao");
+        }
+    });
+    const cmds = [
+        { rotulo: "Novo lançamento", palavras: "novo lancar lancamento nota entrada",
+          acao: "mostrarTela('lancamentos')", disponivel: () => true },
+        irPara("dashboard", "Ir para o Dashboard", "dashboard inicio visao geral painel"),
+        irPara("relatorios", "Ir para Relatórios", "relatorio relatorios notas lista"),
+        irPara("analitico", "Ir para o Analítico", "analitico graficos analise"),
+        irPara("fretes", "Ir para Fretes", "frete fretes transportador"),
+        irPara("grupo", "Comparar as empresas do grupo", "grupo empresas comparar consolidado"),
+        irPara("conferencia", "Ir para Conferências", "conferencia autosystem conferir"),
+        irPara("cadastros", "Ir para Cadastros", "cadastro cadastros motorista placa combustivel base conjunto"),
+        irPara("usuarios", "Ir para Usuários", "usuario usuarios permissao"),
+        irPara("sistema", "Ir para Sistema", "sistema backup importar configuracao"),
+        { rotulo: "Fechamento do mês de fretes (Excel)", palavras: "fechamento fechar mes pacote contador",
+          acao: "mostrarTela('fretes').then(() => exportarFechamentoDoMes())", disponivel: () => true },
+        { rotulo: "Alternar tema claro/escuro", palavras: "tema escuro claro modo",
+          acao: "toggleModoEscuro()", disponivel: () => true },
+        { rotulo: "Ver os atalhos de teclado", palavras: "atalho atalhos teclado ajuda",
+          acao: "abrirAtalhos()", disponivel: () => true }
+    ];
+    // Trocar de empresa, uma entrada por empresa que o perfil acessa.
+    const permitidos = typeof _empresaIdsPermitidos === "function" ? _empresaIdsPermitidos() : null;
+    (db.empresas || []).filter(e => e.ativo !== false && (!permitidos || permitidos.includes(e.id))
+        && e.nome !== empresaFiltroGlobal).forEach(e => {
+        cmds.push({ rotulo: `Trocar para ${e.nome}`, palavras: "trocar empresa " + normalizarTexto(e.nome),
+            acao: `trocarEmpresaAtiva('${escapeJsAttr(e.nome)}')`, disponivel: () => true });
+    });
+    return cmds;
+}
+
+function _comandosQueCasam(termo) {
+    if (!termo) return [];
+    const partes = termo.split(/\s+/).filter(Boolean);
+    return _comandosPaleta()
+        .filter(c => c.disponivel())
+        .filter(c => {
+            const alvo = normalizarTexto(c.rotulo + " " + c.palavras);
+            return partes.every(p => alvo.includes(p));
+        })
+        .slice(0, 6);
+}
+
 function _realizarBusca() {
     // normalizarTexto no termo e no conteúdo: até aqui a busca era
     // accent-sensitive e procurar "jose" não encontrava "José", enquanto os
@@ -299,7 +355,9 @@ function _realizarBusca() {
         e.nome && normalizarTexto(e.nome).includes(termo)
     ).slice(0, 3);
 
-    if (!lancamentos.length && !motoristas.length && !placas.length && !empresas.length) {
+    const comandos = _comandosQueCasam(termo);
+
+    if (!comandos.length && !lancamentos.length && !motoristas.length && !placas.length && !empresas.length) {
         resultadosDiv.innerHTML = "<p class='dica'>Nenhum resultado encontrado.</p>";
         return;
     }
@@ -313,6 +371,21 @@ function _realizarBusca() {
                        margin-bottom:5px;transition:background 0.12s`;
 
     let html = '';
+
+    // Comandos primeiro: quem digita "fretes" quer ir para Fretes.
+    if (comandos.length) {
+        html += `<div style="${secStyle}">
+            <span style="${labelStyle}">Comandos</span>
+            ${comandos.map(c => `
+                <div style="${itemStyle}"
+                    onmouseenter="this.style.background='var(--surface-raised)'"
+                    onmouseleave="this.style.background='var(--surface-alt)'"
+                    onclick="fecharBuscaGlobal(); ${escapeHtml(c.acao)};">
+                    <span style="font-size:0.85rem;color:var(--text)">${escapeHtml(c.rotulo)}</span>
+                    <span style="font-size:0.72rem;color:var(--primary)">Enter ↵</span>
+                </div>`).join('')}
+        </div>`;
+    }
 
     // Lançamentos
     if (lancamentos.length) {

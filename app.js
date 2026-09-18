@@ -1978,6 +1978,22 @@ if (corSalva) {
  * tinha nenhuma região viva, então nada do que o sistema comunicava por toast
  * chegava a leitor de tela.
  */
+/* Toast com um botão de ação — hoje, o "Desfazer" de uma exclusão
+   (18/09/2026). A ação é uma função, não HTML: nada de texto do usuário
+   vira código. Fica mais tempo na tela, porque existe para ser clicado. */
+function mostrarToastComAcao(mensagem, tipo, duracao, rotulo, aoClicar) {
+    mostrarToast(mensagem, tipo, duracao);
+    const pilha = document.getElementById("toastPilha");
+    const toast = pilha && pilha.lastElementChild;
+    if (!toast) return;
+    const botao = document.createElement("button");
+    botao.className = "toast-acao";
+    botao.type = "button";
+    botao.textContent = rotulo;
+    botao.onclick = () => { toast.remove(); try { aoClicar(); } catch (e) { console.error(e); } };
+    toast.appendChild(botao);
+}
+
 function mostrarToast(mensagem, tipo = "sucesso", duracao = 3000) {
     let pilha = document.getElementById("toastPilha");
     if (!pilha) {

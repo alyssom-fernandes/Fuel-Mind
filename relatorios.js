@@ -78,6 +78,45 @@ function _mesParaPeriodo(mes) {
     return { inicio: `${mes}-01`, fim: _ultimoDiaDoMesISO(`${mes}-01`) };
 }
 
+/* ── SETAS NA TABELA (18/09/2026) ───────────────────────────────────
+   Linear e os sistemas de caixa são elogiados pela mesma coisa: andar
+   pelas linhas sem tirar a mão do teclado. Com o foco na tabela do
+   relatório (Tab até ela, ou clique numa linha), ↑ e ↓ andam de nota em
+   nota e Enter abre ou fecha o detalhe — o mesmo que o clique faz. Nada
+   é gravado por tecla. */
+let _linhaRelAtiva = -1;
+function _linhasRelatorioNavegaveis() {
+    return [...document.querySelectorAll("#tabelaRelatorio > tr[data-id]")];
+}
+document.addEventListener("keydown", e => {
+    const tabela = document.getElementById("tabelaRelatorio");
+    if (!tabela || !tabela.contains(document.activeElement) && document.activeElement !== tabela) return;
+    if (!["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) return;
+    const linhas = _linhasRelatorioNavegaveis();
+    if (!linhas.length) return;
+    if (e.key === "Enter") {
+        const tr = linhas[_linhaRelAtiva];
+        if (!tr) return;
+        e.preventDefault();
+        const idx = _linhaRelAtiva;
+        tr.querySelector(".btn-ver-inline")?.click();
+        // A tabela é redesenhada ao abrir o detalhe: devolve o destaque e o
+        // foco para a mesma linha, para as setas continuarem de onde estavam.
+        setTimeout(() => {
+            const novas = _linhasRelatorioNavegaveis();
+            novas.forEach((l, i) => l.classList.toggle("linha-teclado-ativa", i === idx));
+            document.getElementById("tabelaRelatorio")?.focus();
+        }, 0);
+        return;
+    }
+    e.preventDefault();
+    const passo = e.key === "ArrowDown" ? 1 : -1;
+    _linhaRelAtiva = _linhaRelAtiva < 0 ? (passo > 0 ? 0 : linhas.length - 1)
+        : Math.min(linhas.length - 1, Math.max(0, _linhaRelAtiva + passo));
+    linhas.forEach((tr, i) => tr.classList.toggle("linha-teclado-ativa", i === _linhaRelAtiva));
+    linhas[_linhaRelAtiva].scrollIntoView({ block: "nearest" });
+});
+
 function recarregarRelatorioSemZerarFiltros() {
     _aplicarFiltroRelatorio();
 }
@@ -463,7 +502,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
         const rotulo = l.estado === 'cancelado' ? 'cancelada' : 'excluída';
 
         const linhaLanc = `
-        <tr class="${estaAberto ? 'linha-com-detalhe-aberto' : ''}${morto ? ' linha-inativo' : ''}">
+        <tr data-id="${escapeHtml(l.id)}" class="${estaAberto ? 'linha-com-detalhe-aberto' : ''}${morto ? ' linha-inativo' : ''}">
             <td>${formatarData(l.dataNota)}</td>
             <td>${formatarData(l.dataDescarga)}</td>
             <td>${escapeHtml(l.numeroNota)}${morto

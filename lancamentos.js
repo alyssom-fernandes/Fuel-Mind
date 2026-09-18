@@ -1475,7 +1475,20 @@ async function excluirLancamento(id, contexto = 'relatorio') {
     if (!atual || atual.estado) { recarregarRelatorioSemZerarFiltros(); mostrarToast("A nota mudou enquanto a pergunta estava aberta. Confira e tente de novo.", "aviso", 6000); return; }
     if (!_marcarEstadoLancamento(atual, 'excluido', 'Excluído')) return;
     recarregarRelatorioSemZerarFiltros();
-    mostrarToast("Lançamento excluído. Ele saiu dos relatórios.", "info", 5000);
+    // Desfazer na hora, sem ir atrás da caixa "Mostrar excluídas": o
+    // engano costuma ser percebido no segundo seguinte (18/09/2026). A
+    // exclusão já foi confirmada numa pergunta, então o desfazer volta
+    // direto, pelo mesmo caminho do Restaurar e com o mesmo registro no log.
+    mostrarToastComAcao("Lançamento excluído. Ele saiu dos relatórios.", "info", 9000, "Desfazer", async () => {
+        const l = db.lancamentos.find(x => x.id === id);
+        if (!l || l.estado !== 'excluido') return;
+        // A mesma checagem do Restaurar: se alguém relançou a nota no
+        // intervalo, desfazer não pode deixá-la contada duas vezes.
+        if (!await _podeReativar(l)) return;
+        if (!_marcarEstadoLancamento(l, null, 'Restaurado (desfazer)')) return;
+        recarregarRelatorioSemZerarFiltros();
+        mostrarToast("Exclusão desfeita: o lançamento voltou.", "sucesso", 3500);
+    });
 }
 
 /**
