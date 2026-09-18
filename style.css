@@ -479,6 +479,8 @@ body {
 
 /* ══ ALERTAS ══════════════════════════════════ */
 .alertas-container { display: grid; gap: 8px; margin-bottom: 22px; }
+.alertas-resumo { margin: 0; }
+.alertas-mais { justify-self: start; }
 .alerta-card {
     background: var(--surface);
     border-left: 4px solid var(--warning);

@@ -180,6 +180,13 @@ function carregarDashboard() {
     const inicio = inputI?.value || _isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
     const fim    = inputF?.value || _hojeISO();
 
+    // "Mostrar os outros alertas" vale só para o período em que foi pedido.
+    const elAlertas = document.getElementById("alertasDashboard");
+    if (elAlertas && elAlertas.dataset.periodo !== `${inicio}|${fim}`) {
+        elAlertas.dataset.periodo = `${inicio}|${fim}`;
+        elAlertas.dataset.todos   = "";
+    }
+
     // O Dashboard não tem funil único como as outras telas: são várias
     // leituras independentes de db.lancamentos, e cada uma repete o teste de
     // estado. Aqui são dois conjuntos, um por base.
@@ -273,7 +280,67 @@ function carregarDashboard() {
         }).join('');
 }
 
+/* ── PRÉ-ÍNDICE DOS ALERTAS (18/09/2026) ────────────────────────────
+   Cada item do período chamava `referenciaPrecoCombustivel` e
+   `_mediaVolumePorNota`, e cada uma dessas varria o vetor inteiro de
+   lançamentos — todas as empresas, todos os meses — para achar meia dúzia
+   de notas. Com um período de seis meses isso eram centenas de varreduras
+   completas por abertura do Dashboard.
+
+   Aqui o vetor é varrido UMA vez: as notas de cada empresa e combustível
+   ficam separadas, na mesma ordem do banco. As duas perguntas continuam
+   com a mesma regra e a mesma ordem de soma e de ordenação — por isso o
+   resultado é idêntico (conferido lado a lado em 12 casos antes da
+   troca), só que perguntado a uma lista curta. */
+function _criarIndiceAlertas() {
+    const cfg = configAlertas();
+    const precos  = new Map();   // "empresa|combustível" -> [{ e, v, id }]
+    const volumes = new Map();   // "combustível"          -> [{ q, id }]
+    (db.lancamentos || []).forEach(l => {
+        if (!lancamentoAtivo(l)) return;
+        const emissao = dataEmissaoDe(l);
+        const daAtiva = !empresaFiltroGlobal || l.empresa === empresaFiltroGlobal;
+        (l.itens || []).forEach(i => {
+            if (i.valor > 0) {
+                const k = `${l.empresa}|${i.tipo}`;
+                if (!precos.has(k)) precos.set(k, []);
+                precos.get(k).push({ e: emissao, v: i.valor, id: l.id });
+            }
+            if (daAtiva && i.qtd > 0) {
+                if (!volumes.has(i.tipo)) volumes.set(i.tipo, []);
+                volumes.get(i.tipo).push({ q: i.qtd, id: l.id });
+            }
+        });
+    });
+    return {
+        // Mesma regra de `referenciaPrecoCombustivel` (utils.js).
+        refPreco(comb, fimISO, idIgnorar, empresa) {
+            const empresaRegua = empresa || empresaFiltroGlobal;
+            const dias   = cfg.precoPeriodoDias;
+            const fim    = fimISO || _hojeISO();
+            const inicio = _somarDiasISO(fim, -(Math.max(1, dias) - 1));
+            // Sem empresa nenhuma a régua junta todas, como na função original.
+            const lista  = empresaRegua
+                ? (precos.get(`${empresaRegua}|${comb}`) || [])
+                : [...precos.entries()].filter(([k]) => k.endsWith(`|${comb}`)).flatMap(([, v]) => v);
+            const vals = lista.filter(x => (!idIgnorar || x.id !== idIgnorar) && x.e >= inicio && x.e <= fim)
+                              .map(x => x.v).sort((a, b) => a - b);
+            if (!vals.length) return { mediana: 0, amostras: 0, dias, fim };
+            const meio = Math.floor(vals.length / 2);
+            const mediana = vals.length % 2 ? vals[meio] : (vals[meio - 1] + vals[meio]) / 2;
+            return { mediana, amostras: vals.length, dias, fim };
+        },
+        // Mesma regra de `_mediaVolumePorNota`.
+        mediaVolume(comb, idIgnorar) {
+            const vols = (volumes.get(comb) || []).filter(x => !idIgnorar || x.id !== idIgnorar).map(x => x.q);
+            if (!vols.length) return 0;
+            return vols.reduce((s2, v) => s2 + v, 0) / vols.length;
+        }
+    };
+}
+
 function _renderAlertas(lancDescarga, lancEmissao) {
+    const indice    = _criarIndiceAlertas();
     const cfg       = configAlertas();
     const ignorados = alertasIgnorados();
     const hoje      = new Date(); hoje.setHours(0,0,0,0);
@@ -290,7 +357,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
             // o de outra nota com o mesmo número (outra empresa, outro fornecedor).
             const chavePreco = `preco|${l.id}|${i.tipo}`;
             if (!cfg.precoAtivo || !(i.valor > 0) || ignorados[chavePreco]) return;
-            const ref   = referenciaPrecoCombustivel(i.tipo, dataEmissaoDe(l), l.id, l.empresa);
+            const ref   = indice.refPreco(i.tipo, dataEmissaoDe(l), l.id, l.empresa);
             const juizo = julgarPreco(i.valor, ref.mediana);
             if (!juizo) return;
             const sentido = juizo.acima ? 'acima' : 'abaixo';
@@ -313,7 +380,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
         l.itens.forEach(i => {
             const chaveVol   = `vol|${l.id}|${i.tipo}`;
             if (cfg.volumeAtivo && i.qtd > 0 && !ignorados[chaveVol]) {
-                const mediaVol = _mediaVolumePorNota(i.tipo, l.id);
+                const mediaVol = indice.mediaVolume(i.tipo, l.id);
                 if (mediaVol > 0) {
                     const varPerc = ((i.qtd - mediaVol) / mediaVol) * 100;
                     if (varPerc >= cfg.volumeAcimaPerc) {
@@ -399,7 +466,22 @@ function _renderAlertas(lancDescarga, lancEmissao) {
         return;
     }
 
-    el.innerHTML = alertas.map(a => {
+    // Poucos por vez, os mais graves primeiro (18/09/2026). Com seis meses no
+    // filtro a tela desenhava mais de 300 cartões: é custo de desenho e,
+    // pior, é ruído — alerta demais ensina a não ler alerta nenhum. Data
+    // suspeita antes de preço e de volume; o resto fica atrás de um botão,
+    // com a contagem por tipo, e nada some sem aviso.
+    const ordemTipo = { data: 0, preco: 1, volume: 2 };
+    alertas.sort((a, b) => (ordemTipo[a.tipo] ?? 9) - (ordemTipo[b.tipo] ?? 9));
+    const LIMITE = 12;
+    const mostrarTodos = el.dataset.todos === "1";
+    const visiveis = mostrarTodos ? alertas : alertas.slice(0, LIMITE);
+    const escondidos = alertas.length - visiveis.length;
+    const porTipo = alertas.reduce((acc, a) => { acc[a.tipo] = (acc[a.tipo] || 0) + 1; return acc; }, {});
+    const nomesTipo = { data: "data suspeita", preco: "preço", volume: "volume" };
+    const resumoTipos = Object.entries(porTipo).map(([t, n]) => `${n} de ${nomesTipo[t] || t}`).join(", ");
+
+    el.innerHTML = `<p class="dica alertas-resumo">${alertas.length} alerta(s) no período: ${escapeHtml(resumoTipos)}.</p>` + visiveis.map(a => {
         const { icone, cor, titulo, msg, chave, id, confirmarLabel } = a;
         return `
         <div class="alerta-card alerta-card--${cor} alerta-clicavel">
@@ -417,7 +499,20 @@ function _renderAlertas(lancDescarga, lancEmissao) {
                 ✓ ${confirmarLabel || 'Confirmar'}
             </button>
         </div>`;
-    }).join('');
+    }).join('') + (escondidos > 0
+        ? `<button class="btn-secundario alertas-mais" onclick="dashAlternarAlertas(true)">Mostrar os outros ${escondidos} alerta(s)</button>`
+        : (mostrarTodos && alertas.length > LIMITE
+            ? `<button class="btn-secundario alertas-mais" onclick="dashAlternarAlertas(false)">Mostrar só os ${LIMITE} primeiros</button>`
+            : ""));
+}
+
+// Mostrar todos vale só para o período em que foi pedido: `carregarDashboard`
+// volta ao limite quando o período muda.
+function dashAlternarAlertas(todos) {
+    const el = document.getElementById("alertasDashboard");
+    if (!el) return;
+    el.dataset.todos = todos ? "1" : "";
+    carregarDashboard();
 }
 
 function renderDashCombustiveis(lancDescarga, lancEmissao, inicio, fim) {
