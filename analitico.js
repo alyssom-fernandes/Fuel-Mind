@@ -687,7 +687,8 @@ function renderAbaDistribuicao(dados) {
             labels: combData.map(d => d.label),
             datasets: [{
                 data: combData.map(d => d.value),
-                backgroundColor: ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'],
+                // Cor fixa por combustível, a mesma de todas as telas.
+                backgroundColor: combData.map(d => corDoCombustivel(d.label)),
                 borderWidth: 0
             }]
         },
@@ -771,7 +772,7 @@ function renderAbaEvolucaoPrecos(dados) {
         datasets.push({
             label: tipo,
             data: valores,
-            borderColor: `hsl(${idx * 60 % 360}, 70%, 50%)`,
+            borderColor: corDoCombustivel(tipo),
             backgroundColor: 'transparent',
             tension: 0.2,
             pointRadius: 4,
@@ -791,6 +792,21 @@ function renderAbaEvolucaoPrecos(dados) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                // Clicar num combustível da legenda ISOLA a linha dele;
+                // clicar de novo volta todas. O padrão do Chart.js só
+                // escondia a clicada, e com quatro linhas o que se quer
+                // é ver uma sozinha (18/09/2026).
+                legend: {
+                    labels: { color: colors.text },
+                    onClick: (e, item, legend) => {
+                        const ch = legend.chart;
+                        const sozinha = ch.data.datasets.every((ds, i) =>
+                            i === item.datasetIndex ? ch.isDatasetVisible(i) : !ch.isDatasetVisible(i));
+                        ch.data.datasets.forEach((ds, i) =>
+                            ch.setDatasetVisibility(i, sozinha ? true : i === item.datasetIndex));
+                        ch.update();
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => `${ctx.dataset.label}: R$ ${ctx.raw ? ctx.raw.toFixed(4) : '—'}`

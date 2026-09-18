@@ -720,6 +720,45 @@ function calcularFretesDoMes(opts) {
     };
 }
 
+/* ── UMA COR POR COMBUSTÍVEL, EM TODA TELA (18/09/2026) ─────────────
+   Cada gráfico sorteava a própria cor: o Diesel S10 era vermelho numa
+   pizza e azul na evolução de preços. O padrão que as ferramentas de
+   painel elogiadas seguem (Tremor, por exemplo) é o contrário — a mesma
+   categoria tem a mesma cor em todo lugar, e o olho aprende uma vez.
+
+   A cor segue a ORDEM do cadastro de combustíveis, então não muda de um
+   gráfico para outro nem de um dia para o outro enquanto o cadastro não
+   mudar. Oito cores com contraste nos dois temas; "Outros" é sempre
+   cinza. */
+const PALETA_COMBUSTIVEIS = ["#a02828", "#2563eb", "#d97706", "#059669", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
+
+function corDoCombustivel(nome) {
+    if (!nome || nome === "Outros") return "#64748b";
+    const lista = (typeof db !== "undefined" && db && db.combustiveis) ? db.combustiveis : [];
+    let idx = lista.findIndex(c => c.nome === nome);
+    if (idx === -1) {
+        // Nome fora do cadastro: cor estável derivada do próprio nome.
+        idx = [...String(nome)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    }
+    return PALETA_COMBUSTIVEIS[idx % PALETA_COMBUSTIVEIS.length];
+}
+
+/* ── COMPARAÇÃO COM O PERÍODO ANTERIOR, NO PRÓPRIO NÚMERO ───────────
+   "Isso é bom ou ruim?" é a pergunta de quem olha um total, e o Stripe
+   responde no mesmo card: número, seta e variação. `inverter` é para os
+   números em que subir é ruim (gasto, preço, frete) — a cor segue o
+   sentido do dinheiro, não da seta. */
+function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
+    if (!(anterior > 0) || !isFinite(atual)) return "";
+    const pct = (atual - anterior) / anterior * 100;
+    if (Math.abs(pct) < 0.05) return `<div class="kpi-variacao">= ${escapeHtml(rotuloAnterior)}</div>`;
+    const sobe = pct > 0;
+    const ruim = inverter ? sobe : !sobe;
+    return `<div class="kpi-variacao ${ruim ? "kpi-variacao-ruim" : "kpi-variacao-boa"}"
+        title="Período anterior (${escapeHtml(rotuloAnterior)}): ${escapeHtml(String(anterior.toLocaleString("pt-BR", { maximumFractionDigits: 4 })))}">
+        ${sobe ? "▲" : "▼"} ${Math.abs(pct).toFixed(1).replace(".", ",")}% vs ${escapeHtml(rotuloAnterior)}</div>`;
+}
+
 // ========== ALERTAS IGNORADOS ==========
 function alertasIgnorados() {
     try { return JSON.parse(localStorage.getItem("alertasIgnorados") || "{}"); }

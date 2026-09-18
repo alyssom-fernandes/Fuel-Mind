@@ -702,6 +702,11 @@ ul li.inativo { opacity: 0.45; }
 .tag-perda   { font-size: 0.64rem; background: var(--info-light); color: var(--info); padding: 2px 7px; border-radius: 10px; font-style: normal; font-weight: 700; margin-left: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
 .vazio { color: var(--text-light); font-style: italic; font-size: 0.875rem; justify-content: flex-start !important; padding: 20px 16px !important; border: none !important; }
 
+/* Variação contra o período anterior, dentro do card (18/09/2026). */
+.kpi-variacao { font-size: 0.72rem; margin-top: 4px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.kpi-variacao-boa { color: var(--success); }
+.kpi-variacao-ruim { color: var(--danger); }
+
 /* Número que leva à lista que o formou (17/09/2026). */
 .kpi-clicavel { cursor: pointer; }
 .kpi-clicavel:hover {

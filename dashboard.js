@@ -191,32 +191,47 @@ function carregarDashboard() {
     const compra      = _totaisCompra(lancEmissao);
     const frete       = _freteDoPeriodo(lancDescarga);
 
+    // O mesmo recorte no período anterior, para cada card dizer se subiu
+    // ou desceu (18/09/2026). Cada número compara com a MESMA base de data.
+    const antK         = _periodoAnterior(inicio, fim);
+    const rotAnt       = `${formatarData(antK.inicio).slice(0, 5)} a ${formatarData(antK.fim).slice(0, 5)}`;
+    const descAnt      = _lancamentosDoPeriodo(antK.inicio, antK.fim, dataDescargaDe);
+    const emisAnt      = _lancamentosDoPeriodo(antK.inicio, antK.fim, dataEmissaoDe);
+    const litrosAnt    = descAnt.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
+    const compraAntK   = _totaisCompra(emisAnt);
+    const freteAnt     = _freteDoPeriodo(descAnt);
+
     document.getElementById("kpiDashboard").innerHTML = `
         <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre o Resumo de Fretes, que também conta pela data da descarga.">
             <div class="kpi-valor">${totalNotas}</div>
             <div class="kpi-label">Notas Descarregadas</div>
             <div class="kpi-base">pela data da descarga</div>
+            ${htmlVariacao(totalNotas, descAnt.length, rotAnt, false)}
         </div>
         <div class="kpi-card verde kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre o Resumo de Fretes, que também conta pela data da descarga.">
             <div class="kpi-valor">${fmtL(totalLitros)}</div>
             <div class="kpi-label">Litros Descarregados</div>
             <div class="kpi-base">pela data da descarga</div>
+            ${htmlVariacao(totalLitros, litrosAnt, rotAnt, false)}
         </div>
         <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Relatório com este mesmo período — que lá também é pela emissão.">
             <div class="kpi-valor">${fmtR(compra.gasto)}</div>
             <div class="kpi-label">Gasto em Compras</div>
             <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
+            ${htmlVariacao(compra.gasto, compraAntK.gasto, rotAnt, true)}
         </div>
         <div class="kpi-card roxo kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
             <div class="kpi-valor">${fmtR4(compra.custo)}</div>
             <div class="kpi-label">Preço Médio de Compra / L</div>
             <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)} faturados</div>
+            ${htmlVariacao(compra.custo, compraAntK.custo, rotAnt, true)}
             ${compra.custoRecebido > 0 ? `<div class="kpi-base" title="Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebido(compra.metricas))}</div>` : ''}
         </div>
         <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
             <div class="kpi-valor">${fmtR(frete.total)}</div>
             <div class="kpi-label">Frete do Período</div>
             <div class="kpi-base">pela data da descarga · ${fmtR4(frete.porLitro)}/L</div>
+            ${htmlVariacao(frete.total, freteAnt.total, rotAnt, true)}
             ${frete.semTaxa ? `<div class="kpi-base" style="color:var(--danger)">${frete.semTaxa} nota(s) sem taxa</div>` : ''}
         </div>
     `;
@@ -585,7 +600,15 @@ function renderComparativoMeses() {
 
     const combHeaders = combustiveis.map(c => `<th>${escapeHtml(c.nome)}</th>`).join('');
 
+    // Uma linha responde "está subindo ou caindo" melhor que doze números;
+    // as tabelas ficam logo abaixo, para quem confere valor a valor
+    // (18/09/2026).
+    const serieLitros = meses.map(mes => doMes(mes, dataDescargaDe)
+        .reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0));
+    const serieCompra = meses.map(mes => _totaisCompra(doMes(mes, dataEmissaoDe)).gasto);
+
     container.innerHTML = `
+        <div class="grafico-wrapper" style="height:200px;margin-bottom:14px"><canvas id="graficoComparativoDash"></canvas></div>
         <p class="dica" style="margin:0 0 6px;font-size:0.8rem">Litros descarregados — pela <strong>data da descarga</strong></p>
         <div class="tabela-container" style="overflow-x:auto;margin-bottom:18px">
             <table>
@@ -600,6 +623,37 @@ function renderComparativoMeses() {
                 <tbody>${linhasCompra}</tbody>
             </table>
         </div>`;
+
+    if (typeof Chart !== "undefined") {
+        const cores = getChartColors();
+        if (window._chartComparativoDash) window._chartComparativoDash.destroy();
+        window._chartComparativoDash = new Chart(document.getElementById("graficoComparativoDash").getContext("2d"), {
+            type: "line",
+            data: {
+                labels: meses.map(nomeMes),
+                datasets: [
+                    { label: "Litros descarregados", data: serieLitros, yAxisID: "yL",
+                      borderColor: cores.success, backgroundColor: "transparent", tension: 0.25, pointRadius: 3 },
+                    { label: "Gasto em compras (R$)", data: serieCompra, yAxisID: "yR",
+                      borderColor: cores.primary, backgroundColor: "transparent", tension: 0.25, pointRadius: 3, borderDash: [5, 4] }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                    legend: { labels: { color: cores.text } },
+                    tooltip: { callbacks: { label: ctx => ctx.dataset.yAxisID === "yR"
+                        ? `${ctx.dataset.label}: ${fmtR(ctx.raw)}` : `${ctx.dataset.label}: ${fmtL(ctx.raw)}` } }
+                },
+                scales: {
+                    x:  { ticks: { color: cores.text }, grid: { color: cores.grid } },
+                    yL: { position: "left",  ticks: { color: cores.text, callback: v => fmtL(v) }, grid: { color: cores.grid } },
+                    yR: { position: "right", ticks: { color: cores.text, callback: v => fmtR(v) }, grid: { display: false } }
+                }
+            }
+        });
+    }
 }
 
 function renderGraficoPizzaDashboard(lancamentosMes) {
@@ -655,7 +709,8 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
     const ctx = canvas.getContext('2d');
     if (window._dashPizzaChart) { window._dashPizzaChart.destroy(); window._dashPizzaChart = null; }
     const colors = getChartColors();
-    const backgroundColors = ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'];
+    // Cor fixa por combustível, a mesma de todas as telas (18/09/2026).
+    const backgroundColors = dados.map(d => corDoCombustivel(d.nome));
 
     window._dashPizzaChart = new Chart(ctx, {
         type: 'pie',
@@ -663,7 +718,7 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
             labels: dados.map(d => d.nome),
             datasets: [{
                 data: dados.map(d => d.valor),
-                backgroundColor: backgroundColors.slice(0, dados.length),
+                backgroundColor: backgroundColors,
                 borderWidth: 0
             }]
         },
