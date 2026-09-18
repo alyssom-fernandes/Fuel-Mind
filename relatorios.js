@@ -766,6 +766,60 @@ function exportarExcel(contexto) {
     XLSX.writeFile(wb, `controle-combustivel-${contexto}-${_hojeISO()}.xlsx`);
 }
 
+/* ── UM CABEÇALHO SÓ PARA OS TRÊS PDFs (18/09/2026) ─────────────────
+   Eram três geradores independentes: o de entradas lia a cor e a logo
+   configuradas em Sistema › Layout do PDF; o Mensal Gerencial usava um
+   azul fixo; o de Fretes nem cabeçalho de faixa, nem logo, nem número de
+   página tinha. Quem recebia os três via três sistemas diferentes. Agora
+   os três pegam a mesma cor, a mesma logo e o mesmo rodapé daqui. */
+function _pdfEstilo() {
+    const cfg = Object.assign({
+        titulo: "Controle de Entradas de Combustível",
+        corDestaque: "#1a3a5c", fonte: "helvetica", rodapeTexto: ""
+    }, db.configRelatorio || {});
+    const hex = String(cfg.corDestaque || "#1a3a5c").replace("#", "");
+    const cor = [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
+        .map(v => isFinite(v) ? v : 26);
+    const logo = (typeof logoDaEmpresa === "function" ? logoDaEmpresa(empresaFiltroGlobal)?.url : null) || cfg.logo || null;
+    return { cfg, cor, logo, fonte: cfg.fonte || "helvetica" };
+}
+
+/** Faixa de cabeçalho com logo, título e subtítulo. Devolve o Y livre. */
+function _pdfCabecalho(doc, estilo, titulo, subtitulo) {
+    const W = doc.internal.pageSize.width;
+    const alt = estilo.logo ? 28 : 22;
+    doc.setFillColor(...estilo.cor);
+    doc.rect(0, 0, W, alt, "F");
+    doc.setTextColor(255, 255, 255);
+    if (estilo.logo) {
+        try {
+            const m = estilo.logo.match(/^data:image\/(\w+);base64,/);
+            doc.addImage(estilo.logo.split(",")[1] || estilo.logo, m ? m[1].toUpperCase() : "JPEG", 14, 3, 22, 22);
+        } catch (_) { /* logo inválida: segue sem ela */ }
+    }
+    const x = estilo.logo ? 40 : W / 2;
+    const alinhar = estilo.logo ? "left" : "center";
+    doc.setFont(estilo.fonte, "bold"); doc.setFontSize(14);
+    doc.text(titulo, x, estilo.logo ? 13 : 11, { align: alinhar });
+    doc.setFont(estilo.fonte, "normal"); doc.setFontSize(9);
+    doc.text(subtitulo, x, estilo.logo ? 22 : 18, { align: alinhar });
+    doc.setTextColor(0, 0, 0);
+    return alt + 6;
+}
+
+/** Rodapé com o texto configurado e "Página X de Y", em todas as páginas. */
+function _pdfRodapes(doc, estilo, textoEsquerda) {
+    const W = doc.internal.pageSize.width, H = doc.internal.pageSize.height;
+    const total = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+        doc.setPage(p);
+        doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
+        const esquerda = [textoEsquerda, estilo.cfg.rodapeTexto].filter(Boolean).join("  ·  ");
+        if (esquerda) doc.text(esquerda, 14, H - 8);
+        doc.text(`Página ${p} de ${total}`, W - 14, H - 8, { align: "right" });
+    }
+}
+
 // ========== PDF EXPANDIDO ==========
 /**
  * Exporta os dados filtrados para PDF usando jsPDF + autoTable.
@@ -976,6 +1030,19 @@ async function exportarPDF(contexto) {
                 }
             });
         });
+
+        // Total do período inteiro: com a quebra por mês, cada seção tinha
+        // o seu subtotal e o documento não fechava conta nenhuma (18/09/2026).
+        if (meses.length > 1) {
+            let y = doc.lastAutoTable.finalY + 10;
+            if (y > H - mRod - 20) { doc.addPage(); y = desenharCabecalho(`${tituloCtx} — total do período`); }
+            doc.setTextColor(...corRGB);
+            doc.setFontSize(10);
+            doc.setFont(cfg.fonte, 'bold');
+            doc.text(`TOTAL DO PERÍODO — ${dados.length} lançamento(s)`, mL, y);
+            doc.text(`Litros: ${totalLitros.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L`, mL + 90, y);
+            doc.text(`Total: R$ ${totalGeral.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`, mL + 170, y);
+        }
     }
 
     // Atualiza rodapé com total de páginas correto
@@ -1210,8 +1277,10 @@ function _executarRelatorioMensal() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.width;
-    const azul = [26, 58, 92];
-    const azulClaro = [41, 98, 155];
+    const estiloPdf = _pdfEstilo();
+    // A cor de destaque vem da configuração do PDF, como no de entradas.
+    const azul = estiloPdf.cor;
+    const azulClaro = estiloPdf.cor.map(v => Math.min(255, Math.round(v + (255 - v) * 0.25)));
     const cinza = [120, 120, 120];
 
     const [ano, m] = mes.split('-').map(Number);
@@ -1240,17 +1309,9 @@ function _executarRelatorioMensal() {
     const totLitrosAnt = lansAnterior.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
     const totGastoAnt  = lansAnterior.reduce((s,l) => s + (l.total || 0), 0);
 
-    doc.setFillColor(...azul);
-    doc.rect(0, 0, W, 28, 'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(16); doc.setFont('helvetica','bold');
-    doc.text(empresa, 14, 11);
-    doc.setFontSize(10); doc.setFont('helvetica','normal');
-    doc.text('Relatório Mensal de Entradas de Combustível', 14, 18);
-    doc.setFontSize(9);
-    doc.text(`Período: ${nomeMes(mes)}, pela data de emissão   |   Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 24);
-
-    let y = 36;
+    // Mesma faixa, cor e logo dos outros PDFs (18/09/2026).
+    let y = _pdfCabecalho(doc, estiloPdf, `${empresa} — Relatório Mensal de Entradas`,
+        `Período: ${nomeMes(mes)}, pela data de emissão  |  Gerado em: ${new Date().toLocaleDateString('pt-BR')}`) + 2;
     doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
     doc.text('RESUMO EXECUTIVO', 14, y); y += 6;
     doc.setDrawColor(...azul); doc.line(14, y, W-14, y); y += 5;
@@ -1346,13 +1407,7 @@ function _executarRelatorioMensal() {
         });
     }
 
-    const pages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= pages; p++) {
-        doc.setPage(p);
-        doc.setFontSize(7.5); doc.setTextColor(...cinza);
-        doc.text(`${empresa} — ${nomeMes(mes)}`, 14, doc.internal.pageSize.height - 8);
-        doc.text(`Página ${p} de ${pages}`, W-14, doc.internal.pageSize.height - 8, { align: 'right' });
-    }
+    _pdfRodapes(doc, estiloPdf, `${empresa} — ${nomeMes(mes)}`);
 
     doc.save(`relatorio-mensal-${mes}.pdf`);
     mostrarToast('Relatório mensal gerado com sucesso!', 'sucesso', 4000);

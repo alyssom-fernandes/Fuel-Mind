@@ -591,11 +591,18 @@ function exportarFretesPDF() {
     const doc = new jsPDF();
     const d = dadosFretesAtual;
     const mesLabel = nomeMes(d.mes);
-
-    doc.setFontSize(16);
-    doc.text(`Resumo de Fretes — ${mesLabel}`, 105, 14, { align: "center" });
+    // Mesma faixa, cor, logo e numeração de página dos outros PDFs
+    // (18/09/2026). Antes este saía com texto solto e cor fixa.
+    const estilo = typeof _pdfEstilo === "function" ? _pdfEstilo() : null;
+    const cor = estilo ? estilo.cor : [26, 58, 92];
+    let yCab = 28;
+    if (estilo) {
+        yCab = _pdfCabecalho(doc, estilo, `Resumo de Fretes — ${mesLabel}`,
+            `${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${new Date().toLocaleDateString("pt-BR")}`);
+    }
     doc.setFontSize(9);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")} | Notas: ${d.totalNotas} | Litros: ${d.totalLitros.toFixed(0)} L | Frete Total: R$ ${d.totalFrete.toFixed(2)}`, 105, 21, { align: "center" });
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Notas: ${d.totalNotas}  |  Litros (carga): ${fmtL3(d.totalLitros)}  |  Frete total: ${fmtR(d.totalFrete)}`, 14, yCab);
 
     const cabecalho = ["Nome", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"];
 
@@ -629,7 +636,7 @@ function exportarFretesPDF() {
         return rows;
     };
 
-    let startY = 28;
+    let startY = yCab + 4;
 
     const secoes = [
         { titulo: "Por Conjunto",   corpo: montarCorpoConjuntos(d.porConjunto) },
@@ -641,7 +648,7 @@ function exportarFretesPDF() {
     secoes.forEach(s => {
         if (!s.corpo || s.corpo.length === 0) return;
         doc.setFontSize(11);
-        doc.setTextColor(26, 58, 92);
+        doc.setTextColor(...cor);
         doc.text(s.titulo, 14, startY + 4);
 
         doc.autoTable({
@@ -649,7 +656,7 @@ function exportarFretesPDF() {
             body: s.corpo,
             startY: startY + 7,
             theme: "grid",
-            headStyles: { fillColor: [26, 58, 92] },
+            headStyles: { fillColor: cor },
             margin: { left: 14, right: 14 },
             styles: { fontSize: 8 },
             didDrawPage: function(data) { data.settings.margin.top = 10; }
@@ -658,6 +665,7 @@ function exportarFretesPDF() {
         startY = doc.lastAutoTable.finalY + 10;
     });
 
+    if (estilo) _pdfRodapes(doc, estilo, `Fretes — ${mesLabel}`);
     doc.save(`fretes-${d.mes}.pdf`);
 }
 
