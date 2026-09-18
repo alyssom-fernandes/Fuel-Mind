@@ -42,11 +42,14 @@ function toggleModoEscuro() {
     if (tela === "analitico" && typeof carregarAnalitico === "function") carregarAnalitico();
 }
 
-/** A sidebar tem uma imagem só; o tema decide qual arquivo ela usa. */
+/** A sidebar tem uma imagem só; o tema decide qual arquivo ela usa.
+ *  O nome do arquivo diz o FUNDO para o qual ele foi feito: `logo-dark.svg`
+ *  tem letras brancas (fundo escuro), `logo-light.svg` letras escuras (fundo
+ *  claro). A troca estava invertida e a logo sumia nos dois temas. */
 function _aplicarLogoDoTema(tema) {
     const img = document.getElementById("sidebarLogo");
     if (img) img.src = (tema || document.documentElement.getAttribute("data-theme")) === "light"
-        ? "logo-dark.svg" : "logo-light.svg";
+        ? "logo-light.svg" : "logo-dark.svg";
 }
 
 function _hexParaRGB(hex) {

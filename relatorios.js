@@ -659,12 +659,12 @@ function _buildConteudoDetalhe(l) {
             ${l.observacoes ? `<div class="detalhe-obs"><strong>Observações</strong><br>${escapeHtml(l.observacoes)}</div>` : ''}
 
             ${l.anexos && l.anexos.length > 0 ? `
-            <div class="detalhe-obs">
+            <div class="detalhe-obs detalhe-obs--historico">
                 <strong>Anexos (${l.anexos.length})</strong><br>${anexosHtml}
             </div>` : ''}
 
             ${l.logs && l.logs.length > 0 ? `
-            <div class="detalhe-obs">
+            <div class="detalhe-obs detalhe-obs--historico">
                 <strong>Histórico de Alterações</strong>
                 <ul class="log-list">${l.logs.map(log => {
                     // Suporta log novo (objeto {acao, ts, usuario}) e log antigo (string)

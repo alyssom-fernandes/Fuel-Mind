@@ -348,22 +348,6 @@ body {
   margin-right: auto;
 }
 
-/* No tema escuro (padrão), mostra a logo escura e esconde a clara */
-.logoDarkAntiga {
-  display: block;
-}
-.logoLightAntiga {
-  display: none;
-}
-
-/* No tema claro, inverte */
-[data-theme="light"] .logoDarkAntiga {
-  display: none;
-}
-[data-theme="light"] .logoLightAntiga {
-  display: block;
-}
-
 /* Versão reduzida para mobile */
 @media (max-width: 768px) {
   .sidebar-logo-img {
@@ -702,7 +686,7 @@ tbody tr:nth-child(even):hover { background: var(--row-hover); }
 .detalhe-tabela th { background: var(--surface-alt); color: var(--text-muted); padding: 9px 14px; text-align: left; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 700; }
 .detalhe-tabela td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); }
 .detalhe-obs { background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 12px 16px; margin-top: 12px; font-size: 0.875rem; color: var(--text-muted); white-space: pre-wrap; }
-.detalhe-obs strong { display: block; font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-bottom: 5px; font-weight: 700; }
+.detalhe-obs > strong:first-child { display: block; font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-bottom: 5px; font-weight: 700; }
 
 /* ══ LISTAS ══════════════════════════════════ */
 .filtro-lista { margin-bottom: 12px; font-size: 0.855rem; color: var(--text-muted); }
@@ -2449,12 +2433,12 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
    Depois de tirar o inline (3.2/3.3), o desenho em si, tela por tela. */
 
 /* Relatório: uma nota por linha */
-#tabelaRelatorioEl th { padding: 11px 10px; }
-#tabelaRelatorioEl td { padding: 8px 10px; white-space: nowrap; }
+#tabelaRelatorioEl > thead th { padding: 11px 10px; }
+#tabelaRelatorio > tr.linha-nota > td { padding: 8px 10px; white-space: nowrap; }
 #tabelaRelatorioEl .celula-texto { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-#tabelaRelatorio td:nth-child(4) { max-width: 115px; }   /* base */
-#tabelaRelatorio td:nth-child(5) { max-width: 175px; }   /* empresa */
-#tabelaRelatorio td:nth-child(6) { max-width: 130px; }   /* motorista */
+#tabelaRelatorio > tr > td:nth-child(4) { max-width: 115px; }   /* base */
+#tabelaRelatorio > tr > td:nth-child(5) { max-width: 175px; }   /* empresa */
+#tabelaRelatorio > tr > td:nth-child(6) { max-width: 130px; }   /* motorista */
 #tabelaRelatorioEl .celula-data,
 #tabelaRelatorioEl .celula-placa { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); }
 #tabelaRelatorioEl .celula-nota { font-weight: 600; }
@@ -2595,3 +2579,38 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     color: var(--text); text-transform: none; letter-spacing: -0.01em;
 }
 .tela h3 .titulo-nota { font-family: 'DM Sans', sans-serif; }
+
+/* Detalhe da nota no Relatório: um painel de verdade. Até aqui não tinha
+   estilo nenhum — encostava na borda, herdava a `ul li` das listas de
+   Cadastros (o histórico se espalhava de ponta a ponta) e o negrito de cada
+   linha do histórico virava título ("CRIADO" sozinho numa linha). */
+.linha-detalhe-inline > td { background: var(--bg) !important; }
+.detalhe-inline-inner {
+    margin: 2px 0 10px; padding: var(--space-5) var(--space-6);
+    background: var(--surface-alt); border: 1px solid var(--border-light);
+    border-left: 3px solid var(--primary); border-radius: 0 0 var(--radius-md) var(--radius-md);
+    animation: detalheAbre var(--duration-base) var(--ease-standard) both;
+}
+@keyframes detalheAbre { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.detalhe-inline-inner .detalhe-info {
+    grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2) var(--space-5);
+    margin-bottom: var(--space-4);
+}
+.detalhe-inline-inner .detalhe-info div { padding: 4px 0; min-width: 0; }
+.detalhe-inline-inner .detalhe-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detalhe-inline-inner .detalhe-subtitulo { font-family: 'Syne', sans-serif; font-size: 0.85rem; color: var(--text); margin: var(--space-2) 0 var(--space-2); }
+.detalhe-inline-inner .detalhe-tabela { background: var(--surface); margin-top: 0; }
+.detalhe-inline-inner .detalhe-tabela td, .detalhe-inline-inner .detalhe-tabela th { white-space: normal; max-width: none; }
+.detalhe-inline-inner .detalhe-obs { background: var(--surface); }
+.log-list { padding: 0; margin: 6px 0 0; }
+.log-list li { display: block; padding: 3px 0; border: none; background: none; gap: 0; }
+.log-list li:first-child { border-top: none; }
+.log-list li:hover { background: none; }
+.log-list li strong { color: var(--text); font-weight: 600; }
+.detalhe-inline-inner .detalhe-acoes-estado { margin-top: var(--space-4); }
+@media (max-width: 900px) {
+    .detalhe-inline-inner .detalhe-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* O `pre-wrap` é para as quebras de linha das observações; no histórico e nos
+   anexos ele transformava a indentação do HTML em linhas em branco. */
+.detalhe-obs.detalhe-obs--historico { white-space: normal; }
