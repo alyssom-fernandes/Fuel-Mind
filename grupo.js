@@ -120,7 +120,7 @@ function carregarGrupo() {
             <div class="kpi-card roxo">
                 <div class="kpi-valor">${fmtR(soma.frete)}</div>
                 <div class="kpi-label">Frete do Grupo</div>
-                <div class="kpi-base">pela descarga · ${soma.litrosFrete > 0 ? fmtR4(soma.frete / soma.litrosFrete) : "—"}/L</div>
+                <div class="kpi-base">pela descarga · ${soma.litrosFrete > 0 ? fmtRL(soma.frete / soma.litrosFrete) : "—"}/L</div>
             </div>
         </div>
 
@@ -143,9 +143,9 @@ function carregarGrupo() {
                     <td>${x.notasDescarga}</td>
                     <td>${fmtL3(x.litros)}</td>
                     <td>${fmtR(x.gasto)}</td>
-                    <td>${x.precoCompra > 0 ? fmtR4(x.precoCompra) : "—"}</td>
+                    <td>${x.precoCompra > 0 ? fmtRL(x.precoCompra) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
-                    <td>${x.fretePorLitro > 0 ? fmtR4(x.fretePorLitro) : "—"}</td>
+                    <td>${x.fretePorLitro > 0 ? fmtRL(x.fretePorLitro) : "—"}</td>
                 </tr>`).join("")}
             </tbody>
             <tfoot><tr>
@@ -153,7 +153,7 @@ function carregarGrupo() {
                 <td><strong>${soma.notasDescarga}</strong></td>
                 <td><strong>${fmtL3(soma.litros)}</strong></td>
                 <td><strong>${fmtR(soma.gasto)}</strong></td>
-                <td><strong>${soma.litrosFaturados > 0 ? fmtR4(soma.gasto / soma.litrosFaturados) : "—"}</strong></td>
+                <td><strong>${soma.litrosFaturados > 0 ? fmtRL(soma.gasto / soma.litrosFaturados) : "—"}</strong></td>
                 <td><strong>${fmtR(soma.frete)}</strong></td>
                 <td></td>
             </tr></tfoot>

@@ -356,7 +356,7 @@ function _aplicarFiltroRelatorio() {
                 <div class="rel-card-titulo">${escapeHtml(comb)}</div>
                 <div class="rel-card-valor">${fmtL3(d.litros)}</div>
                 <div class="rel-card-linha">${fmtR(d.total)}</div>
-                <div class="rel-card-linha rel-card-linha--fraca">${fmtR4(pm)}/L</div>
+                <div class="rel-card-linha rel-card-linha--fraca">${fmtRL(pm)}/L</div>
             </div>`;
         }).join('');
 
@@ -391,7 +391,7 @@ function _aplicarFiltroRelatorio() {
                 </div>
                 ${precoMedio > 0 ? `<div class="rel-kpi" title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
                     <span class="rel-kpi-rotulo">Preço médio de compra</span>
-                    <strong class="rel-kpi-valor">${fmtR4(precoMedio)}/L</strong>
+                    <strong class="rel-kpi-valor">${fmtRL(precoMedio)}/L</strong>
                     <span class="rel-kpi-nota">sobre ${fmtL3(mPreco.litrosNota)} faturados</span>
                 </div>` : ''}
             </div>
@@ -585,7 +585,7 @@ function _buildConteudoDetalhe(l) {
             <td>${escapeHtml(item.tipo)}</td>
             <td>${fmtL3(item.qtd)}</td>
             <td>${item.qtdDescargada ? fmtL3(item.qtdDescargada) : "—"}</td>
-            <td>${fmtR4(item.valor)}</td>
+            <td>${fmtRL(item.valor)}</td>
             <td>${fmtR(item.total)}</td>
             <td>${calcularPerdaBadge(item.tipo, item.qtd, item.qtdDescargada)}</td>
         </tr>
@@ -1377,7 +1377,7 @@ function _executarRelatorioMensal() {
         { label: 'Total de Notas',      valor: String(totalNotas) },
         { label: 'Total de Litros',     valor: totalLitros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L' },
         { label: 'Total Gasto',         valor: 'R$ ' + totalGasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) },
-        { label: 'Preço Médio de Compra / L', valor: 'R$ ' + custoMedio.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4}) },
+        { label: 'Preço Médio de Compra / L', valor: fmtRL(custoMedio) },
     ];
     const colW = (W - 28) / 4;
     kpis.forEach((k, i) => {
@@ -1417,7 +1417,7 @@ function _executarRelatorioMensal() {
         return [
             c.nome, String(notas),
             litros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L',
-            'R$ ' + custo.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4}),
+            fmtRL(custo),
             'R$ ' + gasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
             varL !== null ? `${varL>=0?'+':''}${varL.toFixed(1)}%` : '—',
         ];

@@ -23,9 +23,10 @@
   e basta esquecer um para o valor voltar quebrado.
 =================================================*/
 
-/** Casas decimais por campo. Litros com três, dinheiro com quatro,
- *  percentual com dois — a mesma precisão que `fmtL3` e `fmtR4` já
- *  usavam para exibir. */
+/** Casas decimais por campo, na DIGITAÇÃO. Litros com três, preço e taxa
+ *  com quatro (é como a NF-e traz; arredondar na entrada mudaria o total),
+ *  percentual com dois. A EXIBIÇÃO do valor por litro é com três (`fmtRL`,
+ *  18/09/2026): quem mostra arredonda, quem guarda não. */
 const FM_CASAS = {
     qtd:                  3,
     qtdDescargada:        3,

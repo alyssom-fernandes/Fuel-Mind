@@ -155,7 +155,7 @@ function textoCustoRecebido(m) {
     // A diferença entre eles é o efeito da perda de trânsito, e só existe
     // onde alguém mediu.
     return `nos ${m.itensMedidos} de ${m.itensTotal} item(ns) com descarga informada: `
-         + `${fmtR4(m.custoRecebido)}/L recebido contra ${fmtR4(m.precoCompraMedido)}/L faturado`;
+         + `${fmtRL(m.custoRecebido)}/L recebido contra ${fmtRL(m.precoCompraMedido)}/L faturado`;
 }
 
 // ========== AS DUAS DATAS DE UM LANÇAMENTO ==========
@@ -314,8 +314,13 @@ function fmtL(v, decimais = 0) {
 
 function fmtL3(v) { return fmtL(v, 3); }
 
-function fmtR4(v) {
-    return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:4, maximumFractionDigits:4 });
+/* Reais por litro — preço, taxa de frete, frete por litro. Três casas,
+   como a bomba mostra (R$ 5,899); valor em reais fica com duas (`fmtR`).
+   Era `fmtR4`, com quatro, até 18/09/2026, a pedido do dono: "não precisam
+   de tantos dígitos". A digitação do preço continua aceitando quatro, que é
+   como a NF-e traz — arredondar na entrada mudaria o total da nota. */
+function fmtRL(v) {
+    return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:3, maximumFractionDigits:3 });
 }
 
 /* ══ NÚMERO EM PORTUGUÊS ═════════════════════════════════════════════
@@ -755,7 +760,7 @@ function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
     const sobe = pct > 0;
     const ruim = inverter ? sobe : !sobe;
     return `<div class="kpi-variacao ${ruim ? "kpi-variacao-ruim" : "kpi-variacao-boa"}"
-        title="Período anterior (${escapeHtml(rotuloAnterior)}): ${escapeHtml(String(anterior.toLocaleString("pt-BR", { maximumFractionDigits: 4 })))}">
+        title="Período anterior (${escapeHtml(rotuloAnterior)}): ${escapeHtml(String(anterior.toLocaleString("pt-BR", { maximumFractionDigits: 3 })))}">
         ${sobe ? "▲" : "▼"} ${Math.abs(pct).toFixed(1).replace(".", ",")}% vs ${escapeHtml(rotuloAnterior)}</div>`;
 }
 

@@ -229,7 +229,7 @@ function carregarDashboard() {
             ${htmlVariacao(compra.gasto, compraAntK.gasto, rotAnt, true)}
         </div>
         <div class="kpi-card roxo kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
-            <div class="kpi-valor">${fmtR4(compra.custo)}</div>
+            <div class="kpi-valor">${fmtRL(compra.custo)}</div>
             <div class="kpi-label">Preço Médio de Compra / L</div>
             <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)} faturados</div>
             ${htmlVariacao(compra.custo, compraAntK.custo, rotAnt, true)}
@@ -238,7 +238,7 @@ function carregarDashboard() {
         <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
             <div class="kpi-valor">${fmtR(frete.total)}</div>
             <div class="kpi-label">Frete do Período</div>
-            <div class="kpi-base">pela data da descarga · ${fmtR4(frete.porLitro)}/L</div>
+            <div class="kpi-base">pela data da descarga · ${fmtRL(frete.porLitro)}/L</div>
             ${htmlVariacao(frete.total, freteAnt.total, rotAnt, true)}
             ${frete.semTaxa ? `<div class="kpi-base kpi-base--alerta">${frete.semTaxa} nota(s) sem taxa</div>` : ''}
         </div>
@@ -362,17 +362,17 @@ function _renderAlertas(lancDescarga, lancEmissao) {
             const juizo = julgarPreco(i.valor, ref.mediana);
             if (!juizo) return;
             const sentido = juizo.acima ? 'acima' : 'abaixo';
-            const difTxt  = fmtR4(Math.abs(juizo.diferenca));
+            const difTxt  = fmtRL(Math.abs(juizo.diferenca));
             alertas.push({
                 tipo: 'preco', chave: chavePreco,
                 icone: '', cor: 'laranja',
                 titulo: `Preço ${juizo.acima ? 'alto' : 'baixo'} — ${escapeHtml(i.tipo)}`,
                 msg: `Nota <strong>${escapeHtml(l.numeroNota)}</strong> (${formatarData(l.dataNota)}): ` +
-                     `<strong>${fmtR4(i.valor)}/L</strong> — ` +
+                     `<strong>${fmtRL(i.valor)}/L</strong> — ` +
                      `${difTxt.replace(' ', '&nbsp;')}/L ${sentido} da referência dos ${ref.dias} dias até a emissão ` +
-                     `(${fmtR4(ref.mediana)}/L, ${ref.amostras} ${ref.amostras === 1 ? 'nota' : 'notas'})`,
+                     `(${fmtRL(ref.mediana)}/L, ${ref.amostras} ${ref.amostras === 1 ? 'nota' : 'notas'})`,
                 id: l.id,
-                notificacao: `Preço ${juizo.acima ? 'alto' : 'baixo'} em ${l.numeroNota}: ${fmtR4(i.valor)}/L (${difTxt}/L ${sentido} da referência)`
+                notificacao: `Preço ${juizo.acima ? 'alto' : 'baixo'} em ${l.numeroNota}: ${fmtRL(i.valor)}/L (${difTxt}/L ${sentido} da referência)`
             });
         });
     });
@@ -588,7 +588,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
         const sinal = vp > 0 ? '▲' : '▼';
         const cls   = vp > 0 ? 'danger' : 'success';
         const ref   = `${formatarData(anterior.inicio).slice(0, 5)} a ${formatarData(anterior.fim).slice(0, 5)}`;
-        variacaoHTML = `<span class="variacao-mini variacao-mini--${cls}" title="Preço médio de compra das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtR4(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
+        variacaoHTML = `<span class="variacao-mini variacao-mini--${cls}" title="Preço médio de compra das notas emitidas de ${formatarData(anterior.inicio)} a ${formatarData(anterior.fim)}: ${fmtRL(r.compraAnt.custo)}/L">${sinal} ${Math.abs(vp).toFixed(1).replace('.', ',')}% vs ${ref}</span>`;
     }
 
     const lancsComb = lancDescarga
@@ -609,7 +609,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
                     <td>${escapeHtml(l.numeroNota)}</td>
                     <td>${escapeHtml(l.motorista) || '—'}</td>
                     <td>${fmtL3(item.qtd)}</td>
-                    <td>${fmtR4(item.valor)}</td>
+                    <td>${fmtRL(item.valor)}</td>
                     <td>${fmtR(item.total ?? item.qtd * item.valor)}</td>
                 </tr>`;
             }).join('')}
@@ -631,7 +631,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
                 <div class="dash-comb-kpi-label">Gasto · pela emissão</div>
             </div>
             <div class="dash-comb-kpi roxo" title="${escapeHtml(explicacaoPrecoCompra(r.compra.metricas))}">
-                <div class="dash-comb-kpi-val">${fmtR4(r.compra.custo)}</div>
+                <div class="dash-comb-kpi-val">${fmtRL(r.compra.custo)}</div>
                 <div class="dash-comb-kpi-label">Preço médio/L · faturado, pela emissão ${variacaoHTML}</div>
                 ${r.compra.custoRecebido > 0 ? `<div class="dash-comb-kpi-label dash-comb-kpi-label--nota">${escapeHtml(textoCustoRecebido(r.compra.metricas))}</div>` : ''}
             </div>
@@ -689,7 +689,7 @@ function renderComparativoMeses() {
             <td>${c.notas}</td>
             <td>${c.litros > 0 ? fmtL(c.litros) : '—'}</td>
             <td>${fmtR(c.gasto)}</td>
-            <td>${c.custo > 0 ? fmtR4(c.custo) : '—'}</td>
+            <td>${c.custo > 0 ? fmtRL(c.custo) : '—'}</td>
         </tr>`;
     }).join('');
 

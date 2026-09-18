@@ -248,7 +248,7 @@ function renderKPIs(dados) {
             <div class="kpi-label">Total de Litros</div>
         </div>
         <div class="kpi-card roxo" title="Preço médio de compra: valor das notas ÷ litros faturados nelas, no período filtrado pela emissão.">
-            <div class="kpi-valor">${dados.custoMedio > 0 ? "R$ " + dados.custoMedio.toFixed(4) : "—"}</div>
+            <div class="kpi-valor">${dados.custoMedio > 0 ? fmtRL(dados.custoMedio) : "—"}</div>
             <div class="kpi-label">Preço Médio de Compra / L</div>
             <div class="kpi-base">sobre ${fmtL(dados.totalLitrosNota || 0)} faturados</div>
         </div>
@@ -339,7 +339,7 @@ function renderAbaMensal(dados) {
         const varBadge = idx > 0 ? badgeVariacao(cm, meses[idx-1].litrosNota > 0 ? meses[idx-1].gasto/meses[idx-1].litrosNota : 0) : "";
         return `<tr>
             <td>${nomeMes(m.mes)}</td><td>${m.notas}</td><td>${fmtL(m.litros)}</td>
-            <td>${fmtR(m.gasto)}</td><td>${cm > 0 ? fmtR4(cm) : "—"}</td>
+            <td>${fmtR(m.gasto)}</td><td>${cm > 0 ? fmtRL(cm) : "—"}</td>
             <td>${varBadge || "—"}</td>
         </tr>`;
     }).join("");
@@ -400,7 +400,7 @@ function renderAbaMotoristas(dados) {
         const pct = dados.totalGasto > 0 ? m.gasto/dados.totalGasto*100 : 0;
         return `<tr>
             <td>${escapeHtml(m.nome)}</td><td>${m.viagens}</td><td>${fmtL(m.litros)}</td>
-            <td>${fmtR(m.gasto)}</td><td>${cm>0?fmtR4(cm):"—"}</td>
+            <td>${fmtR(m.gasto)}</td><td>${cm>0?fmtRL(cm):"—"}</td>
             <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
     }).join("");
@@ -461,7 +461,7 @@ function renderAbaVeiculos(dados) {
         const pct = dados.totalGasto > 0 ? v.gasto/dados.totalGasto*100 : 0;
         return `<tr>
             <td>${escapeHtml(v.nome)}</td><td>${v.viagens}</td><td>${fmtL(v.litros)}</td>
-            <td>${fmtR(v.gasto)}</td><td>${cm>0?fmtR4(cm):"—"}</td>
+            <td>${fmtR(v.gasto)}</td><td>${cm>0?fmtRL(cm):"—"}</td>
             <td>${pct.toFixed(1)}%<div class="barra-progresso"><div class="barra-progresso-fill" style="width:${pct}%"></div></div></td>
         </tr>`;
     }).join("");
@@ -519,10 +519,10 @@ function renderAbaCombustivel(dados) {
     }
     tbody.innerHTML = lista.map(c => {
         const pm = c.litrosNota > 0 ? c.gasto/c.litrosNota : 0;
-        const mm = c.precoMin !== Infinity ? `${fmtR4(c.precoMin)} / ${fmtR4(c.precoMax)}` : "—";
+        const mm = c.precoMin !== Infinity ? `${fmtRL(c.precoMin)} / ${fmtRL(c.precoMax)}` : "—";
         return `<tr>
             <td>${escapeHtml(c.nome)}</td><td>${c.notas}</td><td>${fmtL(c.litros)}</td>
-            <td>${fmtR(c.gasto)}</td><td>${pm>0?fmtR4(pm):"—"}</td><td>${mm}</td>
+            <td>${fmtR(c.gasto)}</td><td>${pm>0?fmtRL(pm):"—"}</td><td>${mm}</td>
         </tr>`;
     }).join("");
     
@@ -582,7 +582,7 @@ function renderAbaComparativo(dados) {
         const cm = custosMedias[idx];
         const varBadge = idx > 0 ? badgeVariacao(cm, custosMedias[idx-1]) : "—";
         return `<tr>
-            <td>${nomeMes(m.mes)}</td><td>${cm>0?fmtR4(cm):"—"}</td>
+            <td>${nomeMes(m.mes)}</td><td>${cm>0?fmtRL(cm):"—"}</td>
             <td>${varBadge}</td><td>${fmtL(m.litros)}</td><td>${fmtR(m.gasto)}</td>
         </tr>`;
     }).join("");
@@ -614,7 +614,7 @@ function renderAbaComparativo(dados) {
             plugins: {
                 tooltip: {
                     callbacks: {
-                        label: (ctx) => 'R$ ' + ctx.raw.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+                        label: (ctx) => fmtRL(ctx.raw)
                     }
                 }
             },
@@ -804,7 +804,7 @@ function renderAbaEvolucaoPrecos(dados) {
                 },
                 tooltip: {
                     callbacks: {
-                        label: (ctx) => `${ctx.dataset.label}: R$ ${ctx.raw ? ctx.raw.toFixed(4) : '—'}`
+                        label: (ctx) => `${ctx.dataset.label}: ${ctx.raw ? fmtRL(ctx.raw) : '—'}`
                     }
                 }
             },

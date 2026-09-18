@@ -119,7 +119,7 @@ function _desenharReferenciaPreco(linha, tipo) {
     // isso, "7 dias" numa nota antiga seria lido como a última semana.
     const ate = fim === _hojeISO() ? "" : ` até ${formatarData(fim).slice(0, 5)}`;
     ref.textContent = mediana
-        ? `referência ${fmtR4(mediana)}/L · ${dias} dias${ate} · ${_plural(amostras, "nota", "notas")}`
+        ? `referência ${fmtRL(mediana)}/L · ${dias} dias${ate} · ${_plural(amostras, "nota", "notas")}`
         : `sem histórico nos ${dias} dias${ate || " anteriores"}`;
     // Antes do aviso de preço, quando os dois estiverem na célula: a
     // régua vem primeiro, o julgamento depois.
@@ -394,9 +394,9 @@ function validarLancamento() {
         const juizo = julgarPreco(valor, mediana);
         if (!juizo) return;
 
-        const texto = `${fmtR4(valor)}/L está ${fmtR4(Math.abs(juizo.diferenca))}/L `
+        const texto = `${fmtRL(valor)}/L está ${fmtRL(Math.abs(juizo.diferenca))}/L `
                     + `${juizo.acima ? "acima" : "abaixo"} da referência `
-                    + `(${fmtR4(mediana)}, ${_plural(amostras, "nota", "notas")})`;
+                    + `(${fmtRL(mediana)}, ${_plural(amostras, "nota", "notas")})`;
         const aviso = document.createElement("span");
         aviso.className = "aviso-preco";
         aviso.textContent = texto;

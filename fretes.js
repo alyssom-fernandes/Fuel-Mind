@@ -59,13 +59,13 @@ function _taxaFreteGrupo(grupo) {
 /** Taxa do grupo formatada para as tabelas da tela. */
 function _fmtTaxaGrupo(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? fmtR4(taxa) : "—";
+    return taxa > 0 ? fmtRL(taxa) : "—";
 }
 
 /** Taxa do grupo em texto puro, para Excel e CSV. */
 function _taxaGrupoTexto(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? taxa.toFixed(4) : "";
+    return taxa > 0 ? taxa.toFixed(3) : "";
 }
 
 /** Taxa do grupo como NÚMERO, para a célula da planilha somar e ordenar.
@@ -78,7 +78,7 @@ function _taxaGrupoNum(grupo) {
 /** Taxa do grupo com prefixo R$, para PDF e impressão. */
 function _taxaGrupoMoeda(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? "R$ " + taxa.toFixed(4) : "—";
+    return taxa > 0 ? fmtRL(taxa) : "—";
 }
 
 /*=================================================
@@ -174,7 +174,7 @@ function renderFreteResumo() {
                 ${htmlVariacao(d.totalNotas, ant.totalNotas, rot, false)}
             </div>
             <div class="kpi-card roxo">
-                <div class="kpi-valor">${fmtR4(porLitro)}</div>
+                <div class="kpi-valor">${fmtRL(porLitro)}</div>
                 <div class="kpi-label">Frete por litro</div>
                 <div class="kpi-base">frete ÷ litros do mês</div>
                 ${htmlVariacao(porLitro, porLitroAnt, rot, true)}
@@ -383,7 +383,7 @@ function renderFreteHistorico() {
                 <td><strong>${nomeMes(x.mes)}</strong></td>
                 <td>${fmtL3(x.litros)}</td>
                 <td><strong>${fmtR(x.frete)}</strong></td>
-                <td>${x.porLitro > 0 ? fmtR4(x.porLitro) : "—"}</td>
+                <td>${x.porLitro > 0 ? fmtRL(x.porLitro) : "—"}</td>
             </tr>`).join("")}</tbody></table>
         </div>`;
 
@@ -411,7 +411,7 @@ function renderFreteHistorico() {
             plugins: {
                 legend: { display: false },
                 tooltip: { callbacks: {
-                    label: ctx => `${fmtR(ctx.raw)} · ${fmtR4(serie[ctx.dataIndex].porLitro)}/L`,
+                    label: ctx => `${fmtR(ctx.raw)} · ${fmtRL(serie[ctx.dataIndex].porLitro)}/L`,
                     afterLabel: () => "Clique para abrir este mês"
                 } }
             },
@@ -495,7 +495,7 @@ function abrirFreteNotaANota() {
                     <td>${escapeHtml(x.placa)}</td>
                     <td>${escapeHtml(x.conjunto) || "—"}</td>
                     <td>${fmtL3(x.litros)}</td>
-                    <td>${x.taxa > 0 ? fmtR4(x.taxa) : "—"}</td>
+                    <td>${x.taxa > 0 ? fmtRL(x.taxa) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
@@ -673,7 +673,7 @@ function exportarFechamentoDoMes() {
     const m = metricasPreco(doMes.flatMap(l => l.itens || []));
     const aoaEntradas = [
         [`NOTAS DE ENTRADA — ${nomeMes(mes)}, pela data de emissão`],
-        [`Preço médio de compra: ${fmtR4(m.precoCompra)}/L sobre ${fmtL3(m.litrosNota)} faturados`],
+        [`Preço médio de compra: ${fmtRL(m.precoCompra)}/L sobre ${fmtL3(m.litrosNota)} faturados`],
         [],
         ["Emissão", "Descarga", "Nota", "Base", "Empresa", "Motorista", "Placa", "Litros (carga)", "Litros descarregados", "Total (R$)"]
     ];
@@ -796,7 +796,7 @@ function exportarFretesCSV() {
 
     // Vírgula decimal: com ponto, o Excel em português lê a coluna como
     // texto e não soma (17/09/2026).
-    const brTaxa = g => { const t = _taxaFreteGrupo(g); return t > 0 ? t.toFixed(4).replace('.', ',') : ''; };
+    const brTaxa = g => { const t = _taxaFreteGrupo(g); return t > 0 ? t.toFixed(3).replace('.', ',') : ''; };
     const br = (v, casas) => (Number(v) || 0).toFixed(casas).replace('.', ',');
     const totalCsv = (lista, colunas) => {
         const viagens = lista.reduce((s2, x) => s2 + (x.viagens || 0), 0);

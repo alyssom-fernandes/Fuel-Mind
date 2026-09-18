@@ -56,7 +56,7 @@ function _historicoTaxaTexto(empresa) {
     if (!hist.length) return "Taxa sem histórico: vale para todo o período.";
     return "Vigências da taxa:\n" + [...hist]
         .sort((a, b) => String(a.vigenciaDe).localeCompare(String(b.vigenciaDe)))
-        .map(v => `${fmtR4(Number(v.taxa) || 0)}/L — de ${formatarData(v.vigenciaDe)}`
+        .map(v => `${fmtRL(Number(v.taxa) || 0)}/L — de ${formatarData(v.vigenciaDe)}`
                 + (v.vigenciaAte ? ` a ${formatarData(v.vigenciaAte)}` : " (atual)"))
         .join("\n");
 }
@@ -297,7 +297,7 @@ function confirmarEdicao() {
             const taxaAntiga = _taxaFreteDaEmpresa(item);
             if (taxaAntiga !== novaTaxa) {
                 if (!item.logs) item.logs = [];
-                item.logs.push(`Taxa de frete alterada de R$ ${taxaAntiga.toFixed(4)}/L para R$ ${novaTaxa.toFixed(4)}/L em ${new Date().toLocaleString('pt-BR')}`);
+                item.logs.push(`Taxa de frete alterada de ${fmtRL(taxaAntiga)}/L para ${fmtRL(novaTaxa)}/L em ${new Date().toLocaleString('pt-BR')}`);
                 // ── VIGÊNCIA DA TAXA (17/09/2026) ───────────────────────
                 // A taxa nova vale de hoje em diante; a anterior fica
                 // fechada em ontem. Sem isso, mudar a taxa em outubro
@@ -971,7 +971,7 @@ function atualizarListas() {
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtR4(_taxaFreteDaEmpresa(e))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtRL(_taxaFreteDaEmpresa(e))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">

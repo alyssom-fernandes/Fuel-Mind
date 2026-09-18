@@ -1420,7 +1420,7 @@ function _cfgPreview() {
         const dif=parseNumeroBR(document.getElementById('_cfgPrecoDif')?.value);
         const per=document.getElementById('_cfgPrecoPer')?.value||7;
         partes.push(dif !== null && dif > 0
-            ? `Preço: avisa se o preço/L ficar ${escapeHtml(Math.round(dif*100) === dif*100 ? fmtR(dif) : fmtR4(dif))} ou mais acima ou abaixo da mediana dos ${escapeHtml(per)} dias anteriores à emissão da nota`
+            ? `Preço: avisa se o preço/L ficar ${escapeHtml(Math.round(dif*100) === dif*100 ? fmtR(dif) : fmtRL(dif))} ou mais acima ou abaixo da mediana dos ${escapeHtml(per)} dias anteriores à emissão da nota`
             : `Preço: informe uma diferença maior que zero, em reais por litro (ex.: 0,25)`);
     }
     if(document.getElementById('_cfgVolAtivo')?.checked) {
