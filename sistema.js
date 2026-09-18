@@ -343,23 +343,23 @@ function renderBackupsAuto() {
     if (!el) return;
     const lista = listarBackupsAutomaticos();
     if (lista.length === 0) {
-        el.innerHTML = `<p class="dica" style="margin:0">Nenhum backup automático encontrado ainda. O próximo será criado em até 3 dias.</p>`;
+        el.innerHTML = `<p class="dica mb-0">Nenhum backup automático encontrado ainda. O próximo será criado em até 3 dias.</p>`;
         return;
     }
     el.innerHTML = `
-        <table style="width:100%;font-size:0.84rem;border-collapse:collapse;margin-top:4px">
-            <thead><tr style="background:var(--surface-alt)">
-                <th style="padding:7px 12px;text-align:left;font-size:0.64rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light)">Data</th>
-                <th style="padding:7px 12px;text-align:left;font-size:0.64rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light)">Tamanho</th>
-                <th style="padding:7px 12px;text-align:left;font-size:0.64rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light)">Ação</th>
+        <table class="tabela-simples mt-1">
+            <thead><tr>
+                <th>Data</th>
+                <th>Tamanho</th>
+                <th>Ação</th>
             </tr></thead>
             <tbody>
-                ${lista.map(b => `<tr style="border-bottom:1px solid var(--border-light)">
-                    <td style="padding:8px 12px">${b.data}</td>
-                    <td style="padding:8px 12px;color:var(--text-muted);font-family:monospace">${b.tamanhoKB} KB</td>
-                    <td style="padding:8px 12px">${ehSupremoAtual()
+                ${lista.map(b => `<tr>
+                    <td>${b.data}</td>
+                    <td class="celula-mono">${b.tamanhoKB} KB</td>
+                    <td>${ehSupremoAtual()
                         ? `<button class="btn-secundario" onclick="restaurarBackupAutomatico('${escapeJsAttr(b.chave)}')">Restaurar</button>`
-                        : '<span class="dica" style="margin:0">Só o supremo restaura</span>'}</td>
+                        : '<span class="dica mb-0">Só o supremo restaura</span>'}</td>
                 </tr>`).join("")}
             </tbody>
         </table>`;
@@ -426,7 +426,7 @@ function _faixaEspaco() {
         linhas.push(`<li><strong>${o.pctNavegador}%</strong> do espaço do navegador, contando as `
             + `${_COPIAS_NO_NAVEGADOR} cópias do banco. Ao chegar a 100%, o backup local para.</li>`);
     }
-    return `<div class="faixa-validacao ${grave ? 'faixa-bloqueio' : 'faixa-alerta'}" style="margin:0 0 16px">
+    return `<div class="faixa-validacao ${grave ? 'faixa-bloqueio' : 'faixa-alerta'} faixa-estado mb-4">
         <strong>${grave ? 'O espaço está no fim' : 'O espaço está ficando curto'}</strong>
         <ul>${linhas.join("")}</ul>
         <small>É a hora de repartir o histórico em um documento por lançamento.
@@ -456,23 +456,23 @@ function atualizarInfoSistema() {
     const alvoErros = document.getElementById("infoErros");
     if (alvoErros) {
         if (!erros.length) {
-            alvoErros.innerHTML = '<p class="dica" style="margin:0">Nenhuma falha registrada neste navegador.</p>';
+            alvoErros.innerHTML = '<p class="dica mb-0">Nenhuma falha registrada neste navegador.</p>';
         } else {
             alvoErros.innerHTML = `
-                <p class="dica" style="margin:0 0 8px">
+                <p class="dica mb-2">
                     ${erros.length} ${erros.length === 1 ? 'falha' : 'falhas'} neste navegador, da mais recente para a mais antiga.
                     Mande este texto para quem mantém o sistema.
                 </p>
-                <div class="tabela-container" style="max-height:240px;overflow:auto">
+                <div class="tabela-container tabela-container--baixa">
                     <table><thead><tr><th>Quando</th><th>Tela</th><th>Usuário</th><th>Falha</th></tr></thead>
                     <tbody>${erros.map(e => `<tr>
                         <td>${escapeHtml(new Date(e.ts).toLocaleString('pt-BR'))}</td>
                         <td>${escapeHtml(e.tela || '—')}${e.demo ? ' <em class="tag-perda">demo</em>' : ''}</td>
                         <td>${escapeHtml(e.usuario || '—')}</td>
-                        <td><code style="font-size:0.75rem">${escapeHtml(e.msg)}</code></td>
+                        <td><code class="codigo-pequeno">${escapeHtml(e.msg)}</code></td>
                     </tr>`).join('')}</tbody></table>
                 </div>
-                <div class="sistema-acoes" style="margin-top:10px">
+                <div class="sistema-acoes mt-2">
                     <button class="btn-secundario" onclick="errosCopiar()">Copiar para enviar</button>
                     <button class="btn-secundario" onclick="errosLimpar()">Limpar registro</button>
                 </div>`;
@@ -508,14 +508,15 @@ function auditarDatas() {
 
     const modal = document.createElement('div');
     modal.id = '_modalAuditoria';
-    modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;`;
+    // O mesmo modal das outras telas, em vez de um desenhado à mão.
+    modal.className = 'modal-overlay modal-overlay--desfoque-leve';
     modal.innerHTML = `
-        <div style="background:var(--surface);border-radius:12px;width:90%;max-width:800px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);padding:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <h3 style="margin:0">Lançamentos com datas suspeitas</h3>
-                <button onclick="this.closest('#_modalAuditoria').remove()" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted)">✕</button>
+        <div class="modal modal--rolagem modal--largo-800">
+            <div class="modal-cabecalho">
+                <h3>Lançamentos com datas suspeitas</h3>
+                <button class="modal-fechar" aria-label="Fechar" onclick="this.closest('#_modalAuditoria').remove()">✕</button>
             </div>
-            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+            <table class="tabela-simples">
                 <thead><tr><th>Nota</th><th>Data Nota</th><th>Data Descarga</th><th>Problema</th><th></th></tr></thead>
                 <tbody>
                     ${suspeitos.map(l => {
@@ -523,13 +524,13 @@ function auditarDatas() {
                         return `<tr>
                             <td>${escapeHtml(l.numeroNota)}</td><td>${formatarData(l.dataNota)}</td>
                             <td>${l.dataDescarga ? formatarData(l.dataDescarga) : '—'}</td>
-                            <td style="color:var(--danger);">${problema.join(', ')}</td>
+                            <td class="texto-perigo">${problema.join(', ')}</td>
                             <td><button class="btn-secundario" onclick="irParaLancamento('${escapeJsAttr(l.id)}');document.getElementById('_modalAuditoria').remove()">Ver</button></td>
                         </tr>`;
                     }).join('')}
                 </tbody>
             </table>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+            <div class="modal-acoes">
                 <button class="btn-secundario" onclick="document.getElementById('_modalAuditoria').remove()">Fechar</button>
             </div>
         </div>
@@ -602,31 +603,32 @@ function corrigirCampoEmMassa(campo) {
 
     const modal = document.createElement('div');
     modal.id = 'modalCorrecaoMassa';
-    modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;`;
+    modal.className = 'modal-overlay';
     modal.innerHTML = `
-        <div role="dialog" aria-modal="true" aria-labelledby="correcaoMassaTitulo" style="background:var(--surface);border-radius:12px;padding:28px;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
-            <h3 id="correcaoMassaTitulo" style="margin:0 0 8px">Corrigir ${escapeHtml(rotulo)}</h3>
-            <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px">
+        <div role="dialog" aria-modal="true" aria-labelledby="correcaoMassaTitulo" class="modal modal--500">
+            <h3 id="correcaoMassaTitulo" class="mt-0 mb-2">Corrigir ${escapeHtml(rotulo)}</h3>
+            <p class="sistema-descricao mb-5">
                 Troca o valor escolhido por outro em todos os lançamentos que o têm, inclusive os excluídos e cancelados.
             </p>
-            <div class="campo" style="margin-bottom:16px">
+            <div class="campo mb-4">
                 <label for="correcaoMassaAntigo">Valor que está errado nas notas</label>
-                <select id="correcaoMassaAntigo" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
+                <select id="correcaoMassaAntigo" class="largura-total">
                     <option value="">Escolha…</option>
                     ${antigos.map(([val, n]) => `<option value="${escapeHtml(val)}">${escapeHtml(val)} (${n} ${n === 1 ? 'nota' : 'notas'})</option>`).join('')}
                 </select>
             </div>
-            <div class="campo" style="margin-bottom:16px">
+            <div class="campo mb-4">
                 <label for="correcaoMassaSelect">Valor correto, do cadastro</label>
-                <select id="correcaoMassaSelect" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)">
+                <select id="correcaoMassaSelect" class="largura-total">
                     ${lista.map(val => `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`).join('')}
                 </select>
             </div>
-            <div id="correcaoMassaPreview" role="status" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;padding:8px;background:var(--surface-alt);border-radius:6px;"></div>
-            <div style="display:flex;gap:10px;justify-content:flex-end">
-                <button onclick="fecharModalCorrecaoMassa()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">Cancelar</button>
-                <button onclick="executarCorrecaoMassa()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:600">Aplicar</button>
+            <div id="correcaoMassaPreview" role="status" class="caixa-previa"></div>
+            <div class="modal-acoes">
+                <button class="btn-primario" onclick="executarCorrecaoMassa()">Aplicar</button>
+                <button class="btn-cancelar" onclick="fecharModalCorrecaoMassa()">Cancelar</button>
             </div>
+
         </div>
     `;
     document.body.appendChild(modal);
@@ -934,83 +936,6 @@ function carregarConfiguracoesTela() {
 }
 
 
-/*
-  HTML esperado na aba de config PDF (sistemaAba-backup ou similar).
-  Adicione este bloco ao index.html dentro da aba de configurações:
-
-  <div class="config-bloco">
-    <h4>Configurações de PDF</h4>
-
-    <!-- Logo por empresa -->
-    <div class="campo">
-      <label id="pdfLogoEmpresaLabel">Logo (cabeçalho do PDF)</label>
-      <p class="dica" style="margin-bottom:10px">A logo é salva por empresa. Troque de empresa no header para configurar cada uma.</p>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div id="pdfLogoPlaceholder" style="width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;
-             display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.75rem;text-align:center;cursor:pointer"
-             onclick="document.getElementById('pdfLogoInput').click()">
-          Clique para<br>adicionar logo
-        </div>
-        <img id="pdfLogoPreview" src="" alt="Logo" style="display:none;max-height:80px;max-width:200px;border-radius:6px;border:1px solid var(--border)">
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <button id="pdfLogoBtnSelecionar" class="btn-secundario" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
-          <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
-          <input id="pdfLogoInput" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
-        </div>
-        <span class="dica" style="font-size:0.75rem;margin:0">PNG ou JPG, máx. 2 MB.<br>Aparece no canto esquerdo do cabeçalho.</span>
-      </div>
-    </div>
-
-    <!-- Título e orientação -->
-    <div class="form-grid" style="grid-template-columns:1fr auto auto;gap:12px;align-items:end">
-      <div class="campo"><label for="pdfTitulo">Título do relatório</label><input type="text" id="pdfTitulo"></div>
-      <div class="campo"><label for="pdfOrientacao">Orientação</label>
-        <select id="pdfOrientacao">
-          <option value="landscape">Paisagem</option>
-          <option value="portrait">Retrato</option>
-        </select>
-      </div>
-      <div class="campo"><label for="pdfFonte">Fonte</label>
-        <select id="pdfFonte">
-          <option value="helvetica">Helvetica</option>
-          <option value="courier">Courier</option>
-          <option value="times">Times</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Cor e margens -->
-    <div class="form-grid" style="grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
-      <div class="campo"><label for="pdfCorDestaque">Cor de destaque</label>
-        <input type="color" id="pdfCorDestaque" style="height:38px;width:60px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
-      </div>
-      <div class="campo"><label for="pdfMargemEsq">Margem esq. (mm)</label><input type="number" id="pdfMargemEsq" min="5" max="40" step="1"></div>
-      <div class="campo"><label for="pdfMargemDir">Margem dir. (mm)</label><input type="number" id="pdfMargemDir" min="5" max="40" step="1"></div>
-      <div class="campo"><label for="pdfMargemTopo">Margem topo (mm)</label><input type="number" id="pdfMargemTopo" min="5" max="40" step="1"></div>
-      <div class="campo"><label for="pdfMargemRodape">Margem rodapé (mm)</label><input type="number" id="pdfMargemRodape" min="5" max="30" step="1"></div>
-    </div>
-
-    <!-- Colunas -->
-    <div class="campo">
-      <label>Colunas visíveis no PDF</label>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
-        <label class="checkbox-label"><input type="checkbox" id="pdfMostrarBase"> Base</label>
-        <label class="checkbox-label"><input type="checkbox" id="pdfMostrarEmpresa"> Empresa</label>
-        <label class="checkbox-label"><input type="checkbox" id="pdfMostrarMotorista"> Motorista</label>
-        <label class="checkbox-label"><input type="checkbox" id="pdfMostrarPlaca"> Placa</label>
-        <label class="checkbox-label"><input type="checkbox" id="pdfQuebrarPorMes"> Quebrar por mês</label>
-      </div>
-    </div>
-
-    <!-- Rodapé -->
-    <div class="campo">
-      <label for="pdfRodapeTexto">Texto do rodapé (opcional)</label>
-      <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial">
-    </div>
-
-    <button class="btn-primario" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
-  </div>
-*/
 
 /* ========== NAVEGAÇÃO PARA LANÇAMENTO ==========
    irParaLancamento — função canônica definida em ui.js.
@@ -1223,14 +1148,14 @@ function _autosystemRenderizarConferencia() {
     const combustiveis = db.combustiveis.filter(c => c.ativo !== false).map(c => c.nome);
 
     container.innerHTML = `
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-            <div class="campo" style="min-width:180px">
+        <div class="conf-filtros">
+            <div class="campo campo-180">
                 <label>Empresa</label>
-                <div style="padding:6px 10px;background:rgba(139,34,82,0.08);border:1px solid var(--primary);border-radius:var(--radius-sm);color:var(--primary);font-size:0.85rem;font-weight:600">
+                <div class="valor-fixo">
                     ${escapeHtml(empresa) || '(nenhuma selecionada)'}
                 </div>
             </div>
-            <div class="campo" style="min-width:180px">
+            <div class="campo campo-180">
                 <label for="_autoSelComb">Combustível do relatório</label>
                 <select id="_autoSelComb" onchange="_autosystemAtualizarTabela()">
                     <option value="">-- Selecione --</option>
@@ -1238,11 +1163,11 @@ function _autosystemRenderizarConferencia() {
                 </select>
             </div>
         </div>
-        <div style="font-size:0.75rem;color:var(--text-muted);margin:-6px 0 14px">
+        <div class="conf-origem">
             Lendo a data da coluna <strong>${escapeHtml(_autoColunas.data || '?')}</strong>
             e os litros da coluna <strong>${escapeHtml(_autoColunas.entrada || '?')}</strong>
             do arquivo — ${_autoLinhasDados.length} dia(s).
-            ${_autoIgnoradas ? `<strong style="color:var(--warning)">${_autoIgnoradas} linha(s) com data ilegível ficaram de fora.</strong>` : ''}
+            ${_autoIgnoradas ? `<strong class="texto-aviso">${_autoIgnoradas} linha(s) com data ilegível ficaram de fora.</strong>` : ''}
         </div>
         <div id="_autoTabelaContainer"></div>`;
 
@@ -1282,16 +1207,16 @@ function _autosystemAtualizarTabela() {
     const diffTotal = totalSistemaEntradas - totalAutoEntradas;
 
     const resumo = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+        <div class="conf-resumo">
             <div class="info-card"><div class="info-card-valor">${fmtL3(totalAutoEntradas)}</div><div class="info-card-label">Entradas AutoSystem</div></div>
             <div class="info-card"><div class="info-card-valor">${fmtL3(totalSistemaEntradas)}</div><div class="info-card-label">Entradas Sistema</div></div>
-            <div class="info-card" style="border-left:3px solid ${Math.abs(diffTotal)>1?'var(--danger)':'var(--success)'}">
-                <div class="info-card-valor" style="color:${Math.abs(diffTotal)>1?'var(--danger)':'var(--success)'}">
+            <div class="info-card ${Math.abs(diffTotal)>1 ? 'info-card--perigo' : 'info-card--ok'}">
+                <div class="info-card-valor">
                     ${diffTotal>0?'+':''}${fmtL3(diffTotal)}
                 </div><div class="info-card-label">Diferença Entradas</div>
             </div>
-            <div class="info-card" style="border-left:3px solid ${diasComDivergencia>0?'var(--warning)':'var(--success)'}">
-                <div class="info-card-valor" style="color:${diasComDivergencia>0?'var(--warning)':'var(--success)'}">
+            <div class="info-card ${diasComDivergencia>0 ? 'info-card--aviso' : 'info-card--ok'}">
+                <div class="info-card-valor">
                     ${diasComDivergencia}
                 </div><div class="info-card-label">Dias com divergência</div>
             </div>
@@ -1299,35 +1224,35 @@ function _autosystemAtualizarTabela() {
 
     container.innerHTML = `
         ${resumo}
-        <p class="dica" style="margin-bottom:10px">
+        <p class="dica mb-2">
             Confere as <strong>notas lançadas</strong> contra o que o AutoSystem mediu, dia a dia pela <strong>data da descarga</strong> e com os <strong>litros descarregados</strong>.
             Nota faltando ou lançada duas vezes aparece aqui — e nota a mais é frete pago a mais. O frete, esse, é calculado sobre a <strong>carga</strong> da nota.
             Clique num dia para ver as notas que o formam.
             ${Math.abs(diffTotal)>1
-                ? `<strong style="color:var(--danger)">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
-                : `<strong style="color:var(--success)">Total do período confere.</strong>`}
+                ? `<strong class="texto-perigo">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
+                : `<strong class="texto-ok">Total do período confere.</strong>`}
         </p>
         <div class="tabela-container"><table>
             <thead><tr><th>Data</th><th>Entrada AutoSystem (L)</th><th>Entrada Sistema (L)</th><th>Diferença (L)</th></tr></thead>
             <tbody>
                 ${linhasEntrada.map(l => `
-                <tr class="${l.sistemaVal > 0 ? 'linha-clicavel' : ''}" style="${l.temDiv?'background:rgba(239,68,68,0.06)':l.entrada===0&&l.sistemaVal===0?'opacity:0.5':''}"
+                <tr class="${l.sistemaVal > 0 ? 'linha-clicavel' : ''} ${l.temDiv ? 'linha-divergente' : (l.entrada===0 && l.sistemaVal===0 ? 'linha-apagada' : '')}"
                     ${l.sistemaVal > 0 ? `onclick="_autoAlternarNotasDoDia(this, '${escapeJsAttr(l.data)}', '${escapeJsAttr(comb)}')" title="Ver as notas deste dia"` : ''}>
-                    <td><strong>${formatarData(l.data)}</strong>${l.soNoSistema ? ' <small style="color:var(--warning)">só no sistema</small>' : ''}${l.temDiv && l.sistemaVal > 0 ? ' <small style="color:var(--text-muted)">▸ notas</small>' : ''}</td>
+                    <td><strong>${formatarData(l.data)}</strong>${l.soNoSistema ? ' <small class="texto-aviso">só no sistema</small>' : ''}${l.temDiv && l.sistemaVal > 0 ? ' <small class="rotulo-suave">▸ notas</small>' : ''}</td>
                     <td>${l.entrada>0?fmtL3(l.entrada):'—'}</td>
                     <td>${l.sistemaVal>0?fmtL3(l.sistemaVal):'—'}</td>
                     <td>${l.temDiv
-                        ? `<span style="color:${l.diff>0?'var(--success)':'var(--danger)'}">${l.diff>0?'+':''}${fmtL3(l.diff)}</span>`
-                        : (l.entrada>0||l.sistemaVal>0)?'<span style="color:var(--success)">OK</span>':'—'
+                        ? `<span class="${l.diff>0 ? 'texto-ok' : 'texto-perigo'}">${l.diff>0?'+':''}${fmtL3(l.diff)}</span>`
+                        : (l.entrada>0||l.sistemaVal>0)?'<span class="texto-ok">OK</span>':'—'
                     }</td>
                 </tr>`).join('')}
-                <tr style="font-weight:700;border-top:2px solid var(--border)">
+                <tr class="linha-total">
                     <td>TOTAL</td><td>${fmtL3(totalAutoEntradas)}</td><td>${fmtL3(totalSistemaEntradas)}</td>
-                    <td style="color:${Math.abs(diffTotal)>1?'var(--danger)':'var(--success)'}">${diffTotal>0?'+':''}${fmtL3(diffTotal)}</td>
+                    <td class="${Math.abs(diffTotal)>1 ? 'texto-perigo' : 'texto-ok'}">${diffTotal>0?'+':''}${fmtL3(diffTotal)}</td>
                 </tr>
             </tbody>
         </table></div>
-        <div class="barra-exportacao" style="margin-top:16px">
+        <div class="barra-exportacao mt-4">
             <span class="exportacao-titulo">Exportar:</span>
             <button class="btn-export btn-xlsx" onclick="_autoExportarExcel('${escapeJsAttr(comb)}')">Excel</button>
         </div>`;
@@ -1354,15 +1279,16 @@ function _autoAlternarNotasDoDia(tr, data, comb) {
             <td>${escapeHtml(l.placa || "—")}</td>
             <td>${escapeHtml(l.motorista || "—")}</td>
             <td>${fmtL3(carga)}</td>
-            <td>${fmtL3(desc)}${desc !== carga ? "" : ' <small style="color:var(--text-muted)">(= carga)</small>'}</td>
+            <td>${fmtL3(desc)}${desc !== carga ? "" : ' <small class="rotulo-suave">(= carga)</small>'}</td>
             <td><button class="btn-secundario" onclick="event.stopPropagation(); editarLancamento('${escapeJsAttr(l.id)}')">Abrir</button></td>
         </tr>`;
     }).join("");
     const nova = document.createElement("tr");
     nova.className = "linha-notas-dia";
-    nova.innerHTML = `<td colspan="4" style="padding:8px 12px;background:var(--surface-alt)">
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">${notas.length} nota(s) de ${escapeHtml(comb)} descarregada(s) em ${formatarData(data)}</div>
-        <table style="width:100%"><thead><tr><th>Nota</th><th>Placa</th><th>Motorista</th><th>Carga (L)</th><th>Descarga (L)</th><th></th></tr></thead>
+    nova.innerHTML = `<td colspan="4" class="celula-notas-dia">
+        <div class="notas-dia-titulo">${notas.length} nota(s) de ${escapeHtml(comb)} descarregada(s) em ${formatarData(data)}</div>
+        <table class="largura-total"><thead><tr><th>Nota</th>
+<th>Placa</th><th>Motorista</th><th>Carga (L)</th><th>Descarga (L)</th><th></th></tr></thead>
         <tbody>${linhas || '<tr><td colspan="6">Nenhuma nota.</td></tr>'}</tbody></table>
     </td>`;
     tr.after(nova);
@@ -1409,84 +1335,70 @@ function abrirConfigAlertas() {
     const podeAlterar = typeof podeGerenciarUsuarios === 'function' && podeGerenciarUsuarios();
     const modal = document.createElement('div');
     modal.id = '_modalConfigAlertas';
-    modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px`;
+    modal.className = 'modal-overlay';
 
     const periodos = _CFG_PERIODOS_PRECO.includes(Number(cfg.precoPeriodoDias))
         ? _CFG_PERIODOS_PRECO
         : [..._CFG_PERIODOS_PRECO, Number(cfg.precoPeriodoDias)].sort((a, b) => a - b);
     const periodOpts = periodos.map(d=>`<option value="${d}" ${cfg.precoPeriodoDias==d?'selected':''}>${d} dias</option>`).join('');
 
-    modal.innerHTML = `
-        <div style="background:var(--surface);border-radius:12px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-                <h3 style="margin:0">Configurações de Alertas</h3>
-                <button onclick="document.getElementById('_modalConfigAlertas').remove()" aria-label="Fechar" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
-            </div>
-            <p style="margin:-8px 0 18px;font-size:0.82rem;color:var(--text-muted)">Valem para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.${podeAlterar ? '' : ' <strong>Só administradores alteram.</strong>'}</p>
-
-            <fieldset id="_cfgCampos" ${podeAlterar ? '' : 'disabled'} style="border:none;margin:0;padding:0;min-width:0">
+    // Um bloco por alerta, o mesmo desenho três vezes.
+    const bloco = (nome, titulo, descricao, ligado, campos) => `
             <div class="_cfg-bloco">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <div><strong>Alerta de Preço</strong>
-                    <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Compara o preço/L de cada nota com a mediana das notas emitidas nos dias anteriores. Avisa acima ou abaixo.</p></div>
-                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar alerta de preço" id="_cfgPrecoAtivo" ${cfg.precoAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
+                <div class="cfg-bloco-cabecalho">
+                    <div><strong>${titulo}</strong>
+                    <p class="cfg-bloco-descricao">${descricao}</p></div>
+                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar ${titulo.toLowerCase()}" id="_cfg${nome}Ativo" ${ligado?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
                 </div>
-                <div id="_cfgPrecoOpts" style="${cfg.precoAtivo?'':'opacity:0.4;pointer-events:none'}">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div id="_cfg${nome}Opts" class="cfg-opcoes${ligado ? '' : ' cfg-opcoes--desligado'}">
+                    <div class="grade-2 grade-2--apertada">${campos}</div>
+                </div>
+            </div>`;
+
+    modal.innerHTML = `
+        <div class="modal modal--rolagem modal--520">
+            <div class="modal-cabecalho">
+                <h3>Configurações de Alertas</h3>
+                <button class="modal-fechar" onclick="document.getElementById('_modalConfigAlertas').remove()" aria-label="Fechar">✕</button>
+            </div>
+            <p class="cfg-introducao">Valem para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.${podeAlterar ? '' : ' <strong>Só administradores alteram.</strong>'}</p>
+
+            <fieldset id="_cfgCampos" ${podeAlterar ? '' : 'disabled'} class="cfg-campos">
+            ${bloco('Preco', 'Alerta de Preço',
+                'Compara o preço/L de cada nota com a mediana das notas emitidas nos dias anteriores. Avisa acima ou abaixo.',
+                cfg.precoAtivo, `
                         <div class="campo"><label for="_cfgPrecoDif">Diferença mínima (R$/L)</label>
-                        <input type="text" class="fm-numero" id="_cfgPrecoDif" value="${escapeHtml(fmtNumeroExibicao(cfg['precoDiferencaR$'], 2))}" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
+                        <input type="text" class="fm-numero largura-total" id="_cfgPrecoDif" value="${escapeHtml(fmtNumeroExibicao(cfg['precoDiferencaR$'], 2))}" oninput="_cfgPreview()"></div>
                         <div class="campo"><label for="_cfgPrecoPer">Período de referência</label>
-                        <select id="_cfgPrecoPer" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" onchange="_cfgPreview()">${periodOpts}</select></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="_cfg-bloco" style="margin-top:20px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <div><strong>Alerta de Volume Suspeito</strong>
-                    <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Avisa quando a quantidade está muito acima ou abaixo do habitual.</p></div>
-                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar alerta de volume suspeito" id="_cfgVolAtivo" ${cfg.volumeAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
-                </div>
-                <div id="_cfgVolOpts" style="${cfg.volumeAtivo?'':'opacity:0.4;pointer-events:none'}">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                        <select id="_cfgPrecoPer" class="largura-total" onchange="_cfgPreview()">${periodOpts}</select></div>`)}
+            ${bloco('Vol', 'Alerta de Volume Suspeito',
+                'Avisa quando a quantidade está muito acima ou abaixo do habitual.',
+                cfg.volumeAtivo, `
                         <div class="campo"><label for="_cfgVolAcima">% acima da média histórica</label>
-                        <input type="number" id="_cfgVolAcima" value="${cfg.volumeAcimaPerc}" min="10" max="500" step="5" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
+                        <input type="number" id="_cfgVolAcima" class="largura-total" value="${cfg.volumeAcimaPerc}" min="10" max="500" step="5" oninput="_cfgPreview()"></div>
                         <div class="campo"><label for="_cfgVolAbaixo">% abaixo da média histórica</label>
-                        <input type="number" id="_cfgVolAbaixo" value="${cfg.volumeAbaixoPerc}" min="10" max="99" step="5" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="_cfg-bloco" style="margin-top:20px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <div><strong>Alerta de Data Suspeita</strong>
-                    <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">Avisa quando a data de descarga ou nota parece incorreta.</p></div>
-                    <label class="_cfg-toggle"><input type="checkbox" aria-label="Ligar alerta de data suspeita" id="_cfgDataAtivo" ${cfg.dataAtivo?'checked':''} onchange="_cfgPreview()"><span class="_cfg-slider"></span></label>
-                </div>
-                <div id="_cfgDataOpts" style="${cfg.dataAtivo?'':'opacity:0.4;pointer-events:none'}">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                        <input type="number" id="_cfgVolAbaixo" class="largura-total" value="${cfg.volumeAbaixoPerc}" min="10" max="99" step="5" oninput="_cfgPreview()"></div>`)}
+            ${bloco('Data', 'Alerta de Data Suspeita',
+                'Avisa quando a data de descarga ou nota parece incorreta.',
+                cfg.dataAtivo, `
                         <div class="campo"><label for="_cfgDataToler">Tolerância de data futura (dias)</label>
-                        <input type="number" id="_cfgDataToler" value="${cfg.dataTolerDias}" min="0" max="30" step="1" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
+                        <input type="number" id="_cfgDataToler" class="largura-total" value="${cfg.dataTolerDias}" min="0" max="30" step="1" oninput="_cfgPreview()"></div>
                         <div class="campo"><label for="_cfgDataMaxDiff">Máx. dias entre nota e descarga</label>
-                        <input type="number" id="_cfgDataMaxDiff" value="${cfg.dataMaxDescNota}" min="1" max="90" step="1" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text)" oninput="_cfgPreview()"></div>
-                    </div>
-                </div>
-            </div>
-
+                        <input type="number" id="_cfgDataMaxDiff" class="largura-total" value="${cfg.dataMaxDescNota}" min="1" max="90" step="1" oninput="_cfgPreview()"></div>`)}
             </fieldset>
 
-            <div id="_cfgPreviewTxt" style="margin-top:16px;padding:10px 14px;border-radius:8px;background:var(--surface-alt);font-size:0.82rem;color:var(--text-muted);min-height:36px"></div>
+            <div id="_cfgPreviewTxt" class="caixa-previa caixa-previa--cfg"></div>
 
             ${podeAlterar ? `
-            <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:20px">
-                <button onclick="_cfgRestaurarPadrao()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text-muted);cursor:pointer;font-size:0.82rem">Restaurar padrões</button>
-                <div style="display:flex;gap:10px">
-                    <button onclick="document.getElementById('_modalConfigAlertas').remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">Cancelar</button>
-                    <button onclick="_cfgSalvar()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:600">Salvar configurações</button>
+            <div class="modal-acoes modal-acoes--separadas">
+                <button class="btn-secundario btn-pequeno" onclick="_cfgRestaurarPadrao()">Restaurar padrões</button>
+                <div class="linha-acoes linha-acoes--apertada">
+                    <button class="btn-primario" onclick="_cfgSalvar()">Salvar configurações</button>
+                    <button class="btn-cancelar" onclick="document.getElementById('_modalConfigAlertas').remove()">Cancelar</button>
                 </div>
             </div>` : `
-            <div style="display:flex;justify-content:flex-end;margin-top:20px">
-                <button onclick="document.getElementById('_modalConfigAlertas').remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);cursor:pointer">Fechar</button>
+            <div class="modal-acoes">
+                <button class="btn-secundario" onclick="document.getElementById('_modalConfigAlertas').remove()">Fechar</button>
             </div>`}
         </div>
     `;
@@ -1495,7 +1407,7 @@ function abrirConfigAlertas() {
     ['Preco','Vol','Data'].forEach(nome => {
         const chk=document.getElementById(`_cfg${nome}Ativo`);
         const opts=document.getElementById(`_cfg${nome}Opts`);
-        if(chk&&opts) chk.addEventListener('change',()=>{opts.style.opacity=chk.checked?'1':'0.4';opts.style.pointerEvents=chk.checked?'':'none';});
+        if(chk&&opts) chk.addEventListener('change',()=>opts.classList.toggle('cfg-opcoes--desligado', !chk.checked));
     });
     _cfgPreview();
 }
@@ -1533,7 +1445,7 @@ function _cfgRestaurarPadrao() {
     ['Preco','Vol','Data'].forEach(nome=>{
         const chk=document.getElementById(`_cfg${nome}Ativo`);
         const opts=document.getElementById(`_cfg${nome}Opts`);
-        if(chk&&opts){opts.style.opacity=chk.checked?'1':'0.4';opts.style.pointerEvents=chk.checked?'':'none';}
+        if(chk&&opts) opts.classList.toggle('cfg-opcoes--desligado', !chk.checked);
     });
     _cfgPreview();
 }

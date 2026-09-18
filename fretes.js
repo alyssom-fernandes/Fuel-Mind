@@ -252,7 +252,7 @@ function renderAbaConjuntosFretes() {
         const detalhesCombs = linhasDetalhes(c.detalhes);
 
         const detalhesPlacas = Object.entries(c.porPlacaInterna).map(([placa, d]) => `
-            <tr class="linha-detalhe-frete linha-detalhe-frete--placa">
+            <tr class="linha-detalhe-frete">
                 <td class="celula-recuada">
                      ${escapeHtml(placa)}
                 </td>

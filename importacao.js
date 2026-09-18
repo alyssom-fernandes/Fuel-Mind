@@ -546,12 +546,12 @@ function importacaoRenderizarEtapa1() {
     const amostra   = importacaoLinhas.slice(1, 4);
 
     preview.innerHTML = `
-        <p class="dica" style="margin-bottom:8px">
+        <p class="dica mb-2">
             <strong>${importacaoLinhas.length - 1}</strong> linha(s) encontradas em
             <strong>${escapeHtml(importacaoArquivoNome)}</strong>.
             Abaixo, uma amostra das primeiras linhas:
         </p>
-        <div style="overflow-x:auto">
+        <div class="rolagem-x">
             <table class="tabela-preview">
                 <thead>
                     <tr>${cabecalho.map((c,i) => `<th>Col ${i+1}<br><small>${escapeHtml(String(c).substring(0,20))}</small></th>`).join("")}</tr>
@@ -605,7 +605,7 @@ function importacaoRenderizarEtapa2(cabecalho) {
         cabecalho.map((c,i) => `<option value="${i}">Col ${i+1}: ${escapeHtml(String(c).substring(0,30))}</option>`).join("");
 
     container.innerHTML = `
-        <p class="dica" style="margin-bottom:12px">
+        <p class="dica mb-3">
             Relacione cada coluna da planilha com o campo correspondente.
             Campos com <strong>*</strong> são obrigatórios.<br>
             O sistema mapeou automaticamente o que reconheceu — confira e ajuste se necessário.
@@ -907,23 +907,23 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
         </div>` : ""}
 
         ${duplicatas.length > 0 ? `
-        <details class="detalhes-resumo" open style="margin-top:12px">
+        <details class="detalhes-resumo mt-3" open>
             <summary>${duplicatas.length} nota(s) já existem no sistema — escolha o que fazer</summary>
-            <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                <button class="btn-secundario" style="font-size:0.78rem" onclick="importacaoSelecionarTodasDuplicatas(true)">Marcar todas para reimportar</button>
-                <button class="btn-secundario" style="font-size:0.78rem" onclick="importacaoSelecionarTodasDuplicatas(false)">Desmarcar todas (ignorar)</button>
+            <div class="linha-acoes linha-acoes--apertada mt-3 mb-2">
+                <button class="btn-secundario btn-pequeno" onclick="importacaoSelecionarTodasDuplicatas(true)">Marcar todas para reimportar</button>
+                <button class="btn-secundario btn-pequeno" onclick="importacaoSelecionarTodasDuplicatas(false)">Desmarcar todas (ignorar)</button>
             </div>
-            <div style="overflow-x:auto">
-                <table class="tabela-preview" style="font-size:0.8rem">
+            <div class="rolagem-x">
+                <table class="tabela-preview tabela-preview--pequena">
                     <thead><tr>
-                        <th style="width:36px">Reimportar?</th>
+                        <th class="coluna-marcar">Reimportar?</th>
                         <th>Nº Nota</th><th>Data Nota</th><th>Motorista</th><th>Placa</th><th>Itens</th><th>Total</th>
                     </tr></thead>
                     <tbody>
                         ${duplicatas.map((n, i) => `
                         <tr>
-                            <td style="text-align:center">
-                                <input type="checkbox" id="dup_${i}" style="width:auto; accent-color:var(--primary)">
+                            <td class="celula-centro">
+                                <input type="checkbox" id="dup_${i}" class="caixa-marcar">
                             </td>
                             <td>${escapeHtml(n.numeroNota)}</td>
                             <td>${formatarData(n.dataNota)}</td>
@@ -935,24 +935,24 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                     </tbody>
                 </table>
             </div>
-            <p class="dica" style="margin-top:8px; font-size:0.78rem">
+            <p class="dica dica--pequena mt-2">
                 Notas marcadas serão reimportadas: a nota que já existe (mesma empresa, número, data e placa) fica registrada como excluída, e a da planilha entra no lugar.
             </p>
         </details>` : ""}
 
         ${erros.length > 0 ? `
-        <details class="detalhes-resumo erro" style="margin-top:8px">
+        <details class="detalhes-resumo erro mt-2">
             <summary>Ver erros de validação (${erros.length})</summary>
-            <ul style="margin-top:8px; padding-left:20px; font-size:0.85rem; color:var(--danger)">
+            <ul class="lista-erros-importacao">
                 ${erros.map(e => `<li>${escapeHtml(e)}</li>`).join("")}
             </ul>
         </details>` : ""}
 
         ${novas.length > 0 ? `
-        <details class="detalhes-resumo" style="margin-top:8px">
+        <details class="detalhes-resumo mt-2">
             <summary>Pré-visualizar notas novas a importar (${novas.length})</summary>
-            <div style="overflow-x:auto; margin-top:8px">
-                <table class="tabela-preview" style="font-size:0.8rem">
+            <div class="rolagem-x mt-2">
+                <table class="tabela-preview tabela-preview--pequena">
                     <thead><tr>
                         <th>Data Nota</th><th>Nº Nota</th><th>Motorista</th>
                         <th>Placa</th><th>Itens</th><th>Total</th>
@@ -967,13 +967,13 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                             <td>${n.itens.length} item(ns)</td>
                             <td>${fmtR(n.total)}</td>
                         </tr>`).join("")}
-                        ${novas.length > 50 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">... e mais ${novas.length - 50} nota(s)</td></tr>` : ""}
+                        ${novas.length > 50 ? `<tr><td colspan="6" class="celula-centro rotulo-suave">... e mais ${novas.length - 50} nota(s)</td></tr>` : ""}
                     </tbody>
                 </table>
             </div>
         </details>` : ""}
 
-        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap">
+        <div class="linha-acoes mt-5">
             ${novas.length > 0 || duplicatas.length > 0 ? `
             <button class="btn-primario" onclick="importacaoConfirmar()">
                 Confirmar e Importar
@@ -1107,9 +1107,10 @@ async function importacaoConfirmar() {
                 <h3>${confirmado ? "Importação concluída!" : "Importação feita neste navegador — aguardando a nuvem"}</h3>
                 <p><strong>${totalImportado}</strong> nota(s) importadas com sucesso.</p>
                 ${dupSelecionadas.length > 0 ? `<p><strong>${dupSelecionadas.length}</strong> nota(s) reimportadas (as anteriores ficaram registradas como excluídas).</p>` : ""}
-                ${confirmado ? "" : `<p style="color:var(--warning)">Não feche a aba até a pílula de sincronização sumir.</p>`}
+                ${confirmado ? "" : `<p class="texto-aviso">Não feche a aba até a pílula de sincronização sumir.</p>`}
                 <p><strong>${totalItens}</strong> item(ns) de combustível registrados.</p>
-                <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px">
+                <div class="linha-acoes linha-acoes--centro mt-4">
+
                     <button class="btn-primario" onclick="mostrarTela('relatorios')"> Ver Relatórios</button>
                     <button class="btn-secundario" onclick="importacaoReiniciar()"> Importar outro arquivo</button>
                 </div>

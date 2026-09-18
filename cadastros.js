@@ -139,9 +139,9 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     const logsDiv = document.getElementById("modalLogs");
     if (logsDiv) {
         logsDiv.innerHTML = item?.logs ?
-            `<div style="margin-top:12px; border-top:1px solid var(--border); padding-top:8px; font-size:0.75rem; color:var(--text-muted);">
+            `<div class="historico-cadastro">
                 <strong>Histórico:</strong>
-                <ul style="margin-top:4px; list-style:none; padding-left:0;">
+                <ul class="lista-limpa mt-1">
                     ${item.logs.map(log => `<li>• ${escapeHtml(log)}</li>`).join('')}
                 </ul>
             </div>` : '';
@@ -714,19 +714,19 @@ function renderizarConjuntos() {
     const exibir = showInat ? listaComInativos : lista;
 
     if (exibir.length === 0) {
-        container.innerHTML = `<p class="vazio" style="padding:12px;color:var(--text-muted);">Nenhum conjunto cadastrado.</p>`;
+        container.innerHTML = `<p class="vazio vazio--conjuntos">Nenhum conjunto cadastrado.</p>`;
         return;
     }
 
     container.innerHTML = exibir.map(c => {
         const placasStr = c.composicaoAtual.map(escapeHtml).join(", ");
-        const nomeExib = c.nome ? `<strong>${escapeHtml(c.nome)}</strong>` : `<em style="color:var(--text-muted);">(sem nome)</em>`;
+        const nomeExib = c.nome ? `<strong>${escapeHtml(c.nome)}</strong>` : `<em class="rotulo-suave">(sem nome)</em>`;
         const inativoTag = c.ativo === false ? ' <em class="tag-inativo">inativo</em>' : '';
         return `
         <li class="conjunto-item ${c.ativo === false ? 'inativo' : ''}">
             <div class="conjunto-info">
                 <div class="conjunto-nome">${nomeExib}${inativoTag}</div>
-                <div class="conjunto-placas" style="font-size:0.82rem;color:var(--text-muted);margin-top:3px;">
+                <div class="conjunto-placas">
                      ${placasStr}
                 </div>
             </div>
@@ -791,13 +791,13 @@ function abrirEditarConjunto(id) {
     const histDiv = document.getElementById("conjuntoHistorico");
     if (histDiv && conj.historico && conj.historico.length > 0) {
         histDiv.innerHTML = `
-            <p style="font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;">Histórico de composições:</p>
+            <p class="conjunto-historico-titulo">Histórico de composições:</p>
             ${conj.historico.map((h, i) => {
                 const de = h.vigenciaDe || "—";
                 const ate = h.vigenciaAte || "atual";
-                return `<div style="font-size:0.78rem;color:var(--text-muted);padding:3px 0;">
+                return `<div class="conjunto-historico-item">
                     <strong>${i+1}.</strong> ${h.placas.map(escapeHtml).join(", ")}
-                    <span style="margin-left:6px;opacity:0.7;">(${de} → ${ate})</span>
+                    <span class="conjunto-historico-vigencia">(${de} → ${ate})</span>
                 </div>`;
             }).join("")}
         `;
@@ -828,11 +828,12 @@ function _renderizarPlacasConjunto(placas) {
     const container = document.getElementById("conjuntoPlacasList");
     if (!container) return;
     container.innerHTML = _placasTemp.map((p, i) => `
-        <div class="form-linha" style="gap:8px;margin-bottom:6px;" data-idx="${i}">
+        <div class="form-linha form-linha--placa" data-idx="${i}">
             <input type="text" value="${escapeHtml(p)}" maxlength="8" placeholder="Ex: ABC1D23"
-                   style="text-transform:uppercase;flex:1;"
+                   class="campo-placa"
                    oninput="this.value=this.value.toUpperCase().replace(/[-\\s]/g,''); _placasTemp[${i}]=this.value;">
-            <button class="btn-excluir" style="padding:4px 10px;" onclick="_removerPlacaConjunto(${i})">✕</button>
+            <button class="btn-excluir" onclick="_removerPlacaConjunto(${i})">✕</button>
+
         </div>
     `).join("");
 }
