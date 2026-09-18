@@ -100,6 +100,8 @@ function carregarGrupo() {
 
     const ordenadas = [...linhas].sort((a, b) => b.frete - a.frete || b.gasto - a.gasto);
 
+    // Período sem nenhuma nota: aviso no lugar do gráfico de barras zeradas.
+    const semMovimento = soma.notasDescarga === 0 && soma.notasEmissao === 0;
     container.innerHTML = `
         <div class="kpi-container mb-5">
             <div class="kpi-card">
@@ -124,7 +126,9 @@ function carregarGrupo() {
             </div>
         </div>
 
-        <div class="grafico-wrapper grafico-wrapper--240 mb-5"><canvas id="graficoGrupo"></canvas></div>
+        ${semMovimento
+            ? `<p class="grafico-vazio mb-5">Nenhuma nota no período, em nenhuma das empresas.</p>`
+            : `<div class="grafico-wrapper grafico-wrapper--240 mb-5"><canvas id="graficoGrupo"></canvas></div>`}
 
         <div class="tabela-container">
             <table class="tabela-numeros"><thead><tr>
@@ -141,7 +145,7 @@ function carregarGrupo() {
                     title="Trocar a empresa ativa e abrir o Dashboard dela">
                     <td><strong>${escapeHtml(x.empresa)}</strong>${x.semTaxa ? ` <em class="tag-perda tag-perda--perigo">${x.semTaxa} sem taxa</em>` : ""}</td>
                     <td>${x.notasDescarga}</td>
-                    <td>${fmtL3(x.litros)}</td>
+                    <td>${fmtL(x.litros, Number.isInteger(Math.round(x.litros * 1000) / 1000) ? 0 : 3)}</td>
                     <td>${fmtR(x.gasto)}</td>
                     <td>${x.precoCompra > 0 ? fmtRL(x.precoCompra) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
@@ -149,9 +153,9 @@ function carregarGrupo() {
                 </tr>`).join("")}
             </tbody>
             <tfoot><tr>
-                <td><strong>TOTAL</strong></td>
+                <td><strong>Total</strong></td>
                 <td><strong>${soma.notasDescarga}</strong></td>
-                <td><strong>${fmtL3(soma.litros)}</strong></td>
+                <td><strong>${fmtL(soma.litros, Number.isInteger(Math.round(soma.litros * 1000) / 1000) ? 0 : 3)}</strong></td>
                 <td><strong>${fmtR(soma.gasto)}</strong></td>
                 <td><strong>${soma.litrosFaturados > 0 ? fmtRL(soma.gasto / soma.litrosFaturados) : "—"}</strong></td>
                 <td><strong>${fmtR(soma.frete)}</strong></td>
@@ -160,9 +164,9 @@ function carregarGrupo() {
             </table>
         </div>`;
 
-    if (typeof Chart === "undefined") return;
+    if (window._chartGrupo) { window._chartGrupo.destroy(); window._chartGrupo = null; }
+    if (typeof Chart === "undefined" || semMovimento) return;
     const cores = getChartColors();
-    if (window._chartGrupo) window._chartGrupo.destroy();
     window._chartGrupo = new Chart(document.getElementById("graficoGrupo").getContext("2d"), {
         type: "bar",
         data: {

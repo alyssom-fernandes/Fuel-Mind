@@ -704,6 +704,14 @@ function renderComparativoMeses() {
         .reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0));
     const serieCompra = meses.map(mes => _totaisCompra(doMes(mes, dataEmissaoDe)).gasto);
 
+    // Empresa sem nota nos seis meses (empresa nova): um aviso, e não uma
+    // linha no zero com eixo "-1 L" e duas tabelas de traços (18/09/2026).
+    if (!serieLitros.some(v => v > 0) && !serieCompra.some(v => v > 0)) {
+        if (window._chartComparativoDash) { window._chartComparativoDash.destroy(); window._chartComparativoDash = null; }
+        container.innerHTML = `<p class="grafico-vazio">Nenhuma nota nos últimos seis meses nesta empresa.</p>`;
+        return;
+    }
+
     container.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--comparativo"><canvas id="graficoComparativoDash"></canvas></div>
         <p class="dica dica--pequena dica--legenda">* ${nomeMes(mesAtual)} vai só até hoje: a queda no fim da linha é o mês em andamento.</p>

@@ -678,6 +678,8 @@ function _mostrarLoading(visivel) {
         el.id = "_loadingOverlay";
         el.innerHTML = `
             <div class="carregando-tela" role="status">
+                <img class="carregando-logo" alt="Fuel Mind" width="1199" height="291"
+                     src="${document.documentElement.getAttribute("data-theme") === "light" ? "logo-light.svg" : "logo-dark.svg"}">
                 <div class="carregando-roda" aria-hidden="true"></div>
                 <span class="carregando-texto">Carregando dados da nuvem…</span>
             </div>`;

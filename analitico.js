@@ -301,6 +301,18 @@ function _graficoVazio(idCanvas, msg) {
     }
     aviso.textContent = msg;
     aviso.style.display = "";
+    _acessoriosDoGrafico(wrapper, false);
+}
+
+/* O "Baixar PNG" e a nota do mês em andamento, que ficam logo depois do
+   gráfico, só aparecem quando há gráfico — com o aviso de "sem dados" eles
+   ofereciam baixar uma imagem vazia (18/09/2026). */
+function _acessoriosDoGrafico(wrapper, visiveis) {
+    for (let el = wrapper.nextElementSibling; el; el = el.nextElementSibling) {
+        if (el.classList.contains("acoes-grafico") || el.classList.contains("dica--legenda")) {
+            el.style.display = visiveis ? "" : "none";
+        } else if (!el.classList.contains("alerta-comparativo")) break;
+    }
 }
 
 /* ── CLICAR NA BARRA ────────────────────────────────────────────────
@@ -332,6 +344,7 @@ function _graficoPronto(idCanvas) {
     const aviso = wrapper && wrapper.querySelector(".grafico-vazio");
     if (aviso) aviso.style.display = "none";
     canvas.style.display = "";
+    if (wrapper) _acessoriosDoGrafico(wrapper, true);
     return canvas;
 }
 
