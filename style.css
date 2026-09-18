@@ -2690,3 +2690,23 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     .barra-filtros-campos .campo { max-width: none; }
     .barra-filtros-aplicar { width: 100%; justify-content: center; }
 }
+
+/* Cadastros: cada aba é um painel; o formulário de inclusão fica numa faixa
+   no alto e a lista vira uma tabela leve, com ações em ícones. */
+#cadastros .aba-conteudo {
+    background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); padding: var(--space-5) var(--space-6); margin-top: var(--space-4);
+}
+#cadastros .aba-conteudo > h3 { margin-top: 0; }
+#cadastros .aba-conteudo > .form-linha {
+    padding: var(--space-3); margin-bottom: var(--space-2);
+    background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius-md);
+}
+#cadastros .aba-conteudo > ul { margin: 0; padding: 0; border: 1px solid var(--border-light); border-radius: var(--radius-md); overflow: hidden; }
+#cadastros .aba-conteudo > ul > li { padding: 8px 10px 8px 16px; border-top: none; border-bottom: 1px solid var(--border-light); }
+#cadastros .aba-conteudo > ul > li:last-child { border-bottom: none; }
+#cadastros .aba-conteudo > ul > li:first-child { border-top: none; }
+#cadastros .aba-conteudo > ul > li.vazio { border: none; }
+#cadastros .acoes-lista { gap: 2px; flex-wrap: nowrap; }
+.btn-icone--inativar:hover { color: var(--warning); }
+#cadastros .filtro-lista { margin: var(--space-3) 0 var(--space-2); }

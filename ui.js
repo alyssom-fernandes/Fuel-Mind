@@ -139,24 +139,6 @@ function trocarAbaCadastro(aba, btnEl) {
 }
 
 /* ========== BASES / DISTRIBUIDORAS ========== */
-function renderizarListaBases() {
-    const ulB = document.getElementById("listaBases");
-    if (!ulB) return;
-    const showInat = document.getElementById("mostrarInativosBases")?.checked;
-    const lista = showInat ? db.bases : db.bases.filter(b => b.ativo !== false);
-    ulB.innerHTML = lista.length === 0
-        ? `<li class="vazio">Nenhuma base cadastrada ainda.</li>`
-        : lista.map(b => `
-            <li class="${b.ativo !== false ? "" : "inativo"}">
-                <span>${escapeHtml(b.nome)}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
-                <div class="acoes-lista">
-                    <button class="btn-editar"   onclick="abrirModal('Editar Base','Nome','${escapeJsAttr(b.nome)}','bases','${b.id}')">Editar</button>
-                    <button class="btn-inativar" onclick="toggleAtivo('bases','${b.id}')">${b.ativo !== false ? "Inativar" : "Reativar"}</button>
-                    <button class="btn-excluir"  onclick="excluirCadastro('bases','${b.id}')">Excluir</button>
-                </div>
-            </li>`).join("");
-}
-
 function preencherSelectBase() {
     const basesAtivas = db.bases.filter(b => b.ativo !== false);
     preencherSelect("baseEntradaSelect", basesAtivas.map(b => ({ valor: b.nome, texto: b.nome })), "Selecione a base");

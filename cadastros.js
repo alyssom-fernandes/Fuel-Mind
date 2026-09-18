@@ -651,7 +651,7 @@ async function toggleAtivo(lista, id) {
    recusa do mesmo jeito; o botão nem aparece. */
 function _btnExcluirCadastro(lista, id) {
     if (!(typeof ehSupremoAtual === "function" && ehSupremoAtual())) return "";
-    return `<button class="btn-excluir"  data-acao="excluir"  data-lista="${lista}" data-id="${escapeHtml(id)}">Excluir</button>`;
+    return `<button class="btn-icone btn-icone--excluir" data-acao="excluir" data-lista="${lista}" data-id="${escapeHtml(id)}" title="Excluir" aria-label="Excluir">${_ICONE.excluir}</button>`;
 }
 
 // ========== VERIFICAÇÃO DE VÍNCULOS ==========
@@ -731,9 +731,9 @@ function renderizarConjuntos() {
                 </div>
             </div>
             <div class="acoes-lista">
-                <button class="btn-editar" onclick="abrirEditarConjunto('${escapeJsAttr(c.id)}')">Editar</button>
-                <button class="btn-inativar" onclick="toggleAtivoConjunto('${escapeJsAttr(c.id)}')">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
-                ${(typeof ehSupremoAtual === "function" && ehSupremoAtual()) ? `<button class="btn-excluir" onclick="excluirConjunto('${escapeJsAttr(c.id)}')">Excluir</button>` : ""}
+                <button class="btn-icone btn-icone--editar" title="Editar" aria-label="Editar" onclick="abrirEditarConjunto('${escapeJsAttr(c.id)}')">${_ICONE.editar}</button>
+                <button class="btn-icone btn-icone--inativar" title="${c.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${c.ativo !== false ? "Inativar" : "Reativar"}" onclick="toggleAtivoConjunto('${escapeJsAttr(c.id)}')">${c.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
+                ${(typeof ehSupremoAtual === "function" && ehSupremoAtual()) ? `<button class="btn-icone btn-icone--excluir" title="Excluir" aria-label="Excluir" onclick="excluirConjunto('${escapeJsAttr(c.id)}')">${_ICONE.excluir}</button>` : ""}
             </div>
         </li>`;
     }).join("");
@@ -937,8 +937,8 @@ function atualizarListas() {
                 <li class="${m.ativo !== false ? "" : "inativo"}">
                     <span>${escapeHtml(m.nome)}${m.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   data-acao="editar"   data-lista="motoristas" data-id="${m.id}">Editar</button>
-                        <button class="btn-inativar" data-acao="toggle"   data-lista="motoristas" data-id="${m.id}">${m.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="motoristas" data-id="${m.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
+                        <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="motoristas" data-id="${m.id}" title="${m.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${m.ativo !== false ? "Inativar" : "Reativar"}">${m.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
                         ${_btnExcluirCadastro("motoristas", m.id)}
                     </div>
                 </li>`).join("");
@@ -954,8 +954,8 @@ function atualizarListas() {
                 <li class="${v.ativo !== false ? "" : "inativo"}">
                     <span>${escapeHtml(v.nome)}${v.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   data-acao="editar"   data-lista="veiculos" data-id="${v.id}">Editar</button>
-                        <button class="btn-inativar" data-acao="toggle"   data-lista="veiculos" data-id="${v.id}">${v.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="veiculos" data-id="${v.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
+                        <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="veiculos" data-id="${v.id}" title="${v.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${v.ativo !== false ? "Inativar" : "Reativar"}">${v.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
                         ${_btnExcluirCadastro("veiculos", v.id)}
                     </div>
                 </li>`).join("");
@@ -975,8 +975,8 @@ function atualizarListas() {
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   data-acao="editar"   data-lista="empresas" data-id="${e.id}">Editar</button>
-                        <button class="btn-inativar" data-acao="toggle"   data-lista="empresas" data-id="${e.id}">${e.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="empresas" data-id="${e.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
+                        <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="empresas" data-id="${e.id}" title="${e.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${e.ativo !== false ? "Inativar" : "Reativar"}">${e.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
                         ${_btnExcluirCadastro("empresas", e.id)}
                     </div>
                 </li>`).join("");
@@ -996,8 +996,8 @@ function atualizarListas() {
                         ${c.ativo !== false ? "" : '<em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   data-acao="editar"   data-lista="combustiveis" data-id="${c.id}">Editar</button>
-                        <button class="btn-inativar" data-acao="toggle"   data-lista="combustiveis" data-id="${c.id}">${c.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="combustiveis" data-id="${c.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
+                        <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="combustiveis" data-id="${c.id}" title="${c.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${c.ativo !== false ? "Inativar" : "Reativar"}">${c.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
                         ${_btnExcluirCadastro("combustiveis", c.id)}
                     </div>
                 </li>`).join("");
@@ -1013,8 +1013,8 @@ function atualizarListas() {
                 <li class="${b.ativo !== false ? "" : "inativo"}">
                     <span>${escapeHtml(b.nome)}${b.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
-                        <button class="btn-editar"   data-acao="editar"   data-lista="bases" data-id="${b.id}">Editar</button>
-                        <button class="btn-inativar" data-acao="toggle"   data-lista="bases" data-id="${b.id}">${b.ativo !== false ? "Inativar" : "Reativar"}</button>
+                        <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="bases" data-id="${b.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
+                        <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="bases" data-id="${b.id}" title="${b.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${b.ativo !== false ? "Inativar" : "Reativar"}">${b.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
                         ${_btnExcluirCadastro("bases", b.id)}
                     </div>
                 </li>`).join("");
