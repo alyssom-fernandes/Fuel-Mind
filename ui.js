@@ -13,6 +13,7 @@ const TITULOS_TELAS = {
     relatorios:   "Relatórios",
     analitico:    "Analítico",
     fretes:       "Fretes",
+    grupo:        "Grupo",
     conferencia:  "Conferências",
     importacao:   "Importar Planilha",
     cadastros:    "Cadastros",

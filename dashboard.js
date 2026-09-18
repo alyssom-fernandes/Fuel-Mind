@@ -706,14 +706,14 @@ function renderComparativoMeses() {
         <div class="grafico-wrapper grafico-wrapper--comparativo"><canvas id="graficoComparativoDash"></canvas></div>
         <p class="dica dica--pequena dica--legenda">Litros descarregados — pela <strong>data da descarga</strong></p>
         <div class="tabela-container mb-5">
-            <table>
+            <table class="tabela-numeros">
                 <thead><tr><th>Mês</th>${combHeaders}<th>Total Litros</th></tr></thead>
                 <tbody>${linhasDescarga}</tbody>
             </table>
         </div>
         <p class="dica dica--pequena dica--legenda">Compras — pela <strong>data de emissão</strong>, com os litros <strong>faturados</strong> na nota</p>
         <div class="tabela-container">
-            <table>
+            <table class="tabela-numeros">
                 <thead><tr><th>Mês</th><th>Notas</th><th>Litros Faturados</th><th>Total Gasto</th><th>Preço Médio/L</th></tr></thead>
                 <tbody>${linhasCompra}</tbody>
             </table>

@@ -378,7 +378,7 @@ function renderFreteHistorico() {
     alvo.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--220"><canvas id="graficoFreteMeses"></canvas></div>
         <div class="tabela-container mt-2">
-            <table><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
+            <table class="tabela-numeros"><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
             <tbody>${serie.map(x => `<tr class="linha-clicavel" onclick="_freteAbrirMes('${x.mes}')" title="Ver o detalhe deste mês">
                 <td><strong>${nomeMes(x.mes)}</strong></td>
                 <td>${fmtL3(x.litros)}</td>

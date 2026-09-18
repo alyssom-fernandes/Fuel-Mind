@@ -2731,3 +2731,36 @@ input[type="file"]::file-selector-button:hover { background: var(--surface-hover
     text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; color: var(--text); margin: 0;
 }
 .form-linha--opcoes input[type="checkbox"] { flex: 0 0 auto; min-width: 0; width: 16px; height: 16px; margin: 0; }
+
+/* Tabela de números: a primeira coluna é o nome; da segunda em diante
+   (ou da terceira, com --3), número à direita em fonte de número. */
+.tabela-numeros th:nth-child(n+2), .tabela-numeros td:nth-child(n+2) { text-align: right; }
+.tabela-numeros td:nth-child(n+2) { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+.tabela-numeros.tabela-numeros--3 th:nth-child(2), .tabela-numeros.tabela-numeros--3 td:nth-child(2) {
+    text-align: left; font-family: inherit;
+}
+.tabela-numeros td[colspan] { text-align: left; }
+.filtros .filtros-rodape-grade { grid-column: 1 / -1; margin-top: 0; }
+.filtros { padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); }
+
+/* Fretes e Dashboard: o mesmo cartão dos outros filtros */
+.fretes-filtro, #dashFiltrosPeriodo {
+    background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-5);
+}
+#dashFiltrosPeriodo { margin-bottom: var(--space-3); }
+.fretes-filtro { margin-bottom: var(--space-5); }
+
+/* Caixa de marcar e botão de opção voltam a ser desenhados pelo navegador.
+   A regra geral de `input` tira a aparência nativa (por causa da seta do
+   select) e dá `width: auto`: a caixa encolhia para 2 px e sumia — em
+   "Mostrar excluídas", "Mostrar inativos", "Informar quantidade
+   descarregada", nas opções do PDF. Defeito antigo, achado em 18/09/2026. */
+input[type="checkbox"], input[type="radio"] {
+    -webkit-appearance: auto; appearance: auto;
+    width: 16px; height: 16px; min-width: 16px; padding: 0; margin: 0;
+    border: none; background: none; border-radius: 3px;
+    flex: 0 0 auto; vertical-align: middle; accent-color: var(--primary); cursor: pointer;
+}
+/* Os interruptores do modal de alertas escondem a caixa de propósito. */
+._cfg-toggle input { width: 0; height: 0; min-width: 0; opacity: 0; }

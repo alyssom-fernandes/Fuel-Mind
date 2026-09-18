@@ -127,7 +127,7 @@ function carregarGrupo() {
         <div class="grafico-wrapper grafico-wrapper--240 mb-5"><canvas id="graficoGrupo"></canvas></div>
 
         <div class="tabela-container">
-            <table><thead><tr>
+            <table class="tabela-numeros"><thead><tr>
                 <th>Empresa</th>
                 <th>Notas (descarga)</th>
                 <th>Litros descarregados</th>
@@ -168,21 +168,24 @@ function carregarGrupo() {
         data: {
             labels: ordenadas.map(x => x.empresa),
             datasets: [
-                { label: "Frete (R$)", data: ordenadas.map(x => x.frete),
-                  backgroundColor: cores.primary + "aa", borderColor: cores.primary, borderWidth: 1 },
-                { label: "Gasto em compras (R$)", data: ordenadas.map(x => x.gasto),
-                  backgroundColor: (cores.info || "#3b82f6") + "55", borderColor: cores.info || "#3b82f6", borderWidth: 1 }
+                // Cada um no seu eixo (18/09/2026): no mesmo eixo o frete, uma
+                // ordem de grandeza menor que o gasto, virava um risco no chão.
+                { label: "Gasto em compras (R$) — eixo da esquerda", data: ordenadas.map(x => x.gasto), yAxisID: "y",
+                  backgroundColor: (cores.info || "#3b82f6") + "55", borderColor: cores.info || "#3b82f6", borderWidth: 1 },
+                { label: "Frete (R$) — eixo da direita", data: ordenadas.map(x => x.frete), yAxisID: "yF",
+                  backgroundColor: cores.primary + "aa", borderColor: cores.primary, borderWidth: 1 }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { labels: { color: cores.text } },
-                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtR(ctx.raw)}` } }
+                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label.split(' — ')[0]}: ${fmtR(ctx.raw)}` } }
             },
             scales: {
                 x: { ticks: { color: cores.text }, grid: { color: cores.grid } },
-                y: { ticks: { color: cores.text, callback: v => fmtEixoR(v) }, grid: { color: cores.grid } }
+                y:  { position: "left",  ticks: { color: cores.text, callback: v => fmtEixoR(v) }, grid: { color: cores.grid } },
+                yF: { position: "right", ticks: { color: cores.primary, callback: v => fmtEixoR(v) }, grid: { display: false } }
             }
         }
     });

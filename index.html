@@ -283,16 +283,23 @@
 <div id="grupo" class="tela">
   <h2 id="tituloGrupo">Comparação do Grupo</h2>
   <p class="dica">Todas as empresas que este perfil enxerga, lado a lado, sem trocar de empresa. Somente leitura: litros e frete contam pela <strong>data da descarga</strong>; gasto e preço médio, pela <strong>data de emissão</strong>. Clique numa empresa para abrir o Dashboard dela.</p>
-  <div class="filtros">
-    <div class="campo"><label for="grupoInicio">De</label><input type="date" id="grupoInicio" onchange="recalcularTela('grupo', carregarGrupo)"></div>
-    <div class="campo"><label for="grupoFim">Até</label><input type="date" id="grupoFim" onchange="recalcularTela('grupo', carregarGrupo)"></div>
-  </div>
-  <div class="filtros-acoes">
-    <span class="filtros-rapidos-sep">Período rápido:</span>
-    <button class="btn-filtro-rapido" onclick="grupoFiltroRapido('mes')">Este mês</button>
-    <button class="btn-filtro-rapido" onclick="grupoFiltroRapido('mes_anterior')">Mês anterior</button>
-    <button class="btn-filtro-rapido" onclick="grupoFiltroRapido('ano')">Este ano</button>
-    <button class="btn-export btn-xlsx" onclick="exportarGrupoExcel()">Excel</button>
+  <div class="barra-filtros">
+    <div class="barra-filtros-campos">
+      <div class="campo"><label for="grupoInicio">De</label><input type="date" id="grupoInicio" onchange="recalcularTela('grupo', carregarGrupo)"></div>
+      <div class="campo"><label for="grupoFim">Até</label><input type="date" id="grupoFim" onchange="recalcularTela('grupo', carregarGrupo)"></div>
+    </div>
+    <div class="barra-filtros-rodape">
+      <div class="barra-filtros-grupo">
+        <span class="filtros-rapidos-sep">Período rápido:</span>
+        <button class="btn-filtro-rapido" onclick="grupoFiltroRapido('mes')">Este mês</button>
+        <button class="btn-filtro-rapido" onclick="grupoFiltroRapido('mes_anterior')">Mês anterior</button>
+        <button class="btn-filtro-rapido" onclick="grupoFiltroRapido('ano')">Este ano</button>
+      </div>
+      <div class="barra-filtros-grupo">
+        <span class="filtros-rapidos-sep">Exportar:</span>
+        <button class="btn-export btn-xlsx" onclick="exportarGrupoExcel()">Excel</button>
+      </div>
+    </div>
   </div>
   <div id="grupoConteudo"></div>
 </div>
@@ -326,20 +333,20 @@
   </div>
   <div id="frete-aba-placas" class="aba-conteudo">
     <h3>Resumo por Placa</h3>
-    <div class="tabela-container"><table><thead><tr><th>Placa</th><th>Conjunto</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFretePlacas"></tbody></table></div>
+    <div class="tabela-container"><table class="tabela-numeros tabela-numeros--3"><thead><tr><th>Placa</th><th>Conjunto</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFretePlacas"></tbody></table></div>
   </div>
   <div id="frete-aba-motoristas" class="aba-conteudo" style="display:none">
     <h3>Resumo por Motorista</h3>
-    <div class="tabela-container"><table><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
+    <div class="tabela-container"><table class="tabela-numeros"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
   </div>
   <div id="frete-aba-empresas" class="aba-conteudo" style="display:none">
     <h3>Resumo por Empresa</h3>
-    <div class="tabela-container"><table><thead><tr><th>Empresa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteEmpresas"></tbody></table></div>
+    <div class="tabela-container"><table class="tabela-numeros"><thead><tr><th>Empresa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteEmpresas"></tbody></table></div>
   </div>
   <div id="frete-aba-conjuntos" class="aba-conteudo" style="display:none">
     <h3>Resumo por Conjunto</h3>
     <p class="dica">Agrupa viagens e litros de todas as placas do conjunto, respeitando a composição vigente na data de cada lançamento.</p>
-    <div class="tabela-container"><table><thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteConjuntos"></tbody></table></div>
+    <div class="tabela-container"><table class="tabela-numeros"><thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros (L)</th><th>Taxa (R$/L)</th><th>Frete (R$)</th></tr></thead><tbody id="tabelaFreteConjuntos"></tbody></table></div>
   </div>
 </div>
 
@@ -360,16 +367,23 @@
           <input type="checkbox" id="filtroMostrarInativos" onchange="carregarRelatorio()"> Mostrar excluídas
         </label>
       </div>
+      <!-- Os atalhos e os botões dentro da mesma caixa dos campos, como no
+           Analítico e no Grupo (18/09/2026). -->
+      <div class="barra-filtros-rodape filtros-rodape-grade">
+        <div class="barra-filtros-grupo">
+          <span class="filtros-rapidos-sep">Período rápido:</span>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','hoje')">Hoje</button>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes')">Este mês</button>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes_anterior')">Mês anterior</button>
+          <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','ano')">Este ano</button>
+        </div>
+        <div class="barra-filtros-grupo">
+          <button class="btn-secundario" onclick="limparFiltros()">Limpar</button>
+          <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
+        </div>
+      </div>
     </div>
-    <div class="filtros-acoes">
-      <button class="btn-primario" onclick="carregarRelatorio()">Filtrar</button>
-      <button class="btn-secundario" onclick="limparFiltros()">Limpar</button>
-      <span class="filtros-rapidos-sep">Período rápido:</span>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','hoje')">Hoje</button>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes')">Este mês</button>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes_anterior')">Mês anterior</button>
-      <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','ano')">Este ano</button>
-    </div>
+
     <div id="resumoRelatorio" class="resumo"></div>
     <div id="barraExportacaoRelatorio" class="barra-exportacao" style="display:none">
       <span class="exportacao-titulo">Exportar:</span>
