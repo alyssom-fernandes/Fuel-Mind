@@ -607,6 +607,18 @@ input[type="file"] {
 input[type="month"], input[type="date"] { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
 input[type="checkbox"] { width: auto; padding: 0; cursor: pointer; accent-color: var(--primary); }
 
+/* ══ LINKS ═══════════════════════════════════ */
+/* O site não tinha regra nenhuma para `a`. A única que existia era a da
+   faixa de validação, então os poucos links soltos — os anexos do detalhe
+   da nota e o "Cancelar edição" do banner — saíam no azul padrão do
+   navegador (#0000EE). No tema escuro isso é azul sobre preto, ilegível.
+   Achado em 21/09/2026, montando na memória uma nota com anexo: o demo não
+   tem nenhuma, e por isso nunca tinha aparecido. */
+a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--primary-hover); }
+/* Dentro de uma faixa colorida o link toma a cor da faixa, não a da marca. */
+.banner-edicao a { color: inherit; }
+
 /* ══ BOTÕES ══════════════════════════════════ */
 button {
     padding: 9px 18px; border: none; border-radius: var(--radius);
@@ -2432,7 +2444,15 @@ button.confirmado-local::after {
     letter-spacing: 0.1em; color: var(--text-light);
 }
 .vazio.vazio--conjuntos { padding: var(--space-3) !important; color: var(--text-muted); }
-.conjunto-placas { font-size: 0.82rem; color: var(--text-muted); margin-top: 3px; }
+/* O bloco de nome e placas não encolhia, então no celular um conjunto de
+   três placas empurrava os ícones para uma segunda linha e a linha ficava
+   com o dobro da altura da de cima. A base precisa ser 0: com `flex-wrap`
+   a quebra é decidida pelo tamanho NATURAL do bloco, antes de ele encolher,
+   então `flex: 1 1 auto` ainda quebrava. Agora ele cede espaço e as placas
+   ganham reticências (a lista inteira fica no `title`). (21/09/2026) */
+.conjunto-info   { flex: 1 1 0; min-width: 0; }
+.conjunto-placas { font-size: 0.82rem; color: var(--text-muted); margin-top: 3px;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conjunto-historico-titulo { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
 .conjunto-historico-item { font-size: 0.78rem; color: var(--text-muted); padding: 3px 0; }
 .conjunto-historico-vigencia { margin-left: 6px; opacity: 0.7; }
@@ -2901,6 +2921,38 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 }
 .modal--detalhe .detalhe-inline-inner .detalhe-info strong { white-space: normal; }
 .detalhe-tabela-rolagem { overflow-x: auto; }
+
+/* Anexos do detalhe: fichas lado a lado, não faixas de lista. */
+.lista-anexos { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-start; }
+.lista-anexos .anexo-item {
+    display: inline-flex; width: auto; padding: 0; gap: 0;
+    border: none; border-top: none; background: none;
+}
+.lista-anexos .anexo-item:hover { background: none; }
+.lista-anexos .anexo-imagem { display: block; line-height: 0; text-decoration: none; }
+.lista-anexos .anexo-imagem .preview-nf { margin: 0; }
+/* Arquivo que não é imagem (PDF, XML): etiqueta com o nome, no desenho das
+   outras etiquetas do site. */
+.lista-anexos .anexo-arquivo {
+    display: inline-block; max-width: 220px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+    padding: 7px var(--space-3); border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface);
+    color: var(--text); text-decoration: none; font-size: 0.82rem; font-weight: 600;
+}
+.lista-anexos .anexo-arquivo:hover { border-color: var(--primary); color: var(--primary); }
+
+/* No celular a tabela do Relatório é mais larga que a tela e rola de lado
+   (488 px de tabela para 330 visíveis a 375). A célula do detalhe segue a
+   largura da TABELA, não a da tela: o painel nascia com os rótulos à vista
+   e os valores fora, alcançáveis só rolando a tabela para o lado. Agora ele
+   gruda na borda esquerda e mede a área visível de quem rola. Vale para
+   qualquer nota, não só as de vários combustíveis (21/09/2026). */
+@media (max-width: 560px) {
+    .tabela-container { container-type: inline-size; }
+    .detalhe-inline-container { position: sticky; left: 0; width: 100cqw; }
+}
+
 @media (max-width: 560px) {
     .detalhe-tabela thead { display: none; }
     .detalhe-tabela, .detalhe-tabela tbody, .detalhe-tabela tr { display: block; width: 100%; }

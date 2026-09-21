@@ -727,7 +727,7 @@ function renderizarConjuntos() {
         <li class="conjunto-item ${c.ativo === false ? 'inativo' : ''}">
             <div class="conjunto-info">
                 <div class="conjunto-nome">${nomeExib}${inativoTag}</div>
-                <div class="conjunto-placas">
+                <div class="conjunto-placas" title="${placasStr}">
                      ${placasStr}
                 </div>
             </div>

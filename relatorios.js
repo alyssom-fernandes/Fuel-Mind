@@ -606,16 +606,22 @@ function _buildConteudoDetalhe(l) {
         </tr>
     `).join("");
 
+    // A lista de anexos herdava a `ul li` das listas de Cadastros: cada
+    // anexo virava uma faixa de ponta a ponta, com separador, e a miniatura
+    // ficava sozinha numa linha larga e vazia. Agora são fichas lado a lado
+    // (`anexo-item`), a imagem abre em aba nova e o arquivo que não é imagem
+    // vira uma etiqueta clicável com o nome (21/09/2026).
     let anexosHtml = '';
     if (l.anexos && l.anexos.length > 0) {
-        anexosHtml = '<ul class="lista-limpa mb-0">';
+        anexosHtml = '<ul class="lista-limpa lista-anexos mb-0">';
         l.anexos.forEach(a => {
             const href = escapeHtml(a.url || a.dados || '');
+            const nome = escapeHtml(a.nome || 'anexo');
             const isImagem = a.tipo && a.tipo.startsWith('image/');
             if (isImagem) {
-                anexosHtml += `<li><a href="${href}" target="_blank"><img src="${href}" class="preview-nf"></a></li>`;
+                anexosHtml += `<li class="anexo-item"><a class="anexo-imagem" href="${href}" target="_blank" rel="noopener" title="${nome}"><img src="${href}" class="preview-nf" alt="${nome}"></a></li>`;
             } else {
-                anexosHtml += `<li><a href="${href}" target="_blank">${escapeHtml(a.nome)}</a></li>`;
+                anexosHtml += `<li class="anexo-item"><a class="anexo-arquivo" href="${href}" target="_blank" rel="noopener" title="${nome}">${nome}</a></li>`;
             }
         });
         anexosHtml += '</ul>';
