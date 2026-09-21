@@ -693,6 +693,11 @@ function renderAbaDistribuicao(dados) {
     if (!dados.porCombustivel.length) {
         if (chartPizzaComb)  { chartPizzaComb.destroy();  chartPizzaComb = null; }
         if (chartPizzaMotor) { chartPizzaMotor.destroy(); chartPizzaMotor = null; }
+        // As outras seis abas chamam `_graficoVazio` aqui; esta deixava as duas
+        // telas do anel em branco, com o botão "Baixar PNG" ainda ligado, em vez
+        // de dizer que não há dados. (21/09/2026)
+        _graficoVazio("graficoPizzaCombustivel", "Nenhuma compra emitida no período.");
+        _graficoVazio("graficoPizzaMotoristas",  "Nenhuma compra emitida no período.");
         document.querySelectorAll('#aba-distribuicao .distribuicao-centro strong').forEach(el => el.textContent = '—');
         document.querySelectorAll('#aba-distribuicao .distribuicao-lista').forEach(ul =>
             ul.innerHTML = '<li class="distribuicao-vazia">Nenhuma compra emitida no período.</li>');

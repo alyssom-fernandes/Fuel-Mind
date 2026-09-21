@@ -697,6 +697,9 @@ button {
 .btn-wpp   { color: var(--success) !important; }
 .btn-wpp:hover   { background: var(--success-light) !important; border-color: var(--success) !important; }
 .btn-email { color: var(--info) !important; }
+/* "Imprimir" era o unico da fileira sem classe de cor no CSS. (21/09/2026) */
+.btn-print { color: var(--text-muted) !important; }
+.btn-print:hover { background: var(--surface-hover) !important; border-color: var(--border-strong) !important; color: var(--text) !important; }
 .btn-email:hover { background: var(--info-light) !important; border-color: var(--info) !important; }
 /* O verde estava escrito na mao e era o mesmo nos dois temas: 3,17 de
    contraste no escuro. --success ja tem tom por tema. (21/09/2026) */
@@ -856,7 +859,6 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .barra-progresso-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.6s ease; }
 
 /* ══ ANALÍTICO FILTROS ═══════════════════════ */
-.analitico-filtros { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; padding: 18px; background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); }
 
 .input-tabela { width: 110px !important; padding: 6px 8px !important; font-size: 0.8rem !important; border-radius: var(--radius-sm) !important; text-align: right; font-family: 'JetBrains Mono', monospace !important; }
 
@@ -1403,6 +1405,12 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
    --danger, --warning) justamente para isso; agora elas as usam. (21/09/2026) */
 .badge-role-admin   { background: var(--info-light);    color: var(--info); }
 .badge-role-usuario { background: var(--success-light); color: var(--success); }
+/* Papel fora dos tres conhecidos cai em "desconhecido" e nao tinha cor. */
+.badge-role-desconhecido { background: var(--surface-hover); color: var(--text-muted); }
+
+/* .campo e item das grades do PDF; sem min-width:0 um rotulo longo
+   trava a coluna e estoura a grade, como ja acontecera com .info-card. */
+.pdf-grade-titulo > .campo, .pdf-grade-margens > .campo { min-width: 0; }
 
 .badge-inativo-user {
     display:inline-flex; font-size:0.72rem; font-weight:600;
@@ -1612,12 +1620,6 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
         display: none;
     }
 
-    /* ── Analítico: filtros em coluna ── */
-    .analitico-filtros {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-
     /* ── Barra de abas do analítico: scroll horizontal ── */
     #analiticoAbas {
         display: flex;
@@ -1661,9 +1663,6 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 }
 
 @media (max-width: 480px) {
-    /* ── Analítico: filtros em coluna única ── */
-    .analitico-filtros { grid-template-columns: 1fr; }
-
     /* ── KPI do dashboard: 1 coluna ── */
     .dash-comb-kpis { grid-template-columns: 1fr 1fr; }
 
@@ -1775,6 +1774,9 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
         background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     .area-impressao .imp-subitem td { color: #555 !important; }
+    /* A linha da placa dentro de um conjunto e mais escura que a sublinha
+       do combustivel; sem esta regra o !important acima igualava as duas. */
+    .area-impressao .imp-subitem--escuro td { color: #333 !important; }
     .imp-num-2 th:nth-last-child(-n+2), .imp-num-2 td:nth-last-child(-n+2),
     .imp-num-resto th:nth-child(n+2), .imp-num-resto td:nth-child(n+2) { text-align: right; white-space: nowrap; }
 }
@@ -3086,6 +3088,9 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 /* No celular, a regra geral espicha cada atalho a meia largura; na barra
    de filtros eles ficam no tamanho natural, e o rótulo em linha própria. */
 .barra-filtros-grupo .btn-filtro-rapido { flex: 0 0 auto; }
+/* O Excel do Grupo esta sozinho na barra: a regra de 480px que poe dois
+   botoes por linha o esticava a meia largura. (21/09/2026) */
+.barra-filtros-grupo .btn-export { flex: 0 0 auto; }
 @media (max-width: 768px) {
     .barra-filtros-grupo .filtros-rapidos-sep { flex-basis: 100%; }
     .barra-filtros-campos .campo { max-width: none; }

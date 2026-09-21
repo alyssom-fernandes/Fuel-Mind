@@ -81,9 +81,11 @@ function carregarGrupo() {
 
     const empresas = _grupoEmpresasVisiveis();
     if (!empresas.length) {
-        container.innerHTML = `<table><tbody>${linhaTabelaVazia(7, "Nenhuma empresa cadastrada",
+        // Sem o .tabela-container a tabela perde borda, fundo, sombra e cantos
+        // arredondados e o estado vazio nao parece um cartao. (21/09/2026)
+        container.innerHTML = `<div class="tabela-container"><table><tbody>${linhaTabelaVazia(7, "Nenhuma empresa cadastrada",
             "Cadastre as empresas do grupo para comparar uma com a outra.",
-            { texto: "Abrir Cadastros", onclick: "mostrarTela('cadastros')" })}</tbody></table>`;
+            { texto: "Abrir Cadastros", onclick: "mostrarTela('cadastros')" })}</tbody></table></div>`;
         return;
     }
 

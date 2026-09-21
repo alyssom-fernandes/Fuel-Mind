@@ -464,7 +464,7 @@ function atualizarInfoSistema() {
                     Mande este texto para quem mantém o sistema.
                 </p>
                 <div class="tabela-container tabela-container--baixa">
-                    <table><thead><tr><th>Quando</th><th>Tela</th><th>Usuário</th><th>Falha</th></tr></thead>
+                    <table class="tabela-simples"><thead><tr><th>Quando</th><th>Tela</th><th>Usuário</th><th>Falha</th></tr></thead>
                     <tbody>${erros.map(e => `<tr>
                         <td>${escapeHtml(new Date(e.ts).toLocaleString('pt-BR'))}</td>
                         <td>${escapeHtml(e.tela || '—')}${e.demo ? ' <em class="tag-perda">demo</em>' : ''}</td>
@@ -517,6 +517,7 @@ function auditarDatas() {
                 <button class="modal-fechar" aria-label="Fechar" title="Fechar" onclick="this.closest('#_modalAuditoria').remove()">✕</button>
             </div>
             <p class="dica mb-3">${suspeitos.length} ${suspeitos.length === 1 ? 'nota' : 'notas'}. Os limites são os do alerta de data (Sistema › Configurações › Ajustar alertas).</p>
+            <div class="tabela-container">
             <table class="tabela-simples">
                 <thead><tr><th>Nota</th><th>Emissão</th><th>Descarga</th><th>Problema</th><th></th></tr></thead>
                 <tbody>
@@ -531,6 +532,7 @@ function auditarDatas() {
                     }).join('')}
                 </tbody>
             </table>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);
@@ -1206,10 +1208,12 @@ function _autosystemAtualizarTabela() {
 
     const resumo = `
         <div class="conf-resumo">
-            <div class="info-card"><div class="info-card-valor">${fmtL3(totalAutoEntradas)}</div><div class="info-card-label">Entradas AutoSystem</div></div>
-            <div class="info-card"><div class="info-card-valor">${fmtL3(totalSistemaEntradas)}</div><div class="info-card-label">Entradas no sistema</div></div>
+            <!-- O número corta com reticências no celular (info-card-valor tem
+                 nowrap + ellipsis) e não havia como ver o valor inteiro. -->
+            <div class="info-card"><div class="info-card-valor" title="${fmtL3(totalAutoEntradas)}">${fmtL3(totalAutoEntradas)}</div><div class="info-card-label">Entradas AutoSystem</div></div>
+            <div class="info-card"><div class="info-card-valor" title="${fmtL3(totalSistemaEntradas)}">${fmtL3(totalSistemaEntradas)}</div><div class="info-card-label">Entradas no sistema</div></div>
             <div class="info-card ${Math.abs(diffTotal)>1 ? 'info-card--perigo' : 'info-card--ok'}">
-                <div class="info-card-valor">
+                <div class="info-card-valor" title="${diffTotal>0?'+':''}${fmtL3(diffTotal)}">
                     ${diffTotal>0?'+':''}${fmtL3(diffTotal)}
                 </div><div class="info-card-label">Diferença</div>
             </div>
