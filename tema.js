@@ -34,6 +34,10 @@ function toggleModoEscuro() {
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     localStorage.setItem("tema", novo);
     _aplicarLogoDoTema(novo);
+    // A cor de texto da marca depende do tema; se há cor personalizada, o
+    // estilo em linha dela precisa ser recalculado agora.
+    const corPersonalizada = localStorage.getItem('corPrimaria');
+    if (corPersonalizada) _aplicarCorDoTexto(corPersonalizada);
     // Os gráficos leem a cor do tema na hora em que são criados: quem
     // trocava o tema com o Dashboard ou o Analítico aberto ficava com eixo
     // e legenda na cor antiga até sair e voltar (17/09/2026).
@@ -75,10 +79,22 @@ function _clarearHex(hex, fator) {
     return '#' + [cl(r), cl(g), cl(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+/* A cor da marca como TEXTO. No tema escuro o vinho puro sobre o fundo
+   quase preto fica ilegível (contraste 2,3), então o texto usa uma versão
+   clareada; no tema claro é a própria cor. Precisa ser reaplicada ao trocar
+   de tema, porque o estilo em linha do `aplicarCorPersonalizada` vence o
+   CSS. (21/09/2026) */
+function _aplicarCorDoTexto(cor) {
+    const escuro = document.documentElement.getAttribute('data-theme') !== 'light';
+    document.documentElement.style.setProperty('--primary-texto',
+        escuro ? _clarearHex(cor, 0.42) : cor);
+}
+
 function aplicarCorPersonalizada(cor) {
     const root = document.documentElement;
     const { r, g, b } = _hexParaRGB(cor);
     root.style.setProperty('--primary',         cor);
+    _aplicarCorDoTexto(cor);
     root.style.setProperty('--primary-hover',   _escurecerHex(cor, 0.12));
     root.style.setProperty('--primary-mid',     _clarearHex(cor, 0.35));
     root.style.setProperty('--primary-light',   `rgba(${r},${g},${b},0.2)`);

@@ -277,15 +277,23 @@ function _taxaFreteDaEmpresa(empresa) {
 }
 
 // ========== CORES PARA GRÁFICOS (CHART.JS) ==========
+/* As cores das séries saem das variáveis do tema, como o resto do site.
+   `success`, `warning` e `info` estavam escritas à mão com os valores do
+   tema ESCURO, e ficavam assim também no claro — onde o CSS define tons
+   mais escuros justamente porque os vivos não se leem sobre branco. A
+   linha "Litros descarregados" do Dashboard saía no verde do tema escuro
+   ao lado de ícones no verde do claro. (21/09/2026) */
 function getChartColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const cs = getComputedStyle(document.documentElement);
+    const v = (nome, reserva) => cs.getPropertyValue(nome).trim() || reserva;
     return {
         text: isDark ? '#e2e8f0' : '#1e293b',
         grid: isDark ? '#334155' : '#cbd5e1',
-        primary: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#a02828',
-        success: '#10b981',
-        warning: '#f59e0b',
-        info: '#3b82f6',
+        primary: v('--primary', '#a02828'),
+        success: v('--success', '#10b981'),
+        warning: v('--warning', '#f59e0b'),
+        info:    v('--info',    '#3b82f6'),
         background: isDark ? '#18181b' : '#ffffff'
     };
 }

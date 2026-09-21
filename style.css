@@ -29,6 +29,12 @@
     --text-light:      #888888;        /* texto ainda mais suave */
     --text-on-dark:    #f8fafc;
     --primary:         #a02828;        /* tom vinho (pode ajustar) */
+    /* O vinho da marca como TEXTO sobre fundo escuro: #a02828 sobre #151515
+       dá contraste 2,3 — ilegível. Vale só para texto (etiqueta de papel,
+       @usuario, aba ativa, seta de ordenação); preenchimentos e botões
+       continuam no --primary. No tema claro os dois são a mesma cor.
+       (21/09/2026) */
+    --primary-texto:   #d06a6a;
     --primary-hover:   #8c2222;        /* escurecido ~12% — feedback visual de hover */
     --primary-light:   rgba(139,34,82,0.2);
     --primary-glow:    rgba(139,34,82,0.4);
@@ -47,9 +53,19 @@
     --success-light:   rgba(16,185,129,0.15);
     --warning:         #f59e0b;
     --warning-light:   rgba(245,158,11,0.15);
-    --danger:          #ef4444;
+    /* Clareado em 21/09: como TEXTO sobre a propria tonalidade escura
+       (--danger-light) o #ef4444 dava 4,17, abaixo de 4,5. O preenchimento
+       de botao nao usa mais esta variavel, entao clarear e seguro. */
+    --danger:          #f26a6a;
+    /* O --danger é claro de propósito: ele é texto sobre fundo escuro. Como
+       FUNDO de botão com texto branco dá só 3,76 de contraste, então o
+       preenchimento usa este tom sólido, igual nos dois temas (branco sobre
+       ele: 6,5). (21/09/2026) */
+    --danger-solido:   #b02a37;
     --danger-light:    rgba(239,68,68,0.15);
-    --info:            #3b82f6;
+    /* Mesmo caso do --danger: como texto sobre --info-light dava 4,17. */
+    --info:            #5a9bf8;
+    --info-solido:     #1c6f9c;   /* preenchimento com texto branco (5,5) */
     --info-light:      rgba(59,130,246,0.15);
     --thead-bg:        #0a0a0a;
     --thead-color:     #c4d0de;
@@ -115,10 +131,15 @@
     --sidebar-bg:      #212529;
     --header-bg:       #ffffff;
     --text:            #212529;
-    --text-muted:      #6c757d;
-    --text-light:      #868e96;
+    /* Escurecidos em 21/09/2026. Os anteriores (#6c757d e #868e96) davam
+       contraste 4,22 e 2,99 sobre --surface-alt, abaixo do mínimo de 4,5
+       para texto normal — e são usados em rótulos de 9 a 11 px nas dez
+       telas. A hierarquia entre os dois continua visível. */
+    --text-muted:      #5c646c;
+    --text-light:      #6b737b;
     --text-on-dark:    #f8f9fa;
     --primary:         #a02828;
+    --primary-texto:   #a02828;   /* no claro o vinho já se lê bem (7,4 sobre branco) */
     --primary-hover:   #a02828;
     --primary-light:   #a028281c;
     --primary-glow:    rgba(139,34,34,0.15);
@@ -132,7 +153,7 @@
     --border-strong:   #ced4da;
     --success:         #0c6b4b;
     --success-light:   rgba(12,107,75,0.08);
-    --warning:         #b45b0a;
+    --warning:         #9c4e08;   /* escurecido em 21/09: 4,05 -> 5,1 sobre --warning-light */
     --warning-light:   rgba(180,91,10,0.08);
     --danger:          #b02a37;
     --danger-light:    rgba(176,42,55,0.08);
@@ -547,6 +568,10 @@ body {
 .zona-perigo { border-color: var(--danger); background: var(--danger-light); }
 
 .info-sistema { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+/* O aviso de espaço em disco é concatenado na frente dos cartões e vira
+   filho direto desta grade: sem isto ele fica espremido numa célula de
+   150 px, com título, lista e explicação dentro. (21/09/2026) */
+.info-sistema > .faixa-validacao { grid-column: 1 / -1; }
 /* Cartão de número pequeno (Sistema, Conferência): rótulo em cima, número
    embaixo, como os cartões das outras telas — `column-reverse` porque no
    HTML o número vem antes. O número não quebra linha ("L" sozinho). */
@@ -652,7 +677,7 @@ button {
 .btn-inativar:hover { background: var(--warning-light); border-color: var(--warning); }
 .btn-clonar   { background: transparent; color: var(--info); font-size: 0.75rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-weight: 600; }
 .btn-clonar:hover   { background: var(--info-light); border-color: var(--info); }
-.btn-reset    { background: var(--danger); color: #fff; padding: 10px 20px; font-weight: 700; }
+.btn-reset    { background: var(--danger-solido); color: #fff; padding: 10px 20px; font-weight: 700; }
 .btn-reset:hover { opacity: 0.9; }
 
 /* ══ EXPORTAÇÃO ══════════════════════════════ */
@@ -667,14 +692,16 @@ button {
 .btn-export:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-strong); }
 .btn-xlsx  { color: var(--success) !important; }
 .btn-xlsx:hover  { background: var(--success-light) !important; border-color: var(--success) !important; }
-.btn-pdf   { color: var(--primary-mid) !important; }
+.btn-pdf   { color: var(--primary-texto) !important; }
 .btn-pdf:hover   { background: var(--primary-light) !important; border-color: var(--primary) !important; }
 .btn-wpp   { color: var(--success) !important; }
 .btn-wpp:hover   { background: var(--success-light) !important; border-color: var(--success) !important; }
 .btn-email { color: var(--info) !important; }
 .btn-email:hover { background: var(--info-light) !important; border-color: var(--info) !important; }
-.btn-csv { color: #2d7a4b !important; }
-.btn-csv:hover { background: #2d7a4b20 !important; border-color: #2d7a4b !important; }
+/* O verde estava escrito na mao e era o mesmo nos dois temas: 3,17 de
+   contraste no escuro. --success ja tem tom por tema. (21/09/2026) */
+.btn-csv { color: var(--success) !important; }
+.btn-csv:hover { background: var(--success-light) !important; border-color: var(--success) !important; }
 
 /* ══ TABELAS ═════════════════════════════════ */
 .tabela-container {
@@ -781,7 +808,7 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .analitico-abas { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border-light); }
 .aba-btn { background: transparent; color: var(--text-light); padding: 9px 16px; border-radius: 0; font-size: 0.82rem; font-weight: 600; border: none; border-bottom: 2px solid transparent; position: relative; bottom: -1px; transition: color 0.15s, border-color 0.15s; }
 .aba-btn:hover { color: var(--text); border-bottom-color: var(--border-strong); }
-.aba-btn.ativa { color: var(--primary); font-weight: 700; border-bottom-color: var(--primary); }
+.aba-btn.ativa { color: var(--primary-texto); font-weight: 700; border-bottom-color: var(--primary); }
 .aba-btn svg {
     width: 16px;
     height: 16px;
@@ -849,11 +876,11 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .toast-sucesso { background: var(--surface-raised); color: var(--text); border: 1px solid var(--success); border-left-width: 4px; }
 .toast-sucesso .toast-icone { background: var(--success); color: #fff; }
 .toast-erro    { background: var(--surface-raised); color: var(--text); border: 1px solid var(--danger); border-left-width: 4px; }
-.toast-erro    .toast-icone { background: var(--danger); color: #fff; }
+.toast-erro    .toast-icone { background: var(--danger-solido); color: #fff; }
 .toast-aviso   { background: var(--surface-raised); color: var(--text); border: 1px solid var(--warning); border-left-width: 4px; }
 .toast-aviso   .toast-icone { background: var(--warning); color: #fff; }
 .toast-info    { background: var(--surface-raised); color: var(--text); border: 1px solid var(--info); border-left-width: 4px; }
-.toast-info    .toast-icone { background: var(--info); color: #fff; }
+.toast-info    .toast-icone { background: var(--info-solido); color: #fff; }
 
 /* ══ TOTALIZADOR ════════════════════════════ */
 .totalizador-nota { display: flex; align-items: center; gap: 20px; padding: 14px 20px; background: var(--surface-alt); border: 1px solid var(--border-light); border-left: 4px solid var(--primary); border-radius: var(--radius); margin-top: 12px; flex-wrap: wrap; }
@@ -1112,6 +1139,10 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     width: 18px; height: 18px;
     left: 3px; top: 3px;
     background: #fff;
+    /* A bolinha branca sobre a trilha --border do tema claro (#dee2e6) dava
+       1,2 de contraste e praticamente sumia com o alerta desligado. A sombra
+       a destaca nos dois temas sem mudar o tamanho. (21/09/2026) */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.12);
     border-radius: 50%;
     transition: transform 0.2s;
 }
@@ -1213,7 +1244,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     font-size: 0.68rem;
     font-family: 'JetBrains Mono', monospace;
     background: var(--primary-light);
-    color: var(--primary);
+    color: var(--primary-texto);
     padding: 1px 6px;
     border-radius: 10px;
     font-weight: 600;
@@ -1363,18 +1394,24 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
     padding:2px 8px; text-transform:uppercase; letter-spacing:0.03em;
 }
 /* badge-role-supremo usa --primary-subtle3 para seguir a cor primária */
-.badge-role-supremo { background: var(--primary-subtle3); color:var(--primary); }
-.badge-role-admin   { background:rgba(59,130,246,0.15); color:#3b82f6; }
-.badge-role-usuario { background:rgba(16,185,129,0.12); color:#10b981; }
+.badge-role-supremo { background: var(--primary-subtle3); color:var(--primary-texto); }
+/* Estas quatro etiquetas tinham a cor escrita na mão — e escrita com os
+   valores do tema ESCURO (#3b82f6, #10b981, #ef4444, #f59e0b), que ficavam
+   também no tema claro. Sobre o fundo claro delas o contraste caía para
+   1,87 ("Você"), 2,16 ("Operador") e 3,03 ("Admin"), abaixo do mínimo de
+   4,5. O tema claro já tem as variantes escurecidas (--info, --success,
+   --danger, --warning) justamente para isso; agora elas as usam. (21/09/2026) */
+.badge-role-admin   { background: var(--info-light);    color: var(--info); }
+.badge-role-usuario { background: var(--success-light); color: var(--success); }
 
 .badge-inativo-user {
     display:inline-flex; font-size:0.72rem; font-weight:600;
-    background:rgba(239,68,68,0.12); color:#ef4444;
+    background: var(--danger-light); color: var(--danger);
     border-radius:20px; padding:2px 8px;
 }
 .badge-voce {
     display:inline-flex; font-size:0.72rem; font-weight:600;
-    background:rgba(245,158,11,0.12); color:#f59e0b;
+    background: var(--warning-light); color: var(--warning);
     border-radius:20px; padding:2px 8px;
 }
 .badge-empresa-tag {
@@ -1437,7 +1474,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 }
 .th-sort-icon.ativo {
     opacity: 1;
-    color: var(--primary);
+    color: var(--primary-texto);
 }
 
 /* ══════════════════════════════════════════════
@@ -2377,7 +2414,9 @@ button.confirmado-local::after {
 .rel-card--lista .rel-card-titulo { margin-bottom: var(--space-2); }
 .rel-card-valor { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 700; color: var(--text); }
 .rel-card-linha { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
-.rel-card-linha--fraca { font-size: 0.72rem; color: var(--text-light); }
+/* Sobre --surface-alt (o fundo claro mais escuro) o --text-light ainda
+   ficava em 4,33; aqui a linha usa o nivel de texto de cima. (21/09/2026) */
+.rel-card-linha--fraca { font-size: 0.72rem; color: var(--text-muted); }
 /* No celular, dois combustíveis por linha: um por linha fazia o resumo ter
    quase duas telas de altura. A lista de motoristas ocupa a linha toda. */
 @media (max-width: 480px) {
@@ -2429,7 +2468,9 @@ button.confirmado-local::after {
 
 /* Grupo e Analítico */
 .grafico-wrapper--240 { height: 240px; }
-.tag-perda.tag-perda--perigo { color: var(--danger); }
+/* So a cor do texto era trocada; o fundo continuava o azul de --info-light
+   da .tag-perda. As duas cores agora sao do mesmo par. (21/09/2026) */
+.tag-perda.tag-perda--perigo { background: var(--danger-light); color: var(--danger); }
 .alerta-comparativo--subiu { background: var(--danger-light);  border-color: var(--danger);  color: var(--text); }
 .alerta-comparativo--caiu  { background: var(--success-light); border-color: var(--success); color: var(--text); }
 
@@ -2547,7 +2588,10 @@ button.confirmado-local::after {
 .info-card--aviso  .info-card-valor { color: var(--warning); }
 .info-card--ok     .info-card-valor { color: var(--success); }
 .texto-ok { color: var(--success); }
-tbody tr.linha-divergente { background: rgba(239, 68, 68, 0.06); }
+/* O fundo tinha o rgb do --danger do tema ESCURO cravado, e ficava assim
+   tambem no claro, onde --danger e outro vermelho. --danger-light ja existe
+   para isso nos dois temas. (21/09/2026) */
+tbody tr.linha-divergente { background: var(--danger-light); }
 tbody tr.linha-apagada { opacity: 0.5; }
 tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .celula-notas-dia { padding: var(--space-2) var(--space-3) !important; background: var(--surface-alt); }
@@ -2595,7 +2639,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .dialogo-icone--aviso   { color: var(--warning); }
 .dialogo-icone--erro    { color: var(--danger); }
 .dialogo-icone--sucesso { color: var(--success); }
-.btn-primario.btn-tom-perigo { background: var(--danger);  border-color: var(--danger); }
+.btn-primario.btn-tom-perigo { background: var(--danger-solido);  border-color: var(--danger-solido); }
 .btn-primario.btn-tom-aviso  { background: var(--warning); border-color: var(--warning); }
 .btn-primario.btn-tom-info   { background: var(--primary); border-color: var(--primary); }
 .fm-prompt-label { display: block; font-size: 0.85rem; margin-bottom: 6px; }
@@ -2623,7 +2667,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .card.card--perfil { padding: var(--space-6); max-width: 520px; }
 .caixa-erro-carga { padding: var(--space-5); background: var(--surface-alt); border-radius: var(--radius); border: 1px solid var(--border); }
 .celula-fraca--italico { font-style: italic; }
-.usuario-arroba { color: var(--primary); opacity: 0.8; }
+.usuario-arroba { color: var(--primary-texto); opacity: 0.9; }
 .acoes-celula { display: flex; gap: 6px; flex-wrap: wrap; }
 .acoes-celula.acoes-celula--icones { gap: 2px; flex-wrap: nowrap; justify-content: flex-end; }
 .usuarios-topo { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
@@ -3099,6 +3143,10 @@ input[type="file"]::file-selector-button:hover { background: var(--surface-hover
     text-align: left; font-family: inherit;
 }
 .tabela-numeros > * > tr > td[colspan] { text-align: left; font-family: inherit; white-space: normal; }
+/* A regra acima, feita para as sublinhas e para a linha de total, vencia a
+   .td-vazio (mais especifica) e jogava o cartao de "nenhuma descarga" para
+   a borda esquerda nas quatro abas de Fretes. (21/09/2026) */
+.tabela-numeros > * > tr > td[colspan].td-vazio { text-align: center; }
 .filtros .filtros-rodape-grade { grid-column: 1 / -1; margin-top: 0; }
 .filtros { padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); }
 
