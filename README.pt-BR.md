@@ -49,7 +49,7 @@
 
 ### ⚙️ Sistema
 - Backup manual e automático (a cada 3 dias, guarda os 3 últimos)
-- Importação de planilhas (TRR Fabiandra, Posto Rosário wide, formato padrão)
+- Importação de planilhas (formato por produto, formato largo e formato padrão)
 - Detecção de duplicatas com reimportação seletiva
 - Correção em massa (empresa, motorista, placa, combustível, base)
 - Auditoria de datas suspeitas

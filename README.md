@@ -49,7 +49,7 @@
 
 ### ⚙️ System
 - Manual and automatic backup (every 3 days, last 3 kept)
-- Spreadsheet import (Fabiandra, Posto Rosário wide format, standard)
+- Spreadsheet import (per-product, wide, and standard layouts)
 - Duplicate detection with selective re-import
 - Mass correction (company, driver, plate, fuel, base)
 - Suspicious date audit

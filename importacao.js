@@ -9,8 +9,9 @@
   
   Formatos suportados:
   - Padrão sistema (uma linha por combustível)
-  - TRR Fabiandra (DATA NF / DATA ENTRADA/SAÍDA / NFE / PRODUTO...)
-  - Posto Rosário (wide: múltiplas colunas de combustível)
+  - Por produto (DATA NF / DATA ENTRADA/SAÍDA / NFE / PRODUTO...): uma
+    linha por produto da nota
+  - Largo (uma coluna por combustível, uma linha por dia)
 =================================================*/
 
 /*─────────────────────────────────────────────
@@ -51,7 +52,7 @@ const CAMPOS_IMPORTACAO = [
 ];
 
 /*─────────────────────────────────────────────
-  SINÔNIMOS — inclui colunas Fabiandra e Rosário
+  SINÔNIMOS — inclui as colunas dos dois formatos de origem
 ─────────────────────────────────────────────*/
 const SINONIMOS_IMPORTACAO = {
     dataNota:      ["data nota","data da nota","data nf","data_nota","datanota","data"],
@@ -115,15 +116,15 @@ function _normCol(str) {
 function _detectarFormato(cabecalho) {
     const cols = cabecalho.map(_normCol);
 
-    // Formato Fabiandra: tem "nfe" ou "data entrada" e colunas simples
+    // Formato por produto: tem "nfe" ou "data entrada" e colunas simples
     const temNFE       = cols.some(c => c === "nfe" || c === "nf-e");
     const temEntrada   = cols.some(c => c.includes("entrada") || c.includes("saida") || c.includes("saída"));
     const temProduto   = cols.some(c => c === "produto" || c === "descricao" || c === "descricão");
     const temValorNota = cols.some(c => c.includes("valor nota") || c.includes("vl nota") || c.includes("total nota"));
 
-    if ((temNFE || temEntrada) && temProduto) return "fabiandra";
+    if ((temNFE || temEntrada) && temProduto) return "porProduto";
 
-    // Formato wide (Posto Rosário): tem colunas "d. s-500", "d-s 10", "gas", "etanol"
+    // Formato largo: tem colunas "d. s-500", "d-s 10", "gas", "etanol"
     const temColunaWide = cols.some(c =>
         c.includes("s-500") || c.includes("s 500") ||
         c.includes("s-10")  || c.includes("s 10")  ||
@@ -241,9 +242,9 @@ function importacaoLerArquivo(input) {
                 // Converte automaticamente para o formato padrão antes de exibir
                 importacaoLinhas = _converterWideParaPadrao(linhas, linhasRaw);
                 importacaoLinhasRaw = null;
-                mostrarToast("Formato Posto Rosário detectado — convertido automaticamente ✓", "info", 5000);
-            } else if (formato === "fabiandra") {
-                mostrarToast("Formato TRR Fabiandra detectado — mapeamento automático ✓", "info", 4000);
+                mostrarToast("Formato largo detectado — convertido automaticamente ✓", "info", 5000);
+            } else if (formato === "porProduto") {
+                mostrarToast("Formato por produto detectado — mapeamento automático ✓", "info", 4000);
             }
 
             importacaoRenderizarEtapa1();
@@ -318,12 +319,12 @@ function importacaoLerCSV(texto) {
 }
 
 /*─────────────────────────────────────────────
-  CONVERTER WIDE (Posto Rosário) → PADRÃO
+  CONVERTER FORMATO LARGO → PADRÃO
   Detecta todas as colunas pelo nome — robusto
   a mudanças de posição e novas colunas.
 ─────────────────────────────────────────────*/
 /**
- * Converte planilha no formato "wide" (Posto Rosário) para o formato padrão
+ * Converte planilha no formato largo (uma coluna por combustível) para o padrão
  * linha-por-combustível usado internamente pelo sistema.
  *
  * No formato wide, cada linha representa uma nota fiscal e as quantidades +
@@ -704,8 +705,8 @@ function importacaoProcessar() {
         const numeroNota   = get("numeroNota").replace(/\./g,"").replace(/,/g,""); // remove pontos de milhar do NF
         const baseTxt      = get("base");
         const base         = (db.bases || []).find(b => normalizarTexto(b.nome) === normalizarTexto(baseTxt))?.nome || baseTxt;
-        // Empresa pelo cadastro, sem acento e sem caixa: "POSTO ROSÁRIO" é o
-        // cadastro "Posto Rosário". Empresa que não existe ou que quem importa
+        // Empresa pelo cadastro, sem acento e sem caixa: "TRANSPORTADORA X" é
+        // o cadastro "Transportadora X". Empresa que não existe ou que quem importa
         // não acessa vira erro da linha — antes a nota era aceita com um nome
         // que não resolvia para documento nenhum e sumia da nuvem.
         const empresaTxt   = get("empresa");
@@ -1194,7 +1195,7 @@ function importacaoCancelar() {
 
 /*─────────────────────────────────────────────
   DOWNLOAD DO MODELO DE PLANILHA
-  (formato Fabiandra — o mais simples e universal)
+  (formato por produto — o mais simples e universal)
 ─────────────────────────────────────────────*/
 function baixarModeloPlanilha() {
     if (adiarAteBibliotecas(["xlsx"], () => baixarModeloPlanilha())) return;
