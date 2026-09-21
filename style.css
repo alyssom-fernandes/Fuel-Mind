@@ -1031,6 +1031,11 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
         padding: 4px 8px;
         font-size: 0.7rem;
     }
+    /* Alvo de toque no celular. Estes três caíam para 21–22 px de altura,
+       abaixo do mínimo de 24 px, e são botões largos com espaço de sobra.
+       Os ícones das tabelas ficam em 28 px e já passam: a densidade delas,
+       escolhida em 18/09, não muda. (21/09/2026) */
+    .btn-export, .segmentado button, .btn-metrica, .demo-dica button { min-height: 32px; }
 }
 
 /* ══════════════════════════════════════════════
