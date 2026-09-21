@@ -431,150 +431,170 @@ footer {
   .stat { border-right: none; border-bottom: 1px solid var(--border); width: 50%; }
   .kpi-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Acrescentado em 21/09/2026, na reescrita do conteudo ── */
+.logo-img { height: 30px; width: auto; display: block; }
+.aviso-ficticio {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 18px; padding: 7px 14px; border-radius: 999px;
+  background: rgba(243,156,18,0.10); border: 1px solid rgba(243,156,18,0.35);
+  color: var(--accent); font-size: 0.76rem; font-weight: 600;
+}
+.alert-tipo {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-right: 9px; vertical-align: 1px;
+}
+.alert-tipo.preco  { background: rgba(243,156,18,0.14); color: var(--accent); }
+.alert-tipo.volume { background: rgba(59,130,246,0.14); color: var(--blue); }
+.alert-tipo.data   { background: rgba(192,57,43,0.16);  color: var(--primary2); }
+@media (max-width: 720px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .stats { flex-wrap: wrap; gap: 24px; }
+}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
+<!-- CABEÇALHO -->
 <header>
-  <a href="#" class="logo">
-    <div class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
-      </svg>
-    </div>
-    Fuel Mind
+  <a href="index.html" class="logo">
+    <img src="logo-dark.svg" alt="Fuel Mind" class="logo-img">
   </a>
   <nav>
-    <a href="#features">Features</a>
-    <a href="#stack">Stack</a>
-    <a href="https://github.com" target="_blank">Docs</a>
+    <a href="#recursos">Recursos</a>
+    <a href="#alertas">Alertas</a>
+    <a href="#como">Como funciona</a>
   </nav>
-  <a href="https://github.com" class="btn-github" target="_blank">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-    GitHub
-  </a>
+  <a href="index.html" class="btn-github">Abrir a demonstração</a>
 </header>
 
-<!-- HERO -->
+<!-- ABERTURA -->
 <section class="hero">
   <div class="hero-bg"></div>
-  <div class="hero-eyebrow">Open Source · Firebase · Vanilla JS</div>
-  <h1>Fuel management<br>done <em>right</em></h1>
+  <div class="hero-eyebrow">Entradas · Fretes · Conferência</div>
+  <h1>O controle de combustível<br>sem <em>planilha</em></h1>
   <p class="hero-sub">
-    Real-time multi-company fuel entry tracking with analytics,
-    freight calculation, tank-report reconciliation and PDF/Excel exports.
-    No build step required.
+    Lançamento de notas com importação do XML da NF-e, cálculo de frete por
+    taxa e vigência, conferência contra o relatório do tanque e relatórios em
+    PDF, Excel e CSV. Várias empresas na mesma base, com acesso separado.
   </p>
   <div class="hero-ctas">
-    <a href="https://github.com" class="cta-primary" target="_blank">⭐ Star on GitHub</a>
-    <a href="#features" class="cta-secondary">See Features →</a>
+    <a href="index.html" class="cta-primary">Abrir a demonstração</a>
+    <a href="#recursos" class="cta-secondary">Ver os recursos →</a>
+  </div>
+  <div class="aviso-ficticio">
+    Os números desta página são de demonstração, não de uma operação real.
   </div>
   <div class="stats">
     <div class="stat">
+      <div class="stat-val">10</div>
+      <div class="stat-label">Telas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">3</div>
+      <div class="stat-label">Níveis de acesso</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">2</div>
+      <div class="stat-label">Temas</div>
+    </div>
+    <div class="stat">
       <div class="stat-val">0<span>kb</span></div>
-      <div class="stat-label">Build output</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">17<span>+</span></div>
-      <div class="stat-label">JS modules</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">∞</div>
-      <div class="stat-label">Companies</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">RT</div>
-      <div class="stat-label">Real-time sync</div>
+      <div class="stat-label">De build</div>
     </div>
   </div>
 </section>
 
-<!-- DASHBOARD DEMO -->
+<!-- PAINEL -->
 <section class="dash-section">
   <div class="container">
-    <p class="section-label reveal">Dashboard</p>
-    <h2 class="section-title reveal">Everything at a glance</h2>
-    <p class="section-desc reveal">KPIs, charts, alerts, and recent entries — all on one screen, filtered by company and date range.</p>
+    <p class="section-label reveal">Painel</p>
+    <h2 class="section-title reveal">O mês inteiro numa tela</h2>
+    <p class="section-desc reveal">Números, gráficos, avisos e as últimas entradas, filtrados por empresa e por período.</p>
 
     <div class="dash-window reveal">
       <div class="dash-titlebar">
         <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-        <span class="dash-titlebar-text">Fuel Mind — Dashboard · Posto Rosário</span>
+        <span class="dash-titlebar-text">Fuel Mind — Painel · Transportadora Aurora (demonstração)</span>
       </div>
       <div class="dash-body">
         <div class="dash-sidebar">
           <div class="dash-nav-item active">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Dashboard
+            Painel
           </div>
           <div class="dash-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-            Entries
+            Lançamentos
           </div>
           <div class="dash-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            Analytics
+            Analítico
           </div>
           <div class="dash-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/></svg>
-            Freight
+            Fretes
+          </div>
+          <div class="dash-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Conferências
           </div>
         </div>
         <div class="dash-main">
           <div class="kpi-row">
             <div class="kpi k1">
-              <div class="kpi-label">Entries this month</div>
-              <div class="kpi-val">142</div>
-              <div class="kpi-delta up">▲ +12%</div>
+              <div class="kpi-label">Notas descarregadas</div>
+              <div class="kpi-val">23</div>
+              <div class="kpi-delta up">▲ 4,5%</div>
             </div>
             <div class="kpi k2">
-              <div class="kpi-label">Total liters</div>
-              <div class="kpi-val">8.4M</div>
-              <div class="kpi-delta dn">▼ −3.2%</div>
+              <div class="kpi-label">Litros descarregados</div>
+              <div class="kpi-val">442.799 L</div>
+              <div class="kpi-delta up">▲ 19,8%</div>
             </div>
             <div class="kpi k3">
-              <div class="kpi-label">Total spent</div>
-              <div class="kpi-val">R$44M</div>
-              <div class="kpi-delta up">▲ +8.1%</div>
+              <div class="kpi-label">Gasto em compras</div>
+              <div class="kpi-val">R$ 2,36 mi</div>
+              <div class="kpi-delta dn">▼ 8,3%</div>
             </div>
             <div class="kpi k4">
-              <div class="kpi-label">Avg cost / L</div>
-              <div class="kpi-val">R$5.23</div>
-              <div class="kpi-delta dn">▼ −0.4%</div>
+              <div class="kpi-label">Preço médio / L</div>
+              <div class="kpi-val">R$ 5,570</div>
+              <div class="kpi-delta dn">▼ 4,9%</div>
             </div>
           </div>
           <div class="chart-area">
-            <div class="chart-title">Monthly volume (L) — last 7 months</div>
+            <div class="chart-title">Litros por mês — últimos 7 meses</div>
             <div class="bar-chart">
-              <div class="bar-wrap"><div class="bar" style="height:55%;animation-delay:0.05s"></div><div class="bar-label">Jun</div></div>
-              <div class="bar-wrap"><div class="bar" style="height:70%;animation-delay:0.1s"></div><div class="bar-label">Jul</div></div>
-              <div class="bar-wrap"><div class="bar" style="height:62%;animation-delay:0.15s"></div><div class="bar-label">Aug</div></div>
-              <div class="bar-wrap"><div class="bar" style="height:80%;animation-delay:0.2s"></div><div class="bar-label">Sep</div></div>
-              <div class="bar-wrap"><div class="bar" style="height:73%;animation-delay:0.25s"></div><div class="bar-label">Oct</div></div>
-              <div class="bar-wrap"><div class="bar" style="height:90%;animation-delay:0.3s"></div><div class="bar-label">Nov</div></div>
-              <div class="bar-wrap"><div class="bar" style="height:100%;animation-delay:0.35s;opacity:1"></div><div class="bar-label">Dec</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:55%"></div><div class="bar-label">mar</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:70%"></div><div class="bar-label">abr</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:62%"></div><div class="bar-label">mai</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:80%"></div><div class="bar-label">jun</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:73%"></div><div class="bar-label">jul</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:90%"></div><div class="bar-label">ago</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:100%;opacity:1"></div><div class="bar-label">set*</div></div>
             </div>
           </div>
           <div class="mini-table">
-            <div class="mt-head"><span>Date · Note</span><span>Driver</span><span>Fuel</span><span>Total</span></div>
+            <div class="mt-head"><span>Data · Nota</span><span>Motorista</span><span>Combustível</span><span>Total</span></div>
             <div class="mt-row">
-              <span>18/12 · <span class="mono">1253151</span></span>
-              <span style="color:var(--muted)">Reginaldo</span>
-              <span><span class="badge-fuel s10">S-10</span></span>
-              <span class="mono" style="color:var(--green)">R$ 309.8k</span>
+              <span>21/09 · <span class="mono">101750</span></span>
+              <span style="color:var(--muted)">Cleiton Andrade</span>
+              <span><span class="badge-fuel s10">3 tipos</span></span>
+              <span class="mono" style="color:var(--green)">R$ 193.327,30</span>
             </div>
             <div class="mt-row">
-              <span>18/12 · <span class="mono">1252985</span></span>
-              <span style="color:var(--muted)">Everaldo</span>
-              <span><span class="badge-fuel s10">S-10</span></span>
-              <span class="mono" style="color:var(--green)">R$ 314.0k</span>
+              <span>21/09 · <span class="mono">101730</span></span>
+              <span style="color:var(--muted)">Fabiano Teles</span>
+              <span><span class="badge-fuel">S-500</span></span>
+              <span class="mono" style="color:var(--green)">R$ 131.942,80</span>
             </div>
             <div class="mt-row">
-              <span>17/12 · <span class="mono">1252301</span></span>
-              <span style="color:var(--muted)">Ricardo</span>
-              <span><span class="badge-fuel gas">S-500</span></span>
-              <span class="mono" style="color:var(--green)">R$ 298.4k</span>
+              <span>20/09 · <span class="mono">101741</span></span>
+              <span style="color:var(--muted)">Fabiano Teles</span>
+              <span><span class="badge-fuel gas">Etanol</span></span>
+              <span class="mono" style="color:var(--green)">R$ 120.232,95</span>
             </div>
           </div>
         </div>
@@ -583,152 +603,159 @@ footer {
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="features" id="features">
+<!-- RECURSOS -->
+<section class="features" id="recursos">
   <div class="container">
-    <p class="section-label reveal">Capabilities</p>
-    <h2 class="section-title reveal">Built for real operations</h2>
-    <p class="section-desc reveal">Every feature was designed for the daily reality of fuel distributors and transport companies.</p>
+    <p class="section-label reveal">O que ele faz</p>
+    <h2 class="section-title reveal">Feito para a operação de todo dia</h2>
+    <p class="section-desc reveal">De 10 a 30 notas por dia, em blocos, com conferência no fim do mês.</p>
 
     <div class="features-grid reveal">
       <div class="feat">
         <div class="feat-icon fi-red">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         </div>
-        <div class="feat-title">NF-e XML Import</div>
-        <div class="feat-desc">Auto-fill the entry form by uploading an XML invoice. Driver, plate, base, fuel type, quantity, and unit price extracted automatically.</div>
-      </div>
-      <div class="feat">
-        <div class="feat-icon fi-green">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </div>
-        <div class="feat-title">Full Analytics</div>
-        <div class="feat-desc">7 analytical tabs: monthly, per-driver, per-vehicle, per-fuel, comparative, distribution, and price evolution — all with Chart.js.</div>
+        <div class="feat-title">Importação do XML da NF-e</div>
+        <div class="feat-desc">O formulário se preenche a partir do arquivo da nota: motorista, placa, base, combustível, quantidade e valor unitário. Uma nota pode ter vários combustíveis.</div>
       </div>
       <div class="feat">
         <div class="feat-icon fi-yellow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         </div>
-        <div class="feat-title">Freight Calculation</div>
-        <div class="feat-desc">Configure R$/L rates per company. Automatic freight totals by plate, driver, company, and vehicle set — with historical composition support.</div>
+        <div class="feat-title">Frete por taxa e vigência</div>
+        <div class="feat-desc">Cada empresa tem a sua taxa em R$/L, com histórico: o mês passado continua calculado pela taxa que valia nele. Totais por placa, motorista, empresa e conjunto de veículos.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="feat-title">Analítico em 7 recortes</div>
+        <div class="feat-desc">Mês a mês, por motorista, por veículo, por combustível, comparativo de custo médio, distribuição e evolução de preços — com gráficos e tabelas que exportam.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon fi-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="feat-title">Conferência com o AutoSystem</div>
+        <div class="feat-desc">Compara, dia a dia, o que foi <strong>lançado aqui</strong> com a medição de tanque do relatório, e mostra as notas do dia que divergiu. Confere lançamento — não é controle de estoque.</div>
       </div>
       <div class="feat">
         <div class="feat-icon fi-purple">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
-        <div class="feat-title">Rich PDF Exports</div>
-        <div class="feat-desc">Custom logo per company, accent colors, margins, fonts, per-month page breaks, and a footer. Managed managerial monthly report included.</div>
+        <div class="feat-title">Saídas em cinco formatos</div>
+        <div class="feat-desc">PDF com a logo da empresa, cor e margens configuráveis; Excel com largura de coluna e formato de número; CSV; folha de impressão própria; e resumo por WhatsApp ou e-mail.</div>
       </div>
       <div class="feat">
         <div class="feat-icon fi-gray">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <div class="feat-title">Multi-user Permissions</div>
-        <div class="feat-desc">Roles: Supremo, Admin, Operator. Per-company access. Login via e-mail or @username. Change history on every entry, per user.</div>
+        <div class="feat-title">Empresas e níveis de acesso</div>
+        <div class="feat-desc">Supremo, Admin e Operador, com acesso por empresa. Entrada por e-mail ou por @usuario. Cada nota guarda o histórico do que mudou, quando e por quem.</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SMART ALERTS -->
-<section class="alerts-section">
+<!-- ALERTAS -->
+<section class="alerts-section" id="alertas">
   <div class="container">
-    <p class="section-label reveal">Alerts</p>
-    <h2 class="section-title reveal">Smart alerts, zero noise</h2>
-    <p class="section-desc reveal">The dashboard surfaces anomalies automatically — high prices, suspicious volumes, and bad dates — with one-click dismiss.</p>
+    <p class="section-label reveal">Avisos</p>
+    <h2 class="section-title reveal">O sistema avisa antes de você procurar</h2>
+    <p class="section-desc reveal">Preço fora da curva, volume incomum e data que não fecha. Cada aviso diz o porquê, abre a nota e pode ser confirmado para não aparecer de novo.</p>
 
     <div class="alerts-demo reveal">
       <div class="alert-card orange">
         <div class="alert-body">
-          <div class="alert-title">⚠ High price — Diesel S-10</div>
-          <div class="alert-msg">Note <strong>1253151</strong> (18/12): <strong>R$5.87/L</strong> — R$0.64 above 30-day average (avg: R$5.23/L)</div>
+          <div class="alert-title"><span class="alert-tipo preco">Preço</span>Acima do usual — Diesel S10</div>
+          <div class="alert-msg">Nota <strong>101697</strong>, de 13/09: <strong>R$ 6,273/L</strong> — R$ 0,42 acima da mediana dos últimos 7 dias (R$ 5,851/L, em 6 notas)</div>
         </div>
-        <button class="alert-action">✓ Confirm</button>
+        <button class="alert-action">✓ Confirmar</button>
       </div>
       <div class="alert-card blue">
         <div class="alert-body">
-          <div class="alert-title">📦 Volume above usual — S-500</div>
-          <div class="alert-msg">Note <strong>1252301</strong>: <strong>75,000 L</strong> — 67% above historical average (avg: 44,900 L/note)</div>
+          <div class="alert-title"><span class="alert-tipo volume">Volume</span>Acima do usual — Diesel S500</div>
+          <div class="alert-msg">Nota <strong>101687</strong>: <strong>29.442 L</strong> — 61% acima da média histórica da empresa (18.300 L por nota)</div>
         </div>
-        <button class="alert-action">✓ Confirm</button>
+        <button class="alert-action">✓ Confirmar</button>
       </div>
       <div class="alert-card red">
         <div class="alert-body">
-          <div class="alert-title">📅 Suspicious date — note 1250001</div>
-          <div class="alert-msg">Discharge on 25/12/2025 (future date) · 45 days between note and discharge</div>
+          <div class="alert-title"><span class="alert-tipo data">Data</span>Descarga muito depois da emissão</div>
+          <div class="alert-msg">Nota <strong>101752</strong>: emitida em 18/09 e descarregada em 20/09 · a diferença passou do limite configurado</div>
         </div>
-        <button class="alert-action">✓ Confirm date</button>
+        <button class="alert-action">✓ Confirmar</button>
       </div>
     </div>
   </div>
 </section>
 
-<!-- STACK -->
-<section class="stack-section" id="stack">
+<!-- COMO FUNCIONA -->
+<section class="stack-section" id="como">
   <div class="container">
-    <p class="section-label reveal">Tech Stack</p>
-    <h2 class="section-title reveal">No build step. No framework.<br>Just open and run.</h2>
-    <p class="section-desc reveal">Every dependency is loaded from a CDN. Clone, configure Firebase, and deploy in minutes.</p>
+    <p class="section-label reveal">Como funciona</p>
+    <h2 class="section-title reveal">Sem etapa de build.<br>Abre e roda.</h2>
+    <p class="section-desc reveal">Arquivos servidos direto, bibliotecas pela CDN e os dados no Firestore. Funciona offline para consultar e avisa quando a gravação vai esperar a rede.</p>
 
     <div class="stack-grid reveal">
-      <div class="stack-chip"><div class="chip-dot" style="background:#f7df1e"></div>Vanilla JavaScript ES6+</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#f7df1e"></div>JavaScript puro (ES6+)</div>
       <div class="stack-chip"><div class="chip-dot" style="background:#e34c26"></div>HTML5 + CSS3</div>
       <div class="stack-chip"><div class="chip-dot" style="background:#ff6f00"></div>Firebase Firestore</div>
       <div class="stack-chip"><div class="chip-dot" style="background:#ff6f00"></div>Firebase Auth</div>
-      <div class="stack-chip"><div class="chip-dot" style="background:#ff6f00"></div>Firebase Storage</div>
+      <div class="stack-chip"><div class="chip-dot" style="background:#3b82f6"></div>Firebase Hosting</div>
       <div class="stack-chip"><div class="chip-dot" style="background:#ff6384"></div>Chart.js 4</div>
       <div class="stack-chip"><div class="chip-dot" style="background:#ef4444"></div>jsPDF + AutoTable</div>
       <div class="stack-chip"><div class="chip-dot" style="background:#10b981"></div>SheetJS (XLSX)</div>
-      <div class="stack-chip"><div class="chip-dot" style="background:#3b82f6"></div>Firebase Hosting</div>
     </div>
   </div>
 </section>
 
-<!-- CTA -->
+<!-- CHAMADA FINAL -->
 <section class="cta-section">
   <div class="container" style="position:relative;z-index:1">
-    <p class="section-label" style="text-align:center;margin-bottom:16px">Ready to ship</p>
-    <h2 class="section-title" style="text-align:center;margin-bottom:16px">Start tracking your fuel<br>in under 10 minutes</h2>
+    <p class="section-label" style="text-align:center;margin-bottom:16px">Veja funcionando</p>
+    <h2 class="section-title" style="text-align:center;margin-bottom:16px">Entre na demonstração<br>e mexa à vontade</h2>
     <p class="section-desc" style="text-align:center">
-      Clone the repo, point it at your Firebase project, create your first user,
-      and you have a full-featured fuel management system.
+      Três perfis de acesso, três empresas e oito meses de histórico fictício.
+      Nada do que você fizer ali é gravado na nuvem, e a base volta ao normal
+      todo dia.
     </p>
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
-      <a href="https://github.com" class="cta-primary" target="_blank">⭐ Star on GitHub</a>
-      <a href="https://github.com" class="cta-secondary" target="_blank">Read the docs →</a>
+      <a href="index.html" class="cta-primary">Abrir a demonstração</a>
+      <a href="#recursos" class="cta-secondary">Rever os recursos →</a>
     </div>
     <div style="margin-top:48px;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap">
-      <span style="font-size:0.8rem;color:var(--muted)">✓ Open Source (MIT)</span>
-      <span style="font-size:0.8rem;color:var(--muted)">✓ No subscription</span>
-      <span style="font-size:0.8rem;color:var(--muted)">✓ Self-hosted on Firebase</span>
-      <span style="font-size:0.8rem;color:var(--muted)">✓ Real-time sync</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Dados fictícios</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Não pede cadastro</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Tema claro e escuro</span>
+      <span style="font-size:0.8rem;color:var(--muted)">✓ Funciona no celular</span>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- RODAPÉ -->
 <footer>
   <div class="container">
     <div class="footer-inner">
-      <span class="footer-logo">⛽ Fuel Mind</span>
+      <span class="footer-logo"><img src="logo-dark.svg" alt="Fuel Mind" class="logo-img" style="height:22px"></span>
       <div class="footer-links">
-        <a href="https://github.com" target="_blank">GitHub</a>
-        <a href="#features">Features</a>
-        <a href="#stack">Stack</a>
+        <a href="index.html">Demonstração</a>
+        <a href="#recursos">Recursos</a>
+        <a href="#como">Como funciona</a>
       </div>
-      <span class="footer-copy">MIT License · Built with Firebase + Chart.js</span>
+      <span class="footer-copy">Página de apresentação · os números são de demonstração</span>
     </div>
   </div>
 </footer>
 
 <script>
-// ── Scroll reveal ──
+// ── Revelar ao rolar ──
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
 }, { threshold: 0.1 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-// ── Alert dismiss ──
+// ── Dispensar o aviso ──
 document.querySelectorAll('.alert-action').forEach(btn => {
   btn.addEventListener('click', () => {
     const card = btn.closest('.alert-card');
@@ -745,12 +772,12 @@ document.querySelectorAll('.alert-action').forEach(btn => {
   });
 });
 
-// ── Bar chart stagger delay ──
+// ── Atraso escalonado das barras ──
 document.querySelectorAll('.bar').forEach((bar, i) => {
   bar.style.animationDelay = (i * 0.08) + 's';
 });
 
-// ── Header scroll effect ──
+// ── Cabeçalho ao rolar ──
 window.addEventListener('scroll', () => {
   const header = document.querySelector('header');
   if (window.scrollY > 40) {
@@ -759,31 +786,6 @@ window.addEventListener('scroll', () => {
     header.style.borderBottomColor = '#222222';
   }
 });
-
-// ── Animated counter on hero stats ──
-function animateCount(el, target, suffix, duration = 1200) {
-  const start = Date.now();
-  const step = () => {
-    const progress = Math.min((Date.now() - start) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const val = Math.round(eased * target);
-    el.innerHTML = val + '<span>' + suffix + '</span>';
-    if (progress < 1) requestAnimationFrame(step);
-  };
-  step();
-}
-const statsObserver = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      statsObserver.disconnect();
-      const vals = [[0, 0, 'kb'], [17, '+'], [null], [null]];
-      const els = document.querySelectorAll('.stat-val');
-      animateCount(els[1], 17, '+', 800);
-    }
-  });
-}, { threshold: 0.5 });
-const statsEl = document.querySelector('.stats');
-if (statsEl) statsObserver.observe(statsEl);
 </script>
 </body>
 </html>
