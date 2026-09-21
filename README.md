@@ -2,6 +2,23 @@
 
 > **Fuel entry & freight management platform** built with vanilla JS + Firebase, designed for fuel distributors and transport companies. Real-time, multi-company, with analytics and freight calculation.
 
+### ➤ [Try the live demo](https://controle-entradas-posto.web.app) — no signup
+
+Open the link, click **"Acessar modo demo"** and pick one of three roles
+(Supremo, Admin, Operator) to see how access changes per role. It runs on
+eight months of fictional data, nothing is written to the cloud, and the
+data resets every day.
+
+![Vanilla JS](https://img.shields.io/badge/JavaScript-vanilla-f7df1e?style=flat-square&logo=javascript&logoColor=black)
+![No build](https://img.shields.io/badge/build_step-none-success?style=flat-square)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-23_passing-success?style=flat-square)
+![pt-BR](https://img.shields.io/badge/UI-Portuguese_(pt--BR)-blue?style=flat-square)
+
+> The interface is in Brazilian Portuguese because it is used daily by a
+> real fuel operation. Code comments and commits are in Portuguese too;
+> this README and the file map below are in English.
+
 ---
 
 ## ✨ Features
@@ -149,41 +166,49 @@ npx serve .
 
 ```
 fuel-mind/
-├── index.html          # Single-page app shell + all modals
-├── 404.html            # Custom error page
-├── style.css           # Design system (light/dark, CSS variables)
+├── index.html              # Single-page app shell + all modals
+├── 404.html                # Custom error page
+├── favicon.ico
+├── firebase.json           # Hosting: cache and ignored files
+├── firestore.rules         # Database security rules
 │
-├── firebase.js         # Firebase init + DB and Auth methods
-├── sessao.js           # Login, roles and active company
-├── dados.js            # In-memory database state
-├── sincronizacao.js    # Writes, offline queue and real-time
-├── erros.js            # Failure log
-├── navegacao.js        # Screen switching
-├── tema.js             # Light/dark theme and brand color
-├── backup.js           # Backup and restore
+├── assets/
+│   ├── style.css           # Design system (light/dark, CSS variables)
+│   └── logo-{dark,light}.svg
 │
-├── ui.js               # Sidebar, header, search, shortcuts
-├── combobox.js         # Autocomplete field
-├── numerico.js         # pt-BR number input
-├── validacao.js        # Form validation
-├── utils.js            # Formatting, toasts, chart colors
+├── src/
+│   ├── core/               # Foundation: data, session, infrastructure
+│   │   ├── firebase.js     # Init + DB and Auth methods
+│   │   ├── sessao.js       # Login, roles, active company
+│   │   ├── dados.js        # In-memory database state
+│   │   ├── sincronizacao.js# Writes, offline queue, real-time
+│   │   ├── erros.js        # Failure log
+│   │   ├── navegacao.js    # Screen switching
+│   │   ├── tema.js         # Light/dark theme, brand color
+│   │   └── backup.js       # Backup and restore
+│   │
+│   ├── shared/             # Shared by every screen
+│   │   ├── utils.js        # Formatting, toasts, chart colors
+│   │   ├── ui.js           # Sidebar, header, search, shortcuts
+│   │   ├── combobox.js     # Autocomplete field
+│   │   ├── numerico.js     # pt-BR number input
+│   │   ├── validacao.js    # Form validation
+│   │   └── rascunho.js     # Form draft memory
+│   │
+│   └── screens/            # One screen, one file
+│       ├── lancamentos.js  # Entry form, NF-e XML, save/edit/clone
+│       ├── relatorios.js   # Table, filters, pagination, exports
+│       ├── analitico.js    # Seven analytics tabs + charts
+│       ├── dashboard.js    # KPIs, alerts, per-fuel breakdown
+│       ├── fretes.js       # Freight calculation and export
+│       ├── grupo.js        # Company comparison
+│       ├── cadastros.js    # Drivers, vehicles, companies, fuels…
+│       ├── sistema.js      # Backup, PDF settings, reconciliation
+│       ├── importacao.js   # Spreadsheets with format detection
+│       ├── usuarios.js     # Users and permissions
+│       └── demo.js         # Demo mode
 │
-├── lancamentos.js      # Entry form, NF-e XML, save/edit/clone
-├── rascunho.js         # Form draft memory
-├── cadastros.js        # Drivers, vehicles, companies, fuels, bases, vehicle sets
-├── relatorios.js       # Table, filters, pagination and exports
-├── analitico.js        # Analytics tabs + charts
-├── dashboard.js        # KPIs, alerts and per-fuel breakdown
-├── fretes.js           # Freight calculation and export
-├── grupo.js            # Company comparison
-├── sistema.js          # Backup, PDF settings and reconciliation
-├── importacao.js       # Spreadsheet import with format detection
-├── usuarios.js         # Users and permissions
-├── demo.js             # Demo mode
-│
-├── tests/              # Tests (node --test)
-├── firestore.rules     # Firestore security rules
-└── firebase.json       # Firebase Hosting config
+└── tests/                  # node --test, zero dependencies
 ```
 
 ---

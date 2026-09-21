@@ -2,6 +2,18 @@
 
 > **Plataforma de lançamento de notas e gestão de fretes** construída com JS puro + Firebase, projetada para distribuidoras e transportadoras. Tempo real, multi-empresa, com analítico e cálculo de fretes.
 
+### ➤ [Abrir a demonstração](https://controle-entradas-posto.web.app) — sem cadastro
+
+Abra o link, clique em **"Acessar modo demo"** e escolha um dos três perfis
+(Supremo, Admin, Operador) para ver o acesso mudar conforme o papel. São
+oito meses de dados fictícios, nada é gravado na nuvem e a base volta ao
+normal todo dia.
+
+![JS puro](https://img.shields.io/badge/JavaScript-puro-f7df1e?style=flat-square&logo=javascript&logoColor=black)
+![Sem build](https://img.shields.io/badge/etapa_de_build-nenhuma-success?style=flat-square)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-23_passando-success?style=flat-square)
+
 ---
 
 ## ✨ Funcionalidades
@@ -149,41 +161,49 @@ npx serve .
 
 ```
 fuel-mind/
-├── index.html          # Shell do app (SPA) + todos os modais
-├── 404.html            # Página de erro própria
-├── style.css           # Design system (claro/escuro, variáveis CSS)
+├── index.html              # Shell do app (uma página só) + todos os modais
+├── 404.html                # Página de erro própria
+├── favicon.ico
+├── firebase.json           # Hosting: cache e arquivos ignorados
+├── firestore.rules         # Regras de segurança do banco
 │
-├── firebase.js         # Inicialização do Firebase + métodos de DB e Auth
-├── sessao.js           # Login, papéis e empresa ativa
-├── dados.js            # Estado do banco em memória
-├── sincronizacao.js    # Gravação, fila offline e tempo real
-├── erros.js            # Registro de falhas
-├── navegacao.js        # Troca de telas
-├── tema.js             # Tema claro/escuro e cor da marca
-├── backup.js           # Backup e restauração
+├── assets/
+│   ├── style.css           # Design system (claro/escuro, variáveis CSS)
+│   └── logo-{dark,light}.svg
 │
-├── ui.js               # Barra lateral, cabeçalho, busca, atalhos
-├── combobox.js         # Campo com sugestões
-├── numerico.js         # Entrada de números em pt-BR
-├── validacao.js        # Validação dos formulários
-├── utils.js            # Formatação, avisos, cores dos gráficos
+├── src/
+│   ├── core/               # Base: dados, sessão e infraestrutura
+│   │   ├── firebase.js     # Inicialização + métodos de DB e Auth
+│   │   ├── sessao.js       # Login, papéis e empresa ativa
+│   │   ├── dados.js        # Estado do banco em memória
+│   │   ├── sincronizacao.js# Gravação, fila offline e tempo real
+│   │   ├── erros.js        # Registro de falhas
+│   │   ├── navegacao.js    # Troca de telas
+│   │   ├── tema.js         # Tema claro/escuro e cor da marca
+│   │   └── backup.js       # Backup e restauração
+│   │
+│   ├── shared/             # Reaproveitado por todas as telas
+│   │   ├── utils.js        # Formatação, avisos, cores dos gráficos
+│   │   ├── ui.js           # Barra lateral, cabeçalho, busca, atalhos
+│   │   ├── combobox.js     # Campo com sugestões
+│   │   ├── numerico.js     # Entrada de números em pt-BR
+│   │   ├── validacao.js    # Validação dos formulários
+│   │   └── rascunho.js     # Memória do formulário
+│   │
+│   └── screens/            # Uma tela, um arquivo
+│       ├── lancamentos.js  # Formulário, XML da NF-e, salvar/editar/clonar
+│       ├── relatorios.js   # Tabela, filtros, paginação e exportações
+│       ├── analitico.js    # Sete abas de análise + gráficos
+│       ├── dashboard.js    # Números, alertas e detalhe por combustível
+│       ├── fretes.js       # Cálculo e exportação de fretes
+│       ├── grupo.js        # Comparativo entre as empresas
+│       ├── cadastros.js    # Motoristas, veículos, empresas, combustíveis…
+│       ├── sistema.js      # Backup, config do PDF e conferência
+│       ├── importacao.js   # Planilhas com detecção de formato
+│       ├── usuarios.js     # Usuários e permissões
+│       └── demo.js         # Modo demonstração
 │
-├── lancamentos.js      # Formulário de lançamento, XML da NF-e, salvar/editar/clonar
-├── rascunho.js         # Memória do formulário
-├── cadastros.js        # Motoristas, veículos, empresas, combustíveis, bases, conjuntos
-├── relatorios.js       # Tabela, filtros, paginação e exportações
-├── analitico.js        # Abas do analítico + gráficos
-├── dashboard.js        # Números, alertas e detalhamento por combustível
-├── fretes.js           # Cálculo e exportação de fretes
-├── grupo.js            # Comparativo entre as empresas
-├── sistema.js          # Backup, config do PDF e conferência
-├── importacao.js       # Importação de planilhas com detecção de formato
-├── usuarios.js         # Usuários e permissões
-├── demo.js             # Modo demonstração
-│
-├── tests/              # Testes (node --test)
-├── firestore.rules     # Regras de segurança do Firestore
-└── firebase.json       # Configuração do Firebase Hosting
+└── tests/                  # node --test, sem dependências
 ```
 
 ---

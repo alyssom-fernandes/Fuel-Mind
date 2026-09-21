@@ -679,7 +679,7 @@ function _mostrarLoading(visivel) {
         el.innerHTML = `
             <div class="carregando-tela" role="status">
                 <img class="carregando-logo" alt="Fuel Mind" width="1199" height="291"
-                     src="${document.documentElement.getAttribute("data-theme") === "light" ? "logo-light.svg" : "logo-dark.svg"}">
+                     src="${document.documentElement.getAttribute("data-theme") === "light" ? "assets/logo-light.svg" : "assets/logo-dark.svg"}">
                 <div class="carregando-roda" aria-hidden="true"></div>
                 <span class="carregando-texto">Carregando dados da nuvem…</span>
             </div>`;

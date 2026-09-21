@@ -19,7 +19,7 @@ const vm = require("node:vm");
 
 // `utils.js` declara tudo no escopo global do navegador; aqui ele é
 // avaliado neste mesmo contexto, e as funções ficam disponíveis por nome.
-const codigo = fs.readFileSync(path.join(__dirname, "..", "utils.js"), "utf8");
+const codigo = fs.readFileSync(path.join(__dirname, "..", "src", "shared", "utils.js"), "utf8");
 globalThis.db = { lancamentos: [], empresas: [], configAlertas: {} };
 globalThis.empresaFiltroGlobal = "";
 globalThis.localStorage = {

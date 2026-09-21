@@ -57,7 +57,7 @@ function toggleModoEscuro() {
 function _aplicarLogoDoTema(tema) {
     const img = document.getElementById("sidebarLogo");
     if (img) img.src = (tema || document.documentElement.getAttribute("data-theme")) === "light"
-        ? "logo-light.svg" : "logo-dark.svg";
+        ? "assets/logo-light.svg" : "assets/logo-dark.svg";
 }
 
 function _hexParaRGB(hex) {

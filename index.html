@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/style.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="favicon.ico">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -27,7 +27,7 @@
 <div id="loginOverlay" class="modal-overlay login-overlay" style="display:flex">
     <div class="login-cartao">
         <section class="login-marca">
-            <img src="logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
+            <img src="assets/logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
             <p class="login-marca-frase">Entradas de combustível, fretes e preços conferidos num lugar só.</p>
             <ul class="login-marca-lista">
                 <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Nota a nota, direto do XML da NF-e</li>
@@ -81,7 +81,7 @@
 <div id="selecaoEmpresaOverlay" class="modal-overlay login-overlay" style="display:none">
     <div class="login-cartao login-cartao--uma-coluna">
         <section class="login-marca login-marca--faixa">
-            <img src="logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
+            <img src="assets/logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
         </section>
         <section class="login-form">
             <h2 class="login-titulo">Olá, <span id="selecaoEmpresaNome">—</span>!</h2>
@@ -97,7 +97,7 @@
 <div class="sidebar-logo" onclick="mostrarTela('dashboard')">
   <!-- Uma imagem só: as duas ficavam no DOM e o navegador baixava as duas
        (120 KB somados) para mostrar uma. O `src` é trocado no tema. -->
-  <img src="logo-dark.svg" alt="Fuel Mind" class="sidebar-logo-img" id="sidebarLogo">
+  <img src="assets/logo-dark.svg" alt="Fuel Mind" class="sidebar-logo-img" id="sidebarLogo">
   <button class="btn-fechar-sidebar" onclick="fecharSidebar()" aria-label="Fechar menu" title="Fechar menu">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
@@ -1007,33 +1007,33 @@
 </div>
 
 <!-- SCRIPTS -->
-<script type="module" src="firebase.js"></script>
-<script src="utils.js"></script>
+<script type="module" src="src/core/firebase.js"></script>
+<script src="src/shared/utils.js"></script>
 <!-- O antigo app.js, em arquivos por responsabilidade (18/09/2026).
      Dividem o mesmo escopo global; a ordem importa só para o que roda na
      carga: erros primeiro, para registrar falha dos seguintes. -->
-<script src="erros.js"></script>
-<script src="sessao.js"></script>
-<script src="dados.js"></script>
-<script src="sincronizacao.js"></script>
-<script src="tema.js"></script>
-<script src="navegacao.js"></script>
-<script src="backup.js"></script>
-<script src="cadastros.js"></script>
-<script src="numerico.js"></script>
-<script src="combobox.js"></script>
-<script src="rascunho.js"></script>
-<script src="validacao.js"></script>
-<script src="lancamentos.js"></script>
-<script src="relatorios.js"></script>
-<script src="analitico.js"></script>
-<script src="dashboard.js"></script>
-<script src="fretes.js"></script>
-<script src="grupo.js"></script>
-<script src="sistema.js"></script>
-<script src="importacao.js"></script>
-<script src="usuarios.js"></script>
-<script src="ui.js"></script>
-<script src="demo.js"></script>
+<script src="src/core/erros.js"></script>
+<script src="src/core/sessao.js"></script>
+<script src="src/core/dados.js"></script>
+<script src="src/core/sincronizacao.js"></script>
+<script src="src/core/tema.js"></script>
+<script src="src/core/navegacao.js"></script>
+<script src="src/core/backup.js"></script>
+<script src="src/screens/cadastros.js"></script>
+<script src="src/shared/numerico.js"></script>
+<script src="src/shared/combobox.js"></script>
+<script src="src/shared/rascunho.js"></script>
+<script src="src/shared/validacao.js"></script>
+<script src="src/screens/lancamentos.js"></script>
+<script src="src/screens/relatorios.js"></script>
+<script src="src/screens/analitico.js"></script>
+<script src="src/screens/dashboard.js"></script>
+<script src="src/screens/fretes.js"></script>
+<script src="src/screens/grupo.js"></script>
+<script src="src/screens/sistema.js"></script>
+<script src="src/screens/importacao.js"></script>
+<script src="src/screens/usuarios.js"></script>
+<script src="src/shared/ui.js"></script>
+<script src="src/screens/demo.js"></script>
 </body>
 </html>

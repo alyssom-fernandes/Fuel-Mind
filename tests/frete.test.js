@@ -19,7 +19,7 @@ if (typeof globalThis.calcularFretesDoMes !== "function") {
     globalThis.empresaFiltroGlobal = globalThis.empresaFiltroGlobal || "";
     globalThis.localStorage = globalThis.localStorage || { getItem() { return null; }, setItem() {}, removeItem() {} };
     globalThis.salvarDB = globalThis.salvarDB || (() => {});
-    vm.runInThisContext(fs.readFileSync(path.join(__dirname, "..", "utils.js"), "utf8"), { filename: "utils.js" });
+    vm.runInThisContext(fs.readFileSync(path.join(__dirname, "..", "src", "shared", "utils.js"), "utf8"), { filename: "utils.js" });
 }
 
 const AURORA = {
