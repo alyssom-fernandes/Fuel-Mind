@@ -1,5 +1,5 @@
 /*=================================================
-  DEMO.JS — Modo demonstração
+  DEMO.JS: Modo demonstração
 
   Um ambiente isolado, com dados fictícios, para
   explorar o sistema sem tocar na base real.
@@ -14,7 +14,7 @@
   Serve para: demonstrar o sistema, treinar alguém,
   testar comportamento por papel e por empresa sem
   precisar de credencial. NÃO exercita as regras de
-  segurança do servidor — essas só se verificam contra
+  segurança do servidor, essas só se verificam contra
   o Firestore de verdade.
 =================================================*/
 
@@ -36,7 +36,7 @@ const DEMO_USUARIOS = [
         empresas: [],
         empresaIds: [],
         ativo: true,
-        descricao: "Acesso total — enxerga as três empresas"
+        descricao: "Acesso total: enxerga as três empresas"
     },
     {
         uid: "demo-admin",
@@ -47,7 +47,7 @@ const DEMO_USUARIOS = [
         empresas: ["Transportadora Aurora", "Rodoviário Bandeirante"],
         empresaIds: ["demo-emp-1", "demo-emp-2"],
         ativo: true,
-        descricao: "Duas empresas — gerencia usuários delas"
+        descricao: "Duas empresas: gerencia usuários delas"
     },
     {
         uid: "demo-usuario",
@@ -58,7 +58,7 @@ const DEMO_USUARIOS = [
         empresas: ["Rodoviário Bandeirante"],
         empresaIds: ["demo-emp-2"],
         ativo: true,
-        descricao: "Uma empresa — só operação"
+        descricao: "Uma empresa: só operação"
     }
 ];
 
@@ -218,7 +218,7 @@ function _demoGerarBase() {
         motoristas, veiculos, empresas, combustiveis, bases,
         conjuntosVeiculos, lancamentos,
         configRelatorio: {
-            titulo: "Controle de Entradas de Combustível — Demonstração",
+            titulo: "Controle de Entradas de Combustível (Demonstração)",
             mostrarBase: true, mostrarEmpresa: true,
             mostrarMotorista: true, mostrarPlaca: true,
             orientacao: "landscape"
@@ -282,11 +282,11 @@ function demoResetarDados(silencioso) {
 }
 
 /**
- * Grava o estado da demo — substitui salvarDB enquanto o modo está ativo.
+ * Grava o estado da demo: substitui salvarDB enquanto o modo está ativo.
  *
  * Preserva os lançamentos das empresas que o perfil atual NÃO enxerga.
  * Sem isso, um usuário restrito gravaria sua visão parcial por cima da
- * base inteira e apagaria as demais empresas — exatamente o que
+ * base inteira e apagaria as demais empresas, exatamente o que
  * `_montarPayloads` evita em produção, onde cada perfil só escreve nos
  * documentos das suas próprias empresas.
  */
@@ -324,7 +324,7 @@ function abrirModoDemo() {
         <button class="btn-empresa-troca btn-empresa-troca--perfil"
                 onclick="entrarModoDemo('${escapeJsAttr(u.uid)}')">
             <span class="demo-perfil-nome">${escapeHtml(u.nome)}
-                <em class="demo-perfil-papel">— ${escapeHtml((typeof ROLES !== 'undefined' && ROLES[u.role]?.label) || u.role)}</em>
+                <em class="demo-perfil-papel">· ${escapeHtml((typeof ROLES !== 'undefined' && ROLES[u.role]?.label) || u.role)}</em>
             </span>
             <span class="demo-perfil-descricao">${escapeHtml(u.descricao)}</span>
         </button>`).join("");
@@ -391,7 +391,7 @@ function _demoMostrarFaixa() {
     const faixa = document.createElement("div");
     faixa.id = "demoFaixa";
     faixa.innerHTML = `
-        <span><strong>Modo demonstração</strong> — dados fictícios, restaurados todo dia. Nada aqui é gravado na nuvem.</span>
+        <span><strong>Modo demonstração</strong>: dados fictícios, restaurados todo dia. Nada aqui é gravado na nuvem.</span>
         <span class="demo-faixa-acoes">
             <button onclick="demoResetarDados(false)">Restaurar dados</button>
             <button onclick="sairModoDemo()">Sair da demo</button>
@@ -408,7 +408,7 @@ function _demoMostrarFaixa() {
  * lançamento.
  *
  * Três dos avisos do formulário só aparecem quando o operador digita algo
- * que os provoque — data no futuro, descarga antes da nota, preço fora da
+ * que os provoque: data no futuro, descarga antes da nota, preço fora da
  * referência. Numa demonstração, ninguém adivinha que eles existem. Esta
  * dica os torna visíveis sem precisar de dado plantado, e some com um
  * clique. Fica escondida fora da demo.
@@ -448,7 +448,7 @@ function _demoFecharDicaLanc() {
  * A sidebar e o cabeçalho são posicionados a partir dessa variável, então
  * eles descem junto em vez de ficarem por baixo da faixa. Medir em vez de
  * fixar um valor importa porque o texto quebra em duas linhas em telas
- * estreitas — com altura fixa, a sidebar ficaria desalinhada no celular.
+ * estreitas: com altura fixa, a sidebar ficaria desalinhada no celular.
  */
 function _demoMedirFaixa() {
     const faixa = document.getElementById("demoFaixa");

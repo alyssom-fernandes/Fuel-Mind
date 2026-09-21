@@ -5,7 +5,7 @@
   Acrescenta notas novas. Uma nota que já existe só é substituída se o
   operador marcar "Reimportar": a antiga fica registrada como excluída.
   A empresa de cada linha precisa estar cadastrada e liberada para quem
-  importa — a importação não cria empresa.
+  importa. A importação não cria empresa.
   
   Formatos suportados:
   - Padrão sistema (uma linha por combustível)
@@ -52,7 +52,7 @@ const CAMPOS_IMPORTACAO = [
 ];
 
 /*─────────────────────────────────────────────
-  SINÔNIMOS — inclui as colunas dos dois formatos de origem
+  SINÔNIMOS: inclui as colunas dos dois formatos de origem
 ─────────────────────────────────────────────*/
 const SINONIMOS_IMPORTACAO = {
     dataNota:      ["data nota","data da nota","data nf","data_nota","datanota","data"],
@@ -83,7 +83,7 @@ const SINONIMOS_IMPORTACAO = {
  *
  * **A empresa faz parte da identidade.** Sem ela, uma nota legítima de
  * outra empresa com o mesmo número e a mesma placa era classificada como
- * duplicata — e, ao ser marcada para reimportar, o filtro que remove as
+ * duplicata, e, ao ser marcada para reimportar, o filtro que remove as
  * duplicatas varria o `db.lancamentos` inteiro (que tem em memória os
  * lançamentos de todas as empresas que o usuário enxerga) e apagava a
  * nota da outra empresa junto, de forma permanente e silenciosa.
@@ -169,7 +169,7 @@ function importacaoLerArquivo(input) {
                 const aba = workbook.Sheets[workbook.SheetNames[0]];
 
                 // Converte seriais numéricos de data (40000-60000) para "DD/MM/YYYY"
-                // manualmente — evita que o XLSX inverta dia/mês.
+                // manualmente: evita que o XLSX inverta dia/mês.
                 // ATENÇÃO: só converte colunas cujo cabeçalho indica data.
                 // Colunas de quantidade e valor unitário ficam intactas, pois
                 // valores como 45000 L caem no mesmo intervalo de datas e seriam
@@ -191,7 +191,7 @@ function importacaoLerArquivo(input) {
                     const cabNorm = String(cabCell.v || "").toLowerCase()
                         .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
                         .replace(/[^a-z0-9\s]/g,"").trim();
-                    // Cabeçalhos que indicam data — nunca quantidade ou valor
+                    // Cabeçalhos que indicam data, nunca quantidade ou valor
                     // "Qtd Descarga" e "Litros Descarga" são quantidade, não
                     // data: antes 44.850 L viravam 17/10/2022 e depois zero.
                     const ehQuantidade = /\b(qtd|qtde|litros|lts|quantidade|volume)\b/.test(cabNorm);
@@ -242,9 +242,9 @@ function importacaoLerArquivo(input) {
                 // Converte automaticamente para o formato padrão antes de exibir
                 importacaoLinhas = _converterWideParaPadrao(linhas, linhasRaw);
                 importacaoLinhasRaw = null;
-                mostrarToast("Formato largo detectado — convertido automaticamente ✓", "info", 5000);
+                mostrarToast("Formato largo detectado, convertido automaticamente ✓", "info", 5000);
             } else if (formato === "porProduto") {
-                mostrarToast("Formato por produto detectado — mapeamento automático ✓", "info", 4000);
+                mostrarToast("Formato por produto detectado, mapeamento automático ✓", "info", 4000);
             }
 
             importacaoRenderizarEtapa1();
@@ -255,7 +255,7 @@ function importacaoLerArquivo(input) {
             if (resultado) resultado.style.display = "none";
             if (etapas)    etapas.style.display    = "block";
 
-            mostrarToast(`"${file.name}" lido — ${importacaoLinhas.length - 1} linha(s) de dados`, "info");
+            mostrarToast(`"${file.name}" lido: ${importacaoLinhas.length - 1} linha(s) de dados`, "info");
 
         } catch(err) {
             mostrarToast("Erro ao ler o arquivo: " + err.message, "erro", 5000);
@@ -268,7 +268,7 @@ function importacaoLerArquivo(input) {
 }
 
 /**
- * Texto de um CSV em UTF-8 ou, se não for UTF-8 válido, em Windows-1252 —
+ * Texto de um CSV em UTF-8 ou, se não for UTF-8 válido, em Windows-1252,
  * que é como o Excel em português salva "CSV (separado por vírgulas)".
  * Antes o arquivo era lido sempre como UTF-8, "JOSÉ" virava "JOS�" e a
  * importação criava um motorista com esse nome.
@@ -320,7 +320,7 @@ function importacaoLerCSV(texto) {
 
 /*─────────────────────────────────────────────
   CONVERTER FORMATO LARGO → PADRÃO
-  Detecta todas as colunas pelo nome — robusto
+  Detecta todas as colunas pelo nome, robusto
   a mudanças de posição e novas colunas.
 ─────────────────────────────────────────────*/
 /**
@@ -332,7 +332,7 @@ function importacaoLerCSV(texto) {
  * seguida de coluna "R$/unit S-10"). Este conversor:
  *
  * 1. Localiza colunas fixas (data NF, NF, base, empresa, placa, motorista)
- *    pelo nome — insensível a posição e a variações de grafia.
+ *    pelo nome, insensível a posição e a variações de grafia.
  * 2. Detecta pares [qtd, valor] de cada combustível varrendo o cabeçalho,
  *    cruzando com mapa de abreviações conhecido e com `db.combustiveis`
  *    para obter o nome canônico cadastrado.
@@ -376,7 +376,7 @@ function _converterWideParaPadrao(linhas, linhasRaw) {
     // Estratégia: varre o cabeçalho buscando nomes de combustíveis.
     // A coluna seguinte (que contém "unit", "r$", "$" ou está vazia) é o valor.
     // O nome final do combustível é buscado no cadastro do sistema para evitar
-    // criar duplicatas — se não encontrar, usa o nome da coluna como fallback.
+    // criar duplicatas. Se não encontrar, usa o nome da coluna como fallback.
 
     function _nomeCombustivelDaColuna(colNorm) {
         const cc = colNorm.replace(/[^a-z0-9]/g,"");
@@ -391,7 +391,7 @@ function _converterWideParaPadrao(linhas, linhasRaw) {
             // então se Gasolina Comum vier primeiro ela engole a V-Power.
             { termos: ["gasvpower","gasvp","gasolinav","vpower","vpow",
                        "gasolinaaditivada","gasolinapremium"],                  canon: "Gasolina V-Power" },
-            // "gasolina" puro removido dos termos — tratado como fallback após o loop
+            // "gasolina" puro removido dos termos, tratado como fallback após o loop
             // para não casar falsamente com "gasolinavpower".
             { termos: ["gasolinac","gasolinacomum","gascomum"],                 canon: "Gasolina Comum"   },
             { termos: ["etanol","alcool","ethanol","aehc"],                     canon: "Etanol"           },
@@ -432,7 +432,7 @@ function _converterWideParaPadrao(linhas, linhasRaw) {
         });
         if (cadastrado) return cadastrado.nome;
 
-        return null; // coluna não reconhecida — ignora
+        return null; // coluna não reconhecida, ignora
     }
 
     // Índices das colunas que são "R$/unit" (para não confundi-las com qtd)
@@ -539,7 +539,7 @@ function _converterWideParaPadrao(linhas, linhasRaw) {
 }
 
 /*─────────────────────────────────────────────
-  ETAPA 1 — Preview do arquivo
+  ETAPA 1: Preview do arquivo
 ─────────────────────────────────────────────*/
 function importacaoRenderizarEtapa1() {
     const preview = document.getElementById("importacaoPreview");
@@ -570,14 +570,14 @@ function importacaoRenderizarEtapa1() {
 }
 
 /*─────────────────────────────────────────────
-  ETAPA 2 — Mapeamento de colunas
+  ETAPA 2: Mapeamento de colunas
 ─────────────────────────────────────────────*/
 function importacaoRenderizarEtapa2(cabecalho) {
     const container = document.getElementById("importacaoMapeamento");
     if (!container) return;
 
     // Mapeamento em duas passadas. Primeiro, cabeçalho IGUAL a um sinônimo;
-    // depois, o sinônimo como palavra inteira dentro do cabeçalho — e uma
+    // depois, o sinônimo como palavra inteira dentro do cabeçalho, e uma
     // coluna serve a um campo só. Antes valia "contém" nos dois sentidos,
     // e o próprio modelo do sistema mapeava "DATA NF" como Número da Nota
     // (por causa de "nf"); cabeçalho vazio casava com todos os campos.
@@ -611,7 +611,7 @@ function importacaoRenderizarEtapa2(cabecalho) {
         <p class="dica mb-3">
             Relacione cada coluna da planilha com o campo correspondente.
             Campos com <strong>*</strong> são obrigatórios.<br>
-            O sistema mapeou automaticamente o que reconheceu — confira e ajuste se necessário.
+            O sistema mapeou automaticamente o que reconheceu. Confira e ajuste se necessário.
         </p>
         <div class="mapeamento-grid">
             ${CAMPOS_IMPORTACAO.map(campo => `
@@ -635,12 +635,12 @@ function importacaoRenderizarEtapa2(cabecalho) {
 
     const qtdMapeados = Object.keys(autoMap).length;
     if (qtdMapeados > 0) {
-        mostrarToast(`${qtdMapeados} coluna(s) mapeadas automaticamente — confira`, "info", 4000);
+        mostrarToast(`${qtdMapeados} coluna(s) mapeadas automaticamente, confira`, "info", 4000);
     }
 }
 
 /*─────────────────────────────────────────────
-  ETAPA 3 — PROCESSAR
+  ETAPA 3: PROCESSAR
 ─────────────────────────────────────────────*/
 function importacaoProcessar() {
     const btnProcessar = document.querySelector('button[onclick="importacaoProcessar()"]');
@@ -707,7 +707,7 @@ function importacaoProcessar() {
         const base         = (db.bases || []).find(b => normalizarTexto(b.nome) === normalizarTexto(baseTxt))?.nome || baseTxt;
         // Empresa pelo cadastro, sem acento e sem caixa: "TRANSPORTADORA X" é
         // o cadastro "Transportadora X". Empresa que não existe ou que quem importa
-        // não acessa vira erro da linha — antes a nota era aceita com um nome
+        // não acessa vira erro da linha. Antes a nota era aceita com um nome
         // que não resolvia para documento nenhum e sumia da nuvem.
         const empresaTxt   = get("empresa");
         const empresaCad   = empresaTxt
@@ -770,7 +770,7 @@ function importacaoProcessar() {
         // (planilha colada duas vezes, meses sobrepostos), e não uma segunda
         // carga: antes os litros e o total dobravam sem aviso.
         if (notas[chave].itens.some(i => i.tipo === combustivel)) {
-            erros.push(`Linha ${linhaNum}: repetida — a nota ${numeroNota} já tem ${combustivel} numa linha anterior`);
+            erros.push(`Linha ${linhaNum}: repetida: a nota ${numeroNota} já tem ${combustivel} numa linha anterior`);
             return;
         }
         const itemTotal = Math.round(qtd * valor * 100) / 100;
@@ -798,7 +798,7 @@ function importacaoProcessar() {
         // A cancelada na origem não é oferecida para reimportar: substituir
         // uma nota cancelada por uma ativa desfaria o cancelamento em silêncio.
         if (existente && existente.estado === 'cancelado') {
-            erros.push(`Nota ${nota.numeroNota} (${formatarData(nota.dataNota)}): já lançada e marcada como cancelada na origem — não reimportada`);
+            erros.push(`Nota ${nota.numeroNota} (${formatarData(nota.dataNota)}): já lançada e marcada como cancelada na origem, não reimportada`);
         } else if (existente) duplicatas.push(nota);
         else novasNotas.push(nota);
     });
@@ -817,7 +817,7 @@ function _normalizarNomeCombustivel(raw) {
 
     // O cadastro primeiro. Antes o nome saía de uma tabela fixa, e com o
     // cadastro "Diesel S10" a planilha criava um segundo combustível
-    // "Diesel S-10" — o analítico e a referência de preço ficavam divididos.
+    // "Diesel S-10". O analítico e a referência de preço ficavam divididos.
     const compacto = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g, "");
     const cv = compacto(v);
     const exato = (db.combustiveis || []).find(c => compacto(c.nome) === cv);
@@ -854,7 +854,7 @@ function _normalizarNomeCombustivel(raw) {
 }
 
 /*─────────────────────────────────────────────
-  RESUMO ANTES DE SALVAR — com duplicatas clicáveis
+  RESUMO ANTES DE SALVAR: com duplicatas clicáveis
 ─────────────────────────────────────────────*/
 function importacaoMostrarResumo(novas, duplicatas, erros) {
     const container = document.getElementById("importacaoResultado");
@@ -913,7 +913,7 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
 
         ${duplicatas.length > 0 ? `
         <details class="detalhes-resumo mt-3" open>
-            <summary>${duplicatas.length} nota(s) já existem no sistema — escolha o que fazer</summary>
+            <summary>${duplicatas.length} nota(s) já existem no sistema, escolha o que fazer</summary>
             <div class="linha-acoes linha-acoes--apertada mt-3 mb-2">
                 <button class="btn-secundario btn-pequeno" onclick="importacaoSelecionarTodasDuplicatas(true)">Marcar todas para reimportar</button>
                 <button class="btn-secundario btn-pequeno" onclick="importacaoSelecionarTodasDuplicatas(false)">Desmarcar todas (ignorar)</button>
@@ -1027,15 +1027,15 @@ async function importacaoConfirmar() {
     // Remove duplicatas selecionadas em operação atômica única.
     //
     // A chave inclui a empresa. Sem ela, este filtro rodava sobre o
-    // `db.lancamentos` inteiro — que tem em memória os lançamentos de
-    // TODAS as empresas que o usuário enxerga — e apagava a nota homônima
+    // `db.lancamentos` inteiro (que tem em memória os lançamentos de
+    // TODAS as empresas que o usuário enxerga) e apagava a nota homônima
     // de outra empresa junto. `_montarPayloads` gravava então o documento
     // daquela outra empresa já sem ela: perda permanente e silenciosa.
     //
     // A nota substituída vira lápide, não some. Este era o terceiro
     // caminho de destruição do sistema, e o mais silencioso dos três:
     // reimportar uma planilha apagava o lançamento antigo com o histórico
-    // dele e criava outro no lugar, com id novo — quem tivesse o id
+    // dele e criava outro no lugar, com id novo. Quem tivesse o id
     // anterior (a lista da sessão, um detalhe aberto, um rascunho em
     // edição) passava a apontar para nada. Agora a substituída fica,
     // marcada, fora de todas as contas, e o histórico dela diz o que
@@ -1109,7 +1109,7 @@ async function importacaoConfirmar() {
         container.innerHTML = `
             <div class="importacao-sucesso">
                 
-                <h3>${confirmado ? "Importação concluída!" : "Importação feita neste navegador — aguardando a nuvem"}</h3>
+                <h3>${confirmado ? "Importação concluída!" : "Importação feita neste navegador, aguardando a nuvem"}</h3>
                 <p><strong>${totalImportado}</strong> nota(s) importadas com sucesso.</p>
                 ${dupSelecionadas.length > 0 ? `<p><strong>${dupSelecionadas.length}</strong> nota(s) reimportadas (as anteriores ficaram registradas como excluídas).</p>` : ""}
                 ${confirmado ? "" : `<p class="texto-aviso">Não feche a aba até a pílula de sincronização sumir.</p>`}
@@ -1143,13 +1143,13 @@ function importacaoNormalizarData(valor) {
     const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
     if (iso) return valida(iso[1], iso[2], iso[3]) ? `${iso[1]}-${iso[2]}-${iso[3]}` : "";
 
-    // DD/MM/YYYY ou DD/MM/YY — formato brasileiro (prioridade), com hora opcional
+    // DD/MM/YYYY ou DD/MM/YY: formato brasileiro (prioridade), com hora opcional
     // Cobre: "28/01/2026", "28/01/26", "28-01-2026", "28/01/2026 00:00"
     const matchBR = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
     if (matchBR) {
         let [, p1, p2, ano] = matchBR;
         let dia = parseInt(p1), mes = parseInt(p2);
-        // Se p2 > 12 e p1 <= 12: está invertido (MM/DD) — corrige
+        // Se p2 > 12 e p1 <= 12: está invertido (MM/DD), corrige
         if (mes > 12 && dia <= 12) { [dia, mes] = [mes, dia]; }
         if (ano.length === 2) ano = "20" + ano;
         if (!valida(ano, mes, dia)) return "";
@@ -1195,7 +1195,7 @@ function importacaoCancelar() {
 
 /*─────────────────────────────────────────────
   DOWNLOAD DO MODELO DE PLANILHA
-  (formato por produto — o mais simples e universal)
+  (formato por produto, o mais simples e universal)
 ─────────────────────────────────────────────*/
 function baixarModeloPlanilha() {
     if (adiarAteBibliotecas(["xlsx"], () => baixarModeloPlanilha())) return;

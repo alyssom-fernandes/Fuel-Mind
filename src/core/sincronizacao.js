@@ -1,5 +1,5 @@
 /*=================================================
-  SINCRONIZACAO.JS — Fuel Mind
+  SINCRONIZACAO.JS: Fuel Mind
   Pendentes, cópia local, gravação (`salvarDB`, `_executarSave`),
   carga (`carregarDB`), escutas em tempo real, e o que a tela mostra
   disso: o carregamento e a pílula de conexão.
@@ -12,7 +12,7 @@
    fechamento da aba.
 
    Guarda só ids. O conteúdo está na cópia local; na próxima carga, a nota
-   pendente da cópia local é aplicada por cima do que veio do servidor —
+   pendente da cópia local é aplicada por cima do que veio do servidor:
    inclusive uma exclusão ou uma edição, e não só uma nota nova, como era
    antes da lápide. O preço conhecido: se um colega editou a mesma nota
    nesse meio tempo, a versão deste navegador vence. */
@@ -108,15 +108,15 @@ function _marcarPendentesDasMudancas() {
 /**
  * Persiste o `db`: cópia local na hora, nuvem em seguida.
  *
- * O debounce de 600ms agrupa chamadas em rápida sucessão — por exemplo,
- * edições consecutivas em cadastros — numa gravação só. `imediato` existe
+ * O debounce de 600ms agrupa chamadas em rápida sucessão (por exemplo,
+ * edições consecutivas em cadastros) numa gravação só. `imediato` existe
  * para o salvamento fiscal: quem clica em "Salvar" e fecha a aba meio
  * segundo depois precisa ter tido a tentativa.
  */
 function salvarDB(opcoes) {
     // Toda gravação muda a versão dos dados (o cache da busca do relatório a usa).
     window._versaoDados = (window._versaoDados || 0) + 1;
-    // Modo demonstração: nada sai da máquina. Esta é a trava — se ela
+    // Modo demonstração: nada sai da máquina. Esta é a trava: se ela
     // falhar, dados fictícios acabam na base real. Vem antes de tudo.
     if (typeof demoAtivo === 'function' && demoAtivo()) {
         demoSalvar();
@@ -355,7 +355,7 @@ function _reaplicarPendentesDaCopiaLocal() {
  * Carrega o banco do Firestore e liga os listeners de tempo real.
  *
  * Ordem obrigatória: o documento compartilhado vem primeiro porque é ele
- * que traz `db.empresas` — sem a lista de empresas não há como resolver
+ * que traz `db.empresas`: sem a lista de empresas não há como resolver
  * quais documentos de lançamento o usuário pode ler.
  *
  * Se `dados/compartilhado` não existir, o banco ainda está no layout
@@ -480,7 +480,7 @@ async function carregarDB() {
 /* ── LISTENERS DE TEMPO REAL ─────────────────────────────────────────
    Um no documento compartilhado e um em cada documento de lançamentos
    permitido. `_garantirListeners` acrescenta e retira conforme a lista de
-   empresas muda — uma empresa criada durante a sessão ganha listener na
+   empresas muda: uma empresa criada durante a sessão ganha listener na
    hora, em vez de ficar surda às notas dos colegas até o próximo F5. */
 let _tentativasListener = {};
 let _timerListener = {};
@@ -571,7 +571,7 @@ function _aoReceberDoc(nome, dados) {
  * Falha de um listener.
  *
  * Antes, `permission-denied` religava TODOS os listeners a cada 2 s, para
- * sempre — com o perfil alterado no meio da sessão, eram dezenas de
+ * sempre: com o perfil alterado no meio da sessão, eram dezenas de
  * leituras por minuto até a cota do dia. Agora: permissão negada relê o
  * perfil e religa só o que ainda é permitido, com poucas tentativas; cota
  * estourada não religa; queda de rede religa com espera crescente.
@@ -619,7 +619,7 @@ function _rerenderTelaAtual() {
 /**
  * Mescla dados vindos do Firestore (ou localStorage) com a estrutura padrão
  * `DB_PADRAO`, garantindo que todos os campos obrigatórios existam e tenham
- * o tipo correto — mesmo que o documento salvo esteja desatualizado.
+ * o tipo correto, mesmo que o documento salvo esteja desatualizado.
  *
  * Regras de mesclagem por tipo de campo:
  * - Arrays (`motoristas`, `veiculos`, `empresas`, `combustiveis`, `lancamentos`,
@@ -628,7 +628,7 @@ function _rerenderTelaAtual() {
  * - `configRelatorio`: merge superficial (`Object.assign`) com o padrão,
  *   preservando configurações parcialmente salvas.
  *
- * É o ponto central de hidratação do `db` — novos campos adicionados ao
+ * É o ponto central de hidratação do `db`: novos campos adicionados ao
  * `DB_PADRAO` ficam disponíveis automaticamente em instalações existentes
  * sem scripts de migração adicionais.
  *
@@ -657,7 +657,7 @@ function _mesclarComPadrao(dados) {
 
     // Vazio até alguém salvar a configuração; `configAlertas()` completa com
     // os padrões na leitura. Depois do primeiro "Salvar", a configuração
-    // inteira fica gravada — mudar um padrão no código só vale para quem
+    // inteira fica gravada: mudar um padrão no código só vale para quem
     // nunca salvou.
     if (dados.configAlertas && typeof dados.configAlertas === 'object') {
         resultado.configAlertas = dados.configAlertas;

@@ -1,5 +1,5 @@
 /*=================================================
-  NUMERICO.JS — campos de número que entendem português.
+  NUMERICO.JS: campos de número que entendem português.
 
   Por que existe (tema 05 da pesquisa): `<input type="number">` falha em
   silêncio no Chrome em pt-BR. Digitar vírgula esvazia o campo e a
@@ -9,7 +9,7 @@
 
   A troca é conceitual: o campo passa a ser texto, e quem entende de
   número é o `parseNumeroBR` de `utils.js`. Em troca, este arquivo
-  devolve o que o tipo nativo dava de graça — teclado numérico no
+  devolve o que o tipo nativo dava de graça: teclado numérico no
   celular, formatação e recusa de lixo.
 
   Três representações, e a confusão entre elas era metade do problema:
@@ -169,8 +169,8 @@ document.addEventListener("paste", function (e) {
 
     // Tabulação ou quebra de linha significam mais de uma célula. Um campo
     // guarda um número; colar duas células aqui não tem leitura possível, e
-    // adivinhar qual delas o operador queria seria pior. Recusa e explica —
-    // antes, "60000" ⇥ "5,234" virava 600.005,234 no campo, formatado e
+    // adivinhar qual delas o operador queria seria pior. Recusa e explica.
+    // Antes, "60000" ⇥ "5,234" virava 600.005,234 no campo, formatado e
     // plausível.
     if (/[\t\r\n]/.test(texto.trim())) {
         e.preventDefault();

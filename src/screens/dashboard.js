@@ -86,11 +86,11 @@ function _garantirFiltrosDashboard() {
     filtrosDiv.className = 'dash-filtros';
     filtrosDiv.innerHTML = `
         <div class="campo campo-data">
-            <label for="dashInicio">Período — início</label>
+            <label for="dashInicio">Período inicial</label>
             <input type="date" id="dashInicio" value="${inicioMesStr}" onchange="recalcularTela('dashboard', carregarDashboard)">
         </div>
         <div class="campo campo-data">
-            <label for="dashFim">Período — fim</label>
+            <label for="dashFim">Período final</label>
             <input type="date" id="dashFim" value="${fimHojeStr}" onchange="recalcularTela('dashboard', carregarDashboard)">
         </div>
         <div class="dash-filtros-rapidos">
@@ -106,9 +106,9 @@ function _garantirFiltrosDashboard() {
     const dica = document.createElement('details');
     dica.id = 'dashBaseDica';
     dica.className = 'dica-recolhida mb-5';
-    dica.innerHTML = '<summary>Como cada número conta as datas</summary><p class="dica dica--pequena mb-0">Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong> — '
-        + 'é o que entrou nos tanques. Gasto e preço médio contam pela <strong>data de emissão</strong> e sobre os '
-        + '<strong>litros faturados</strong> na nota — é o preço que o fornecedor cobrou. Quando a descarga foi '
+    dica.innerHTML = '<summary>Como cada número conta as datas</summary><p class="dica dica--pequena mb-0">Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong>, '
+        + 'que é o que entrou nos tanques. Gasto e preço médio contam pela <strong>data de emissão</strong> e sobre os '
+        + '<strong>litros faturados</strong> na nota, que é o preço que o fornecedor cobrou. Quando a descarga foi '
         + 'informada, o custo por litro recebido aparece ao lado, dizendo em quantas notas ele se apoia.</p>';
 
     const dashEl = document.getElementById('dashboard');
@@ -122,7 +122,7 @@ function _garantirFiltrosDashboard() {
 /* O Dashboard mostra as duas bases, cada bloco com a sua (rodada 11, decisão
    do dono). A regra é não misturar dentro de um número: o custo médio divide
    o gasto pelos litros DAS MESMAS notas, as emitidas no período. Com os reais
-   da emissão e os litros da descarga, agosto no modo demo dava R$ 5,7232/L —
+   da emissão e os litros da descarga, agosto no modo demo dava R$ 5,7232/L,
    um preço que não é de nota nenhuma. */
 function _lancamentosDoPeriodo(inicio, fim, dataDe) {
     return db.lancamentos.filter(l => {
@@ -138,8 +138,8 @@ function _totaisCompra(lancs, nomeComb) {
     const m     = metricasPreco(itens);
     const notas = nomeComb ? lancs.filter(l => l.itens.some(i => i.tipo === nomeComb)).length : lancs.length;
     // `custo` é o preço médio de compra (sobre a carga faturada), decisão de
-    // 17/09/2026. `litros` aqui são os FATURADOS, os mesmos do denominador —
-    // quem dividir um pelo outro chega ao número mostrado ao lado.
+    // 17/09/2026. `litros` aqui são os FATURADOS, os mesmos do denominador.
+    // Quem dividir um pelo outro chega ao número mostrado ao lado.
     return {
         gasto: m.gasto, litros: m.litrosNota, notas,
         custo: m.precoCompra,
@@ -222,7 +222,7 @@ function carregarDashboard() {
             <div class="kpi-base">pela data da descarga</div>
             ${htmlVariacao(totalLitros, litrosAnt, rotAnt, false)}
         </div>
-        <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Relatório com este mesmo período — que lá também é pela emissão.">
+        <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Relatório com este mesmo período, que lá também é pela emissão.">
             <div class="kpi-valor">${fmtR(compra.gasto)}</div>
             <div class="kpi-label">Gasto em Compras</div>
             <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
@@ -284,13 +284,13 @@ function carregarDashboard() {
 /* ── PRÉ-ÍNDICE DOS ALERTAS (18/09/2026) ────────────────────────────
    Cada item do período chamava `referenciaPrecoCombustivel` e
    `_mediaVolumePorNota`, e cada uma dessas varria o vetor inteiro de
-   lançamentos — todas as empresas, todos os meses — para achar meia dúzia
+   lançamentos (todas as empresas, todos os meses) para achar meia dúzia
    de notas. Com um período de seis meses isso eram centenas de varreduras
    completas por abertura do Dashboard.
 
    Aqui o vetor é varrido UMA vez: as notas de cada empresa e combustível
    ficam separadas, na mesma ordem do banco. As duas perguntas continuam
-   com a mesma regra e a mesma ordem de soma e de ordenação — por isso o
+   com a mesma regra e a mesma ordem de soma e de ordenação, por isso o
    resultado é idêntico (conferido lado a lado em 12 casos antes da
    troca), só que perguntado a uma lista curta. */
 function _criarIndiceAlertas() {
@@ -348,7 +348,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
     const alertas   = [];
 
     // Preço: notas EMITIDAS no período, cada uma julgada pela mesma régua do
-    // lançamento — mediana dos dias que terminam na emissão dela, sem ela
+    // lançamento: mediana dos dias que terminam na emissão dela, sem ela
     // mesma, para cima ou para baixo (`referenciaPrecoCombustivel` e
     // `julgarPreco`, em utils.js). Volume e data suspeita: notas
     // DESCARREGADAS no período.
@@ -466,7 +466,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
 
     // Poucos por vez, os mais graves primeiro (18/09/2026). Com seis meses no
     // filtro a tela desenhava mais de 300 cartões: é custo de desenho e,
-    // pior, é ruído — alerta demais ensina a não ler alerta nenhum. Data
+    // pior, é ruído: alerta demais ensina a não ler alerta nenhum. Data
     // suspeita antes de preço e de volume; o resto fica atrás de um botão,
     // com a contagem por tipo, e nada some sem aviso.
     const ordemTipo = { data: 0, preco: 1, volume: 2 };
@@ -646,8 +646,8 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
         ${tabelaHTML}`;
 }
 
-/* Duas tabelas, uma por base. Numa só — litros pela descarga e custo pela
-   emissão na mesma linha — quem dividisse o gasto pelos litros da linha
+/* Duas tabelas, uma por base. Numa só (litros pela descarga e custo pela
+   emissão na mesma linha) quem dividisse o gasto pelos litros da linha
    chegaria a um custo diferente do que está ao lado. Na tabela de compras,
    os litros são os das notas emitidas no mês, e o custo é essa divisão. */
 function renderComparativoMeses() {
@@ -715,14 +715,14 @@ function renderComparativoMeses() {
     container.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--comparativo"><canvas id="graficoComparativoDash"></canvas></div>
         <p class="dica dica--pequena dica--legenda">* ${nomeMes(mesAtual)} vai só até hoje: a queda no fim da linha é o mês em andamento.</p>
-        <p class="dica dica--pequena dica--legenda">Litros descarregados — pela <strong>data da descarga</strong></p>
+        <p class="dica dica--pequena dica--legenda">Litros descarregados, pela <strong>data da descarga</strong></p>
         <div class="tabela-container mb-5">
             <table class="tabela-numeros">
                 <thead><tr><th>Mês</th>${combHeaders}<th>Total</th></tr></thead>
                 <tbody>${linhasDescarga}</tbody>
             </table>
         </div>
-        <p class="dica dica--pequena dica--legenda">Compras — pela <strong>data de emissão</strong>, com os litros <strong>faturados</strong> na nota</p>
+        <p class="dica dica--pequena dica--legenda">Compras, pela <strong>data de emissão</strong>, com os litros <strong>faturados</strong> na nota</p>
         <div class="tabela-container">
             <table class="tabela-numeros">
                 <thead><tr><th>Mês</th><th>Notas</th><th>Litros faturados</th><th>Gasto</th><th>Preço médio/L</th></tr></thead>
@@ -864,7 +864,7 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
     });
 }
 
-// fecharDetalhes — função canônica definida em relatorios.js (limpa _detalheInlineAberto).
+// fecharDetalhes: função canônica definida em relatorios.js (limpa _detalheInlineAberto).
 // (removida daqui para evitar duplicação e inconsistência de estado)
 
 function _verDetalheDashboard(id) {
@@ -881,7 +881,7 @@ function _verDetalheDashboard(id) {
 
     const conteudo = typeof _buildConteudoDetalhe === 'function'
         ? _buildConteudoDetalhe(l)
-        : `<p>Nota: <strong>${escapeHtml(l.numeroNota)}</strong> — ${escapeHtml(l.empresa) || '—'} — ${fmtR(l.total)}</p>`;
+        : `<p>Nota: <strong>${escapeHtml(l.numeroNota)}</strong>, ${escapeHtml(l.empresa) || '—'}, ${fmtR(l.total)}</p>`;
 
     div.innerHTML = `
         <div class="modal modal--detalhe" role="dialog" aria-label="Detalhes da nota ${escapeHtml(l.numeroNota)}">

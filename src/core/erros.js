@@ -1,5 +1,5 @@
 /*=================================================
-  ERROS.JS — Fuel Mind
+  ERROS.JS: Fuel Mind
   Falha não tratada fica gravada no navegador e aparece em
   Sistema › Informações do Sistema.
 
@@ -17,7 +17,7 @@
    Sem servidor, sem serviço pago, sem sair da máquina: é o operador que
    lê o texto no telefone quando pergunto "o que apareceu aí?".
 
-   Nada aqui pode lançar erro por sua vez — daí o try/catch em volta de
+   Nada aqui pode lançar erro por sua vez: daí o try/catch em volta de
    tudo e o limite de 20 registros. */
 const _ERROS_CHAVE = "fm_erros";
 const _ERROS_MAX   = 20;
@@ -68,5 +68,5 @@ window.addEventListener("unhandledrejection", e => {
     _registrarErro("promessa", (r && (r.message || r.code)) || String(r), r && r.stack);
 });
 
-// filtroRapido — função canônica em relatorios.js
+// filtroRapido: função canônica em relatorios.js
 // (removida daqui para evitar duplicata e conflito de versões)

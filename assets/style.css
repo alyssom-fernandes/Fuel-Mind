@@ -174,6 +174,12 @@
 
 /* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* `color-scheme` faz o navegador desenhar os controles NATIVOS no tom do
+   tema: a caixa de marcar desmarcada deixa de ter fundo branco no escuro,
+   e a barra de rolagem e o calendario acompanham. E a forma certa de
+   resolver isso: `accent-color` so pinta o estado marcado. (21/09/2026) */
+:root { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
 html { font-size: 14px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
 body {
     font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
@@ -766,6 +772,12 @@ ul li.inativo { opacity: 0.45; }
 
 /* Número que leva à lista que o formou (17/09/2026). */
 .kpi-clicavel { cursor: pointer; }
+/* A borda do hover seguia sempre a cor da marca, entao um cartao verde
+   piscava vermelho ao passar o mouse. Agora cada variante usa a propria
+   cor, a mesma do tracinho da esquerda e do icone. (21/09/2026) */
+.kpi-clicavel.verde:hover   { border-color: var(--success); }
+.kpi-clicavel.laranja:hover { border-color: var(--warning); }
+.kpi-clicavel.roxo:hover    { border-color: var(--info); }
 .kpi-clicavel:hover {
     border-color: var(--primary);
     transform: translateY(-1px);
@@ -1413,9 +1425,6 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 /* Papel fora dos tres conhecidos cai em "desconhecido" e nao tinha cor. */
 .badge-role-desconhecido { background: var(--surface-hover); color: var(--text-muted); }
 
-/* .campo e item das grades do PDF; sem min-width:0 um rotulo longo
-   trava a coluna e estoura a grade, como ja acontecera com .info-card. */
-.pdf-grade-titulo > .campo, .pdf-grade-margens > .campo { min-width: 0; }
 
 .badge-inativo-user {
     display:inline-flex; font-size:0.72rem; font-weight:600;
@@ -2301,22 +2310,8 @@ button.confirmado-local::after {
 
 /* Sistema */
 .campo--restaurar { max-width: 360px; }
-.input-cor { height: 38px; width: 60px; padding: 2px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
 .campo-medio { max-width: 420px; }
-.pdf-logo-placeholder {
-    width: 80px; height: 80px; padding: var(--space-1); box-sizing: border-box;
-    border: 2px dashed var(--border); border-radius: var(--radius);
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text-muted); font-size: 0.75rem; text-align: center; cursor: pointer;
-}
-.pdf-logo-preview { max-height: 80px; max-width: 200px; border-radius: 6px; border: 1px solid var(--border); }
-.pdf-grade-titulo  { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }
-.pdf-grade-margens { display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }
 .form-linha--opcoes { gap: var(--space-5); margin-top: var(--space-2); }
-@media (max-width: 768px) {
-    .pdf-grade-titulo, .pdf-grade-margens { grid-template-columns: 1fr 1fr; }
-}
-
 /* Cadastros */
 /* Mais específico que `.form-linha input`, como o inline era. */
 .form-linha .flex-1 { flex: 1; }

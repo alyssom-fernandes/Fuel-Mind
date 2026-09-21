@@ -1,5 +1,5 @@
 /*=================================================
-  USUARIOS.JS — Gerenciamento de Usuários e Permissões
+  USUARIOS.JS: Gerenciamento de Usuários e Permissões
   A lista e a gestão são de supremo e admin (o admin, só das empresas
   dele). O operador vê aqui apenas o próprio perfil e a troca de senha.
 =================================================*/
@@ -11,7 +11,7 @@ let _usuariosCache = [];
  * Senha temporária sorteada para um usuário novo.
  *
  * O campo vinha pré-preenchido com o literal `123456`, e a troca era
- * voluntária — então toda conta criada nascia com a mesma senha conhecida,
+ * voluntária, então toda conta criada nascia com a mesma senha conhecida,
  * e continuava com ela até alguém se lembrar de mudar. Sortear não resolve
  * o problema inteiro (a troca continua voluntária, e isso é assunto de uma
  * rodada própria), mas acaba com a senha única e previsível.
@@ -113,7 +113,7 @@ function _empresasGerenciaveis() {
  *
  * Necessária uma única vez, na virada para o índice: antes dela o login
  * por @usuario dependia de a coleção `usuarios` ser legível sem
- * autenticação. Idempotente — pode ser rodada quantas vezes for preciso.
+ * autenticação. Idempotente: pode ser rodada quantas vezes for preciso.
  */
 async function migrarIndiceUsernames() {
     if (window._usuarioAtual?.role !== "supremo") {
@@ -176,7 +176,7 @@ async function carregarUsuarios() {
 
     if (!podeGerenciarUsuarios()) {
         // O operador não gerencia ninguém, mas precisa trocar a própria
-        // senha — a senha temporária manda fazer isso aqui.
+        // senha, a senha temporária manda fazer isso aqui.
         const u = window._usuarioAtual || {};
         container.innerHTML =
             `<div class="card card--perfil">
@@ -214,7 +214,7 @@ async function _recarregarListaUsuarios() {
             _usuariosCache = todos;
         } else {
             // Admin só enxerga a si mesmo e usuários que compartilhem ao menos
-            // uma empresa com ele — pelos ids, que não mudam num rename.
+            // uma empresa com ele, pelos ids, que não mudam num rename.
             const minhas = _idsDoPerfil(window._usuarioAtual);
             _usuariosCache = todos.filter(u =>
                 u.uid === window._usuarioAtual?.uid ||
@@ -272,7 +272,7 @@ function _renderUsuarios() {
         const editorRole   = window._usuarioAtual?.role;
         const alvoBloqueado = u.role === "supremo" && editorRole === "admin";
 
-        // Ações em ícones, lado a lado — o mesmo desenho do Relatório e de
+        // Ações em ícones, lado a lado, o mesmo desenho do Relatório e de
         // Cadastros (18/09/2026). O nome da ação fica no `title`.
         const uidJs = escapeJsAttr(u.uid);
         const nomeAttr = escapeHtml(u.nome || u.email || "");
@@ -299,16 +299,11 @@ function _renderUsuarios() {
         </tr>`;
     }).join("");
 
-    const semIndice = _usuariosCache.filter(u => u.username).length;
-
+    /* O botão de reconstruir o índice de @usuarios saiu daqui em 21/09/2026:
+       é conserto raro e estava competindo com a ação do dia a dia. Agora vive
+       em Sistema > Configurações, junto das outras manutenções. */
     container.innerHTML = `
         <div class="usuarios-topo">
-            ${supremoAtual && semIndice > 0
-                ? `<button class="btn-secundario" onclick="migrarIndiceUsernames()"
-                       title="Regrava o índice público que permite login por @usuario">
-                       Reconstruir índice de @usuarios
-                   </button>`
-                : ''}
             <button class="btn-primario" onclick="abrirModalNovoUsuario()">+ Novo usuário</button>
         </div>
         <div class="tabela-container">
@@ -437,7 +432,7 @@ function _abrirModalUsuario(usuario, todasEmpresas) {
     const rolesOpts = ["usuario", "admin", "supremo"]
         .filter(r => ROLES[r] && (supremoAtual || r !== "supremo"))
         .map(r =>
-            `<option value="${r}" ${papelMarcado === r ? "selected" : ""}>${ROLES[r].label} — ${ROLES[r].desc}</option>`
+            `<option value="${r}" ${papelMarcado === r ? "selected" : ""}>${ROLES[r].label}: ${ROLES[r].desc}</option>`
         ).join("");
 
     const nomesDoAlvo = usuario ? _nomesDasEmpresasDoPerfil(usuario) : [];
@@ -636,7 +631,7 @@ async function confirmarEditarUsuario(uid) {
     const username = document.getElementById("usuarioUsernameInput")?.value.trim().toLowerCase() || null;
     // As empresas que o modal mostrou são as que este editor gerencia (mais as
     // inativas do alvo). As outras empresas do alvo não passaram pelo modal
-    // e ficam como estavam — antes eram apagadas em qualquer edição.
+    // e ficam como estavam. Antes eram apagadas em qualquer edição.
     const noModal = Array.from(document.querySelectorAll(".btn-empresa-toggle")).map(b => b.dataset.empresa);
     const selecionadas = _coletarEmpresasSelecionadas().filter(e => noModal.includes(e));
     const idsForaDoModal = _idsDoPerfil(alvo || {}).filter(id => {
@@ -721,13 +716,13 @@ async function toggleAtivoUsuario(uid) {
  * Exclui o PERFIL do usuário. A conta de autenticação continua existindo.
  *
  * Apagar a conta no Firebase Authentication exige o Admin SDK, num
- * servidor, ou que a própria pessoa esteja logada — nenhum dos dois existe
+ * servidor, ou que a própria pessoa esteja logada. Nenhum dos dois existe
  * aqui. Quem barra o desligado é a aplicação: sem perfil, o login cai em
  * "Acesso negado" logo depois de autenticar.
  *
  * Antes, o diálogo não dizia nada disso e prometia uma exclusão que não
  * acontecia. Agora ele diz o que de fato vai acontecer, e aponta o caminho
- * seguro — inativar bloqueia igual e preserva o registro de quem lançou o
+ * seguro: inativar bloqueia igual e preserva o registro de quem lançou o
  * quê.
  */
 async function excluirUsuario(uid) {
@@ -737,7 +732,7 @@ async function excluirUsuario(uid) {
     if (!await fmConfirm({
         titulo: `Excluir o perfil de "${u.nome}"?`,
         msg: `E-mail: ${u.email}\n\n`
-           + `A conta de acesso NÃO é apagada — isso só o Console do Firebase faz. `
+           + `A conta de acesso NÃO é apagada: isso só o Console do Firebase faz. `
            + `O que acontece aqui é que a pessoa perde o perfil e passa a ser recusada no login.\n\n`
            + `Se a intenção é só tirar o acesso, prefira INATIVAR: bloqueia igual e `
            + `preserva o registro de quem lançou o quê.`,
@@ -747,7 +742,7 @@ async function excluirUsuario(uid) {
         await window._firestore.usuarioExcluirFirestore(uid);
         if (u.username) await window._firestore.usernameMapaRemover(u.username);
         mostrarToast(
-            `Perfil de "${u.nome}" excluído. A conta de acesso continua no Firebase — `
+            `Perfil de "${u.nome}" excluído. A conta de acesso continua no Firebase. `
             + `apague-a pelo Console se a pessoa saiu da empresa.`, "aviso", 9000);
         await _recarregarListaUsuarios();
     } catch (e) {

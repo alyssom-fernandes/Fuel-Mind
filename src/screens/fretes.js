@@ -1,11 +1,11 @@
 /*=================================================
-  FRETES — FASE 8 + EXPORTAÇÃO CSV + FILTRO GLOBAL
+  FRETES, FASE 8 + EXPORTAÇÃO CSV + FILTRO GLOBAL
   + AGRUPAMENTO POR CONJUNTO DE VEÍCULOS
   Lógica: para cada mês, agrupa os lançamentos por
   Placa, Motorista, Empresa e Conjunto, calculando:
     Litros transportados (qtd carga)
     Frete = litros × taxa da empresa do lançamento
-  A taxa é atributo da empresa contratante — vive em
+  A taxa é atributo da empresa contratante: vive em
   db.empresas[].taxaFrete e é editada no cadastro de
   Empresas. Não varia por combustível.
   FIX: garantirConjuntos() chamado antes de processar para
@@ -15,7 +15,7 @@
 let dadosFretesAtual = null;
 
 /*=================================================
-  TAXA DE FRETE — LEITURA
+  TAXA DE FRETE: LEITURA
 =================================================*/
 
 /**
@@ -39,7 +39,7 @@ function _taxaFreteEmpresa(nomeEmpresa, iso) {
 }
 
 /**
- * Taxa a exibir para um agrupamento que pode reunir mais de uma empresa —
+ * Taxa a exibir para um agrupamento que pode reunir mais de uma empresa:
  * uma placa ou motorista que rodou para duas contratantes no mesmo mês.
  *
  * Retorna a taxa quando há uma única empresa envolvida e `null` quando há
@@ -115,7 +115,7 @@ function calcularEExibirFretes() {
 
 /* ── O MÊS EM NÚMEROS (18/09/2026) ─────────────────────────────────
    Este resumo nunca apareceu: a classe `.resumo` nasce escondida e nada
-   aqui a mostrava — o frete total do mês, o número que a tela existe para
+   aqui a mostrava. O frete total do mês, o número que a tela existe para
    dar, ficava invisível. Agora são cartões no topo, cada um comparado ao
    mês anterior pela MESMA conta (`calcularFretesDoMes`). */
 function renderFreteResumo() {
@@ -123,8 +123,8 @@ function renderFreteResumo() {
     if (!resumo || !dadosFretesAtual) return;
     const d = dadosFretesAtual;
 
-    // Mês sem descarga: um aviso de verdade, e a barra de exportar some —
-    // antes ela ficava ali para exportar um mês vazio.
+    // Mês sem descarga: um aviso de verdade, e a barra de exportar some.
+    // Antes ela ficava ali para exportar um mês vazio.
     const barra = document.getElementById("fretesBarraExportacao");
     if (barra) barra.style.display = d.totalNotas === 0 ? "none" : "";
     if (d.totalNotas === 0) {
@@ -188,7 +188,7 @@ function renderFreteResumo() {
  * Sublinhas de quebra por combustível.
  *
  * A célula de taxa fica vazia de propósito: a taxa é da empresa e já
- * aparece na linha principal do grupo — repeti-la em cada combustível
+ * aparece na linha principal do grupo. Repeti-la em cada combustível
  * daria a impressão falsa de que ela varia por produto.
  *
  * `colunasNome` é quantas colunas iniciais o rótulo ocupa, já que as
@@ -198,8 +198,8 @@ function renderFreteResumo() {
 function linhasDetalhes(detalhes, colunasNome = 2) {
     // Bolinha na cor do combustível (a mesma dos gráficos) no lugar do "↳",
     // e as células de número pela classe: na tabela Por Placa a 2ª coluna
-    // é texto, e a célula de litros da sublinha — que é a 2ª dela, por causa
-    // do colspan — saía à esquerda, desalinhada da linha de cima.
+    // é texto, e a célula de litros da sublinha (que é a 2ª dela, por causa
+    // do colspan) saía à esquerda, desalinhada da linha de cima.
     return Object.entries(detalhes).map(([tipo, d]) => `
         <tr class="linha-detalhe-frete">
             <td colspan="${colunasNome}" class="celula-recuada"><span class="frete-sub-cor" style="background:${corDoCombustivel(tipo)}"></span>${escapeHtml(tipo)}</td>
@@ -344,7 +344,7 @@ function trocarAbaFretes(nomeAba, botao) {
 /* ── DA LINHA DE FRETE PARA AS NOTAS ────────────────────────────────
    O frete conta pela data da DESCARGA e o Relatório filtra pela EMISSÃO
    (rodada 11). O período vai como o mês da descarga, e o aviso diz que
-   uma nota da virada do mês pode não aparecer — melhor dizer do que
+   uma nota da virada do mês pode não aparecer, melhor dizer do que
    deixar o operador achar que os dois recortes são o mesmo. */
 function _freteAbreRelatorio(campo, valor) {
     if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
@@ -436,7 +436,7 @@ function renderFreteHistorico() {
     });
 }
 
-/** Troca o mês do seletor e recalcula — usado pelo gráfico e pela tabela. */
+/** Troca o mês do seletor e recalcula: usado pelo gráfico e pela tabela. */
 function _freteAbrirMes(mes) {
     const sel = document.getElementById("fretesSelectMes");
     if (!sel) return;
@@ -447,7 +447,7 @@ function _freteAbrirMes(mes) {
 /* ── FRETE NOTA A NOTA (17/09/2026) ─────────────────────────────────
    As quatro abas somam por grupo, e o detalhe parava no tipo de
    combustível. Quando um transportador questiona um valor, o que resolve
-   é a lista "nota, data, litros, taxa, R$" — que antes só saía cruzando
+   é a lista "nota, data, litros, taxa, R$", que antes só saía cruzando
    Fretes com Relatórios à mão. */
 function _freteNotaANota(mes) {
     const linhas = [];
@@ -492,7 +492,7 @@ function abrirFreteNotaANota() {
     modal.innerHTML = `
         <div class="modal modal--tabela" role="dialog" aria-label="Frete nota a nota" onclick="event.stopPropagation()">
             <div class="modal-cabecalho">
-                <h3>Frete nota a nota — ${nomeMes(dadosFretesAtual.mes)} <span class="modal-titulo-apoio">${escapeHtml(empresaFiltroGlobal || '')}</span></h3>
+                <h3>Frete nota a nota de ${nomeMes(dadosFretesAtual.mes)} <span class="modal-titulo-apoio">${escapeHtml(empresaFiltroGlobal || '')}</span></h3>
                 <button class="modal-fechar" aria-label="Fechar" title="Fechar" onclick="document.getElementById('_modalFreteNotas').remove()">✕</button>
             </div>
             <p class="dica mb-3">Pela data da descarga, com a taxa que valia em cada data. É esta lista que responde a um transportador que questiona um valor.</p>
@@ -516,7 +516,7 @@ function abrirFreteNotaANota() {
                     <td class="celula-num"><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
-                    <td colspan="6"><strong>Total — ${linhas.length} nota(s)</strong></td>
+                    <td colspan="6"><strong>Total: ${linhas.length} nota(s)</strong></td>
                     <td class="celula-num"><strong>${fmtL(totalLitros, Number.isInteger(totalLitros) ? 0 : 3)}</strong></td>
                     <td></td>
                     <td class="celula-num"><strong>${fmtR(totalFrete)}</strong></td>
@@ -537,7 +537,7 @@ function exportarFreteNotaANota() {
     const linhas = _freteNotaANota(dadosFretesAtual.mes);
     if (!linhas.length) return mostrarToast("Nenhuma nota descarregada neste mês.", "aviso", 4000);
     const aoa = [
-        [`FRETE NOTA A NOTA — ${nomeMes(dadosFretesAtual.mes)}`],
+        [`FRETE NOTA A NOTA DE ${nomeMes(dadosFretesAtual.mes)}`],
         [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${formatarData(_hojeISO())}`],
         [],
         ["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
@@ -588,7 +588,7 @@ function exportarFretesExcel() {
     const mesLabel = nomeMes(d.mes);
     const linhas = [];
 
-    linhas.push([`RESUMO DE FRETES — ${mesLabel}`]);
+    linhas.push([`RESUMO DE FRETES DE ${mesLabel}`]);
     linhas.push([`Notas: ${d.totalNotas}`, `Litros: ${fmtL(d.totalLitros)}`, `Frete total: ${fmtR(d.totalFrete)}`]);
     linhas.push([]);
 
@@ -647,7 +647,7 @@ function exportarFretesExcel() {
 
 /* ── FECHAMENTO DO MÊS, NUM ARQUIVO SÓ (18/09/2026) ────────────────
    O que a pesquisa de relatórios achou de mais elogiado, e que dá para
-   fazer sem servidor: o "pacote pronto" — tudo o que fecha o mês num
+   fazer sem servidor: o "pacote pronto": tudo o que fecha o mês num
    clique, em vez de três exportações separadas. Um Excel com três abas:
    o resumo de fretes (por placa, conjunto, motorista e empresa), o frete
    nota a nota e as notas do mês pela emissão. Um arquivo só também evita
@@ -660,7 +660,7 @@ function exportarFechamentoDoMes() {
     const mes = dadosFretesAtual.mes;
     const wb = XLSX.utils.book_new();
 
-    // 1) Resumo de fretes — as mesmas linhas do Excel de Fretes
+    // 1) Resumo de fretes: as mesmas linhas do Excel de Fretes
     _so_linhas_fretes = true;
     let resumo;
     try { resumo = exportarFretesExcel(); } finally { _so_linhas_fretes = false; }
@@ -669,7 +669,7 @@ function exportarFechamentoDoMes() {
     // 2) Frete nota a nota
     const notas = _freteNotaANota(mes);
     const aoaNotas = [
-        [`FRETE NOTA A NOTA — ${nomeMes(mes)}`],
+        [`FRETE NOTA A NOTA DE ${nomeMes(mes)}`],
         [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga`],
         [],
         ["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
@@ -688,7 +688,7 @@ function exportarFechamentoDoMes() {
         .sort((a, b) => dataEmissaoDe(a).localeCompare(dataEmissaoDe(b)));
     const m = metricasPreco(doMes.flatMap(l => l.itens || []));
     const aoaEntradas = [
-        [`NOTAS DE ENTRADA — ${nomeMes(mes)}, pela data de emissão`],
+        [`NOTAS DE ENTRADA DE ${nomeMes(mes)}, pela data de emissão`],
         [`Preço médio de compra: ${fmtRL(m.precoCompra)}/L sobre ${fmtL3(m.litrosNota)} faturados`],
         [],
         ["Emissão", "Descarga", "Nota", "Base", "Empresa", "Motorista", "Placa", "Litros (carga)", "Litros descarregados", "Total (R$)"]
@@ -729,7 +729,7 @@ function exportarFretesPDF() {
     const cor = estilo ? estilo.cor : [26, 58, 92];
     let yCab = 28;
     if (estilo) {
-        yCab = _pdfCabecalho(doc, estilo, `Resumo de fretes — ${mesLabel}`,
+        yCab = _pdfCabecalho(doc, estilo, `Resumo de fretes de ${mesLabel}`,
             `${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${new Date().toLocaleDateString("pt-BR")}`);
     }
     doc.setFontSize(9);
@@ -805,7 +805,7 @@ function exportarFretesPDF() {
         startY = doc.lastAutoTable.finalY + 10;
     });
 
-    if (estilo) _pdfRodapes(doc, estilo, `Fretes — ${mesLabel}`);
+    if (estilo) _pdfRodapes(doc, estilo, `Fretes de ${mesLabel}`);
     doc.save(`fretes-${d.mes}.pdf`);
 }
 
@@ -901,7 +901,7 @@ function imprimirFretes() {
     const mesLabel = nomeMes(d.mes);
     const dataHoje = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
 
-    document.getElementById("impressaoTitulo").textContent = `Fretes — ${mesLabel}`;
+    document.getElementById("impressaoTitulo").textContent = `Fretes de ${mesLabel}`;
     document.getElementById("impressaoData").textContent = `${empresaFiltroGlobal ? empresaFiltroGlobal + " | " : ""}Pela data da descarga | Impresso em: ${dataHoje} | ${d.totalNotas} nota(s) | ${fmtL(d.totalLitros)} | Frete total: ${fmtR(d.totalFrete)}`;
 
     const montarTabela = (titulo, lista) => {

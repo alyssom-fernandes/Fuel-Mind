@@ -1,5 +1,5 @@
 /*=================================================
-  RASCUNHO.JS — o formulário de lançamento sobrevive
+  RASCUNHO.JS: o formulário de lançamento sobrevive
   a F5, a fechar a aba e a um travamento.
 
   Por que existe (tema 02 da pesquisa): até aqui, um F5 no meio da nota
@@ -106,12 +106,12 @@ function fmRascunhoGravarAgora() {
     const r = _fmRascunhoCapturar();
     if (!_fmRascunhoTemConteudo(r)) {
         // Formulário vazio só apaga o rascunho guardado se foi ESTA página
-        // que o gravou — o operador digitou e depois apagou tudo. Se a
+        // que o gravou: o operador digitou e depois apagou tudo. Se a
         // página nunca gravou nada, o formulário vazio não diz nada sobre
         // um rascunho de sessão anterior, que ainda está esperando o
         // Continuar ou o Descartar. Antes, fechar a aba com a faixa na tela,
         // ou dar F5 no Dashboard sem passar por Lançamentos, destruía esse
-        // rascunho — que o tema 02 prometeu guardar por trinta dias.
+        // rascunho, que o tema 02 prometeu guardar por trinta dias.
         if (_fmRascunhoUltimo !== null) fmRascunhoApagar();
         return;
     }
@@ -129,7 +129,7 @@ function fmRascunhoGravarAgora() {
 /** Agendado a cada alteração; junta rajadas de digitação num só gravar. */
 function fmRascunhoAgendar() {
     // Trabalho novo começou com a faixa de um rascunho antigo na tela: a
-    // faixa sai, e o rascunho antigo é guardado de lado — senão a primeira
+    // faixa sai, e o rascunho antigo é guardado de lado: senão a primeira
     // tecla o sobrescrevia e "Continuar" depois apagava o que foi digitado.
     const faixa = document.getElementById('bannerRascunho');
     if (_fmRascunhoPendente && faixa && faixa.style.display !== 'none') {
@@ -206,7 +206,7 @@ function fmRascunhoVerificar() {
         // "Existe" aqui quer dizer "ainda vale". O rascunho dura 30 dias, e
         // sem o teste de estado um rascunho de edição sobre uma nota que
         // foi excluída nesse meio-tempo reentraria em modo edição e a
-        // regravaria por cima — ressuscitando a nota com um clique em
+        // regravaria por cima, ressuscitando a nota com um clique em
         // Continuar.
         const existe = (db.lancamentos || []).some(l => l.id === r.editandoId && lancamentoAtivo(l));
         const mudouDepois = existe && r.assinaturaEdicao && _fmAssinaturaNota(r.editandoId) !== r.assinaturaEdicao;
@@ -221,7 +221,7 @@ function fmRascunhoVerificar() {
     if (r.empresaAtiva && empresaFiltroGlobal && r.empresaAtiva !== empresaFiltroGlobal) {
         // Um rascunho só volta na empresa em que nasceu. Antes, Continuar
         // punha a empresa do rascunho num campo travado, sob o badge de
-        // outra — e a nota era salva numa empresa diferente da que a tela
+        // outra, e a nota era salva numa empresa diferente da que a tela
         // inteira dizia. O operador troca de empresa e continua, ou descarta.
         aviso += `<br><small>Foi começado na empresa <strong>${escapeHtml(r.empresaAtiva)}</strong>, e a empresa ativa agora é <strong>${escapeHtml(empresaFiltroGlobal)}</strong>. Para continuar, troque para ${escapeHtml(r.empresaAtiva)} no cabeçalho.</small>`;
         r.__outraEmpresa = true;
@@ -230,7 +230,7 @@ function fmRascunhoVerificar() {
     faixa.style.display = 'block';
     faixa.innerHTML =
         `Há um lançamento não salvo de <strong>${escapeHtml(quando)}</strong>`
-        + (resumo ? ` — ${escapeHtml(resumo)}` : '')
+        + (resumo ? `, ${escapeHtml(resumo)}` : '')
         + `.${aviso}<div class="banner-acoes">`
         + (r.__orfao || r.__outraEmpresa ? '' : `<button class="btn-primario" onclick="fmRascunhoRestaurar()">Continuar</button>`)
         + `<button class="btn-cancelar" onclick="fmRascunhoDescartar()">Descartar</button></div>`;
@@ -265,7 +265,7 @@ async function fmRascunhoRestaurar() {
         const banner = document.getElementById('bannerEdicao');
         if (banner) {
             banner.style.display = 'block';
-            banner.innerHTML = `Editando nota <strong>${escapeHtml(c.numeroNota || '')}</strong> — <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
+            banner.innerHTML = `Editando nota <strong>${escapeHtml(c.numeroNota || '')}</strong> · <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
         }
     } else {
         lancamentoEditandoId = null;

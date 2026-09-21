@@ -1,5 +1,5 @@
 /*=================================================
-  FIREBASE — Auth + Firestore
+  FIREBASE: Auth + Firestore
   Banco: controle-entradas-posto
   Documentos de dados: dados/compartilhado e dados/lanc__{empresaId}
   (dados/principal é o layout antigo, só para migração e rollback)
@@ -45,7 +45,7 @@ const auth      = getAuth(app);
 /* ─── DOCUMENTOS DE DADOS ──────────────────────────────────────────────
    Os dados operacionais moram na coleção `dados`, repartidos assim:
 
-     dados/compartilhado   cadastros e configuração — visíveis a todos
+     dados/compartilhado   cadastros e configuração, visíveis a todos
      dados/lanc__{id}      lançamentos de UMA empresa, pelo id dela
      dados/principal       layout antigo, monolítico (só migração/rollback)
 
@@ -104,7 +104,7 @@ async function firestoreSalvar(dados) {
  * @param {function(Error): void} [onErro] - Chamado em caso de erro do listener.
  *   Se omitido, loga no console. Em `sincronizacao.js`, o handler religa automaticamente
  *   após 2s em caso de `permission-denied` transitório pós-login.
- * @returns {function} Função de unsubscribe — chame para cancelar o listener
+ * @returns {function} Função de unsubscribe: chame para cancelar o listener
  */
 function firestoreEscutar(callback, onErro) {
     return onSnapshot(DB_REF, snap => {
@@ -156,7 +156,7 @@ function firestoreEscutarDoc(nome, callback, onErro) {
  * servidor AGORA e deixa `mesclar(atual)` decidir o que gravar.
  *
  * É o que impede um navegador de apagar o que outro gravou. Com `setDoc`
- * puro, cada máquina regravava o vetor inteiro que tinha em memória — e a
+ * puro, cada máquina regravava o vetor inteiro que tinha em memória, e a
  * nota que um colega salvou um segundo antes, ou durante uma queda de
  * rede, sumia. A transação também FALHA sem rede, em vez de ficar na fila
  * e regravar horas depois um vetor velho por cima de tudo.
@@ -197,14 +197,14 @@ async function usuarioBuscar(uid) {
 
 /**
  * Salva (merge) dados no perfil de um usuário no Firestore.
- * Usa `merge: true` — campos não presentes em `dados` são preservados.
+ * Usa `merge: true`: campos não presentes em `dados` são preservados.
  * @param {string} uid   - UID do usuário
  * @param {Object} dados - Campos a atualizar
  * @returns {Promise<void>}
  */
 /**
  * Escuta o próprio perfil durante a sessão. Sem isso, inativar alguém ou
- * tirar uma empresa do perfil só valia no próximo login — e, até lá, a
+ * tirar uma empresa do perfil só valia no próximo login, e, até lá, a
  * sessão aberta repetia leituras negadas em laço.
  */
 function usuarioEscutar(uid, callback, onErro) {
@@ -262,7 +262,7 @@ async function usernameMapaRemover(username) {
  *
  * Consulta primeiro o índice público `usernames/{username}`. O fallback
  * para a consulta antiga em `usuarios` cobre a janela entre publicar
- * este código e rodar a migração do índice — depois que as regras forem
+ * este código e rodar a migração do índice: depois que as regras forem
  * publicadas ele passa a falhar e o índice vira o único caminho.
  *
  * @param {string} username - Username sem o `@`
@@ -326,7 +326,7 @@ async function authLogout() {
  * Cria um novo usuário no Firebase Authentication SEM afetar a sessão atual.
  *
  * `createUserWithEmailAndPassword` normalmente autentica automaticamente como
- * o usuário recém-criado no app em que é chamado — o que derrubaria a sessão
+ * o usuário recém-criado no app em que é chamado, o que derrubaria a sessão
  * do admin logado. Para evitar isso, a criação roda em uma instância
  * secundária e isolada do Firebase App, descartada logo em seguida; a sessão
  * principal (`auth`) nunca é tocada.
@@ -349,7 +349,7 @@ async function authCriarUsuario(email, senha) {
 
 /**
  * Altera a senha do usuário atualmente logado.
- * Pode falhar com `auth/requires-recent-login` se o login for antigo —
+ * Pode falhar com `auth/requires-recent-login` se o login for antigo:
  * nesse caso, orientar o usuário a fazer logout e login novamente.
  * @param {string} novaSenha - Mínimo 6 caracteres
  * @returns {Promise<void>}

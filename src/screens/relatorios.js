@@ -4,13 +4,13 @@
   FIX: alert() de exportação substituídos por mostrarToast
   v2: ordenação por litros e valor; detalhe inline colapsável;
       manter filtros após editar lançamento
-  v3: exportarPDF expandido — logo, margens, cor, fonte,
+  v3: exportarPDF expandido: logo, margens, cor, fonte,
       quebra por mês, rodapé customizável
 =================================================*/
 
 // ========== VARIÁVEIS GLOBAIS ==========
 /* Dois conjuntos, e a diferença entre eles é o tema 11+19 inteiro.
-   `dadosRelatorioAtual` é o que a TABELA mostra — inclui as notas
+   `dadosRelatorioAtual` é o que a TABELA mostra: inclui as notas
    canceladas, sempre, e as excluídas quando a caixa está marcada.
    `dadosRelatorioValidos` é o que CONTA: resumo, totais, preço médio,
    agrupamento por combustível, top de motoristas e os seis formatos de
@@ -19,7 +19,7 @@
 let dadosRelatorioAtual   = [];
 let dadosRelatorioValidos = [];
 
-/* `_litrosItem()` — critério único de litros — vive em utils.js, para que
+/* `_litrosItem()`, critério único de litros, vive em utils.js, para que
    Dashboard, Analítico e Relatórios compartilhem exatamente a mesma regra. */
 
 // Paginação
@@ -43,11 +43,11 @@ let _detalheInlineAberto = { contexto: null, id: null };
    O padrão mais elogiado nas ferramentas de painel (o "drill-through" do
    Metabase, o clique no número do Stripe) é o mesmo: quem vê um total
    estranho clica nele e cai na lista que o formou. Aqui não havia nada
-   clicável no Dashboard, no Analítico nem nos Fretes — era remontar o
+   clicável no Dashboard, no Analítico nem nos Fretes, era remontar o
    filtro à mão (17/09/2026).
 
    O período do Relatório é pela EMISSÃO (rodada 11). Quando o número
-   clicado nasce da descarga — os litros do Dashboard, o mês dos Fretes —
+   clicado nasce da descarga (os litros do Dashboard, o mês dos Fretes)
    a função avisa, em vez de fingir que os dois recortes são o mesmo. */
 function irParaRelatorioFiltrado(filtros, aviso) {
     const f = filtros || {};
@@ -82,7 +82,7 @@ function _mesParaPeriodo(mes) {
    Linear e os sistemas de caixa são elogiados pela mesma coisa: andar
    pelas linhas sem tirar a mão do teclado. Com o foco na tabela do
    relatório (Tab até ela, ou clique numa linha), ↑ e ↓ andam de nota em
-   nota e Enter abre ou fecha o detalhe — o mesmo que o clique faz. Nada
+   nota e Enter abre ou fecha o detalhe, o mesmo que o clique faz. Nada
    é gravado por tecla. */
 let _linhaRelAtiva = -1;
 function _linhasRelatorioNavegaveis() {
@@ -162,7 +162,7 @@ function carregarRelatorio() {
  * Texto de um lançamento para a busca livre, em cache.
  *
  * Antes isto era `JSON.stringify(l)` executado sobre CADA lançamento a CADA
- * tecla digitada — reserializava a base inteira, incluindo logs e anexos, por
+ * tecla digitada, reserializava a base inteira, incluindo logs e anexos, por
  * caractere. O cache é invalidado por identidade do objeto: qualquer edição
  * cria um objeto novo no fluxo de save, então um lançamento alterado
  * reindexará sozinho.
@@ -179,7 +179,7 @@ function _textoBuscavel(l) {
                l.dataNota, l.dataDescarga,
                ...(l.itens || []).map(i => i.tipo),
                // Quem criou ou editou: a busca antiga alcançava isso porque
-               // serializava o objeto inteiro, e é uso legítimo — "o que o
+               // serializava o objeto inteiro, e é uso legítimo: "o que o
                // Fulano lançou". Só o nome entra, não a ação nem o timestamp.
                ...(l.logs || []).map(g => (typeof g === 'object' && g) ? g.usuario : g)]
               .filter(Boolean).join(" ");
@@ -224,8 +224,8 @@ function _aplicarFiltroRelatorio() {
         // uma nota que o emissor cancelou é o caminho mais curto para
         // alguém lançá-la de novo. Ela entra na tabela riscada.
         //
-        // A EXCLUÍDA some por padrão — foi um erro de digitação, não um
-        // acontecimento — e volta com a caixa "Mostrar excluídas e
+        // A EXCLUÍDA some por padrão (foi um erro de digitação, não um
+        // acontecimento) e volta com a caixa "Mostrar excluídas e
         // canceladas", no mesmo espírito do "Mostrar inativos" que as seis
         // abas de Cadastros já têm.
         //
@@ -238,7 +238,7 @@ function _aplicarFiltroRelatorio() {
         // O período do Relatório é pela EMISSÃO (rodada 11, decisão do dono):
         // é um relatório de valores, e o valor é da compra na data em que a
         // nota foi emitida. Antes a nota entrava se QUALQUER das duas datas
-        // caísse no intervalo — e uma nota emitida em 31/07 e descarregada em
+        // caísse no intervalo, e uma nota emitida em 31/07 e descarregada em
         // 01/08 aparecia em julho e em agosto: consultados separadamente, os
         // dois meses somavam 29.500 L a mais que o intervalo inteiro no modo
         // demo. A intenção de não esconder nota ficou no resumo, que diz
@@ -404,8 +404,8 @@ function _aplicarFiltroRelatorio() {
     }
 }
 
-/** O que antes eram duas linhas de texto miúdo abaixo dos totais — de que
- *  data é o período, quem ficou na fronteira e o custo recebido — virou uma
+/** O que antes eram duas linhas de texto miúdo abaixo dos totais (de que
+ *  data é o período, quem ficou na fronteira e o custo recebido) virou uma
  *  fila de etiquetas curtas; a explicação inteira abre com um clique
  *  (18/09/2026). `<details>` e não `title`: no celular não há mouse. */
 function _chipsResumoRelatorio(temPeriodo, emitidasFora, descarregadasFora, mPreco) {
@@ -413,8 +413,8 @@ function _chipsResumoRelatorio(temPeriodo, emitidasFora, descarregadasFora, mPre
     if (temPeriodo) {
         chips.push(`<span class="rel-chip">Período pela data de emissão</span>`);
         const partes = [];
-        if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele — <strong>incluída${emitidasFora > 1 ? 's' : ''}</strong>`);
-        if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele — <strong>não incluída${descarregadasFora > 1 ? 's' : ''}</strong>`);
+        if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele, <strong>incluída${emitidasFora > 1 ? 's' : ''}</strong>`);
+        if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele, <strong>não incluída${descarregadasFora > 1 ? 's' : ''}</strong>`);
         const n = emitidasFora + descarregadasFora;
         if (n) chips.push(`<details class="rel-chip-detalhe">
             <summary class="rel-chip rel-chip--aviso">${n} ${n > 1 ? 'notas' : 'nota'} na fronteira do período</summary>
@@ -450,7 +450,7 @@ function limparFiltros(contexto) {
 /**
  * Renderiza a tabela de lançamentos com paginação e suporte a detalhe inline.
  *
- * Usada tanto pelo relatório de entradas quanto pelo histórico —
+ * Usada tanto pelo relatório de entradas quanto pelo histórico:
  * o `contexto` determina qual conjunto de dados e qual paginação usar.
  *
  * @param {string} idTabela  - ID do `<tbody>` onde renderizar as linhas
@@ -486,7 +486,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
 
     // Litros com TRÊS casas, como em todo o resto do sistema. Esta linha
     // declarava um `fmtL` local, sombreando o de utils.js, e arredondava
-    // para inteiro — só aqui. A mesma nota lia 3.501 nesta tabela e
+    // para inteiro (só aqui). A mesma nota lia 3.501 nesta tabela e
     // 3.500,700 no resumo acima dela, no detalhe que abre embaixo, no
     // Excel, no CSV e na impressão. É a tela onde o operador confere
     // antes de exportar, e era a única que mostrava outro número.
@@ -498,7 +498,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
         const estaAberto  = idInlineAberto === l.id;
 
         // A linha de um lançamento que não vale mais fica riscada, e o
-        // estado vem colado no número da nota — não numa coluna própria.
+        // estado vem colado no número da nota, não numa coluna própria.
         // Uma décima primeira coluna, vazia em 99% das linhas, empurrava a
         // de Ações para fora da área visível e cobrava uma rolagem lateral
         // em todo dia normal por causa de uma exceção rara.
@@ -693,7 +693,7 @@ function _buildConteudoDetalhe(l) {
                     // Suporta log novo (objeto {acao, ts, usuario}) e log antigo (string)
                     if (typeof log === 'object' && log !== null) {
                         const data = new Date(log.ts).toLocaleString('pt-BR');
-                        const usuario = log.usuario && log.usuario !== '—' ? ` — ${escapeHtml(log.usuario)}` : '';
+                        const usuario = log.usuario && log.usuario !== '—' ? `, por ${escapeHtml(log.usuario)}` : '';
                         // O que mudou, e não só que mudou. Até aqui o log
                         // dizia "Editado" e ficava nisso: quem abrisse o
                         // histórico para entender uma divergência não
@@ -836,7 +836,7 @@ function exportarExcel(contexto) {
     // Cabeçalho do período, como no PDF: sem ele, a planilha não dizia de
     // que intervalo nem de que data eram as notas (rodada 11).
     linhas.unshift(
-        [`Relatório — ${_descricaoPeriodoRelatorio()}`],
+        [`Relatório de ${_descricaoPeriodoRelatorio()}`],
         [`${empresaFiltroGlobal ? empresaFiltroGlobal + " · " : ""}Gerado em ${formatarData(_hojeISO())}`],
         []
     );
@@ -852,16 +852,19 @@ function exportarExcel(contexto) {
    azul fixo; o de Fretes nem cabeçalho de faixa, nem logo, nem número de
    página tinha. Quem recebia os três via três sistemas diferentes. Agora
    os três pegam a mesma cor, a mesma logo e o mesmo rodapé daqui. */
+/* Cor, fonte e título do PDF deixaram de ser configuráveis em 21/09/2026,
+   a pedido do dono: a aparência do documento passa a ser uma só. O que
+   continua configurável em Sistema são as COLUNAS e a orientação. Sem
+   logo, a faixa do cabeçalho é a variante centrada. */
+const _PDF_COR   = [26, 58, 92];     // #1a3a5c
+const _PDF_FONTE = "helvetica";
 function _pdfEstilo() {
     const cfg = Object.assign({
-        titulo: "Controle de Entradas de Combustível",
-        corDestaque: "#1a3a5c", fonte: "helvetica", rodapeTexto: ""
+        titulo: "Controle de Entradas de Combustível", rodapeTexto: ""
     }, db.configRelatorio || {});
-    const hex = String(cfg.corDestaque || "#1a3a5c").replace("#", "");
-    const cor = [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
-        .map(v => isFinite(v) ? v : 26);
-    const logo = (typeof logoDaEmpresa === "function" ? logoDaEmpresa(empresaFiltroGlobal)?.url : null) || cfg.logo || null;
-    return { cfg, cor, logo, fonte: cfg.fonte || "helvetica" };
+    cfg.titulo = "Controle de Entradas de Combustível";
+    cfg.rodapeTexto = "";
+    return { cfg, cor: _PDF_COR, logo: null, fonte: _PDF_FONTE };
 }
 
 /** Faixa de cabeçalho com logo, título e subtítulo. Devolve o Y livre. */
@@ -919,30 +922,28 @@ async function exportarPDF(contexto) {
     const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
-    const cfg = Object.assign({
+    /* Da configuração salva só vêm as COLUNAS e a orientação. Título, cor,
+       fonte, margens, rodapé e logo deixaram de ser configuráveis em
+       21/09/2026: são fixos aqui, e uma configuração antiga que ainda tenha
+       esses campos é ignorada de propósito. */
+    const salvo = db.configRelatorio || {};
+    const cfg = {
         titulo: "Controle de Entradas de Combustível",
         logo: null,
-        orientacao: "landscape",
-        fonte: "helvetica",
+        fonte: _PDF_FONTE,
         corDestaque: "#1a3a5c",
         margemEsq: 14,
         margemDir: 14,
         margemTopo: 14,
         margemRodape: 10,
-        mostrarBase: true,
-        mostrarEmpresa: true,
-        mostrarMotorista: true,
-        mostrarPlaca: true,
-        quebrarPorMes: false,
-        rodapeTexto: ""
-    }, db.configRelatorio || {});
-
-    // Converte cor hex → [r, g, b]
-    // ── Logo da empresa ativa ──
-    // Sempre um data URI: o projeto não usa Firebase Storage, então a logo é
-    // reduzida e gravada como base64 no próprio documento (ver sistema.js).
-    // jsPDF não aceita URL remota, então isso também simplifica o desenho.
-    cfg.logo = logoDaEmpresa(empresaFiltroGlobal)?.url || cfg.logo || null;
+        rodapeTexto: "",
+        orientacao:      salvo.orientacao      ?? "landscape",
+        mostrarBase:     salvo.mostrarBase     ?? true,
+        mostrarEmpresa:  salvo.mostrarEmpresa  ?? true,
+        mostrarMotorista:salvo.mostrarMotorista?? true,
+        mostrarPlaca:    salvo.mostrarPlaca    ?? true,
+        quebrarPorMes:   salvo.quebrarPorMes   ?? false
+    };
 
     function hexRgb(hex) {
         const h = hex.replace('#','');
@@ -987,7 +988,7 @@ async function exportarPDF(contexto) {
         doc.text(cfg.titulo, textX, cfg.logo ? 13 : 11, { align: textAlign });
         doc.setFontSize(9);
         doc.setFont(cfg.fonte, 'normal');
-        const sub = `${tituloSecao} — Gerado em: ${new Date().toLocaleDateString("pt-BR")}`;
+        const sub = `${tituloSecao} · Gerado em: ${new Date().toLocaleDateString("pt-BR")}`;
         doc.text(sub, textX, cfg.logo ? 22 : 19, { align: textAlign });
 
         return altCab + 4;
@@ -1004,9 +1005,9 @@ async function exportarPDF(contexto) {
     }
 
     // O cabeçalho diz o período e de que data ele é. Antes dizia só
-    // "Relatório — Gerado em", e quem recebia o PDF — o contador — não sabia
+    // "Relatório — Gerado em", e quem recebia o PDF (o contador) não sabia
     // se aquilo era o mês inteiro, parte dele ou tudo (rodada 11).
-    const tituloCtx = `${contexto === 'relatorio' ? 'Relatório' : 'Histórico'} — ${_descricaoPeriodoRelatorio()}`;
+    const tituloCtx = `${contexto === 'relatorio' ? 'Relatório' : 'Histórico'} de ${_descricaoPeriodoRelatorio()}`;
 
     // ── Monta colunas dinamicamente ──
     const head = ["Data Nota", "Data Desc.", "Nota"];
@@ -1070,7 +1071,7 @@ async function exportarPDF(contexto) {
         doc.autoTable({
             head: [head],
             body: dados.map(buildRow),
-            foot: linhaTotal(`Total — ${dados.length} lançamento(s)`, totalLitros, totalGeral),
+            foot: linhaTotal(`Total: ${dados.length} lançamento(s)`, totalLitros, totalGeral),
             showFoot: 'lastPage',
             startY,
             theme: 'striped',
@@ -1106,14 +1107,14 @@ async function exportarPDF(contexto) {
             if (!primeiraSecao) doc.addPage();
             primeiraSecao = false;
 
-            let startY = desenharCabecalho(`${tituloCtx} — ${nomeMes(mes)}, pela emissão`);
+            let startY = desenharCabecalho(`${tituloCtx}, ${nomeMes(mes)}, pela emissão`);
             const subTotLitros = lans.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
             const subTotGeral  = lans.reduce((s, l) => s + (l.total || 0), 0);
 
             doc.setTextColor(...corRGB);
             doc.setFontSize(9);
             doc.setFont(cfg.fonte, 'bold');
-            doc.text(`${nomeMes(mes)} — ${lans.length} lançamento(s)`, mL, startY);
+            doc.text(`${nomeMes(mes)}: ${lans.length} lançamento(s)`, mL, startY);
             doc.text(`Litros: ${subTotLitros.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L`, mL + 70, startY);
             doc.text(`Total: R$ ${subTotGeral.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`, mL + 140, startY);
             startY += 5;
@@ -1121,7 +1122,7 @@ async function exportarPDF(contexto) {
             doc.autoTable({
                 head: [head],
                 body: lans.map(buildRow),
-                foot: linhaTotal(`Total de ${nomeMes(mes)} — ${lans.length} lançamento(s)`, subTotLitros, subTotGeral),
+                foot: linhaTotal(`Total de ${nomeMes(mes)}: ${lans.length} lançamento(s)`, subTotLitros, subTotGeral),
                 showFoot: 'lastPage',
                 startY,
                 theme: 'striped',
@@ -1141,11 +1142,11 @@ async function exportarPDF(contexto) {
         // o seu subtotal e o documento não fechava conta nenhuma (18/09/2026).
         if (meses.length > 1) {
             let y = doc.lastAutoTable.finalY + 10;
-            if (y > H - mRod - 20) { doc.addPage(); y = desenharCabecalho(`${tituloCtx} — total do período`); }
+            if (y > H - mRod - 20) { doc.addPage(); y = desenharCabecalho(`${tituloCtx}, total do período`); }
             doc.setTextColor(...corRGB);
             doc.setFontSize(10);
             doc.setFont(cfg.fonte, 'bold');
-            doc.text(`TOTAL DO PERÍODO — ${dados.length} lançamento(s)`, mL, y);
+            doc.text(`TOTAL DO PERÍODO: ${dados.length} lançamento(s)`, mL, y);
             doc.text(`Litros: ${totalLitros.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L`, mL + 90, y);
             doc.text(`Total: R$ ${totalGeral.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`, mL + 170, y);
         }
@@ -1202,7 +1203,7 @@ function exportarCSV(contexto) {
                  somaLitrosCsv.toFixed(3).replace('.', ','), somaTotalCsv.toFixed(2).replace('.', ',')]);
     linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
     linhas.unshift(
-        [`Relatório — ${_descricaoPeriodoRelatorio()}`],
+        [`Relatório de ${_descricaoPeriodoRelatorio()}`],
         [`${empresaFiltroGlobal ? empresaFiltroGlobal + " · " : ""}Gerado em ${formatarData(_hojeISO())}`],
         []
     );
@@ -1230,7 +1231,7 @@ function imprimirRelatorio() {
     document.getElementById("impressaoTitulo").textContent = titulo;
     // O papel também precisa dizer de que período é (17/09/2026).
     // A empresa vai no cabeçalho da folha, e não numa coluna repetida em
-    // todas as linhas — como na tela (18/09/2026).
+    // todas as linhas, como na tela (18/09/2026).
     document.getElementById("impressaoData").textContent   = `${empresaFiltroGlobal ? empresaFiltroGlobal + " | " : ""}${_descricaoPeriodoRelatorio()} | Impresso em: ${dataHoje} | ${dados.length} registros | Total: ${fmtR(totalGeral)} | Litros: ${fmtL3(totalLitros)}`;
 
     document.getElementById("impressaoConteudo").innerHTML = `
@@ -1269,9 +1270,9 @@ function compartilharWhatsApp(contexto) {
     const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const totalLitros = lista.reduce((s, l) => s + (l.itens || []).reduce((ss, i) => ss + _litrosItem(i), 0), 0);
     // Empresa e período no alto (a mensagem é lida fora do sistema), e as
-    // cinco notas do alto da tabela — `slice(-5)` mandava as cinco do fim,
+    // cinco notas do alto da tabela: `slice(-5)` mandava as cinco do fim,
     // que na ordem padrão são as mais antigas (18/09/2026).
-    let mensagem = `⛽ *Controle de Combustível*${empresaFiltroGlobal ? ` — ${empresaFiltroGlobal}` : ""}\n`
+    let mensagem = `⛽ *Controle de Combustível*${empresaFiltroGlobal ? ` · ${empresaFiltroGlobal}` : ""}\n`
         + `📅 ${_descricaoPeriodoRelatorio()}\n📋 ${lista.length} nota(s) · ${fmtL(totalLitros)}\n💰 Total: ${fmtR(totalGeral)}\n\n`;
     lista.slice(0, 5).forEach(l => {
         mensagem += `• ${formatarData(l.dataNota)} | ${l.numeroNota} | ${l.motorista || "—"} | ${fmtR(l.total)}\n`;
@@ -1286,11 +1287,11 @@ function compartilharEmail(contexto) {
     if (!lista || lista.length === 0) { mostrarToast("Não há dados para compartilhar.", "aviso", 4000); return; }
     const totalGeral = lista.reduce((s, l) => s + (l.total || 0), 0);
     const dataHoje   = new Date().toLocaleDateString("pt-BR");
-    const assunto    = `Controle de Combustível — ${dataHoje}`;
+    const assunto    = `Controle de Combustível · ${dataHoje}`;
     // Um `mailto:` não é canal de transporte: o Windows e o Chrome truncam
     // a URL na casa dos 2.000 caracteres, **sem erro nenhum**. Um filtro de
     // mês com algumas centenas de notas passava de 70 mil, e o cliente de
-    // e-mail abria com a mensagem cortada no meio — ou não abria.
+    // e-mail abria com a mensagem cortada no meio, ou não abria.
     //
     // O corte é por tamanho medido, não por contagem de notas: linha de
     // nota varia muito (nome de motorista, base, observação), e um número
@@ -1298,7 +1299,7 @@ function compartilharEmail(contexto) {
     // tem Excel, PDF e CSV ao lado.
     const LIMITE_URL = 1900;
 
-    const cabecalho = `Controle de Entradas de Combustível${empresaFiltroGlobal ? ` — ${empresaFiltroGlobal}` : ""}\n`
+    const cabecalho = `Controle de Entradas de Combustível${empresaFiltroGlobal ? ` · ${empresaFiltroGlobal}` : ""}\n`
                     + `${_descricaoPeriodoRelatorio()}\nData: ${dataHoje}\n`
                     + `Registros: ${lista.length}\nTotal: ${fmtR(totalGeral)}\n\n${"=".repeat(60)}\n\n`;
     const rodape = n => n > 0
@@ -1321,7 +1322,7 @@ function compartilharEmail(contexto) {
     corpo += rodape(cortadas);
     if (cortadas > 0) {
         mostrarToast(
-            `O e-mail leva ${cabem} de ${lista.length} notas — o resto não cabe num link `
+            `O e-mail leva ${cabem} de ${lista.length} notas, e o resto não cabe num link `
             + `de e-mail. Para mandar tudo, anexe o Excel ou o PDF.`, "aviso", 7000);
     }
     window.location.href = montarURL(corpo);
@@ -1402,7 +1403,7 @@ function _executarRelatorioMensal() {
     const mesAnterior = m === 1 ? `${ano-1}-12` : `${ano}-${String(m-1).padStart(2,'0')}`;
 
     // O Relatório Mensal Gerencial monta o próprio conjunto e é o único
-    // ponto desta tela que não passa por `dadosRelatorioAtual` — por isso
+    // ponto desta tela que não passa por `dadosRelatorioAtual`, por isso
     // repete o teste de estado. É também onde vive o custo médio
     // (totalGasto/totalLitros, logo abaixo), que é o número que uma nota
     // sem validade mais distorce.
@@ -1425,7 +1426,7 @@ function _executarRelatorioMensal() {
     const totGastoAnt  = lansAnterior.reduce((s,l) => s + (l.total || 0), 0);
 
     // Mesma faixa, cor e logo dos outros PDFs (18/09/2026).
-    let y = _pdfCabecalho(doc, estiloPdf, `${empresa} — Relatório Mensal de Entradas`,
+    let y = _pdfCabecalho(doc, estiloPdf, `${empresa} · Relatório Mensal de Entradas`,
         `Período: ${nomeMes(mes)}, pela data de emissão  |  Gerado em: ${new Date().toLocaleDateString('pt-BR')}`) + 2;
     doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
     doc.text('RESUMO EXECUTIVO', 14, y); y += 6;
@@ -1529,7 +1530,7 @@ function _executarRelatorioMensal() {
         });
     }
 
-    _pdfRodapes(doc, estiloPdf, `${empresa} — ${nomeMes(mes)}`);
+    _pdfRodapes(doc, estiloPdf, `${empresa} · ${nomeMes(mes)}`);
 
     doc.save(`relatorio-mensal-${mes}.pdf`);
     mostrarToast('Relatório mensal gerado com sucesso!', 'sucesso', 4000);

@@ -1,7 +1,7 @@
 /*=================================================
-  SESSAO.JS — Fuel Mind
+  SESSAO.JS: Fuel Mind
   Login com Firebase Auth + empresa obrigatória
-  Empresa sempre filtrada — sem opção "Todas"
+  Empresa sempre filtrada, sem opção "Todas"
   Perfil escutado durante a sessão, papéis e permissões, empresa ativa e
   troca de empresa.
 
@@ -18,7 +18,7 @@ let empresaFiltroGlobal = null;
 let empresaFiltroNome   = "";
 // O id da empresa ativa, ao lado do nome. As duas globais acima guardam o
 // NOME, e o nome muda num rename; o id não. É ele que permite reconhecer a
-// empresa ativa depois de um rename feito aqui ou por um colega — ver
+// empresa ativa depois de um rename feito aqui ou por um colega: ver
 // `_reconciliarEmpresaAtiva`.
 let empresaFiltroId     = null;
 
@@ -205,7 +205,7 @@ async function fazerLogin() {
  *
  * `authEnviarResetSenha` existia em `firebase.js`, estava exportada e não
  * era chamada por ninguém: quem esquecia a senha dependia do supremo, e o
- * supremo não tinha botão nenhum — a única saída dele era o Console do
+ * supremo não tinha botão nenhum: a única saída dele era o Console do
  * Firebase. Esta função é só a ligação que faltava.
  *
  * Aceita e-mail ou @usuario, porque o login aceita os dois. E a mensagem de
@@ -309,7 +309,7 @@ function _empresasDisponiveisDoPerfil(perfil) {
  * O cadastro de empresas é lido ANTES de montar a lista. Antes, numa aba
  * recém-aberta a lista de empresas ainda estava vazia: quem não era supremo
  * era recusado com "sem acesso a nenhuma empresa", e o supremo lia o
- * documento do layout antigo — ou entrava num laço sem fim se ele não
+ * documento do layout antigo, ou entrava num laço sem fim se ele não
  * existisse.
  */
 async function _mostrarSelecaoEmpresa(perfil) {
@@ -355,7 +355,7 @@ async function _mostrarSelecaoEmpresa(perfil) {
     if (nomeEl) nomeEl.textContent = (perfil.nome || '').split(" ")[0];
 
     // `setEmpresaFiltro` grava `ultimaEmpresa` desde sempre, com um
-    // comentário prometendo restaurar a escolha na sessão seguinte — e
+    // comentário prometendo restaurar a escolha na sessão seguinte, e
     // ninguém lia a chave. Quem trabalha o dia inteiro na mesma empresa
     // reescolhia a mesma opção todo login. A escolha continua sendo do
     // operador: a última só sobe para o topo, marcada.
@@ -462,7 +462,7 @@ async function fazerLogout() {
     // trabalho de um turno esperando o próximo login não ajuda ninguém.
     if (typeof fmRascunhoApagar === 'function') fmRascunhoApagar();
     // `authLogout` não recarrega a página: sem isto, o próximo login nesta
-    // aba — talvez de outra pessoa — herdava o formulário e a lista da
+    // aba (talvez de outra pessoa) herdava o formulário e a lista da
     // sessão do turno anterior.
     if (typeof limparFormulario === 'function') limparFormulario();
     if (typeof _idsSessao !== 'undefined') { _idsSessao = []; if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar(); }
@@ -536,7 +536,7 @@ function _aplicarEmpresaAtiva(nome) {
  * A empresa ativa é guardada pelo NOME, e as notas também. Um rename
  * propagava o nome novo para todas as notas e deixava a global com o velho:
  * os relatórios ficavam vazios, e uma nota lançada nesse estado não entrava
- * em documento nenhum — sumia no carregamento seguinte com a pílula dizendo
+ * em documento nenhum. Sumia no carregamento seguinte com a pílula dizendo
  * sincronizado. Testado na rodada 10. O id é o que não muda.
  */
 let _avisouEmpresaAtivaInativa = false;
@@ -646,7 +646,7 @@ function selecionarEmpresaModal(nome) {
    pergunta se havia trabalho, em silêncio se era só a herança do lote.
 
    Antes a troca não perguntava nada, reescrevia o campo Empresa e deixava
-   o resto — e uma nota em EDIÇÃO mudava de empresa e de documento ao ser
+   o resto, e uma nota em EDIÇÃO mudava de empresa e de documento ao ser
    salva, sem modal nenhum. Testado na rodada 10.
 
    Não é (c), guardar como rascunho da empresa anterior: o rascunho tem uma
@@ -675,7 +675,7 @@ async function trocarEmpresaAtiva(nome) {
 
     // O marcador de sujo não basta: edição, clone e XML preenchem por script
     // e só marcam quando criam uma linha de combustível. Base e Data da
-    // Descarga sozinhas não contam — são a herança do lote, e saem sem
+    // Descarga sozinhas não contam: são a herança do lote, e saem sem
     // pergunta.
     const clonando  = typeof isClonando !== 'undefined' && isClonando;
     const editando  = typeof lancamentoEditandoId !== 'undefined' && !!lancamentoEditandoId && !clonando;

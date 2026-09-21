@@ -1,11 +1,16 @@
 /*=================================================
-  BACKUP.JS — Fuel Mind
+  BACKUP.JS: Fuel Mind
   Backups automáticos no navegador, por usuário, e a restauração deles.
 
   Parte do antigo app.js, quebrado em 18/09/2026 (programa 6.5).
 =================================================*/
-const BACKUP_AUTO_INTERVALO_DIAS = 3;
-const BACKUP_AUTO_MAX = 3;
+/* Diario, guardando uma semana. Era a cada 3 dias com 3 copias: pouco
+   para quem lanca nota todo dia. Custa espaco no navegador (ver o bloco
+   das duas paredes em sistema.js), e por isso a gravacao abaixo aceita
+   falhar: quando a cota aperta, ela apaga a copia mais antiga e tenta de
+   novo, guardando quantas couberem. (21/09/2026) */
+const BACKUP_AUTO_INTERVALO_DIAS = 1;
+const BACKUP_AUTO_MAX = 7;
 
 /* Os backups automáticos são POR USUÁRIO. Antes eram uma lista só no
    navegador, com o banco de quem estava logado: o operador que entrava
@@ -28,10 +33,10 @@ function verificarBackupAutomatico() {
  * Grava a cópia periódica do banco no `localStorage`.
  *
  * A falha aqui não pode ser silenciosa. O caminho que ela toma na prática
- * é a quota do navegador: são quatro cópias do banco vivendo lá dentro
- * (a cópia local a cada salvamento, mais até três backups automáticos), e
- * a ~440 bytes por lançamento os ~5 MB acabam em torno de três mil notas
- * somando todas as empresas.
+ * é a quota do navegador: são oito cópias do banco vivendo lá dentro
+ * (a cópia local a cada salvamento, mais até sete backups automáticos), e
+ * a ~440 bytes por lançamento os ~5 MB acabam em torno de mil e quatrocentas
+ * notas somando todas as empresas.
  *
  * A tentativa de liberar espaço apagando a cópia mais antiga vem antes do
  * aviso: na maior parte das vezes ela resolve.
@@ -123,7 +128,7 @@ function _resumoRestauracao(dados) {
     const linhas = Object.keys(noArquivo).map(id =>
         `• ${nomeDe(id)}: hoje ${hoje[id] || 0} → depois ${noArquivo[id]} lançamento(s)`);
     const intocadas = [...permitidos].filter(id => !noArquivo[id] && hoje[id])
-        .map(id => `• ${nomeDe(id)}: fica como está (${hoje[id]} lançamento(s)) — o arquivo não tem notas dela`);
+        .map(id => `• ${nomeDe(id)}: fica como está (${hoje[id]} lançamento(s)), pois o arquivo não tem notas dela`);
     return [
         linhas.length ? linhas.join("\n") : "O arquivo não tem lançamentos de empresas que você acessa.",
         intocadas.length ? "\n" + intocadas.join("\n") : "",

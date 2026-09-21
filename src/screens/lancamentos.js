@@ -38,7 +38,7 @@ function _nomeEmpresaComparavel(nome) {
 /**
  * A empresa cadastrada que o destinatário da NF-e é, com segurança.
  * Vale só igualdade do nome comparável, ou o nome cadastrado inteiro dentro
- * do destinatário como palavras inteiras — e só quando UMA empresa casa.
+ * do destinatário como palavras inteiras, e só quando UMA empresa casa.
  * Casamento por pedaço de palavra ou com duas candidatas não é leitura
  * segura, e nesses casos a função devolve null.
  */
@@ -112,7 +112,7 @@ function importarXMLNFe(input) {
             //   `transporta` fazia o sistema procurar um motorista com o
             //   nome da distribuidora.
             //   `querySelector("placa")` sem `veicTransp` acha a placa do
-            //   `reboque` — a carreta entrava no lugar do cavalo.
+            //   `reboque`: a carreta entrava no lugar do cavalo.
             // Ausente é ausente: o banner já avisa o que não veio.
             const xNomeTransp = get("transporta xNome");
             const placaTransp = get("veicTransp placa");
@@ -201,7 +201,7 @@ function importarXMLNFe(input) {
             if (xNomeTransp) {
                 // Casa por palavra inteira, não por pedaço de palavra. Com
                 // `includes` do primeiro nome, o motorista "Ana" casava com
-                // "TRANSPORTES CAMPANA LTDA" — e o lançamento saía com o
+                // "TRANSPORTES CAMPANA LTDA", e o lançamento saía com o
                 // motorista errado, sem ninguém ver.
                 const palavrasTransp = normalizarTexto(xNomeTransp).split(/\s+/);
                 motorCadastrado = db.motoristas.find(m => {
@@ -256,7 +256,7 @@ function importarXMLNFe(input) {
 
             const banner = document.getElementById("bannerXML");
             banner.style.display = "block";
-            banner.innerHTML = `XML importado — campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoEmpresaDivergente}${avisoNaoCruzados}${avisoTipos}`;
+            banner.innerHTML = `XML importado. Campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoEmpresaDivergente}${avisoNaoCruzados}${avisoTipos}`;
 
             // O XML preenche seis campos por script, e preenchimento por
             // script não dispara `change`. Sem esta chamada, uma nota com
@@ -291,11 +291,11 @@ function calcularPerdaBadge(nomeCombustivel, qtd, qtdDescargada) {
     if (perdaReal < 0)               return `<span class="badge-perda alerta">Descarga maior que a carga</span>`;
     if (cad.perda <= 0)              return `<span class="badge-perda alerta">Perda: ${litros(perdaReal)} (${pct(percentReal)})</span>`;
     if (perdaReal <= perdaToleravel) return `<span class="badge-perda ok">Perda: ${litros(perdaReal)} (${pct(percentReal)})</span>`;
-    return `<span class="badge-perda excesso">Perda: ${litros(perdaReal)} (${pct(percentReal)}) — acima do tolerado (${pct(cad.perda)})</span>`;
+    return `<span class="badge-perda excesso">Perda: ${litros(perdaReal)} (${pct(percentReal)}), acima do tolerado (${pct(cad.perda)})</span>`;
 }
 
 /* ── ENTER AVANÇA DE CAMPO (17/09/2026) ─────────────────────────────
-   A tela mais usada do dia — 10 a 30 notas, em blocos de 5 a 15 — exigia
+   A tela mais usada do dia (10 a 30 notas, em blocos de 5 a 15) exigia
    mouse entre um campo e outro. Enter agora vai para o próximo campo da
    nota, que é o padrão dos sistemas de caixa e o ganho que os usuários de
    Superhuman e Linear mais elogiam.
@@ -372,7 +372,7 @@ function atualizarTotalizadorNota() {
   ADICIONAR LINHA DE COMBUSTÍVEL
 =================================================*/
 /*=================================================
-  QUANTIDADE DESCARREGADA — FORA DO CAMINHO
+  QUANTIDADE DESCARREGADA: FORA DO CAMINHO
 =================================================*/
 /**
  * A descarga quase sempre é igual à carga, e o sistema inteiro já trata
@@ -382,7 +382,7 @@ function atualizarTotalizadorNota() {
  * total de nenhuma tela.
  *
  * Ele não foi removido porque é o único lugar onde uma diferença real
- * pode ser registrada, e existe uma tela inteira — Conferências — cujo
+ * pode ser registrada, e existe uma tela inteira (Conferências) cujo
  * trabalho é encontrar essas diferenças contra a medição do tanque. Sem
  * o campo, achar a diferença não teria onde virar registro. Some também
  * a perda calculada contra a tolerância cadastrada por combustível.
@@ -422,8 +422,8 @@ function alternarCampoDescarga(mostrar) {
 }
 
 /**
- * Liga o interruptor quando os itens que chegam trazem descarga informada
- * — ao editar, ao clonar e ao restaurar rascunho. Sem isto, abrir uma nota
+ * Liga o interruptor quando os itens que chegam trazem descarga informada:
+ * ao editar, ao clonar e ao restaurar rascunho. Sem isto, abrir uma nota
  * antiga com diferença registrada esconderia justamente o número que
  * motivou o registro.
  */
@@ -464,7 +464,7 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     div.className = "linha-combustivel";
     // Os números exatos que chegaram (XML, edição, clone): o campo mostra
     // 4 casas no preço e 3 na quantidade, e ler o texto de volta
-    // arredondava em silêncio — a NF-e com R$ 5,8765432100 virava 5,8765 e o
+    // arredondava em silêncio: a NF-e com R$ 5,8765432100 virava 5,8765 e o
     // total divergia do documento. Enquanto o campo mostrar o mesmo número,
     // vale o exato.
     if (typeof dadosIniciais?.qtd === "number")   div.dataset.qtdExata   = String(dadosIniciais.qtd);
@@ -507,7 +507,7 @@ function adicionarCombustivelNota(dadosIniciais = null) {
  *
  * A `.badge-wrapper` hospeda três coisas: o badge de perda, a referência
  * de preço e o aviso de preço fora dela. Enquanto esta função zerava o
- * `innerHTML` do wrapper, ela apagava as outras duas — e como ela é
+ * `innerHTML` do wrapper, ela apagava as outras duas, e como ela é
  * chamada no `blur` da quantidade, sem nada revalidar depois, corrigir a
  * quantidade depois de ver o aviso de preço fazia o aviso sumir da linha
  * enquanto a faixa e a conferência continuavam listando-o.
@@ -551,7 +551,7 @@ function atualizarBadgePerda(selectTipo) {
 function verificarDuplicidadeNota(numeroNota, empresa, dataNota, idIgnorar = null) {
     // Lançamento excluído não conta como duplicata: relançar a nota é
     // justamente o caminho de correção de quem excluiu por engano. Um
-    // cancelado, sim — ele avisa que alguém já deu aquela nota por
+    // cancelado, sim: ele avisa que alguém já deu aquela nota por
     // inválida, e relançar em cima disso quase nunca é o que se quer.
     const alvo = _numeroNotaComparavel(numeroNota);
     return db.lancamentos.some(l =>
@@ -642,9 +642,9 @@ async function _salvarOuAtualizar(modo) {
     }
 
     // ── Validação ──
-    // Os cinco `fmConfirm` de julgamento que existiam aqui — data futura na
+    // Os cinco `fmConfirm` de julgamento que existiam aqui (data futura na
     // nota, na descarga, descarga antes da nota, nota duplicada e preço fora
-    // da média, este por linha — saíram. Uma nota com três combustíveis fora
+    // da média, este por linha) saíram. Uma nota com três combustíveis fora
     // da média e uma data errada abria seis janelas em fila, e o operador
     // aprendia a apertar Enter sem ler. Agora cada julgamento aparece no
     // campo que o produz, assim que há dado para julgá-lo, e este ponto só
@@ -672,7 +672,7 @@ async function _salvarOuAtualizar(modo) {
         const valor         = _numeroDaLinha(linha, ".valor", "valorExato", 4) ?? 0;
         if (tipo && qtd > 0) {
             // Com quantidade e preço intactos do XML, o total é o da NF-e
-            // (vProd), e não a conta refeita — que pode diferir por centavos.
+            // (vProd), e não a conta refeita, que pode diferir por centavos.
             const intactos = linha.dataset.totalXml
                 && String(qtd) === linha.dataset.qtdExata && String(valor) === linha.dataset.valorExato;
             const itemTotal = intactos ? Number(linha.dataset.totalXml) : Math.round(qtd * valor * 100) / 100;
@@ -688,7 +688,7 @@ async function _salvarOuAtualizar(modo) {
     //
     // Em "lançar próxima" ela aparece sempre, porque o operador não passa
     // pelo relatório e esta é a única chance de olhar a nota inteira antes
-    // de ela existir — é o trade-off de segurança escolhido pelo dono. Em
+    // de ela existir: é o trade-off de segurança escolhido pelo dono. Em
     // "salvar e sair" só aparece quando há alerta: quem sai cai no relatório
     // e confere lá, então perguntar por rotina seria um clique sem retorno.
     const precisaConferir = (modo === 'proxima' && !lancamentoEditandoId) || alertas.length > 0;
@@ -754,7 +754,7 @@ async function _salvarOuAtualizar(modo) {
  *   viram uma linha de log, não um estado no lançamento
  */
 function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa, motorista, placa, itens, total, observacoes, arquivos, lancamentoIdPreGerado, modo = 'proxima', alertas = []) {
-    // Detecta se é edição ou novo/clone — para decidir como recarregar o relatório
+    // Detecta se é edição ou novo/clone: para decidir como recarregar o relatório
     const eraEdicao = !!(lancamentoEditandoId && !isClonando);
 
     // O lançamento anterior, quando isto é uma edição. Dele vêm duas
@@ -781,7 +781,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         lancamento.estado = anterior.estado;
     }
     const logAcao = isClonando ? "Clonado" : (lancamentoEditandoId ? "Editado" : "Criado");
-    // Log estruturado: objeto {acao, ts, usuario} — compatível com logs antigos (string)
+    // Log estruturado: objeto {acao, ts, usuario}, compatível com logs antigos (string)
     // que são exibidos normalmente em _buildConteudoDetalhe via typeof check
     const entradaLog = {
         acao:    logAcao,
@@ -800,7 +800,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     // Chave de acesso da NF-e, quando a nota veio de XML. Nunca digitada:
     // é o identificador fiscal que permite dizer "esta nota já foi lançada"
     // com certeza, em vez de deduzir por número mais empresa mais data, que
-    // é só coincidência forte — número de nota se repete entre emitentes.
+    // é só coincidência forte: número de nota se repete entre emitentes.
     if (typeof _chaveAcessoAtual !== 'undefined' && _chaveAcessoAtual) {
         lancamento.chaveAcesso = _chaveAcessoAtual;
     }
@@ -820,7 +820,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     if (lancamentoEditandoId && !isClonando) {
         const idx = db.lancamentos.findIndex(l => l.id === lancamentoEditandoId);
         // A validação já bloqueia este caso; a guarda fica aqui porque
-        // `db.lancamentos[-1] = …` não falha — cria uma propriedade solta,
+        // `db.lancamentos[-1] = …` não falha: cria uma propriedade solta,
         // fora do vetor, e a nota se perde com o toast dizendo que salvou.
         if (idx === -1) {
             mostrarToast("A nota em edição não existe mais. Nada foi gravado.", "erro", 8000);
@@ -836,7 +836,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
     // do Firestore, é esta marca que permite ao próximo carregamento
     // reconhecer a nota como não enviada, em vez de apagá-la.
     // E `imediato` porque um clique em "Salvar" não pode esperar o
-    // debounce — quem fechava a aba dentro dos 600 ms nunca chegava a
+    // debounce: quem fechava a aba dentro dos 600 ms nunca chegava a
     // tentar.
     _pendenteMarcar(lancamento.id);
     salvarDB({ imediato: true });
@@ -859,7 +859,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
 
     if (modo === 'sair') {
         limparFormulario();
-        // `mostrarTela('relatorios')` já chama carregarRelatorio() internamente —
+        // `mostrarTela('relatorios')` já chama carregarRelatorio() internamente,
         // por isso não há um segundo carregarRelatorio() aqui. Havia, e todo
         // salvamento renderizava a tabela duas vezes.
         mostrarTela('relatorios');
@@ -887,7 +887,7 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
 }
 
 /*=================================================
-  RESET PARCIAL — o contexto do lote fica, a nota vai
+  RESET PARCIAL: o contexto do lote fica, a nota vai
 =================================================*/
 /**
  * Prepara a tela para a próxima nota do mesmo bolo.
@@ -964,7 +964,7 @@ function _limparMarcaHerdada() {
  * Existe porque salvar sem sair do lugar tira do operador a única prova que
  * ele tinha de que a nota entrou: a tabela do relatório. Sem prova visível,
  * ele vai conferir de qualquer forma e o ganho desaparece. É também a rede
- * de segurança do campo que ficou preenchido por engano — o erro aparece
+ * de segurança do campo que ficou preenchido por engano: o erro aparece
  * na linha, não semanas depois.
  *
  * Guarda id e hora: o lançamento em si vive em `db.lancamentos`, e ler de lá
@@ -993,8 +993,8 @@ function _sessaoRenderizar() {
     if (!bloco || !lista) return;
 
     // A lista é da empresa ativa. `_idsSessao` continua guardando as notas
-    // de todas as empresas da sessão — voltar a uma empresa traz as dela de
-    // volta —, mas a tela só mostra as da ativa. Numa lista misturada, o
+    // de todas as empresas da sessão (voltar a uma empresa traz as dela de
+    // volta), mas a tela só mostra as da ativa. Numa lista misturada, o
     // Desfazer agia sobre uma nota que não era do contexto em que o
     // operador estava.
     const presentes = _idsSessao
@@ -1018,7 +1018,7 @@ function _sessaoRenderizar() {
         const litros = (l.itens || []).reduce((s, i) => s + (Number(i.qtd) || 0), 0);
         // A nota desfeita não sai da lista: ela fica, riscada, com o
         // caminho de volta ao lado. Sumir seria a mesma mentira de antes,
-        // agora do outro lado — o operador precisa ver o que fez.
+        // agora do outro lado: o operador precisa ver o que fez.
         const desfeita  = l.estado === 'excluido';
         const cancelada = l.estado === 'cancelado';
         return `<div class="sessao-item${desfeita || cancelada ? " sessao-item-desfeita" : ""}">
@@ -1053,7 +1053,7 @@ const _CAMPOS_LOG = ['dataNota', 'dataDescarga', 'numeroNota', 'base',
  *
  * Guarda o que mudou, e só. Nunca a cópia inteira do lançamento: o
  * documento já carrega o estado corrente, e duplicá-lo dentro de cada log
- * faria o histórico crescer mais rápido que o próprio dado — num vetor
+ * faria o histórico crescer mais rápido que o próprio dado, num vetor
  * que tem teto de 1 MiB por empresa.
  *
  * Os itens não entram como lista: entram por combustível e por
@@ -1065,7 +1065,7 @@ function _diffLancamento(antes, depois) {
     // Número se compara pelo valor, não pela representação. O total é
     // recalculado a cada salvamento como soma de quantidade vezes preço, e
     // o ponto flutuante devolve 37902.600000000006 para o que estava gravado
-    // como 37902.6 — sem esta guarda, toda edição registrava no histórico
+    // como 37902.6: sem esta guarda, toda edição registrava no histórico
     // uma alteração de total que ninguém fez. Seis casas cobrem com folga
     // as três da quantidade e as quatro do preço.
     const igual = (x, y) => {
@@ -1101,13 +1101,13 @@ function _diffLancamento(antes, depois) {
 }
 
 /*=================================================
-  ESTADO DO LANÇAMENTO — A LÁPIDE
+  ESTADO DO LANÇAMENTO: A LÁPIDE
 =================================================*/
 /**
  * Muda o estado de um lançamento e registra a transição no histórico dele.
  *
  * Este é o único lugar do sistema que escreve `estado`. Antes, "este
- * lançamento não vale mais" era resolvido tirando o objeto do vetor — o
+ * lançamento não vale mais" era resolvido tirando o objeto do vetor: o
  * registro sumia, e o histórico dele junto. Agora o registro fica: sai de
  * toda conta (o critério é `lancamentoAtivo`, em utils.js) e continua
  * existindo para quem for entender o que aconteceu.
@@ -1125,7 +1125,7 @@ function _marcarEstadoLancamento(l, novoEstado, acao, motivo) {
     if (!l) return false;
     // Pelo id, na memória de AGORA: entre abrir o modal e confirmar pode ter
     // chegado a gravação de um colega, e o objeto guardado antes já não é o
-    // que está no vetor — a mudança ia para um objeto solto e se perdia.
+    // que está no vetor: a mudança ia para um objeto solto e se perdia.
     const idx = db.lancamentos.findIndex(x => x.id === l.id);
     if (idx === -1) {
         mostrarToast("Esta nota não está mais neste computador. Nada foi alterado.", "erro", 7000);
@@ -1231,7 +1231,7 @@ async function editarLancamento(id) {
     // Uma nota só é editada sob a própria empresa. A busca global, a
     // auditoria de datas e o Dashboard abrem notas de qualquer empresa, e a
     // edição sob outra empresa ativa acabava movendo a nota na primeira
-    // reentrada na tela. Trocar passa pela mesma porta — e pela mesma
+    // reentrada na tela. Trocar passa pela mesma porta, e pela mesma
     // pergunta, se houver trabalho na tela.
     if (empresaFiltroGlobal && l.empresa && l.empresa !== empresaFiltroGlobal) {
         if (typeof trocarEmpresaAtiva !== 'function' || !await trocarEmpresaAtiva(l.empresa)) return;
@@ -1283,7 +1283,7 @@ async function editarLancamento(id) {
 
         const banner = document.getElementById("bannerEdicao");
         banner.style.display = "block";
-        let bannerHtml = `Editando nota <strong>${escapeHtml(l.numeroNota)}</strong> — <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
+        let bannerHtml = `Editando nota <strong>${escapeHtml(l.numeroNota)}</strong> · <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
         if (l.anexos && l.anexos.length > 0)
             bannerHtml += `<br><small>Este lançamento possui ${l.anexos.length} anexo(s). Você pode substituí-los ao salvar.</small>`;
         banner.innerHTML = bannerHtml;
@@ -1352,7 +1352,7 @@ async function clonarLancamento(id) {
     document.getElementById("combustiveisNota").innerHTML = "";
     // A quantidade descarregada NÃO é clonada. Ela é a medição de uma
     // descarga que já aconteceu, e a nota nova é outra descarga: copiá-la
-    // fazia a cópia nascer com uma medição que ninguém fez — e ainda ligava
+    // fazia a cópia nascer com uma medição que ninguém fez, e ainda ligava
     // sozinho o interruptor do campo, mostrando o número como se fosse dado
     // desta nota. Carga, tipo e valor são o que se repete numa nota
     // parecida; a medição, não.
@@ -1422,7 +1422,7 @@ function limparFormulario(opcoes) {
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
     if (preservarRascunho) {
-        // A troca de empresa limpa a tela sem ter perguntado nada — só havia
+        // A troca de empresa limpa a tela sem ter perguntado nada: só havia
         // a herança do lote, ou nada. O rascunho guardado, se houver, é de
         // uma sessão anterior e ainda espera o operador decidir; não pode
         // sumir por causa de uma troca.
@@ -1507,7 +1507,7 @@ async function excluirLancamento(id, contexto = 'relatorio') {
 /**
  * O caminho de volta, no próprio relatório.
  *
- * Fica na linha da nota excluída, no lugar em que o botão Excluir estava —
+ * Fica na linha da nota excluída, no lugar em que o botão Excluir estava,
  * e não numa tela de Lixeira. O sistema já resolve isto assim seis vezes,
  * nas abas de Cadastros: caixa "Mostrar inativos" mais Inativar/Reativar
  * na linha. Uma área nova da aplicação para uma exceção rara transformaria
@@ -1527,7 +1527,7 @@ async function restaurarLancamento(id, contexto = 'relatorio') {
         titulo: "Restaurar lançamento?",
         msg: `${descricao}\n\n`
            + `Ele volta a contar nos relatórios, nos litros, no custo médio e `
-           + `no frete — inclusive em meses que já foram fechados.`,
+           + `no frete, inclusive em meses que já foram fechados.`,
         confirmTxt: "Restaurar",
         cancelTxt: "Cancelar",
         tipo: "aviso"
@@ -1543,7 +1543,7 @@ async function restaurarLancamento(id, contexto = 'relatorio') {
 }
 
 /**
- * Marca uma nota como cancelada na origem — a NF-e foi cancelada pelo
+ * Marca uma nota como cancelada na origem: a NF-e foi cancelada pelo
  * emissor depois de ela já ter sido lançada aqui.
  *
  * O sistema não tem como saber isso sozinho: o XML é descartado depois do

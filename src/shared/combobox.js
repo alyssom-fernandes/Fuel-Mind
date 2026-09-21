@@ -1,11 +1,11 @@
 /*=================================================
-  COMBOBOX.JS — seletor de cadastro para o formulário
+  COMBOBOX.JS: seletor de cadastro para o formulário
   de lançamento, no lugar do `<datalist>` nativo.
 
   Por que existe (tema 03 da pesquisa):
-  o `<datalist>` não oferece gancho para "não encontrei — cadastrar",
+  o `<datalist>` não oferece gancho para "não encontrei, cadastrar",
   não permite ordenar por uso e não dá controle sobre o popup. Os três
-  campos que apontam para cadastro — Motorista, Placa e Base — passam a
+  campos que apontam para cadastro (Motorista, Placa e Base) passam a
   usar este componente. Empresa continua no `<datalist>`: ela vem da
   empresa ativa e só é editável ao corrigir uma nota antiga.
 
@@ -81,7 +81,7 @@ function _fmUsoDe(campo, nome) {
 }
 
 /* ── PONTUAÇÃO ───────────────────────────────────────────────────────
-   Hierarquia textual bem separada, e o uso somando no máximo 500 —
+   Hierarquia textual bem separada, e o uso somando no máximo 500:
    menos que a distância entre dois degraus de texto. É isso que impede
    o ranking de uso de transformar uma correspondência ruim em boa.
    ────────────────────────────────────────────────────────────────── */

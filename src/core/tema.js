@@ -1,5 +1,5 @@
 /*=================================================
-  TEMA.JS — Fuel Mind
+  TEMA.JS: Fuel Mind
   Tema claro e escuro, logo do tema e cor principal personalizada. Roda
   na carga: aplica o tema e a cor salvos antes do primeiro desenho.
 
@@ -34,10 +34,6 @@ function toggleModoEscuro() {
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     localStorage.setItem("tema", novo);
     _aplicarLogoDoTema(novo);
-    // A cor de texto da marca depende do tema; se há cor personalizada, o
-    // estilo em linha dela precisa ser recalculado agora.
-    const corPersonalizada = localStorage.getItem('corPrimaria');
-    if (corPersonalizada) _aplicarCorDoTexto(corPersonalizada);
     // Os gráficos leem a cor do tema na hora em que são criados: quem
     // trocava o tema com o Dashboard ou o Analítico aberto ficava com eixo
     // e legenda na cor antiga até sair e voltar (17/09/2026).
@@ -60,63 +56,10 @@ function _aplicarLogoDoTema(tema) {
         ? "assets/logo-light.svg" : "assets/logo-dark.svg";
 }
 
-function _hexParaRGB(hex) {
-    let h = hex.replace('#', '');
-    if (h.length === 3) h = h.split('').map(c => c + c).join('');
-    const n = parseInt(h, 16);
-    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
-function _escurecerHex(hex, fator) {
-    const { r, g, b } = _hexParaRGB(hex);
-    const esc = v => Math.max(0, Math.round(v * (1 - fator)));
-    return '#' + [esc(r), esc(g), esc(b)].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
-function _clarearHex(hex, fator) {
-    const { r, g, b } = _hexParaRGB(hex);
-    const cl = v => Math.min(255, Math.round(v + (255 - v) * fator));
-    return '#' + [cl(r), cl(g), cl(b)].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
-/* A cor da marca como TEXTO. No tema escuro o vinho puro sobre o fundo
-   quase preto fica ilegível (contraste 2,3), então o texto usa uma versão
-   clareada; no tema claro é a própria cor. Precisa ser reaplicada ao trocar
-   de tema, porque o estilo em linha do `aplicarCorPersonalizada` vence o
-   CSS. (21/09/2026) */
-function _aplicarCorDoTexto(cor) {
-    const escuro = document.documentElement.getAttribute('data-theme') !== 'light';
-    document.documentElement.style.setProperty('--primary-texto',
-        escuro ? _clarearHex(cor, 0.42) : cor);
-}
-
-function aplicarCorPersonalizada(cor) {
-    const root = document.documentElement;
-    const { r, g, b } = _hexParaRGB(cor);
-    root.style.setProperty('--primary',         cor);
-    _aplicarCorDoTexto(cor);
-    root.style.setProperty('--primary-hover',   _escurecerHex(cor, 0.12));
-    root.style.setProperty('--primary-mid',     _clarearHex(cor, 0.35));
-    root.style.setProperty('--primary-light',   `rgba(${r},${g},${b},0.2)`);
-    root.style.setProperty('--primary-glow',    `rgba(${r},${g},${b},0.4)`);
-    root.style.setProperty('--shadow-glow',     `0 0 24px rgba(${r},${g},${b},0.3)`);
-    root.style.setProperty('--primary-subtle',  `rgba(${r},${g},${b},0.10)`);
-    root.style.setProperty('--primary-subtle2', `rgba(${r},${g},${b},0.08)`);
-    root.style.setProperty('--primary-subtle3', `rgba(${r},${g},${b},0.15)`);
-    root.style.setProperty('--primary-subtle4', `rgba(${r},${g},${b},0.18)`);
-    localStorage.setItem('corPrimaria', cor);
-}
-
-function resetarCorPadrao() {
-    const padrao = '#a02828';
-    aplicarCorPersonalizada(padrao);
-    const inputCor = document.getElementById('corPrimaria');
-    if (inputCor) inputCor.value = padrao;
-}
-
-const corSalva = localStorage.getItem('corPrimaria');
-if (corSalva) {
-    aplicarCorPersonalizada(corSalva); // aplica todas as variáveis derivadas desde o início
-    const inputCor = document.getElementById('corPrimaria');
-    if (inputCor) inputCor.value = corSalva;
-}
+/* A cor da marca saiu de ser configurável em 21/09/2026, a pedido do dono:
+   ela é a identidade do site, e o seletor nunca se comportou como ele
+   queria. As variáveis --primary, --primary-texto e as derivadas vivem
+   inteiramente no style.css, uma definição por tema. Com isso saíram daqui
+   `aplicarCorPersonalizada`, `resetarCorPadrao`, `_aplicarCorDoTexto` e as
+   funções de clarear e escurecer hexadecimal, que só serviam a elas. A
+   chave `corPrimaria` do localStorage deixou de ser lida; some sozinha. */

@@ -1,9 +1,9 @@
 /*=================================================
-  VALIDACAO.JS — o operador descobre o problema onde ele nasce,
+  VALIDACAO.JS: o operador descobre o problema onde ele nasce,
   não numa fila de confirmações depois de digitar tudo.
 
   Por que existe (tema 04 da pesquisa): o salvamento abria até cinco
-  confirmações de julgamento em sequência — data futura na nota, data
+  confirmações de julgamento em sequência: data futura na nota, data
   futura na descarga, descarga antes da nota, nota duplicada e preço
   fora da média, esta uma por linha de combustível. Uma nota com três
   combustíveis fora da média e uma data errada abria seis janelas antes
@@ -20,7 +20,7 @@
      visível e não interrompe.
 
   2. Nem a cada tecla, nem só no salvar. Cada regra fala no momento em
-     que existe informação suficiente para julgá-la — no `change` do
+     que existe informação suficiente para julgá-la: no `change` do
      campo. Datas são `<input type="date">` e não passam por estados
      intermediários; texto avisa ao sair do campo. Campo vazio só é
      cobrado depois de uma tentativa de salvar, senão a tela acusaria o
@@ -54,7 +54,7 @@ const _CAMPOS_VALIDADOS = [
    Janela padrão de sete dias, e não de trinta (decisão do dono, tema 06,
    confirmada em 16/09). Combustível reajusta na refinaria: com trinta
    dias, uma alta de 15% deixa a régua velha por semanas e o sistema passa
-   a repreender lançamento correto — que é o caminho mais curto para o
+   a repreender lançamento correto, que é o caminho mais curto para o
    operador aprender a ignorar o aviso. Os dias e a diferença (em R$/L,
    padrão R$ 0,25) são configuráveis, iguais para todos.
 
@@ -97,12 +97,12 @@ function _plural(n, singular, plural) {
    nunca a mostrava: o operador só descobria que ela existia quando era
    repreendido. O badge aparece assim que o combustível é escolhido,
    antes de haver preço digitado, e traz sempre a janela e o número de
-   notas — "R$ 5,90 · 1 nota" e "R$ 5,90 · 14 notas" são o mesmo número
+   notas: "R$ 5,90 · 1 nota" e "R$ 5,90 · 14 notas" são o mesmo número
    e não valem a mesma coisa.
 
    Fica na `.badge-wrapper`, que já é a célula do grid da linha: não
    desloca nada e convive com o badge de perda e com o aviso de preço.
-   É informação, não julgamento — daí a classe própria e o tom discreto.
+   É informação, não julgamento: daí a classe própria e o tom discreto.
    ────────────────────────────────────────────────────────────────── */
 function _desenharReferenciaPreco(linha, tipo) {
     const wrapper = linha.querySelector(".badge-wrapper");
@@ -189,8 +189,8 @@ function limparValidacao() {
 
 /**
  * Recalcula tudo e redesenha as mensagens. É chamada no `change` de cada
- * campo e, obrigatoriamente, depois de qualquer preenchimento por script
- * — XML, rascunho restaurado, clonar e editar não disparam eventos de
+ * campo e, obrigatoriamente, depois de qualquer preenchimento por script:
+ * XML, rascunho restaurado, clonar e editar não disparam eventos de
  * usuário, e sem esta chamada a tela ficaria muda justamente nos casos
  * em que o operador não digitou nada.
  *
@@ -237,12 +237,12 @@ function validarLancamento() {
     // ── Empresa que não vira documento ──
     // O lançamento guarda o NOME da empresa, e o documento de destino é
     // resolvido por nome EXATO (`_empresaIdDoLancamento`). Um nome que não
-    // bate — a empresa ativa que foi renomeada, ou "transportadora aurora"
-    // digitado numa edição — fazia a nota não entrar em documento nenhum:
+    // bate (a empresa ativa que foi renomeada, ou "transportadora aurora"
+    // digitado numa edição) fazia a nota não entrar em documento nenhum:
     // ela sumia no próximo carregamento, com o toast dizendo que salvou e a
     // pílula dizendo sincronizado. Testado na rodada 10. Agora é bloqueio.
     // A nota é da empresa ativa. O campo fica travado, e isto é a garantia
-    // de que nada — edição antiga, rascunho, script — grava em outra.
+    // de que nada (edição antiga, rascunho, script) grava em outra.
     if (empresa && typeof empresaFiltroGlobal !== "undefined" && empresaFiltroGlobal && empresa !== empresaFiltroGlobal) {
         marcar("empresaInput", `A empresa ativa é "${empresaFiltroGlobal}". A nota só pode ser salva nela.`, "bloqueio");
     }
@@ -273,8 +273,8 @@ function validarLancamento() {
 
     // ── Edição de uma nota que não está mais aqui ──
     // Um restore de backup, por exemplo, pode tirar do vetor a nota que
-    // está aberta em edição. Salvar gravava em `db.lancamentos[-1]` — uma
-    // propriedade solta, fora do vetor — e mostrava "Lançamento atualizado".
+    // está aberta em edição. Salvar gravava em `db.lancamentos[-1]` (uma
+    // propriedade solta, fora do vetor) e mostrava "Lançamento atualizado".
     if (typeof lancamentoEditandoId !== "undefined" && lancamentoEditandoId
         && !(typeof isClonando !== "undefined" && isClonando)
         && !(db.lancamentos || []).some(l => l.id === lancamentoEditandoId)) {
@@ -303,13 +303,13 @@ function validarLancamento() {
     // Duas forças diferentes. A chave de acesso identifica a NF-e sem
     // ambiguidade, então a mesma chave duas vezes é a mesma nota: bloqueia
     // e não há "salvar mesmo assim". Já número mais empresa mais data é
-    // só coincidência forte — número de nota se repete entre emitentes —
+    // só coincidência forte (número de nota se repete entre emitentes)
     // e por isso continua sendo alerta.
     //
     // O estado do lançamento encontrado muda a resposta, e aqui isso não é
     // refinamento: se a chave de uma nota EXCLUÍDA continuasse bloqueando,
     // quem lançou a NF-e errada e a excluiu nunca mais conseguiria lançá-la
-    // do jeito certo — o bloqueio impediria a correção do próprio engano,
+    // do jeito certo: o bloqueio impediria a correção do próprio engano,
     // apontando para uma nota que não aparece em relatório nenhum. Já a
     // chave de uma nota CANCELADA continua bloqueando, e a mensagem diz por
     // quê: aquela NF-e não vale mais, e relançá-la não é o caminho.

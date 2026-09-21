@@ -1,5 +1,5 @@
 /*=================================================
-  UI.JS — Lógica da Interface v2.4
+  UI.JS: Lógica da Interface v2.4
   Sidebar, Header, Navegação, Cadastros unificados,
   Bases/Distribuidoras, relógio, tema, ícones nas abas,
   busca global, atalhos de teclado e seletor de empresa global
@@ -166,7 +166,7 @@ function sincronizarBaseEntrada() {
  *
  * Usar sempre que precisar definir a base programaticamente.
  * Nunca setar `baseEntradaInput`, `baseEntrada` ou `baseEntradaSelect`
- * individualmente — os três devem estar sempre em sincronia.
+ * individualmente: os três devem estar sempre em sincronia.
  *
  * @param {string} valor - Nome da base, ou string vazia para limpar
  */
@@ -252,7 +252,7 @@ function _buscaSugestoesIniciais() {
     const preferidos = ["Novo lançamento", "Ir para Relatórios", "Ir para Fretes",
         "Fechamento do mês de fretes (Excel)", "Ver os atalhos de teclado"];
     const cmds = _comandosPaleta().filter(c => c.disponivel() && preferidos.includes(c.rotulo));
-    return `<p class="busca-vazio">Busque pelo número da nota, motorista, placa ou empresa — ou pelo nome de uma tela.</p>`
+    return `<p class="busca-vazio">Busque pelo número da nota, motorista, placa ou empresa, ou pelo nome de uma tela.</p>`
         + (cmds.length ? _buscaSecao('Sugestões', cmds.map(c =>
             _buscaItemSimples(`fecharBuscaGlobal(); ${escapeHtml(c.acao)};`, escapeHtml(c.rotulo), 'Enter ↵')).join('')) : '');
 }
@@ -348,7 +348,7 @@ function _realizarBusca() {
     }
 
     // ── Lançamentos ──
-    // A busca acha tudo, inclusive o que não vale mais — ela existe para
+    // A busca acha tudo, inclusive o que não vale mais: ela existe para
     // responder "onde está aquela nota?", e a resposta "não existe" seria
     // falsa. O que muda é que o resultado diz o estado, para ninguém sair
     // daqui achando que encontrou um lançamento que conta.
@@ -725,7 +725,7 @@ function fmAlert({ titulo = 'Atenção', msg = '', tipo = 'info', btnTxt = 'OK' 
  * cancelamento na origem, que é uma afirmação sobre um fato de fora do
  * sistema e não pode ser feita sem autor e sem razão.
  *
- * Devolve o texto, ou `null` se o operador desistiu — e desistir é sempre
+ * Devolve o texto, ou `null` se o operador desistiu, e desistir é sempre
  * possível, pelo botão, pelo Escape ou pelo clique fora. Isso não é
  * detalhe: um diálogo em que as duas saídas fazem alguma coisa é um
  * diálogo do qual não se sai.
@@ -766,7 +766,7 @@ function fmPrompt({ titulo = 'Confirmar', msg = '', label = '', minimo = 1,
                 // Mensagem junto do campo, não toast: desde o tema 04, o
                 // que impede de seguir tem de ficar onde se conserta.
                 erro.textContent = minimo > 1
-                    ? `Escreva pelo menos ${minimo} caracteres — faltam ${minimo - txt.length}.`
+                    ? `Escreva pelo menos ${minimo} caracteres, faltam ${minimo - txt.length}.`
                     : 'Este campo não pode ficar vazio.';
                 erro.style.display = 'block';
                 campo.focus();
@@ -800,7 +800,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (el) el.style.display = "none";
     });
 
-    // Único registro do Ctrl+K no projeto — havia um segundo, inline no fim do
+    // Único registro do Ctrl+K no projeto: havia um segundo, inline no fim do
     // index.html, junto de um Escape que o navegacao.js já trata.
     // `toLowerCase` porque `e.key` vem 'K' com Caps Lock ou Shift.
     document.addEventListener('keydown', function(e) {
@@ -813,14 +813,14 @@ document.addEventListener("DOMContentLoaded", function() {
     sincronizarBaseEntrada();
 });
 
-/* ── A AÇÃO RESPONDE ONDE ACONTECEU (programa 3.5, 3.6 e 3.7 — 18/09/2026) ──
+/* ── A AÇÃO RESPONDE ONDE ACONTECEU (programa 3.5, 3.6 e 3.7, 18/09/2026) ──
    O toast fala no canto e some em 3 segundos. Três coisas passam a ficar no
    lugar da ação:
    - confirmação: o botão que o operador clicou pisca em verde com um ✓;
    - erro: fica escrito no alto da tela (ou do modal) onde falhou, com a
      hora, até ser fechado ou até a próxima ação dar certo ali;
    - recálculo: ao mudar um filtro, os números da tela esmaecem e aparece
-     "Recalculando…" — só se a conta passar de um décimo de segundo. */
+     "Recalculando…": só se a conta passar de um décimo de segundo. */
 
 let _acaoBotao = null;
 let _acaoBotaoEm = 0;
@@ -843,7 +843,7 @@ function _botaoDaAcao() {
     return performance.now() - _acaoBotaoEm < 8000 ? b : null;
 }
 
-/** Pisca um elemento em verde, com ✓ — botão, linha de tabela, item de lista. */
+/** Pisca um elemento em verde, com ✓: botão, linha de tabela, item de lista. */
 function confirmarNoLocal(el) {
     if (!el || !el.isConnected) return;
     // Deu certo aqui: o erro que estava escrito neste lugar deixou de valer.
@@ -876,7 +876,7 @@ function _modalAberto() {
 
 /**
  * Onde a ação aconteceu. No modal: no alto dele. Na tela: logo abaixo da
- * linha do botão clicado — o erro aparece onde o olho está, não no alto de
+ * linha do botão clicado: o erro aparece onde o olho está, não no alto de
  * uma página rolada. Sem botão (atalho de teclado): no alto da tela.
  */
 function _lugarDaAcao() {

@@ -108,7 +108,7 @@ function carregarAnalitico() {
     if (labelPeriodo) {
         if (!inicio && !fim) {
             labelPeriodo.style.display = "block";
-            labelPeriodo.innerHTML = '<p class="dica mb-3">Nenhum período selecionado — exibindo <strong>todo o histórico</strong>.</p>';
+            labelPeriodo.innerHTML = '<p class="dica mb-3">Nenhum período selecionado: exibindo <strong>todo o histórico</strong>.</p>';
         } else {
             labelPeriodo.style.display = "none";
         }

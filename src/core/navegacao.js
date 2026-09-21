@@ -1,5 +1,5 @@
 /*=================================================
-  NAVEGACAO.JS — Fuel Mind
+  NAVEGACAO.JS: Fuel Mind
   Troca de tela (`mostrarTela`), atalhos globais de teclado, avisos
   (`mostrarToast`) e o formulário sujo do lançamento.
 
@@ -29,7 +29,7 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         document.getElementById('btnSalvarLancamento')?.click();
     }
-    // Ctrl+Enter é o atalho do botão primário — "salvar e lançar próxima" numa
+    // Ctrl+Enter é o atalho do botão primário: "salvar e lançar próxima" numa
     // nota nova, "salvar" numa correção. É o que permite atravessar um bolo de
     // notas sem tocar no mouse. Ctrl+S faz o mesmo, porque nesta tela o
     // primário sempre é a ação de salvar.
@@ -49,7 +49,7 @@ document.addEventListener('keydown', (e) => {
     // Ctrl+N e Ctrl+T eram reservados pelo Chrome: o navegador abria janela ou
     // aba de qualquer jeito E o handler ainda rodava. No caso do Ctrl+N,
     // limparFormulario() apagava um lançamento preenchido enquanto uma janela
-    // nova roubava a atenção — perda total e silenciosa. Removidos.
+    // nova roubava a atenção, perda total e silenciosa. Removidos.
     if (e.key === 'Escape') {
         const modal = document.getElementById('modalOverlay');
         if (modal && modal.style.display === 'flex') fecharModal();
@@ -61,7 +61,7 @@ document.addEventListener('keydown', (e) => {
 /**
  * Exibe uma notificação temporária (toast) no canto da tela.
  *
- * Remove qualquer toast anterior antes de exibir o novo — nunca empilha.
+ * Remove qualquer toast anterior antes de exibir o novo: nunca empilha.
  *
  * @param {string} mensagem  - Texto a exibir
  * @param {'sucesso'|'erro'|'aviso'|'info'} [tipo='sucesso'] - Define cor e ícone
@@ -71,7 +71,7 @@ document.addEventListener('keydown', (e) => {
 /**
  * Exibe uma mensagem efêmera.
  *
- * As mensagens se EMPILHAM. Antes, cada chamada removia a anterior — e como há
+ * As mensagens se EMPILHAM. Antes, cada chamada removia a anterior, e como há
  * caminhos que emitem duas em sequência (o salvamento e o erro de nuvem, por
  * exemplo), a primeira era destruída antes de poder ser lida.
  *
@@ -79,7 +79,7 @@ document.addEventListener('keydown', (e) => {
  * tinha nenhuma região viva, então nada do que o sistema comunicava por toast
  * chegava a leitor de tela.
  */
-/* Toast com um botão de ação — hoje, o "Desfazer" de uma exclusão
+/* Toast com um botão de ação: hoje, o "Desfazer" de uma exclusão
    (18/09/2026). A ação é uma função, não HTML: nada de texto do usuário
    vira código. Fica mais tempo na tela, porque existe para ser clicado. */
 function mostrarToastComAcao(mensagem, tipo, duracao, rotulo, aoClicar) {
@@ -138,7 +138,7 @@ let _formularioSujo = false;
  * conforme `_formularioSujo`.
  *
  * O id certo é `tituloLancamentos`, com S. As duas funções abaixo
- * procuravam `tituloLancamento` — uma letra a menos — e por isso o marcador
+ * procuravam `tituloLancamento` (uma letra a menos) e por isso o marcador
  * nunca apareceu desde que foi escrito. Derivar do estado, em vez de
  * empilhar e remover prefixo, deixa a função idempotente e permite
  * reaplicar o marcador depois de trocar o texto do título.
@@ -149,7 +149,7 @@ function _aplicarMarcadorSujo() {
         const base = titulo.textContent.replace(/^●\s*/, "");
         titulo.textContent = _formularioSujo ? "● " + base : base;
     }
-    // O `h2` da tela fica oculto de propósito — `atualizarTitulosInternos`
+    // O `h2` da tela fica oculto de propósito: `atualizarTitulosInternos`
     // esconde todos, porque o título mora no cabeçalho. Por isso o `●` que
     // o conserto de 03/09 "fez aparecer" nunca foi visto: ele era escrito
     // num elemento com display:none. O marcador vai para onde se vê.
@@ -176,10 +176,10 @@ function limparFormularioSujo() {
  * Avisa que há um lançamento em andamento antes de trocar de tela.
  *
  * O texto anterior dizia "Sair agora vai descartar tudo que foi preenchido"
- * e o botão era "Descartar e sair" — o que era FALSO: `mostrarTela` só troca
+ * e o botão era "Descartar e sair", o que era FALSO: `mostrarTela` só troca
  * `display`, nada limpa os campos, e os dados continuam lá na volta. O efeito
  * prático era caro: quem precisava conferir uma nota no relatório ou cadastrar
- * um motorista acreditava que o preço era perder tudo — então ou não conferia,
+ * um motorista acreditava que o preço era perder tudo, então ou não conferia,
  * e errava, ou conferia e redigitava.
  */
 async function confirmarSaidaFormulario() {

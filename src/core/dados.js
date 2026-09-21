@@ -1,5 +1,5 @@
 /*=================================================
-  DADOS.JS — Fuel Mind
+  DADOS.JS: Fuel Mind
   O modelo do banco em memória (`db`, `DB_PADRAO`), o estado da
   sincronização, os ids, e a divisão em documentos: um compartilhado e um
   de lançamentos por empresa. Aqui também a mesclagem (`_base`,
@@ -40,7 +40,7 @@ let _pendentesSincronizacao = false;
 let _salvandoDB = 0;
 let _hashPorDoc = {};
 
-// Timer do debounce — agrupa writes múltiplos em uma gravação só.
+// Timer do debounce: agrupa writes múltiplos em uma gravação só.
 let _timerDebounce = null;
 const _DEBOUNCE_MS = 600;
 
@@ -50,7 +50,7 @@ const _NOME_LEGADO        = "principal";
 
 // true quando os dados já estão repartidos por empresa; false enquanto o
 // banco ainda estiver no documento único `dados/principal`. Só é decidido
-// por uma carga que DEU CERTO — ver `_cargaOk`.
+// por uma carga que DEU CERTO: ver `_cargaOk`.
 let _layoutNovo = false;
 
 /* ── CARGA CONFIRMADA ───────────────────────────────────────────────
@@ -60,7 +60,7 @@ let _layoutNovo = false;
    empresa cuja leitura falhou ficava sem nota nenhuma em memória, e o
    primeiro salvamento gravava um vetor vazio por cima do histórico dela.
    E uma falha ao ler o compartilhado deixava a sessão gravando no
-   documento do layout antigo, com a pílula verde — as notas sumiam no F5
+   documento do layout antigo, com a pílula verde: as notas sumiam no F5
    seguinte. Com a carga falha, o sistema mostra a cópia deste navegador,
    guarda o que for lançado como pendente e tenta carregar de novo. */
 let _cargaOk = false;
@@ -75,7 +75,7 @@ let _tentativasRecarga = 0;
    É ela que diz o que ESTE navegador mudou: item que não está na base é
    novo, item com JSON diferente foi editado, item da base que sumiu da
    memória foi removido. A gravação lê o documento atual numa transação e
-   aplica só essas mudanças por cima dele — em vez de regravar o vetor
+   aplica só essas mudanças por cima dele, em vez de regravar o vetor
    inteiro da memória, que apagava a nota que um colega tinha acabado de
    salvar. E um snapshot que chega enquanto há mudança local ainda não
    enviada é mesclado do mesmo jeito, em vez de substituir a memória e
@@ -89,7 +89,7 @@ const _OBJETOS_COMPARTILHADO = ['configRelatorio', 'configAlertas'];
 /**
  * Gera um ID único no formato `"timestamp-hash"` (ex: `"1748392847362-abc1234"`).
  *
- * IDs são sempre strings — nunca usar `+id` ou `parseInt(id)`.
+ * IDs são sempre strings: nunca usar `+id` ou `parseInt(id)`.
  * Em atributos `onclick` de templates HTML, sempre envolver em aspas simples:
  * `onclick="editarLancamento('${l.id}')"`.
  *
@@ -114,8 +114,8 @@ function _hashStr(str) {
 
    Os lançamentos vivem em um documento por empresa (`dados/lanc__{id}`) e
    os cadastros num documento comum (`dados/compartilhado`). Em memória o
-   `db` continua com a mesma forma de sempre — `db.lancamentos` é um array
-   único — só que contendo apenas as empresas que o usuário pode ver.
+   `db` continua com a mesma forma de sempre (`db.lancamentos` é um array
+   único), só que contendo apenas as empresas que o usuário pode ver.
 
    É isso que mantém dashboard, analítico, relatórios e fretes intocados:
    eles seguem iterando `db.lancamentos` sem saber da repartição.
@@ -150,7 +150,7 @@ function _idsDoPerfil(perfil) {
 /**
  * Id da empresa de um lançamento.
  *
- * O nome que está na nota decide primeiro — é ele que o operador vê e
+ * O nome que está na nota decide primeiro: é ele que o operador vê e
  * corrige, e é por ele que uma correção em massa move uma nota. Quando o
  * nome não resolve (um colega renomeou a empresa e esta memória ainda tem
  * o nome velho), vale o `empresaId` gravado na nota. Antes só havia o nome,

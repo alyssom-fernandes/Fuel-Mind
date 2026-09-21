@@ -4,12 +4,12 @@
  *  nenhuma tela respondia: como as empresas do grupo se comparam entre si.
  *
  *  Por que é barata: os lançamentos de TODAS as empresas permitidas já
- *  estão em memória — há um listener do Firestore por empresa (`sincronizacao.js`).
+ *  estão em memória: há um listener do Firestore por empresa (`sincronizacao.js`).
  *  Não há leitura nova, custo de nuvem nem plano pago; é agregar o que já
  *  está carregado.
  *
  *  Por que é SÓ LEITURA: o topo do `sessao.js` (antes, do `app.js`) registra a decisão "empresa
- *  sempre filtrada — sem opção Todas", e as travas de escrita dependem
+ *  sempre filtrada, sem opção Todas", e as travas de escrita dependem
  *  dela (`lancamentos.js`, `validacao.js`). Esta tela não muda
  *  `empresaFiltroGlobal` e não oferece nenhuma ação de gravar: ela lê o
  *  que já está na memória e compara. Clicar numa empresa troca a empresa
@@ -176,9 +176,9 @@ function carregarGrupo() {
             datasets: [
                 // Cada um no seu eixo (18/09/2026): no mesmo eixo o frete, uma
                 // ordem de grandeza menor que o gasto, virava um risco no chão.
-                { label: "Gasto em compras (R$) — eixo da esquerda", data: ordenadas.map(x => x.gasto), yAxisID: "y",
+                { label: "Gasto em compras (R$), eixo da esquerda", data: ordenadas.map(x => x.gasto), yAxisID: "y",
                   backgroundColor: (cores.info || "#3b82f6") + "55", borderColor: cores.info || "#3b82f6", borderWidth: 1 },
-                { label: "Frete (R$) — eixo da direita", data: ordenadas.map(x => x.frete), yAxisID: "yF",
+                { label: "Frete (R$), eixo da direita", data: ordenadas.map(x => x.frete), yAxisID: "yF",
                   backgroundColor: cores.primary + "aa", borderColor: cores.primary, borderWidth: 1 }
             ]
         },

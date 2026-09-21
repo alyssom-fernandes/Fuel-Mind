@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fuel Mind — Gestão de Combustíveis</title>
+    <title>Fuel Mind | Gestão de Combustíveis</title>
     <!-- Fontes por <link>: no @import dentro do CSS o navegador só
          descobre a fonte depois de baixar o style.css inteiro, o que
          serializa três viagens de rede antes do texto assumir a fonte
@@ -16,7 +16,7 @@
     <link rel="apple-touch-icon" href="favicon.ico">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- SheetJS e jsPDF são carregados só quando uma tela que exporta ou lê
-         planilha é aberta (garantirBibliotecas, utils.js — 18/09/2026). -->
+         planilha é aberta (garantirBibliotecas, utils.js, 18/09/2026). -->
 </head>
 <body>
 <!-- LOGIN -->
@@ -63,7 +63,7 @@
             </button>
             <p class="login-demo-nota">Dados fictícios, sem login. Nada é gravado na nuvem.</p>
 
-            <!-- Assinatura AFN Systems — padrão do brand guide -->
+            <!-- Assinatura AFN Systems, padrão do brand guide -->
             <div class="pf-assinatura">
               <div class="pf-marca">
                 <span class="pf-afn">AFN</span>
@@ -76,7 +76,7 @@
     </div>
 </div>
 
-<!-- SELEÇÃO DE EMPRESA PÓS-LOGIN — o mesmo cartão do login, com a faixa
+<!-- SELEÇÃO DE EMPRESA PÓS-LOGIN: o mesmo cartão do login, com a faixa
      da marca em cima. -->
 <div id="selecaoEmpresaOverlay" class="modal-overlay login-overlay" style="display:none">
     <div class="login-cartao login-cartao--uma-coluna">
@@ -183,7 +183,7 @@
     <span class="header-datetime" id="headerDatetime"></span>
     <div class="header-sep"></div>
     <span id="headerNomeUsuario" class="header-usuario"></span>
-    <!-- BOTÃO ATALHOS — abre modal de atalhos de teclado (ui.js:abrirAtalhos) -->
+    <!-- BOTÃO ATALHOS: abre modal de atalhos de teclado (ui.js:abrirAtalhos) -->
     <button class="header-action-btn header-action-btn--atalhos" onclick="abrirAtalhos()" title="Atalhos de teclado" aria-label="Atalhos de teclado">?</button>
     <button class="header-action-btn header-action-btn--texto" onclick="fazerLogout()" title="Sair" aria-label="Sair do sistema">Sair</button>
     <button class="header-action-btn" onclick="toggleModoEscuro()" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro" id="btnTema"><span id="iconeTema"></span></button>
@@ -336,13 +336,13 @@
     <button class="btn-primario" onclick="recalcularTela('fretes', calcularEExibirFretes)">Atualizar</button>
   </div>
   <div id="fretesResumoMes" class="mb-4"></div>
-  <h3 class="mt-1">Frete mês a mês — últimos 6 meses</h3>
+  <h3 class="mt-1">Frete mês a mês, últimos 6 meses</h3>
   <p class="dica">Pela data da descarga, com a taxa que valia em cada mês. Clique numa barra ou numa linha para abrir aquele mês.</p>
   <div id="freteHistoricoContainer" class="mb-6"></div>
   <div class="barra-exportacao" id="fretesBarraExportacao">
     <span class="exportacao-titulo">Exportar:</span>
     <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: resumo de fretes, frete nota a nota e as notas do mês pela emissão.">Fechamento do mês</button>
-    <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma — para anexar na resposta a um transportador.">Nota a nota</button>
+    <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma, para anexar na resposta a um transportador.">Nota a nota</button>
     <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
     <button class="btn-export btn-pdf" onclick="exportarFretesPDF()">PDF</button>
     <button class="btn-export btn-csv" onclick="exportarFretesCSV()">CSV</button>
@@ -549,7 +549,7 @@
     </div>
     <div id="aba-evolucaoPrecos" class="aba-conteudo" style="display:none">
       <h3>Evolução de preços por combustível</h3>
-      <p class="dica">Preço médio de compra por litro, mês a mês — média <strong>ponderada</strong> pelos litros faturados, não média simples das notas.</p>
+      <p class="dica">Preço médio de compra por litro, mês a mês, média <strong>ponderada</strong> pelos litros faturados, não média simples das notas.</p>
       <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
@@ -600,7 +600,7 @@
   <div id="sistemaAba-backup" class="sistema-aba-conteudo" data-papel="admin">
     <div class="sistema-secao">
       <h3>Backup dos dados</h3>
-      <p class="dica">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga — guarde-o fora do computador de vez em quando.</p>
+      <p class="dica">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga. Guarde-o fora do computador de vez em quando.</p>
       <div class="sistema-acoes">
         <button class="btn-primario" onclick="baixarBackup()">Baixar backup (.json)</button>
         <div class="campo campo--restaurar mt-3" data-papel="supremo">
@@ -611,7 +611,7 @@
     </div>
     <div class="sistema-secao">
       <h3>Backups automáticos</h3>
-      <p class="dica">Este navegador guarda uma cópia dos seus dados a cada 3 dias, para o seu usuário. As 3 últimas ficam.</p>
+      <p class="dica">Este navegador guarda uma cópia dos seus dados por dia, para o seu usuário. Ficam as 7 últimas, ou quantas couberem no espaço do navegador.</p>
       <div id="listaBackupsAuto"></div>
       <button class="btn-secundario mt-2" onclick="renderBackupsAuto()">Atualizar lista</button>
     </div>
@@ -626,7 +626,7 @@
       <h3>Isolamento por empresa</h3>
       <p class="dica mb-3">
         Reparte os lançamentos em um documento por empresa, para que a regra de segurança
-        do servidor — e não a tela — decida quem enxerga o quê. O documento antigo não é
+        do servidor, e não a tela, decida quem enxerga o quê. O documento antigo não é
         apagado. Rode a migração, confira o resultado e só então publique as regras novas.
       </p>
       <div class="sistema-acoes">
@@ -647,7 +647,7 @@
     </div>
     <div class="sistema-secao mb-5">
       <h3>1. Antes de começar</h3>
-      <p class="dica mb-2">Sua planilha deve ter <strong>uma linha por combustível</strong>. Se uma nota tiver S10 e Gasolina, serão duas linhas com o mesmo número de nota — o sistema agrupa automaticamente.</p>
+      <p class="dica mb-2">Sua planilha deve ter <strong>uma linha por combustível</strong>. Se uma nota tiver S10 e Gasolina, serão duas linhas com o mesmo número de nota, e o sistema agrupa automaticamente.</p>
       <button class="btn-secundario" onclick="baixarModeloPlanilha()">Baixar modelo de planilha</button>
     </div>
     <div class="sistema-secao mb-5">
@@ -673,106 +673,41 @@
   </div>
   <div id="sistemaAba-config" class="sistema-aba-conteudo" style="display:none">
     <div class="sistema-secao">
-      <h3>Tema personalizado</h3>
-      <p class="dica">Escolha a cor principal do sistema (afeta botões, abas ativas, etc.)</p>
-      <div class="linha-flex">
-        <input type="color" id="corPrimaria" class="input-cor" aria-label="Cor principal do sistema" value="#a02828" onchange="aplicarCorPersonalizada(this.value)">
-        <button class="btn-secundario" onclick="resetarCorPadrao()">Restaurar padrão</button>
-      </div>
-    </div>
-    <div class="sistema-secao">
-      <h3>Layout do relatório em PDF</h3>
-      <p class="dica fm-so-operador">Só administradores alteram o layout do PDF e a logo: valem para todos.</p>
-      <p class="dica">Personalize a aparência dos relatórios em PDF.</p>
+      <h3>Colunas do relatório em PDF</h3>
+      <p class="dica fm-so-operador">Só administradores mudam estas opções, que valem para todos.</p>
+      <p class="dica">Escolha o que aparece no PDF de entradas. A aparência segue o padrão do sistema.</p>
 
-      <!-- Logo -->
       <div class="campo mb-4">
-        <label>Logo (cabeçalho do PDF)</label>
-        <div class="linha-flex">
-          <div id="pdfLogoPlaceholder" class="pdf-logo-placeholder"
-               onclick="document.getElementById('pdfLogoInput').click()">
-            Clique para<br>adicionar logo
-          </div>
-          <img id="pdfLogoPreview" src="" alt="Logo" class="pdf-logo-preview" style="display:none">
-          <div class="pilha">
-            <button class="btn-secundario" data-papel="admin" onclick="document.getElementById('pdfLogoInput').click()">Selecionar imagem</button>
-            <button id="pdfLogoBtnRemover" class="btn-excluir" style="display:none" onclick="pdfRemoverLogo()">Remover logo</button>
-            <input id="pdfLogoInput" aria-label="Arquivo de imagem da logo" type="file" accept="image/*" style="display:none" onchange="pdfCarregarLogo(this)">
-          </div>
-          <span class="dica dica--nota">PNG ou JPG, até 2 MB (é reduzida ao salvar).<br>Aparece no canto esquerdo do cabeçalho.</span>
-        </div>
-      </div>
-
-      <!-- Título, orientação e fonte -->
-      <div class="pdf-grade-titulo">
-        <div class="campo">
-          <label for="pdfTitulo">Título do relatório</label>
-          <input type="text" id="pdfTitulo" value="Controle de Entradas de Combustível" class="largura-total">
-        </div>
-        <div class="campo">
-          <label for="pdfOrientacao">Orientação</label>
-          <select id="pdfOrientacao">
-            <option value="landscape" selected>Paisagem</option>
-            <option value="portrait">Retrato</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label for="pdfFonte">Fonte</label>
-          <select id="pdfFonte">
-            <option value="helvetica">Helvetica</option>
-            <option value="courier">Courier</option>
-            <option value="times">Times</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Cor de destaque e margens -->
-      <div class="pdf-grade-margens">
-        <div class="campo">
-          <label for="pdfCorDestaque">Cor de destaque</label>
-          <input type="color" id="pdfCorDestaque" value="#1a3a5c" class="input-cor">
-        </div>
-        <div class="campo">
-          <label for="pdfMargemEsq">Margem esq. (mm)</label>
-          <input type="number" id="pdfMargemEsq" value="14" min="5" max="40" step="1">
-        </div>
-        <div class="campo">
-          <label for="pdfMargemDir">Margem dir. (mm)</label>
-          <input type="number" id="pdfMargemDir" value="14" min="5" max="40" step="1">
-        </div>
-        <div class="campo">
-          <label for="pdfMargemTopo">Margem topo (mm)</label>
-          <input type="number" id="pdfMargemTopo" value="14" min="5" max="40" step="1">
-        </div>
-        <div class="campo">
-          <label for="pdfMargemRodape">Margem rodapé (mm)</label>
-          <input type="number" id="pdfMargemRodape" value="10" min="5" max="30" step="1">
-        </div>
-      </div>
-
-      <!-- Colunas visíveis e opções -->
-      <div class="campo mb-4">
-        <label>Colunas e opções do PDF</label>
+        <label>Colunas</label>
         <div class="form-linha form-linha--opcoes">
           <label><input type="checkbox" id="pdfMostrarBase" checked> Mostrar coluna Base</label>
           <label><input type="checkbox" id="pdfMostrarEmpresa" checked> Mostrar empresa</label>
           <label><input type="checkbox" id="pdfMostrarMotorista" checked> Mostrar motorista</label>
           <label><input type="checkbox" id="pdfMostrarPlaca" checked> Mostrar placa</label>
+        </div>
+      </div>
+
+      <div class="campo mb-4">
+        <label>Página</label>
+        <div class="form-linha form-linha--opcoes">
           <label><input type="checkbox" id="pdfQuebrarPorMes"> Quebrar página por mês</label>
         </div>
       </div>
 
-      <!-- Rodapé customizável -->
       <div class="campo mb-4">
-        <label for="pdfRodapeTexto">Texto do rodapé (opcional)</label>
-        <input type="text" id="pdfRodapeTexto" placeholder="Ex: Fuel Mind — Uso interno — Confidencial" class="campo-medio">
+        <label for="pdfOrientacao">Orientação</label>
+        <select id="pdfOrientacao">
+          <option value="landscape" selected>Paisagem</option>
+          <option value="portrait">Retrato</option>
+        </select>
+        <span class="dica dica--nota">Paisagem cabe mais colunas.</span>
       </div>
 
       <button class="btn-secundario" data-papel="admin" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
     </div>
     <div class="sistema-secao">
       <h3>Configurações de alertas</h3>
-      <p class="sistema-descricao">Os critérios que acionam os alertas — iguais para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.</p>
+      <p class="sistema-descricao">Os critérios que acionam os alertas, iguais para todos os usuários. O alerta de preço vale no Dashboard e na tela de lançamento; os de volume e de data, só no Dashboard.</p>
       <div class="sistema-acoes"><button class="btn-primario" onclick="abrirConfigAlertas()">Ajustar alertas</button></div>
     </div>
     <div class="sistema-secao">
@@ -785,6 +720,8 @@
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('base')">Corrigir base</button>
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('combustivel')">Corrigir combustível</button>
         <button class="btn-secundario" onclick="auditarDatas()">Verificar datas suspeitas</button>
+        <button class="btn-secundario" data-papel="supremo" onclick="migrarIndiceUsernames()"
+                title="Regrava o índice público que traduz @usuario para e-mail no login. Só é preciso se alguém não conseguir entrar pelo @.">Reconstruir índice de @usuarios</button>
       </div>
     </div>
   </div>
@@ -928,7 +865,7 @@
 
 </main>
 
-<!-- Rodapé de página — padrão AFN Systems -->
+<!-- Rodapé de página, padrão AFN Systems -->
 <footer class="page-footer">
   <div class="pf-marca">
     <span class="pf-afn">AFN</span>
@@ -947,8 +884,8 @@
   <div class="modal modal--medio" onclick="event.stopPropagation()">
     <h3 class="mb-1">Entrar na demonstração</h3>
     <p class="dica mb-4">
-      Escolha um perfil. Cada um enxerga um conjunto diferente de empresas —
-      é assim que o controle de acesso do sistema funciona.
+      Escolha um perfil. Cada um enxerga um conjunto diferente de empresas.
+      É assim que o controle de acesso do sistema funciona.
     </p>
     <div id="demoListaUsuarios" class="pilha"></div>
     <div class="modal-acoes">

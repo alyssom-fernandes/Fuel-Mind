@@ -13,7 +13,7 @@
 =================================================*/
 
 /*=================================================
-  CONVERSÃO DE PLACA — FORMATO MERCOSUL
+  CONVERSÃO DE PLACA: FORMATO MERCOSUL
 =================================================*/
 /**
  * Converte uma placa do formato antigo (ABC-1234 ou ABC1234)
@@ -56,7 +56,7 @@ function _historicoTaxaTexto(empresa) {
     if (!hist.length) return "Taxa sem histórico: vale para todo o período.";
     return "Vigências da taxa:\n" + [...hist]
         .sort((a, b) => String(a.vigenciaDe).localeCompare(String(b.vigenciaDe)))
-        .map(v => `${fmtRL(Number(v.taxa) || 0)}/L — de ${formatarData(v.vigenciaDe)}`
+        .map(v => `${fmtRL(Number(v.taxa) || 0)}/L, de ${formatarData(v.vigenciaDe)}`
                 + (v.vigenciaAte ? ` a ${formatarData(v.vigenciaAte)}` : " (atual)"))
         .join("\n");
 }
@@ -65,7 +65,7 @@ function _historicoTaxaTexto(empresa) {
   CONJUNTOS DE VEÍCULOS
 =================================================*/
 /* Os conjuntos vivem só no banco. Até 17/09/2026 havia aqui 101 placas
-   reais de 34 conjuntos, semeadas quando o banco não tinha a lista — e
+   reais de 34 conjuntos, semeadas quando o banco não tinha a lista, e
    publicadas junto com o site. Saíram por decisão do dono: instalação nova
    nasce sem conjunto, e eles são cadastrados na aba Conjuntos. */
 function garantirConjuntos() {
@@ -76,7 +76,7 @@ function garantirConjuntos() {
  * Dado uma placa e uma data (YYYY-MM-DD), retorna o conjunto
  * que continha essa placa naquela data (respeitando vigência).
  */
-/* A composição que valia NAQUELA data decide — não o "ativo" de hoje.
+/* A composição que valia NAQUELA data decide, não o "ativo" de hoje.
    Antes um conjunto inativado (o caminho que a tela recomenda para
    cadastros) sumia também dos Fretes dos meses em que rodou, e o total por
    conjunto de um mês já fechado mudava. Inativar agora fecha a vigência na
@@ -160,7 +160,7 @@ function fecharModal() {
 /* ── CADASTRO RÁPIDO, SEM SAIR DO LANÇAMENTO ────────────────────────
    Quando o combobox não encontra o que foi digitado, ele oferece
    "Cadastrar X" e chama isto. Reaproveita o mesmo modal da edição, que
-   já tem título, rótulo e um campo de texto — para motorista, placa e
+   já tem título, rótulo e um campo de texto, para motorista, placa e
    base é exatamente o que se precisa, e o alerta de uma das pesquisas
    sobre formulário de cadastro grande demais não se aplica.
 
@@ -271,7 +271,7 @@ function confirmarEdicao() {
     const nomeAntigo = item.nome;
     // Renomear é do supremo (decisão do dono, 17/09/2026): o nome é
     // reescrito nas notas, e só o supremo carrega as notas de todas as
-    // empresas — nas mãos de outro perfil, as empresas que ele não enxerga
+    // empresas, nas mãos de outro perfil, as empresas que ele não enxerga
     // ficavam com o nome velho.
     if (nomeAntigo !== valorFinal && typeof exigirPapel === "function" && !exigirPapel("supremo", "Renomear cadastro")) return;
     if (nomeAntigo !== valorFinal) {
@@ -303,7 +303,7 @@ function confirmarEdicao() {
                 // A taxa nova vale de hoje em diante; a anterior fica
                 // fechada em ontem. Sem isso, mudar a taxa em outubro
                 // reescrevia o frete de janeiro a setembro, já pago, sem
-                // aviso nenhum — o único rastro era a linha de log acima.
+                // aviso nenhum. O único rastro era a linha de log acima.
                 const hoje = _hojeISO();
                 if (!Array.isArray(item.taxaHistorico)) item.taxaHistorico = [];
                 if (!item.taxaHistorico.length && taxaAntiga > 0) {
@@ -336,7 +336,7 @@ function confirmarEdicao() {
         // Toca TODOS os lançamentos, inclusive os excluídos e os
         // cancelados, e isto é de propósito: renomear é reescrever uma
         // referência, não somar. Pular uma lápide a deixaria com o nome
-        // antigo da empresa — e aí `_empresaIdDoLancamento` (dados.js) não a
+        // antigo da empresa, e aí `_empresaIdDoLancamento` (dados.js) não a
         // resolve mais, `_montarPayloads` a descarta em silêncio e ela
         // some da nuvem no próximo salvamento. Filtrar aqui não esconde a
         // lápide, destrói a lápide.
@@ -358,8 +358,8 @@ function confirmarEdicao() {
         // A placa também vive nos conjuntos de veículos, na composição
         // atual e em todo o histórico de vigências. Renomear só nos
         // lançamentos deixava o veículo fora do conjunto, e a tela de
-        // fretes — que resolve o conjunto pela placa, na data de cada
-        // lançamento — passava a mostrar todos os meses anteriores errados.
+        // fretes (que resolve o conjunto pela placa, na data de cada
+        // lançamento) passava a mostrar todos os meses anteriores errados.
         // `converterTodasPlacasMercosul` já fazia certo; esta função, não.
         if (lista === "veiculos" && db.conjuntosVeiculos) {
             db.conjuntosVeiculos.forEach(conj => {
@@ -489,7 +489,7 @@ async function converterTodasPlacasMercosul() {
         veiculo.logs.push(`Placa convertida de "${antiga}" para "${nova}" (Mercosul) em ${new Date().toLocaleString('pt-BR')}`);
         veiculo.nome = nova;
 
-        // Todos os lançamentos, inclusive os que não estão ativos — pelo
+        // Todos os lançamentos, inclusive os que não estão ativos, pelo
         // mesmo motivo de `confirmarEdicao`: uma placa não convertida
         // deixa a nota fora de qualquer conjunto em `resolverConjuntoPorPlaca`.
         db.lancamentos = db.lancamentos.map(l => {
@@ -657,7 +657,7 @@ function _btnExcluirCadastro(lista, id) {
 
 // ========== VERIFICAÇÃO DE VÍNCULOS ==========
 /* Este é o único lugar do projeto em que o CADASTRO consulta o
-   lançamento, e não o contrário — e é por isso que ele inverteria de
+   lançamento, e não o contrário, e é por isso que ele inverteria de
    comportamento sozinho quando a exclusão deixou de apagar o registro.
    Antes, "sumiu do vetor" significava "não há vínculo", e por isso
    excluir um motorista funcionava depois que as notas dele tinham sido
@@ -667,8 +667,8 @@ function _btnExcluirCadastro(lista, id) {
    nenhum no relatório. */
 /* Empresa e combustível olham TODAS as notas, inclusive excluídas e
    canceladas: a empresa é o documento onde as lápides moram (excluí-la
-   deixava o documento órfão, e as canceladas — que o relatório mostra
-   sempre — sumiam), e o combustível é por onde o Dashboard monta os
+   deixava o documento órfão, e as canceladas, que o relatório mostra
+   sempre, sumiam), e o combustível é por onde o Dashboard monta os
    cartões. Motorista, placa e base olham só as que valem. */
 function temVinculoEmLancamentos(lista, item) {
     const ativos = db.lancamentos.filter(lancamentoAtivo);
@@ -688,7 +688,7 @@ async function excluirCadastro(lista, id) {
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
     if (temVinculoEmLancamentos(lista, item)) {
-        mostrarToast(`Não é possível excluir "${item.nome}" — existem lançamentos vinculados. Use "Inativar".`, "erro", 5000);
+        mostrarToast(`Não é possível excluir "${item.nome}": existem lançamentos vinculados. Use "Inativar".`, "erro", 5000);
         return;
     }
     if (!await fmConfirm({ titulo: `Excluir "${item.nome}"?`, msg: "Esta ação não pode ser desfeita.", confirmTxt: "Excluir", tipo: "perigo" })) return;
@@ -699,7 +699,7 @@ async function excluirCadastro(lista, id) {
 }
 
 /*=================================================
-  CONJUNTOS DE VEÍCULOS — CRUD
+  CONJUNTOS DE VEÍCULOS: CRUD
 =================================================*/
 
 let _conjuntoEditandoId = null;
@@ -783,7 +783,7 @@ async function excluirConjunto(id) {
 
 /* O modal é um só para criar e editar: título, rótulo da data e a própria
    data são postos a cada abertura. A data ficava com o valor da abertura
-   anterior — uma data digitada num conjunto e cancelada era usada, sem
+   anterior. Uma data digitada num conjunto e cancelada era usada, sem
    aviso, como vigência do próximo conjunto alterado (18/09/2026). */
 function _prepararFormConjunto(editando) {
     document.getElementById("conjuntoFormTitulo").textContent = editando ? "Editar conjunto" : "Novo conjunto de veículos";
@@ -1081,7 +1081,7 @@ function atualizarListas() {
 /*=================================================
   VALIDAÇÃO DE BLUR NOS CAMPOS DO FORMULÁRIO
   Avisa quando o valor digitado não existe no cadastro.
-  Não bloqueia — apenas orienta o usuário.
+  Não bloqueia, apenas orienta o usuário.
 =================================================*/
 
 /**
@@ -1146,7 +1146,7 @@ function _registrarValidacaoBlurLancamentos() {
     }
 }
 
-// ========== EVENT DELEGATION — LISTAS DE CADASTRO ==========
+// ========== EVENT DELEGATION: LISTAS DE CADASTRO ==========
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('button[data-acao]');
     if (!btn) return;
@@ -1193,7 +1193,7 @@ function _inicializarCamposLancamento() {
     _registrarValidacaoBlurLancamentos();
     // Depois dos ouvintes de blur: o combobox envolve o input num wrapper, e
     // os ouvintes ficam no input, não no wrapper, então a ordem não importa
-    // para eles — mas importa que o combobox rode uma vez só.
+    // para eles, mas importa que o combobox rode uma vez só.
     if (typeof fmComboboxAplicarLancamento === 'function') fmComboboxAplicarLancamento();
 }
 

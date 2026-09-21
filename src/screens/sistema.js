@@ -3,7 +3,7 @@
   correção em massa, tema, config PDF
   + Aba de Importação integrada
   + Aba de Conferência vs AutoSystem (item 3)
-  v2: config PDF expandida — logo (upload base64),
+  v2: config PDF expandida, logo (upload base64),
       margens, cor de destaque, fonte, quebra por mês,
       rodapé customizável
 =================================================*/
@@ -26,14 +26,14 @@ function trocarAbaSistema(aba, btn) {
     if (aba === 'backup') {
         atualizarInfoSistema();
         carregarConfiguracoesTela();
-        // A migração é operação de supremo — some para os demais.
+        // A migração é operação de supremo. Some para os demais.
         const secao = document.getElementById("secaoMigracaoEmpresa");
         if (secao) secao.style.display = window._usuarioAtual?.role === "supremo" ? "block" : "none";
     }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   MIGRAÇÃO — ISOLAMENTO POR EMPRESA
+   MIGRAÇÃO: ISOLAMENTO POR EMPRESA
 
    Reparte o documento único `dados/principal` em:
 
@@ -42,7 +42,7 @@ function trocarAbaSistema(aba, btn) {
 
    Por que: regra de segurança avalia o documento inteiro. Enquanto tudo
    morava junto, qualquer usuário autenticado lia os lançamentos de todas
-   as empresas — o filtro por empresa na tela era conveniência, não
+   as empresas. O filtro por empresa na tela era conveniência, não
    barreira.
 
    O `dados/principal` NÃO é apagado por esta função. Ele permanece como
@@ -88,7 +88,7 @@ async function migrarParaIsolamentoPorEmpresa() {
 
     const antigo = await window._firestore.firestoreCarregarDoc("principal");
     if (!antigo) {
-        return mostrarToast("Não há dados no layout antigo — nada a migrar.", "info", 5000);
+        return mostrarToast("Não há dados no layout antigo, nada a migrar.", "info", 5000);
     }
 
     const lancamentos = antigo.lancamentos || [];
@@ -98,14 +98,14 @@ async function migrarParaIsolamentoPorEmpresa() {
     const conferencia = _conferirEmpresasDosLancamentos(lancamentos, empresas);
     if (!conferencia.ok) {
         const amostra = conferencia.orfaos.slice(0, 8)
-            .map(l => `• Nota ${l.numeroNota || "(sem número)"} — empresa: ${l.empresa || "(vazia)"}`)
+            .map(l => `• Nota ${l.numeroNota || "(sem número)"}, empresa: ${l.empresa || "(vazia)"}`)
             .join("\n");
         const resto = conferencia.orfaos.length > 8
             ? `\n… e mais ${conferencia.orfaos.length - 8}.` : "";
         await fmConfirm({
             titulo: "Migração interrompida",
             msg: `${conferencia.orfaos.length} lançamento(s) não apontam para uma empresa cadastrada. `
-               + `Corrija cada um antes de migrar — o destino dele depende da empresa.\n\n${amostra}${resto}`,
+               + `Corrija cada um antes de migrar: o destino dele depende da empresa.\n\n${amostra}${resto}`,
             confirmTxt: "Entendi",
             cancelTxt: "Fechar",
             tipo: "aviso"
@@ -206,7 +206,7 @@ async function conferirMigracao() {
     const totalAntigo = (antigo.lancamentos || []).length;
     // Depois da migração o sistema continua sendo usado, e os documentos
     // novos crescem: ter MAIS notas que o antigo é o esperado. Só faltar
-    // nota é problema — e rodar a migração de novo nunca é o remédio.
+    // nota é problema, e rodar a migração de novo nunca é o remédio.
     const bate = totalNovo >= totalAntigo;
 
     await fmConfirm({
@@ -282,7 +282,7 @@ async function restaurarBackup(input) {
 /* ========== APAGAR TODOS OS DADOS ==========
    Só o supremo (decisão do dono, 17/09/2026). E apaga de verdade: antes,
    os documentos de lançamentos ficavam no servidor, órfãos, porque só a
-   lista de empresas era esvaziada — e a cópia local deste navegador era
+   lista de empresas era esvaziada, e a cópia local deste navegador era
    destruída mesmo quando a nuvem recusava. Agora os documentos de cada
    empresa são apagados primeiro; só depois os cadastros; e a memória só é
    limpa quando a nuvem confirmou. Os backups automáticos deste navegador
@@ -343,7 +343,7 @@ function renderBackupsAuto() {
     if (!el) return;
     const lista = listarBackupsAutomaticos();
     if (lista.length === 0) {
-        el.innerHTML = `<p class="dica mb-0">Nenhum backup automático encontrado ainda. O próximo será criado em até 3 dias.</p>`;
+        el.innerHTML = `<p class="dica mb-0">Nenhum backup automático ainda. O primeiro é criado no próximo acesso.</p>`;
         return;
     }
     el.innerHTML = `
@@ -374,10 +374,11 @@ function renderBackupsAuto() {
    2.400 notas POR EMPRESA. Quando estourar, o salvamento passa a falhar
    para aquela empresa inteira.
 
-   A do navegador: o `localStorage` guarda QUATRO cópias do banco —
-   `db_backup` a cada salvamento, mais até três `backupAuto_*`. Os ~5 MB
-   típicos acabam em torno de três mil notas SOMANDO todas as empresas,
-   ou seja, essa parede chega primeiro.
+   A do navegador: o `localStorage` guarda OITO cópias do banco, sendo
+   `db_backup` a cada salvamento mais até sete `backupAuto_*`. Os ~5 MB
+   típicos acabam em torno de mil e quatrocentas notas SOMANDO todas as
+   empresas, ou seja, essa parede chega primeiro. Quando a cota aperta, o
+   backup automático apaga a cópia mais antiga e guarda quantas couberem.
 
    Medido em 08/09/2026 sobre a base do modo demonstração, com 717 notas.
    Enquanto o histórico não for repartido em um documento por lançamento,
@@ -563,8 +564,8 @@ function _modalAcessivel(modal, fechar) {
 
    O valor antigo é OBRIGATÓRIO e escolhido da lista do que existe nas
    notas. Antes ele era texto livre e opcional: deixá-lo vazio trocava o
-   campo em todas as notas de todas as empresas — todas as notas numa
-   empresa só, ou todos os combustíveis num só — sem confirmação. */
+   campo em todas as notas de todas as empresas (todas as notas numa
+   empresa só, ou todos os combustíveis num só) sem confirmação. */
 let campoCorrecaoAtual = '';
 let modalCorrecaoMassa = null;
 
@@ -727,181 +728,38 @@ async function executarCorrecaoMassa() {
 }
 
 /* ========================================
-   CONFIGURAÇÕES DE PDF — EXPANDIDO
+   CONFIGURAÇÕES DE PDF: EXPANDIDO
    Campos: titulo, logo (base64), orientacao, fonte,
            corDestaque, margemEsq, margemDir, margemTopo, margemRodape,
            mostrarBase, mostrarEmpresa, mostrarMotorista, mostrarPlaca,
            quebrarPorMes, rodapeTexto
 ======================================== */
 
-/**
- * Retorna a empresa ativa para configuração de logo.
- * Usa empresaFiltroGlobal se disponível.
- */
-function _pdfEmpresaAtiva() {
-    return (typeof empresaFiltroGlobal !== 'undefined' && empresaFiltroGlobal)
-        ? empresaFiltroGlobal
-        : (db.empresas?.find(e => e.ativo !== false)?.nome || '_global');
-}
-
-/**
- * Chamado pelo input[type=file] do logo.
- * Reduz a imagem e grava como base64 em db.configRelatorio.logos[empresa].
- */
-async function pdfCarregarLogo(input) {
-    const file = input.files[0];
-    if (!file) return;
-    // Configuração de PDF é de todo mundo: só admin e supremo alteram. A
-    // regra do servidor recusava a do operador, e enquanto a memória
-    // guardava a mudança, NENHUM cadastro dele subia mais.
-    if (!exigirPapel("admin", "Alterar a logo do PDF")) { input.value = ''; return; }
-    if (!file.type.startsWith('image/')) {
-        mostrarToast('Selecione um arquivo de imagem (PNG, JPG, etc.).', 'aviso'); return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-        mostrarToast('Imagem muito grande. Use uma imagem menor que 2 MB.', 'aviso'); return;
-    }
-
-    const btn = document.getElementById('pdfLogoBtnSelecionar');
-    if (btn) mostrarSpinner(btn, 'Selecionar imagem');
-
-    try {
-        const empresa = _pdfEmpresaAtiva();
-        // A imagem é reduzida antes de virar base64: ela mora dentro do
-        // documento do Firestore, que tem teto de 1 MB compartilhado com
-        // todos os cadastros. Um logo de cabeçalho de PDF não precisa de
-        // mais que ~320px de largura.
-        const dataUri = await _reduzirImagemParaDataUri(file, 320);
-
-        if (!db.configRelatorio) db.configRelatorio = {};
-        // Objeto novo: a sincronização compara com o que o servidor tinha.
-        const logos = Object.assign({}, db.configRelatorio.logos || {});
-        // Pelo id da empresa, que não muda num rename; a chave antiga, pelo
-        // nome, sai junto.
-        delete logos[empresa];
-        logos[_chaveLogoEmpresa(empresa)] = { url: dataUri, nome: file.name };
-        db.configRelatorio = Object.assign({}, db.configRelatorio, { logos });
-
-        _pdfAtualizarPrevia(dataUri, empresa);
-        const kb = Math.round(dataUri.length * 0.75 / 1024);
-        await _salvarEConfirmar(`Logo salva (${kb} KB)`);
-    } catch (e) {
-        mostrarToast('Erro ao processar a logo: ' + e.message, 'erro', 6000);
-    } finally {
-        if (btn) esconderSpinner(btn);
-        input.value = '';
-    }
-}
-
-/**
- * Reduz uma imagem para no máximo `larguraMax` pixels de largura e devolve
- * um data URI. Mantém a proporção e não amplia imagens já pequenas.
- *
- * Existe porque o projeto não usa Firebase Storage: a logo vive dentro do
- * documento de dados, e uma imagem em tamanho original estouraria o limite
- * de 1 MB por documento sozinha.
- */
-function _reduzirImagemParaDataUri(file, larguraMax) {
-    return new Promise((resolve, reject) => {
-        const leitor = new FileReader();
-        leitor.onerror = () => reject(new Error('não foi possível ler o arquivo'));
-        leitor.onload = () => {
-            const img = new Image();
-            img.onerror = () => reject(new Error('arquivo não é uma imagem válida'));
-            img.onload = () => {
-                const escala  = Math.min(1, larguraMax / img.width);
-                const largura = Math.round(img.width  * escala);
-                const altura  = Math.round(img.height * escala);
-
-                const canvas = document.createElement('canvas');
-                canvas.width = largura;
-                canvas.height = altura;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, largura, altura);
-
-                // PNG preserva transparência, que logo costuma ter; se ficar
-                // grande demais, cai para JPEG com fundo branco.
-                let saida = canvas.toDataURL('image/png');
-                if (saida.length > 120 * 1024) {
-                    ctx.globalCompositeOperation = 'destination-over';
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, largura, altura);
-                    saida = canvas.toDataURL('image/jpeg', 0.85);
-                }
-                resolve(saida);
-            };
-            img.src = leitor.result;
-        };
-        leitor.readAsDataURL(file);
-    });
-}
-
-async function pdfRemoverLogo() {
-    if (!exigirPapel("admin", "Remover a logo do PDF")) return;
-    const empresa = _pdfEmpresaAtiva();
-    if (!db.configRelatorio) db.configRelatorio = {};
-    const logos = Object.assign({}, db.configRelatorio.logos || {});
-    delete logos[empresa];
-    delete logos[_chaveLogoEmpresa(empresa)];
-    db.configRelatorio = Object.assign({}, db.configRelatorio, { logos });
-
-    _pdfAtualizarPrevia(null, empresa);
-    await _salvarEConfirmar('Logo removida');
-}
-
-function _pdfAtualizarPrevia(urlOuBase64, empresa) {
-    const preview     = document.getElementById('pdfLogoPreview');
-    const placeholder = document.getElementById('pdfLogoPlaceholder');
-    const btnRemover  = document.getElementById('pdfLogoBtnRemover');
-    const labelEmpresa = document.getElementById('pdfLogoEmpresaLabel');
-
-    if (labelEmpresa) labelEmpresa.textContent = empresa ? `Logo — ${empresa}` : 'Logo';
-
-    if (urlOuBase64) {
-        if (preview)     { preview.src = urlOuBase64; preview.style.display = 'block'; }
-        if (placeholder) placeholder.style.display = 'none';
-        if (btnRemover)  btnRemover.style.display = 'inline-flex';
-    } else {
-        if (preview)     { preview.src = ''; preview.style.display = 'none'; }
-        if (placeholder) placeholder.style.display = 'flex';
-        if (btnRemover)  btnRemover.style.display = 'none';
-    }
-}
+/* A logo no PDF saiu em 21/09/2026, a pedido do dono. Com ela saíram
+   `_pdfEmpresaAtiva`, `pdfCarregarLogo`, `_reduzirImagemParaDataUri`,
+   `pdfRemoverLogo` e `_pdfAtualizarPrevia`, que só existiam para ela. As
+   logos já gravadas ficam em `db.configRelatorio.logos` sem serem lidas;
+   não apago para não mexer no documento compartilhado sem o dono pedir. */
 
 async function salvarConfigPDF() {
     if (!exigirPapel("admin", "Salvar as configurações de PDF")) return;
     db.configRelatorio = Object.assign({}, db.configRelatorio || {});
 
-    db.configRelatorio.titulo           = document.getElementById('pdfTitulo')?.value || 'Controle de Entradas de Combustível';
     db.configRelatorio.orientacao       = document.getElementById('pdfOrientacao')?.value || 'landscape';
-    db.configRelatorio.fonte            = document.getElementById('pdfFonte')?.value || 'helvetica';
-    db.configRelatorio.corDestaque      = document.getElementById('pdfCorDestaque')?.value || '#1a3a5c';
-    db.configRelatorio.margemEsq        = parseFloat(document.getElementById('pdfMargemEsq')?.value) || 14;
-    db.configRelatorio.margemDir        = parseFloat(document.getElementById('pdfMargemDir')?.value) || 14;
-    db.configRelatorio.margemTopo       = parseFloat(document.getElementById('pdfMargemTopo')?.value) || 14;
-    db.configRelatorio.margemRodape     = parseFloat(document.getElementById('pdfMargemRodape')?.value) || 10;
     db.configRelatorio.mostrarBase      = document.getElementById('pdfMostrarBase')?.checked ?? true;
     db.configRelatorio.mostrarEmpresa   = document.getElementById('pdfMostrarEmpresa')?.checked ?? true;
     db.configRelatorio.mostrarMotorista = document.getElementById('pdfMostrarMotorista')?.checked ?? true;
     db.configRelatorio.mostrarPlaca     = document.getElementById('pdfMostrarPlaca')?.checked ?? true;
     db.configRelatorio.quebrarPorMes    = document.getElementById('pdfQuebrarPorMes')?.checked ?? false;
-    db.configRelatorio.rodapeTexto      = document.getElementById('pdfRodapeTexto')?.value || '';
-    // logo já salvo ao carregar via pdfCarregarLogo()
 
     await _salvarEConfirmar('Configurações de PDF salvas');
 }
 
 function carregarConfiguracoesTela() {
     const cfg = Object.assign({
-        titulo: "Controle de Entradas de Combustível",
-        logo: null,
         orientacao: "landscape",
-        fonte: "helvetica",
-        corDestaque: "#1a3a5c",
-        margemEsq: 14, margemDir: 14, margemTopo: 14, margemRodape: 10,
         mostrarBase: true, mostrarEmpresa: true, mostrarMotorista: true, mostrarPlaca: true,
-        quebrarPorMes: false,
-        rodapeTexto: ""
+        quebrarPorMes: false
     }, db.configRelatorio || {});
 
     const f = (id, val) => {
@@ -911,39 +769,21 @@ function carregarConfiguracoesTela() {
         else el.value = val;
     };
 
-    f('pdfTitulo',           cfg.titulo);
     f('pdfOrientacao',       cfg.orientacao);
-    f('pdfFonte',            cfg.fonte);
-    f('pdfCorDestaque',      cfg.corDestaque);
-    f('pdfMargemEsq',        cfg.margemEsq);
-    f('pdfMargemDir',        cfg.margemDir);
-    f('pdfMargemTopo',       cfg.margemTopo);
-    f('pdfMargemRodape',     cfg.margemRodape);
     f('pdfMostrarBase',      cfg.mostrarBase);
     f('pdfMostrarEmpresa',   cfg.mostrarEmpresa);
     f('pdfMostrarMotorista', cfg.mostrarMotorista);
     f('pdfMostrarPlaca',     cfg.mostrarPlaca);
     f('pdfQuebrarPorMes',    cfg.quebrarPorMes);
-    f('pdfRodapeTexto',      cfg.rodapeTexto);
-
-    // Logo: atualiza prévia com logo da empresa ativa
-    const empresa = _pdfEmpresaAtiva();
-    const logoEmpresa = logoDaEmpresa(empresa);
-    // Fallback: logo global legada em base64
-    const logoSrc = logoEmpresa?.url || cfg.logo || null;
-    _pdfAtualizarPrevia(logoSrc, empresa);
-
 }
 
-
-
 /* ========== NAVEGAÇÃO PARA LANÇAMENTO ==========
-   irParaLancamento — função canônica definida em ui.js.
-   (removida daqui para evitar conflito de versões — ui.js vence por ser carregado depois)
+   irParaLancamento, função canônica definida em ui.js.
+   (removida daqui para evitar conflito de versões, ui.js vence por ser carregado depois)
 */
 
 /* ========================================
-   CONFERÊNCIA — AUTOSYSTEM
+   CONFERÊNCIA: AUTOSYSTEM
 ======================================== */
 let _confAbaAtiva = 'autosystem';
 
@@ -1018,7 +858,7 @@ function _autoAcharColuna(cabecalho, rotulo) {
  * eram substitu\u00eddos quando a c\u00e9lula do cabe\u00e7alho fosse exatamente `data` e
  * exatamente `entrada`. Com qualquer varia\u00e7\u00e3o de r\u00f3tulo, o sistema
  * comparava os lan\u00e7amentos contra a quarta coluna do arquivo sem nunca ter
- * confirmado que ela era a coluna de litros \u2014 e sem dizer nada. Agora,
+ * confirmado que ela era a coluna de litros, e sem dizer nada. Agora,
  * quando n\u00e3o d\u00e1 para identificar as duas colunas, o processamento para e o
  * operador \u00e9 avisado.
  */
@@ -1166,7 +1006,7 @@ function _autosystemRenderizarConferencia() {
         <div class="conf-origem">
             Lendo a data da coluna <strong>${escapeHtml(_autoColunas.data || '?')}</strong>
             e os litros da coluna <strong>${escapeHtml(_autoColunas.entrada || '?')}</strong>
-            do arquivo — ${_autoLinhasDados.length} dia(s).
+            do arquivo: ${_autoLinhasDados.length} dia(s).
             ${_autoIgnoradas ? `<strong class="texto-aviso">${_autoIgnoradas} linha(s) com data ilegível ficaram de fora.</strong>` : ''}
         </div>
         <div id="_autoTabelaContainer"></div>`;
@@ -1228,7 +1068,7 @@ function _autosystemAtualizarTabela() {
         ${resumo}
         <p class="dica mb-2">
             Confere as <strong>notas lançadas</strong> contra o que o AutoSystem mediu, dia a dia pela <strong>data da descarga</strong> e com os <strong>litros descarregados</strong>.
-            Nota faltando ou lançada duas vezes aparece aqui — e nota a mais é frete pago a mais. O frete, esse, é calculado sobre a <strong>carga</strong> da nota.
+            Nota faltando ou lançada duas vezes aparece aqui, e nota a mais é frete pago a mais. O frete, esse, é calculado sobre a <strong>carga</strong> da nota.
             Clique num dia para ver as notas que o formam.
             ${Math.abs(diffTotal)>1
                 ? `<strong class="texto-perigo">Divergência de ${fmtL3(Math.abs(diffTotal))} no total do período.</strong>`
@@ -1263,7 +1103,7 @@ function _autosystemAtualizarTabela() {
 /* ── AS NOTAS DO DIA DIVERGENTE (18/09/2026) ───────────────────────
    A tela dizia "12/03: 340 L de diferença" e parava aí: quem conferia não
    sabia qual das notas do dia estava errada. Agora o dia abre a lista das
-   notas que o formam, com placa, motorista, carga e descarga — o
+   notas que o formam, com placa, motorista, carga e descarga. O
    candidato a erro de digitação costuma saltar aos olhos. Nada é
    gravado: continua sendo conferência, não controle de estoque. */
 function _autoAlternarNotasDoDia(tr, data, comb) {

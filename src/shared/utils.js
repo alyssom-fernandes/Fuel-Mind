@@ -16,13 +16,13 @@ function escapeHtml(str) {
 
 /**
  * Escapa um valor para uso seguro dentro de um argumento de string simples
- * em um atributo `onclick="fn('...')"` — o caso mais comum no projeto.
+ * em um atributo `onclick="fn('...')"`, o caso mais comum no projeto.
  *
  * Duas camadas são necessárias: primeiro escapar barra invertida e aspas
  * simples (para não fechar a string JS antes da hora), depois aplicar
  * escapeHtml (para não fechar o próprio atributo HTML, delimitado por
- * aspas duplas). Fazer só a primeira camada — como `str.replace(/'/g,"\\'")`,
- * padrão usado em vários pontos do projeto — não impede que um valor com `"`
+ * aspas duplas). Fazer só a primeira camada (como `str.replace(/'/g,"\\'")`,
+ * padrão usado em vários pontos do projeto) não impede que um valor com `"`
  * quebre o atributo.
  */
 function escapeJsAttr(str) {
@@ -36,13 +36,13 @@ function escapeJsAttr(str) {
  * quando informada (reflete perdas reais de descarga), senão a carga bruta
  * da nota.
  *
- * Vive em utils.js — carregado antes de todos os módulos — para que
+ * Vive em utils.js (carregado antes de todos os módulos) para que
  * Dashboard, Analítico, Relatórios, Histórico e a busca global nunca
  * divirjam no total de litros de um mesmo período.
  *
  * ATENÇÃO: use apenas para AGREGAR volume. Preço unitário (R$/L) continua
  * baseado na carga da nota (`item.qtd`), que é a quantidade efetivamente
- * faturada — dividir o valor pela quantidade descarregada inflaria o preço.
+ * faturada: dividir o valor pela quantidade descarregada inflaria o preço.
  */
 function _litrosItem(i) {
     return (i.qtdDescargada > 0 ? i.qtdDescargada : i.qtd) || 0;
@@ -52,7 +52,7 @@ function _litrosItem(i) {
    Até 17/09/2026 toda tabela sem dado dizia "Sem dados." em itálico
    cinza, e paravam aí. Para uma empresa nova, ou no primeiro dia de um
    operador, a primeira coisa que ele via era uma frase morta. Agora o
-   vazio diz o motivo provável e oferece o próximo passo — que é o padrão
+   vazio diz o motivo provável e oferece o próximo passo, que é o padrão
    que as ferramentas boas usam e que as pesquisas desta rodada apontaram
    como o mais elogiado em estado vazio.
 
@@ -81,7 +81,7 @@ function linhaTabelaVazia(colunas, titulo, motivo, acao) {
  * Valores: ausente (ativo), `'excluido'` (o operador apagou; reversível
  * pelo botão Restaurar) e `'cancelado'` (a NF-e foi cancelada na origem;
  * não é revertida pelo operador). Os dois saem de litros, custo médio,
- * frete, KPIs, referência de preço e exportações — a diferença está na
+ * frete, KPIs, referência de preço e exportações: a diferença está na
  * visibilidade e no caminho de volta, não na aritmética.
  *
  * Vive em utils.js, ao lado de `_litrosItem`, pelo mesmo motivo: é
@@ -94,13 +94,13 @@ function lancamentoAtivo(l) {
 
 /* ── O PREÇO POR LITRO, NUM LUGAR SÓ ────────────────────────────────
    Decisão do dono em 17/09/2026, depois da rodada 12 (cinco pesquisas
-   lidas): o número principal das telas é o **preço médio de compra** —
+   lidas): o número principal das telas é o **preço médio de compra**:
    valor pago dividido pelos litros FATURADOS na nota. É o preço que o
    fornecedor cobrou, e é completo: entra toda nota.
 
    O custo por litro RECEBIDO (com a perda de trânsito embutida) é outra
    pergunta, e só existe onde alguém mediu a descarga. Ele vem ao lado,
-   dizendo em quantos itens se apoia — na base de demonstração isso é um
+   dizendo em quantos itens se apoia: na base de demonstração isso é um
    item em cada cinco, e uma métrica assim no lugar de destaque daria a
    impressão de cobrir tudo.
 
@@ -162,7 +162,7 @@ function textoCustoRecebido(m) {
 /**
  * Uma nota tem duas datas, e cada uma responde a uma pergunta diferente.
  * Rodada 11, decisão do dono (16/09/2026): não dá para pôr uma só como base
- * de tudo — depende do contexto.
+ * de tudo: depende do contexto.
  *
  * - DESCARGA: quando o combustível entrou nos tanques. É a base de VOLUME:
  *   Fretes (pagos pelo que foi transportado na competência), Conferência com
@@ -173,7 +173,7 @@ function textoCustoRecebido(m) {
  *
  * A regra que organiza as telas: uma tela ou um bloco usa UMA base só, e diz
  * qual. Misturar as duas no mesmo número produz coisa que não é de nota
- * nenhuma — o custo médio de agosto com os reais da emissão e os litros da
+ * nenhuma: o custo médio de agosto com os reais da emissão e os litros da
  * descarga dava R$ 5,7232/L no modo demo, contra R$ 5,8102 e R$ 5,8256 das
  * bases puras.
  *
@@ -218,7 +218,7 @@ function _ultimoDiaDoMesISO(iso) {
  * 16/09 compara com 01/08 a 16/08, e o mês inteiro com o mês inteiro (o dia
  * final é limitado ao tamanho do mês). Fora isso, o mesmo número de dias
  * logo antes do início. Antes, a variação dos blocos por combustível
- * comparava sempre com o mês anterior a HOJE — com agosto escolhido em
+ * comparava sempre com o mês anterior a HOJE: com agosto escolhido em
  * setembro, comparava agosto com agosto.
  */
 function _periodoAnterior(inicio, fim) {
@@ -238,14 +238,14 @@ function _periodoAnterior(inicio, fim) {
 /**
  * Taxa de frete (R$/litro) de um registro de empresa, normalizada.
  *
- * A taxa é atributo da empresa contratante — não do combustível
+ * A taxa é atributo da empresa contratante, não do combustível
  * transportado. Valor ausente, inválido ou negativo vira 0, para que o
  * cálculo de frete nunca produza NaN nem valor negativo.
  *
  * `_taxaFreteDaEmpresa(empresa)` devolve a taxa DE HOJE. Para calcular
  * frete de um mês passado use `_taxaFreteDaEmpresaNaData(empresa, iso)`:
  * até 17/09/2026 a taxa era um valor único, e mudá-la reescrevia em
- * silêncio todos os meses já pagos — nada de frete é gravado, a tela
+ * silêncio todos os meses já pagos: nada de frete é gravado, a tela
  * recalcula tudo a cada abertura. Agora cada mudança fecha a vigência
  * anterior e abre outra, do mesmo jeito que a composição de um conjunto
  * de veículos já fazia.
@@ -264,7 +264,7 @@ function _taxaFreteDaEmpresaNaData(empresa, iso) {
         return isFinite(t) && t > 0 ? t : 0;
     }
     // Data anterior a toda vigência registrada: a mais antiga é a melhor
-    // aproximação do que se cobrava então — e é o que o sistema mostrava
+    // aproximação do que se cobrava então, e é o que o sistema mostrava
     // antes de existir histórico.
     const maisAntiga = [...hist].sort((a, b) => String(a.vigenciaDe || "").localeCompare(String(b.vigenciaDe || "")))[0];
     const t = Number(maisAntiga && maisAntiga.taxa);
@@ -279,7 +279,7 @@ function _taxaFreteDaEmpresa(empresa) {
 // ========== CORES PARA GRÁFICOS (CHART.JS) ==========
 /* As cores das séries saem das variáveis do tema, como o resto do site.
    `success`, `warning` e `info` estavam escritas à mão com os valores do
-   tema ESCURO, e ficavam assim também no claro — onde o CSS define tons
+   tema ESCURO, e ficavam assim também no claro, onde o CSS define tons
    mais escuros justamente porque os vivos não se leem sobre branco. A
    linha "Litros descarregados" do Dashboard saía no verde do tema escuro
    ao lado de ícones no verde do claro. (21/09/2026) */
@@ -335,11 +335,11 @@ function _compacto(v) {
 function fmtEixoR(v) { return "R$ " + _compacto(v); }
 function fmtEixoL(v) { return _compacto(v) + " L"; }
 
-/* Reais por litro — preço, taxa de frete, frete por litro. Três casas,
+/* Reais por litro: preço, taxa de frete, frete por litro. Três casas,
    como a bomba mostra (R$ 5,899); valor em reais fica com duas (`fmtR`).
    Era `fmtR4`, com quatro, até 18/09/2026, a pedido do dono: "não precisam
    de tantos dígitos". A digitação do preço continua aceitando quatro, que é
-   como a NF-e traz — arredondar na entrada mudaria o total da nota. */
+   como a NF-e traz: arredondar na entrada mudaria o total da nota. */
 function fmtRL(v) {
     return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:3, maximumFractionDigits:3 });
 }
@@ -384,7 +384,7 @@ function imprimirAreaDeImpressao() {
  *
  * Aceita "1234,5", "1.234,56", "1234.5", "R$ 1.234,56" e "1 234,56".
  * Quando há vírgula, ela é o separador decimal e os pontos são milhar.
- * Quando só há pontos, decide por heurística de tamanho — a mesma que a
+ * Quando só há pontos, decide por heurística de tamanho, a mesma que a
  * importação de planilha já usava desde antes deste tema.
  *
  * **Nunca devolve zero para entrada que não entendeu.** Devolve `null`,
@@ -400,12 +400,12 @@ function parseNumeroBR(valor) {
 
     let s = String(valor ?? "")
         .replace(/R\$/gi, "")
-        // Tira espaço, espaço inquebrável e espaço fino — que aparecem como
+        // Tira espaço, espaço inquebrável e espaço fino, que aparecem como
         // separador de milhar. **Não** tira tabulação nem quebra de linha:
         // essas são separador de CÉLULA. Enquanto `\s` levava as duas
         // embora, colar duas células do Excel ("60000" + tab + "5,234")
         // virava "600005,234", passava no teste de número válido logo
-        // abaixo e era escrito no campo já formatado como 600.005,234 —
+        // abaixo e era escrito no campo já formatado como 600.005,234,
         // plausível e cem vezes errado.
         .replace(/[ \u00A0\u202F]/g, "")
         .trim();
@@ -466,7 +466,7 @@ function fmtNumeroEdicao(n, casas) {
 
 /**
  * Número como fica depois de editado: com separador de milhar e casas
- * fixas. Sem unidade e sem cifrão — eles ficam no rótulo, nunca dentro
+ * fixas. Sem unidade e sem cifrão: eles ficam no rótulo, nunca dentro
  * do campo, senão o próprio parser teria de removê-los depois.
  */
 function fmtNumeroExibicao(n, casas) {
@@ -524,8 +524,8 @@ function preencherSelect(idSelect, itens, textoPadrao) {
 }
 
 // ========== CÉLULA DE CSV ==========
-/* Uma célula de CSV exportado. Aspas internas são dobradas — antes um nome
-   com aspas deslocava as colunas seguintes — e texto que começa com = + - @
+/* Uma célula de CSV exportado. Aspas internas são dobradas (antes um nome
+   com aspas deslocava as colunas seguintes) e texto que começa com = + - @
    ganha um apóstrofo na frente, para o Excel não o executar como fórmula
    (um cadastro "=HYPERLINK(...)" virava link que vazava dado ao abrir o
    arquivo). Número continua número. */
@@ -536,23 +536,10 @@ function _celulaCSV(cell) {
     return `"${t.replace(/"/g, '""')}"`;
 }
 
-// ========== LOGO DO PDF POR EMPRESA ==========
-/* A logo é guardada pelo id da empresa. Era pelo nome, e um rename fazia o
-   PDF sair sem logo, com a imagem antiga ocupando espaço sem jeito de
-   remover. Logos antigas, pelo nome, continuam sendo lidas. */
-function _chaveLogoEmpresa(nome) {
-    return (typeof db !== "undefined" && (db.empresas || []).find(e => e.nome === nome)?.id) || nome;
-}
-
-function logoDaEmpresa(nome) {
-    const logos = (typeof db !== "undefined" && db.configRelatorio && db.configRelatorio.logos) || {};
-    return logos[_chaveLogoEmpresa(nome)] || logos[nome] || null;
-}
-
 // ========== CONFIGURAÇÕES DE ALERTAS (compartilhado) ==========
 /* A configuração é do sistema, igual para todos: vive em `db.configAlertas`,
    que vai para o documento compartilhado junto dos cadastros. Até 16/09/2026
-   ela ficava no `localStorage` de cada navegador — duas pessoas olhando o
+   ela ficava no `localStorage` de cada navegador: duas pessoas olhando o
    mesmo Dashboard podiam ver alertas diferentes, e o lançamento nem a lia.
    Só admin e supremo alteram (a regra do Firestore garante no servidor). */
 const ALERTAS_CONFIG_PADRAO = {
@@ -595,7 +582,7 @@ function salvarConfigAlertas(cfg) {
    - Basta uma nota para haver referência (decisão do dono, tema 06).
    - Diferença em reais por litro, para cima ou para baixo (configurável,
      padrão R$ 0,25/L). Alerta quando a diferença é maior ou igual ao
-     limite, comparada em quatro casas — a precisão do preço — para que
+     limite, comparada em quatro casas (a precisão do preço) para que
      R$ 6,25 contra R$ 6,00 seja 0,25 e não 0,2499999. */
 function referenciaPrecoCombustivel(nomeCombustivel, fimISO, idIgnorar, empresa) {
     // A régua é sempre da empresa da nota; a ativa só serve de padrão.
@@ -644,7 +631,7 @@ function julgarPreco(valor, mediana) {
 /* ── MOTOR DE FRETE (extraído em 18/09/2026) ────────────────────────
    Até aqui a conta do frete morava dentro de `calcularEExibirFretes`,
    que lia o mês de um campo da tela, dependia das globais `db` e
-   `empresaFiltroGlobal` e terminava desenhando quatro tabelas — não havia
+   `empresaFiltroGlobal` e terminava desenhando quatro tabelas: não havia
    como chamá-la com dados e conferir o resultado. Agora a conta é esta
    função, sem DOM e sem global: recebe as notas e as duas funções de
    que depende (achar a empresa da nota e o conjunto da placa na data) e
@@ -762,7 +749,7 @@ function calcularFretesDoMes(opts) {
 /* ── UMA COR POR COMBUSTÍVEL, EM TODA TELA (18/09/2026) ─────────────
    Cada gráfico sorteava a própria cor: o Diesel S10 era vermelho numa
    pizza e azul na evolução de preços. O padrão que as ferramentas de
-   painel elogiadas seguem (Tremor, por exemplo) é o contrário — a mesma
+   painel elogiadas seguem (Tremor, por exemplo) é o contrário: a mesma
    categoria tem a mesma cor em todo lugar, e o olho aprende uma vez.
 
    A cor segue a ORDEM do cadastro de combustíveis, então não muda de um
@@ -785,7 +772,7 @@ function corDoCombustivel(nome) {
 /* ── COMPARAÇÃO COM O PERÍODO ANTERIOR, NO PRÓPRIO NÚMERO ───────────
    "Isso é bom ou ruim?" é a pergunta de quem olha um total, e o Stripe
    responde no mesmo card: número, seta e variação. `inverter` é para os
-   números em que subir é ruim (gasto, preço, frete) — a cor segue o
+   números em que subir é ruim (gasto, preço, frete): a cor segue o
    sentido do dinheiro, não da seta. */
 function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
     if (!(anterior > 0) || !isFinite(atual)) return "";
@@ -800,7 +787,7 @@ function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
 
 /* ── BIBLIOTECAS SÓ QUANDO USADAS (18/09/2026) ──────────────────────
    A planilha (SheetJS) e o PDF (jsPDF e o plugin de tabela) vinham no
-   <head> de toda abertura — inclusive para quem só lança nota, que é o
+   <head> de toda abertura, inclusive para quem só lança nota, que é o
    uso de todo dia e não exporta nada. Agora elas são pedidas quando a
    pessoa entra numa tela que exporta ou lê planilha (Relatórios, Fretes,
    Grupo, Conferências, Sistema) e, por garantia, no próprio clique. O
@@ -837,7 +824,7 @@ function garantirBiblioteca(nome) {
    Toda planilha saía sem largura de coluna (nomes cortados, "####" nos
    valores) e sem formato de número (117460,2 em vez de 117.460,20). Em vez
    de mexer em cada uma das nove exportações, a gravação passa por aqui:
-   cada aba ganha largura pelo conteúdo e formato pelo cabeçalho da coluna —
+   cada aba ganha largura pelo conteúdo e formato pelo cabeçalho da coluna:
    reais com 2 casas, litros com 3 (inteiros sem casas), preço e taxa por
    litro com 3. A célula continua NÚMERO: soma e ordena no Excel. */
 function ajustarPlanilha(ws) {
@@ -916,8 +903,8 @@ function ignorarAlerta(chave) {
 }
 
 // ========== LINKS DIRETOS PARA LANÇAMENTOS ==========
-// irParaLancamento — função canônica definida em ui.js.
-// (removida daqui para evitar conflito de versões — a última declaração no HTML vencia)
+// irParaLancamento: função canônica definida em ui.js.
+// (removida daqui para evitar conflito de versões: a última declaração no HTML vencia)
 
 // ========== TOAST (referência; implementação em navegacao.js) ==========
 // A função mostrarToast está em navegacao.js para evitar duplicação.
