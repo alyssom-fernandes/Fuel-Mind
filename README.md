@@ -11,7 +11,6 @@
 - Multiple fuel types per entry
 - Automatic Mercosul plate conversion
 - Cargo / unload quantity with loss badge
-- Attachments via Firebase Storage (PDF, images)
 - Clone and edit with full audit log
 
 ### 📊 Reports & Analytics
@@ -65,7 +64,6 @@
 | Frontend | Vanilla JS (ES6+), HTML5, CSS3 |
 | Backend / DB | Firebase Firestore (real-time) |
 | Auth | Firebase Authentication |
-| Storage | Firebase Storage (attachments & logos) |
 | Charts | Chart.js 4 |
 | PDF | jsPDF + jsPDF-AutoTable |
 | Excel | SheetJS (XLSX) |
@@ -88,7 +86,6 @@ cd fuel-mind
 2. Create a project (Analytics optional)
 3. Enable **Firestore Database** (production mode)
 4. Enable **Authentication** → Email/Password
-5. Enable **Storage**
 
 ### 3. Configure Firebase
 Copy your project config and replace in `firebase.js`:
@@ -153,20 +150,39 @@ npx serve .
 ```
 fuel-mind/
 ├── index.html          # Single-page app shell + all modals
-├── style.css           # Design system (dark/light, CSS variables)
-├── firebase.js         # Firebase init + all DB/Auth/Storage methods
-├── app.js              # Auth flow, DB load/save, real-time listener
-├── utils.js            # Formatting, spinners, toast, chart colors
-├── ui.js               # Sidebar, header, search, keyboard shortcuts
-├── cadastros.js        # CRUD for drivers, vehicles, companies, fuels, bases, sets
-├── lancamentos.js      # Entry form, XML import, save/edit/clone/delete
-├── relatorios.js       # Reports table, filters, pagination, exports
-├── analitico.js        # Analytics tabs + Chart.js graphs
-├── dashboard.js        # Dashboard KPIs, alerts, per-fuel breakdown
+├── 404.html            # Custom error page
+├── style.css           # Design system (light/dark, CSS variables)
+│
+├── firebase.js         # Firebase init + DB and Auth methods
+├── sessao.js           # Login, roles and active company
+├── dados.js            # In-memory database state
+├── sincronizacao.js    # Writes, offline queue and real-time
+├── erros.js            # Failure log
+├── navegacao.js        # Screen switching
+├── tema.js             # Light/dark theme and brand color
+├── backup.js           # Backup and restore
+│
+├── ui.js               # Sidebar, header, search, shortcuts
+├── combobox.js         # Autocomplete field
+├── numerico.js         # pt-BR number input
+├── validacao.js        # Form validation
+├── utils.js            # Formatting, toasts, chart colors
+│
+├── lancamentos.js      # Entry form, NF-e XML, save/edit/clone
+├── rascunho.js         # Form draft memory
+├── cadastros.js        # Drivers, vehicles, companies, fuels, bases, vehicle sets
+├── relatorios.js       # Table, filters, pagination and exports
+├── analitico.js        # Analytics tabs + charts
+├── dashboard.js        # KPIs, alerts and per-fuel breakdown
 ├── fretes.js           # Freight calculation and export
-├── sistema.js          # Backup, import, PDF config, AutoSystem conference
-├── importacao.js       # Spreadsheet import with multi-format detection
-├── usuarios.js         # User management and permissions
+├── grupo.js            # Company comparison
+├── sistema.js          # Backup, PDF settings and reconciliation
+├── importacao.js       # Spreadsheet import with format detection
+├── usuarios.js         # Users and permissions
+├── demo.js             # Demo mode
+│
+├── tests/              # Tests (node --test)
+├── firestore.rules     # Firestore security rules
 └── firebase.json       # Firebase Hosting config
 ```
 

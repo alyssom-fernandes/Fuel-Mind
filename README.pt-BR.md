@@ -11,7 +11,6 @@
 - Múltiplos tipos de combustível por lançamento
 - Conversão automática de placas para o formato Mercosul
 - Quantidade carga / descarga com badge de perda
-- Anexos via Firebase Storage (PDF, imagens)
 - Clonar e editar com log de auditoria completo
 
 ### 📊 Relatórios e Exportação
@@ -65,7 +64,6 @@
 | Frontend | Vanilla JS (ES6+), HTML5, CSS3 |
 | Backend / DB | Firebase Firestore (tempo real) |
 | Auth | Firebase Authentication |
-| Storage | Firebase Storage (anexos e logos) |
 | Gráficos | Chart.js 4 |
 | PDF | jsPDF + jsPDF-AutoTable |
 | Excel | SheetJS (XLSX) |
@@ -88,7 +86,6 @@ cd fuel-mind
 2. Crie um projeto (Analytics opcional)
 3. Habilite **Firestore Database** (modo produção)
 4. Habilite **Authentication** → E-mail/Senha
-5. Habilite **Storage**
 
 ### 3. Configure o Firebase
 Copie a configuração do seu projeto e substitua em `firebase.js`:
@@ -153,20 +150,39 @@ npx serve .
 ```
 fuel-mind/
 ├── index.html          # Shell do app (SPA) + todos os modais
-├── style.css           # Design system (dark/light, variáveis CSS)
-├── firebase.js         # Inicialização + todos os métodos DB/Auth/Storage
-├── app.js              # Fluxo de auth, carregamento/salvamento do DB, listener em tempo real
-├── utils.js            # Formatação, spinners, toast, cores dos gráficos
-├── ui.js               # Sidebar, header, busca, atalhos de teclado
-├── cadastros.js        # CRUD de motoristas, veículos, empresas, combustíveis, bases, conjuntos
-├── lancamentos.js      # Formulário de lançamento, importação XML, salvar/editar/clonar/excluir
-├── relatorios.js       # Tabela de relatórios, filtros, paginação, exportações
-├── analitico.js        # Abas analítico + gráficos Chart.js
-├── dashboard.js        # KPIs do dashboard, alertas, detalhamento por combustível
+├── 404.html            # Página de erro própria
+├── style.css           # Design system (claro/escuro, variáveis CSS)
+│
+├── firebase.js         # Inicialização do Firebase + métodos de DB e Auth
+├── sessao.js           # Login, papéis e empresa ativa
+├── dados.js            # Estado do banco em memória
+├── sincronizacao.js    # Gravação, fila offline e tempo real
+├── erros.js            # Registro de falhas
+├── navegacao.js        # Troca de telas
+├── tema.js             # Tema claro/escuro e cor da marca
+├── backup.js           # Backup e restauração
+│
+├── ui.js               # Barra lateral, cabeçalho, busca, atalhos
+├── combobox.js         # Campo com sugestões
+├── numerico.js         # Entrada de números em pt-BR
+├── validacao.js        # Validação dos formulários
+├── utils.js            # Formatação, avisos, cores dos gráficos
+│
+├── lancamentos.js      # Formulário de lançamento, XML da NF-e, salvar/editar/clonar
+├── rascunho.js         # Memória do formulário
+├── cadastros.js        # Motoristas, veículos, empresas, combustíveis, bases, conjuntos
+├── relatorios.js       # Tabela, filtros, paginação e exportações
+├── analitico.js        # Abas do analítico + gráficos
+├── dashboard.js        # Números, alertas e detalhamento por combustível
 ├── fretes.js           # Cálculo e exportação de fretes
-├── sistema.js          # Backup, importação, config PDF, conferência AutoSystem
-├── importacao.js       # Importação de planilhas com detecção de múltiplos formatos
-├── usuarios.js         # Gerenciamento de usuários e permissões
+├── grupo.js            # Comparativo entre as empresas
+├── sistema.js          # Backup, config do PDF e conferência
+├── importacao.js       # Importação de planilhas com detecção de formato
+├── usuarios.js         # Usuários e permissões
+├── demo.js             # Modo demonstração
+│
+├── tests/              # Testes (node --test)
+├── firestore.rules     # Regras de segurança do Firestore
 └── firebase.json       # Configuração do Firebase Hosting
 ```
 
