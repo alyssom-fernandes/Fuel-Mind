@@ -124,7 +124,7 @@ function carregarGrupo() {
             <div class="kpi-card roxo">
                 <div class="kpi-valor">${fmtR(soma.frete)}</div>
                 <div class="kpi-label">Frete do Grupo</div>
-                <div class="kpi-base">pela descarga · ${soma.litrosFrete > 0 ? fmtRL(soma.frete / soma.litrosFrete) : "—"}/L</div>
+                <div class="kpi-base">pela descarga · ${soma.litrosFrete > 0 ? fmtFreteL(soma.frete / soma.litrosFrete) : "—"}/L</div>
             </div>
         </div>
 
@@ -151,7 +151,7 @@ function carregarGrupo() {
                     <td>${fmtR(x.gasto)}</td>
                     <td>${x.precoCompra > 0 ? fmtRL(x.precoCompra) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
-                    <td>${x.fretePorLitro > 0 ? fmtRL(x.fretePorLitro) : "—"}</td>
+                    <td>${x.fretePorLitro > 0 ? fmtFreteL(x.fretePorLitro) : "—"}</td>
                 </tr>`).join("")}
             </tbody>
             <tfoot><tr>
@@ -241,7 +241,7 @@ function exportarGrupoExcel() {
     ];
     linhas.forEach(x => aoa.push([
         x.empresa, x.notasDescarga, Number(x.litros.toFixed(3)), Number(x.gasto.toFixed(2)),
-        Number(x.precoCompra.toFixed(4)), Number(x.frete.toFixed(2)), Number(x.fretePorLitro.toFixed(4))
+        Number(x.precoCompra.toFixed(4)), Number(x.frete.toFixed(2)), Number(x.fretePorLitro.toFixed(2))
     ]));
     const soma = linhas.reduce((a, x) => ({
         notas: a.notas + x.notasDescarga, litros: a.litros + x.litros,

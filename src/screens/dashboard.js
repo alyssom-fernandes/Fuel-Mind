@@ -222,7 +222,7 @@ function carregarDashboard() {
             <div class="kpi-base">pela data da descarga</div>
             ${htmlVariacao(totalLitros, litrosAnt, rotAnt, false)}
         </div>
-        <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Relatório com este mesmo período, que lá também é pela emissão.">
+        <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Histórico com este mesmo período, que lá também é pela emissão.">
             <div class="kpi-valor">${fmtR(compra.gasto)}</div>
             <div class="kpi-label">Gasto em Compras</div>
             <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
@@ -238,7 +238,7 @@ function carregarDashboard() {
         <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
             <div class="kpi-valor">${fmtR(frete.total)}</div>
             <div class="kpi-label">Frete do Período</div>
-            <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtRL(frete.porLitro)}/L` : ''}</div>
+            <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtFreteL(frete.porLitro)}/L` : ''}</div>
             ${htmlVariacao(frete.total, freteAnt.total, rotAnt, true)}
             ${frete.semTaxa ? `<div class="kpi-base kpi-base--alerta">${frete.semTaxa} nota(s) sem taxa</div>` : ''}
         </div>
@@ -764,6 +764,59 @@ function renderComparativoMeses() {
     }
 }
 
+/* ── DO DASHBOARD PARA O ANALÍTICO (22/09/2026) ─────────────────────
+   Dois blocos desta tela refazem, em miniatura, o que o Analítico mostra
+   por inteiro: a pizza "Gasto por combustível" é a mesma pergunta da aba
+   Distribuição, e a tabela de "Mês a mês" tem as mesmas colunas da aba
+   Mensal.
+
+   Isso não é defeito: um painel inicial existe justamente para dar a
+   prévia. O defeito era o silêncio. Os cinco cartões de cima dizem para
+   onde levam ("Abre Fretes", "Abre o Histórico") e são clicáveis; estes
+   dois não diziam nada, então a versão completa ficava escondida de quem
+   não soubesse de cor que o Analítico existe.
+
+   O período vai junto, e é lido no momento do CLIQUE, não na montagem do
+   bloco: quem troca as datas do Dashboard sem recarregar a tela levaria
+   um período velho, e o link viraria uma pegadinha, com números que não
+   batem com os que a pessoa acabou de ver.
+
+   `mesesFixos` existe para o "Mês a mês", que aqui não obedece ao filtro
+   da tela: é sempre uma janela dos últimos seis meses, e é essa janela
+   que precisa atravessar. */
+async function _dashVerNoAnalitico(aba, mesesFixos) {
+    let inicio = document.getElementById("dashInicio")?.value || "";
+    let fim    = document.getElementById("dashFim")?.value || "";
+    if (mesesFixos) {
+        const hoje = new Date();
+        const de = new Date(hoje.getFullYear(), hoje.getMonth() - (mesesFixos - 1), 1);
+        inicio = _isoLocal(de);
+        fim    = _isoLocal(hoje);
+    }
+    await mostrarTela("analitico");
+    if (document.getElementById("analitico")?.style.display !== "block") return;
+    const elI = document.getElementById("analiticoInicio");
+    const elF = document.getElementById("analiticoFim");
+    if (elI && inicio) elI.value = inicio;
+    if (elF && fim)    elF.value = fim;
+    if (typeof carregarAnalitico === "function") carregarAnalitico();
+    /* A aba depois da carga: `carregarAnalitico` redesenha o conteúdo, e
+       trocar antes deixaria a aba certa marcada com o conteúdo da que
+       estava aberta. */
+    const btn = document.querySelector(`#analiticoAbas .aba-btn[data-aba="${aba}"]`);
+    if (btn && typeof trocarAba === "function") trocarAba(aba, btn);
+}
+
+/** O link discreto que acompanha um bloco de prévia. */
+function _dashLinkAnalitico(aba, texto, mesesFixos) {
+    const arg = mesesFixos ? `, ${Number(mesesFixos)}` : "";
+    return `<button type="button" class="dash-ver-completo"
+        onclick="_dashVerNoAnalitico('${aba}'${arg})"
+        title="Abre o Analítico nesta mesma leitura, com o período que está aqui">${escapeHtml(texto)}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+    </button>`;
+}
+
 function renderGraficoPizzaDashboard(lancamentosMes) {
     // Se não foi passado o array, usa o período do mês atual como fallback
     if (!lancamentosMes) {
@@ -810,7 +863,10 @@ function renderGraficoPizzaDashboard(lancamentosMes) {
     pizzaContainer.id = 'graficoPizzaDashboard';
     pizzaContainer.className = 'mt-7';
     pizzaContainer.innerHTML = `
-        <h3>Gasto por combustível <small class="titulo-nota">· no período, pela data de emissão</small></h3>
+        <div class="dash-bloco-cabecalho">
+            <h3>Gasto por combustível <small class="titulo-nota">· no período, pela data de emissão</small></h3>
+            ${_dashLinkAnalitico("distribuicao", "Ver no Analítico")}
+        </div>
         <div class="distribuicao-cartao">
             <div class="distribuicao-grafico">
                 <canvas id="canvasPizzaDash"></canvas>

@@ -103,8 +103,21 @@
   </button>
 </div>
   <nav class="sidebar-nav">
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Principal</div>
+
+    <!-- OS GRUPOS SEM ROTULO (22/09/2026, segunda sessao).
+         Os quatro rotulos sairam, e o agrupamento ficou. A medicao que
+         decidiu: eles tinham 8,12px de fonte e 3,51:1 de contraste, abaixo
+         do minimo de texto pequeno, e custavam 20% da altura do menu. Nao
+         eram landmark de leitor de tela nenhum, porque eram DIV solta: o
+         beneficio de acessibilidade que justificaria o custo nao existia.
+         E um deles, "Relatorios", tinha virado o nome de um item dentro do
+         proprio grupo.
+         O `aria-label` de cada secao entrega ao leitor de tela o
+         agrupamento que ele nunca teve, sem nada aparecer na tela.
+         O espaco que separa os grupos e o proprio `.sidebar-divider`, agora
+         sem risco: e o "top level spacer" que a Atlassian recomenda no
+         lugar do divisor. -->
+    <div class="sidebar-section" role="group" aria-label="O dia a dia: lancar, conferir, acompanhar e procurar uma nota">
       <button class="sidebar-item" id="nav-dashboard" onclick="mostrarTela('dashboard')">
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
         <span class="sidebar-item-label">Dashboard</span>
@@ -113,11 +126,18 @@
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
         <span class="sidebar-item-label">Lançamentos</span>
       </button>
+      <button class="sidebar-item" id="nav-conferencia" onclick="mostrarTela('conferencia')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="sidebar-item-label">Conferências</span>
+      </button>
+      <button class="sidebar-item" id="nav-relatorios" onclick="mostrarTela('relatorios')">
+        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3,21 3,15 9,15"/></svg></span>
+        <span class="sidebar-item-label">Histórico</span>
+      </button>
     </div>
     <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Relatórios</div>
-      <button class="sidebar-item" id="nav-relatorios" onclick="mostrarTela('relatorios')">
+    <div class="sidebar-section" role="group" aria-label="O que se tira do sistema: documentos, analise e frete">
+      <button class="sidebar-item" id="nav-central" onclick="mostrarTela('central')">
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
         <span class="sidebar-item-label">Relatórios</span>
       </button>
@@ -125,14 +145,6 @@
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
         <span class="sidebar-item-label">Analítico</span>
       </button>
-      <button class="sidebar-item" id="nav-conferencia" onclick="mostrarTela('conferencia')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
-        <span class="sidebar-item-label">Conferências</span>
-      </button>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Operacional</div>
       <button class="sidebar-item" id="nav-fretes" onclick="mostrarTela('fretes')">
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
         <span class="sidebar-item-label">Fretes</span>
@@ -143,8 +155,7 @@
       </button>
     </div>
     <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Configurações</div>
+    <div class="sidebar-section" role="group" aria-label="Ajustes do sistema">
       <button class="sidebar-item" id="nav-cadastros" onclick="mostrarTela('cadastros')">
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         <span class="sidebar-item-label">Cadastros</span>
@@ -199,7 +210,16 @@
   <div id="alertasDashboard" class="alertas-container"></div>
   <h3 class="mt-7">Por combustível <small class="titulo-nota">· no período</small></h3>
   <div id="dashCombustiveisContainer" class="dash-combs-wrapper"></div>
-  <h3 class="mt-7">Mês a mês <small class="titulo-nota">· últimos 6 meses</small></h3>
+  <!-- O link para o Analítico: este bloco tem as mesmas colunas da aba
+       Mensal de lá, numa janela fixa de seis meses. Sem ele, a versão
+       completa e com período livre ficava escondida (22/09/2026). -->
+  <div class="dash-bloco-cabecalho">
+    <h3 class="mt-7">Mês a mês <small class="titulo-nota">· últimos 6 meses</small></h3>
+    <button type="button" class="dash-ver-completo" onclick="_dashVerNoAnalitico('mensal', 6)"
+            title="Abre o Analítico na aba Mensal, com estes mesmos seis meses">Ver no Analítico
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+    </button>
+  </div>
   <div id="dashComparativoContainer"></div>
   <h3 class="mt-7">Últimas entradas <small class="titulo-nota">· pela data da descarga</small></h3>
   <!-- Sem a coluna Empresa: é sempre a empresa ativa. A linha abre o
@@ -209,11 +229,6 @@
       <thead><tr><th>Emissão</th><th>Descarga</th><th>Nota</th><th>Base</th><th>Motorista</th><th>Placa</th><th class="celula-num">Litros</th><th class="celula-num">Total</th><th class="no-print"><span class="sr-only">Abrir</span></th></tr></thead>
       <tbody id="ultimasEntradasBody"></tbody>
     </table>
-  </div>
-  <div id="painelDetalhesDashboard" class="painel-detalhes" style="display:none">
-    <h3>Detalhes da entrada</h3>
-    <div id="conteudoDetalhesDashboard"></div>
-    <button class="btn-secundario" onclick="fecharDetalhes('dashboard')">Fechar</button>
   </div>
 </div>
 
@@ -341,7 +356,8 @@
   <div id="freteHistoricoContainer" class="mb-6"></div>
   <div class="barra-exportacao" id="fretesBarraExportacao">
     <span class="exportacao-titulo">Exportar:</span>
-    <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: resumo de fretes, frete nota a nota e as notas do mês pela emissão.">Fechamento do mês</button>
+    <button class="btn-export btn-pdf" onclick="abrirFechamentoPDF()" title="O fechamento completo em PDF: resumo do mês, por empresa, por conjunto, por motorista, por placa e nota a nota. Você escolhe quais empresas entram.">Fechamento em PDF</button>
+    <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: resumo de fretes, frete nota a nota e as notas do mês pela emissão.">Fechamento em Excel</button>
     <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma, para anexar na resposta a um transportador.">Nota a nota</button>
     <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
     <button class="btn-export btn-pdf" onclick="exportarFretesPDF()">PDF</button>
@@ -360,7 +376,7 @@
   </div>
   <div id="frete-aba-motoristas" class="aba-conteudo" style="display:none">
     <h3>Resumo por motorista</h3>
-    <div class="tabela-container"><table class="tabela-numeros tabela-fretes"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
+    <div class="tabela-container"><table class="tabela-numeros tabela-fretes"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete</th><th>A pagar</th></tr></thead><tbody id="tabelaFreteMotoristas"></tbody></table></div>
   </div>
   <div id="frete-aba-empresas" class="aba-conteudo" style="display:none">
     <h3>Resumo por empresa</h3>
@@ -373,12 +389,41 @@
   </div>
 </div>
 
-<!-- RELATÓRIOS -->
+<!-- CENTRAL DE RELATÓRIOS -->
+<div id="central" class="tela">
+  <h2 id="tituloCentral">Relatórios</h2>
+  <p class="dica">Tudo que o sistema emite, em um lugar só. Escolha o mês e clique no formato: o arquivo é gerado aqui mesmo, sem sair desta tela. O link ao lado leva à tela de origem, no mesmo mês, para quem quiser conferir os números antes de emitir.</p>
+  <div class="barra-filtros">
+    <div class="barra-filtros-campos">
+      <div class="campo">
+        <label for="centralMes">Mês de referência</label>
+        <input type="month" id="centralMes" class="campo-mes" onchange="centralTrocarMes()">
+      </div>
+    </div>
+    <div class="barra-filtros-rodape">
+      <div class="barra-filtros-grupo">
+        <span class="filtros-rapidos-sep">Atalhos:</span>
+        <button class="btn-filtro-rapido" onclick="centralMesRapido('mes')">Este mês</button>
+        <button class="btn-filtro-rapido" onclick="centralMesRapido('mes_anterior')">Mês anterior</button>
+      </div>
+    </div>
+  </div>
+  <div id="centralLista" class="central-lista"></div>
+</div>
+
+<!-- HISTÓRICO DE LANÇAMENTOS (chave interna `relatorios`, que 8 arquivos
+     citam; 22/09/2026 mudou o rótulo, não a chave) -->
 <div id="relatorios" class="tela">
-  <h2 id="tituloRelatorios">Relatórios</h2>
+  <h2 id="tituloRelatorios">Histórico de lançamentos</h2>
   <div class="filtros">
-      <div class="campo"><label for="filtroDataInicio" title="O período do relatório é pela data de emissão da nota: é o valor da compra naquela data.">Emissão de</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
-      <div class="campo"><label for="filtroDataFim" title="O período do relatório é pela data de emissão da nota: é o valor da compra naquela data.">Emissão até</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDataInicio" title="A emissão é a data da compra: é dela que sai o valor da nota.">Emissão de</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDataFim" title="A emissão é a data da compra: é dela que sai o valor da nota.">Emissão até</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
+      <!-- Os dois campos de descarga entraram em 22/09/2026, a pedido do dono:
+           a operação dele gira em torno da descarga, e ela é a base do frete.
+           Somam-se aos de emissão em vez de substituí-los, e os dois juntos
+           valem ao mesmo tempo: é assim que se acha a nota da fronteira. -->
+      <div class="campo"><label for="filtroDescargaInicio" title="A descarga é a data em que o produto entrou no tanque: é dela que sai o frete.">Descarga de</label><input type="date" id="filtroDescargaInicio" onchange="carregarRelatorio()"></div>
+      <div class="campo"><label for="filtroDescargaFim" title="A descarga é a data em que o produto entrou no tanque: é dela que sai o frete.">Descarga até</label><input type="date" id="filtroDescargaFim" onchange="carregarRelatorio()"></div>
       <div class="campo"><label for="filtroMotorista">Motorista</label><select id="filtroMotorista" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
       <div class="campo"><label for="filtroPlaca">Placa</label><select id="filtroPlaca" onchange="carregarRelatorio()"><option value="">Todas</option></select></div>
       <div class="campo"><label for="filtroCombustivel">Combustível</label><select id="filtroCombustivel" onchange="carregarRelatorio()"><option value="">Todos</option></select></div>
@@ -399,6 +444,14 @@
           <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes')">Este mês</button>
           <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','mes_anterior')">Mês anterior</button>
           <button class="btn-filtro-rapido" onclick="filtroRapido('relatorio','ano')">Este ano</button>
+          <!-- Com dois pares de datas, o atalho precisa dizer em qual deles
+               escreve. Sem isto ele preencheria sempre a emissão, e quem
+               trabalha pela descarga não teria atalho nenhum. -->
+          <span class="filtros-rapidos-sep">aplicar em</span>
+          <div class="segmentado segmentado--mini" role="group" aria-label="O período rápido preenche qual par de datas">
+            <button class="btn-metrica ativo" id="btnAlvoEmissao" onclick="relatorioAlvoPeriodo('emissao')">Emissão</button>
+            <button class="btn-metrica" id="btnAlvoDescarga" onclick="relatorioAlvoPeriodo('descarga')">Descarga</button>
+          </div>
         </div>
         <div class="barra-filtros-grupo">
           <button class="btn-secundario" onclick="limparFiltros()">Limpar</button>
@@ -477,9 +530,8 @@
       <button class="aba-btn" data-aba="motoristas" onclick="trocarAba('motoristas', this)">Por motorista</button>
       <button class="aba-btn" data-aba="veiculos" onclick="trocarAba('veiculos', this)">Por veículo</button>
       <button class="aba-btn" data-aba="combustivel" onclick="trocarAba('combustivel', this)">Por combustível</button>
-      <button class="aba-btn" data-aba="comparativo" onclick="trocarAba('comparativo', this)">Comparativo</button>
       <button class="aba-btn" data-aba="distribuicao" onclick="trocarAba('distribuicao', this)">Distribuição</button>
-      <button class="aba-btn" data-aba="evolucaoPrecos" onclick="trocarAba('evolucaoPrecos', this)">Evolução de preços</button>
+      <button class="aba-btn" data-aba="evolucaoPrecos" onclick="trocarAba('evolucaoPrecos', this)">Preços</button>
     </div>
     <div id="aba-mensal" class="aba-conteudo">
       <h3>Resumo mensal</h3>
@@ -515,16 +567,6 @@
       </button></div>
       <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Combustível</th><th>Notas</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>Mín / máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
     </div>
-    <div id="aba-comparativo" class="aba-conteudo" style="display:none">
-      <h3>Custo médio mês a mês</h3>
-      <p class="dica">Evolução do custo médio por litro ao longo dos meses.</p>
-      <div class="grafico-wrapper"><canvas id="graficoComparativo" height="300"></canvas></div>
-      <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
-      <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('comparativo')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
-      </button></div>
-      <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Mês</th><th>Preço médio/L</th><th>vs. mês anterior</th><th>Litros</th><th>Gasto</th></tr></thead><tbody id="tabelaComparativo"></tbody></table></div>
-    </div>
     <div id="aba-distribuicao" class="aba-conteudo" style="display:none">
       <h3>Distribuição <small class="titulo-nota">· no período, pela data de emissão</small></h3>
       <!-- Anel com a lista de valores ao lado, como no Dashboard. -->
@@ -547,9 +589,17 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
     </div>
+    <!-- A aba "Comparativo" foi absorvida aqui em 22/09/2026. Ela era o
+         MESMO grafico desta: uma linha de preco por litro ao longo dos
+         meses, so que a media geral em vez de uma linha por combustivel.
+         Num grafico de linhas, somar o total as series por tipo e o
+         desenho natural, e evita a pergunta "em qual das duas abas mora a
+         tendencia de preco". A tabela que ela tinha saiu: repetia as
+         mesmas cinco colunas da aba Mensal. -->
     <div id="aba-evolucaoPrecos" class="aba-conteudo" style="display:none">
-      <h3>Evolução de preços por combustível</h3>
-      <p class="dica">Preço médio de compra por litro, mês a mês, média <strong>ponderada</strong> pelos litros faturados, não média simples das notas.</p>
+      <h3>Preços por litro, mês a mês</h3>
+      <p class="dica">Preço médio de compra por litro, mês a mês, média <strong>ponderada</strong> pelos litros faturados, não média simples das notas. A linha tracejada é a <strong>média geral</strong>; as demais, um combustível cada. Clique numa da legenda para ver só ela.</p>
+      <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
       <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
@@ -755,6 +805,9 @@
     <button class="aba-btn" onclick="trocarAbaCadastro('conjuntos', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Conjuntos
     </button>
+    <button class="aba-btn" data-papel="admin" onclick="trocarAbaCadastro('importar', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Importar frota
+    </button>
   </div>
   <div id="cad-empresas" class="aba-conteudo">
     <h3>Empresas</h3>
@@ -762,9 +815,10 @@
       <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" class="flex-2">
       <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município/UF (ex: São Paulo, SP)" class="flex-1">
       <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="Frete R$/L">
+      <input id="pctMotoristaEmpresa" aria-label="Pagamento ao motorista em percentual do frete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="% motorista">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
-    <p class="dica dica--colada">A taxa de frete é o valor pago por litro transportado para a empresa e pode ser ajustada depois em Editar.</p>
+    <p class="dica dica--colada">A taxa de frete é o valor pago por litro transportado para a empresa. O percentual do motorista é a fatia desse frete que vai para quem rodou a nota; em branco, vale 1%. Os dois podem ser ajustados depois em Editar.</p>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaEmpresas"></ul>
   </div>
@@ -810,6 +864,46 @@
     </div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosConjuntos" onchange="renderizarConjuntos()"> Mostrar inativos</label></div>
     <ul id="listaConjuntos" class="lista-limpa mt-3"></ul>
+  </div>
+  <div id="cad-importar" class="aba-conteudo" style="display:none">
+    <h3>Importar cadastros de uma planilha</h3>
+    <p class="dica">Cadastra veículos, motoristas, conjuntos e bases de uma vez. Nada é gravado antes de você conferir a prévia e confirmar, e o que já existe não é alterado.</p>
+    <div class="form-linha">
+      <input type="file" id="cadImportarArquivo" aria-label="Planilha de cadastros" accept=".xlsx,.xls" onchange="cadImportarLerArquivo(this)" class="input-arquivo">
+    </div>
+    <details class="mt-3">
+      <summary class="rel-chip">Como a planilha precisa estar</summary>
+      <div class="tabela-container mt-2">
+        <table class="tabela-numeros">
+          <thead><tr><th>Aba</th><th>Colunas que o sistema lê</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Veiculos</strong></td><td>PLACA · PLACA ANTIGA</td></tr>
+            <tr><td><strong>Motoristas</strong></td><td>NOME · APELIDOS</td></tr>
+            <tr><td><strong>Conjuntos</strong></td><td>CONJUNTO · PLACA 1 · PLACA 2 · PLACA 3</td></tr>
+            <tr><td><strong>Bases</strong></td><td>NOME · APELIDOS</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="dica mt-2">Qualquer outra coluna é ignorada, então dá para deixar marca, modelo e observações na planilha para conferir. A ordem das linhas não importa, e uma aba que faltar só deixa de ser importada. <strong>APELIDOS</strong> é opcional e entra só na busca: quem digita "BMAD" encontra a base de Madre de Deus.</p>
+    </details>
+    <div id="cadImportarResultado" class="mt-4" style="display:none"></div>
+  </div>
+</div>
+
+<!-- MODAL DO FECHAMENTO -->
+<div id="fechamentoModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharFechamentoModal()">
+  <div class="modal modal--medio" role="dialog" aria-labelledby="fechamentoTitulo">
+    <div class="modal-cabecalho modal-cabecalho--colado">
+      <h3 id="fechamentoTitulo">Fechamento em PDF</h3>
+      <button class="modal-fechar" onclick="fecharFechamentoModal()" aria-label="Fechar" title="Fechar">✕</button>
+    </div>
+    <p class="modal-subtitulo" id="fechamentoSubtitulo"></p>
+    <div id="fechamentoEmpresasLista" class="pilha"></div>
+    <p class="dica mt-2">O documento traz o resumo do mês, o corte por empresa, por conjunto, por motorista, por placa e a lista nota a nota. Os valores aparecem separados por empresa e somados.</p>
+    <div class="linha-acoes mt-3">
+      <button class="btn-primario" onclick="confirmarFechamentoPDF()">Gerar PDF</button>
+      <button class="btn-secundario" onclick="fecharFechamentoModal()">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -901,8 +995,11 @@
     <div class="campo mt-3" id="modalCampoMunicipioWrapper" style="display:none">
       <label for="modalInputMunicipio">Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
       <label for="modalInputTaxaFrete" class="mt-3">Taxa de frete (R$/litro)</label>
-      <input id="modalInputTaxaFrete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="0,0000">
+      <input id="modalInputTaxaFrete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="0,00">
       <p class="dica mt-1">Valor pago por litro transportado para esta empresa.</p>
+      <label for="modalInputPctMotorista" class="mt-3">Pagamento ao motorista (% do frete)</label>
+      <input id="modalInputPctMotorista" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="1,00">
+      <p class="dica mt-1">Quanto do frete vai para o motorista que rodou a nota. Com 1% e taxa de R$ 0,10/L, dá R$ 1,00 por mil litros transportados.</p>
     </div>
     <div class="campo mt-3" id="modalCampoPerdaWrapper" style="display:none">
       <label for="modalInputPerda">Perda tolerada (%)</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
@@ -957,6 +1054,7 @@
 <script src="src/core/navegacao.js"></script>
 <script src="src/core/backup.js"></script>
 <script src="src/screens/cadastros.js"></script>
+<script src="src/screens/cadastros-importar.js"></script>
 <script src="src/shared/numerico.js"></script>
 <script src="src/shared/combobox.js"></script>
 <script src="src/shared/rascunho.js"></script>
@@ -966,7 +1064,11 @@
 <script src="src/screens/analitico.js"></script>
 <script src="src/screens/dashboard.js"></script>
 <script src="src/screens/fretes.js"></script>
+<script src="src/screens/fechamento.js"></script>
 <script src="src/screens/grupo.js"></script>
+<!-- A central vem DEPOIS das telas que ela dispara: ela só chama por nome,
+     em tempo de clique, mas manter a ordem deixa a dependência à vista. -->
+<script src="src/screens/central.js"></script>
 <script src="src/screens/sistema.js"></script>
 <script src="src/screens/importacao.js"></script>
 <script src="src/screens/usuarios.js"></script>

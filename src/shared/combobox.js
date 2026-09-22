@@ -201,7 +201,16 @@ function _fmAbrir(est) {
                 const alvo = est.opts.normalizarValor
                     ? est.opts.normalizarValor(i.nome)
                     : i.nome;
-                const textoNorm = normalizarTexto(alvo);
+                // Os apelidos entram na busca como palavras a mais do
+                // próprio item (22/09/2026). A base da Raízen em Madre de
+                // Deus é "BMAD" para quem lança a nota há anos; renomeá-la
+                // pela cidade deixaria a equipe digitando um nome que o
+                // sistema não conhece e, pior, oferecendo "+ Cadastrar
+                // bmad", que vira base duplicada numa correria.
+                // Só a BUSCA usa os apelidos; a lista continua mostrando o
+                // nome, com o apelido em cinza ao lado.
+                const textoNorm = normalizarTexto(alvo)
+                    + (i.apelidos ? " " + normalizarTexto(i.apelidos) : "");
                 const tokensItem = textoNorm.split(/\s+/).filter(Boolean);
                 return {
                     item: i,
@@ -235,7 +244,15 @@ function _fmAbrir(est) {
         html += `<li class="fm-combo-cabecalho" role="presentation">${escapeHtml(cabecalho)}</li>`;
     }
     html += itens.map((i, idx) => {
-        const extra = i.municipio ? ` <span class="fm-combo-extra">${escapeHtml(i.municipio)}</span>` : '';
+        // O texto secundário: município na empresa e, no veículo, a placa
+        // antiga. Quem tem a nota na mão lê "OMQ 8276" e o cadastro guarda
+        // "OMQ8C76", que é a Mercosul equivalente; sem essa segunda linha a
+        // pessoa digita a placa certa, vê uma que não reconhece e hesita
+        // (22/09/2026). A busca já casava os dois formatos.
+        const segundo = i.municipio
+            || (i.placaAntiga ? `antiga ${i.placaAntiga}` : '')
+            || i.apelidos || '';
+        const extra = segundo ? ` <span class="fm-combo-extra">${escapeHtml(segundo)}</span>` : '';
         return `<li class="fm-combo-item" role="option" aria-selected="false"
                     id="${est.lista.id}-opt-${idx}" data-idx="${idx}">${escapeHtml(i.nome)}${extra}</li>`;
     }).join('');

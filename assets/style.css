@@ -246,13 +246,6 @@ body {
 
 .sidebar-nav { flex: 1; padding: 10px 0; }
 .sidebar-section { padding: 0 10px; margin-bottom: 2px; }
-.sidebar-section-label {
-    font-size: 0.58rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.14em;
-    color: rgba(255,255,255,0.38);
-    padding: 12px 8px 5px;
-    white-space: nowrap;
-}
 .sidebar-item {
     display: flex; align-items: center; gap: 11px;
     padding: 9px 12px;
@@ -289,7 +282,11 @@ body {
 .sidebar-item.ativo .sidebar-item-icon { opacity: 1; }
 .sidebar-item svg { width: 17px; height: 17px; }
 .sidebar-item-label { overflow: hidden; text-overflow: ellipsis; }
-.sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 6px 14px; }
+/* Separa os grupos por ESPACO, sem risco (22/09/2026). A linha saiu junto
+   com os rotulos: com quatro riscos e quatro titulos, o menu tinha mais
+   moldura do que conteudo. O nome da classe fica, porque e citado no HTML
+   e trocar so renomearia a mesma coisa. */
+.sidebar-divider { height: 16px; }
 /* ── MAIN AREA ── */
 .main-area {
     margin-left: var(--sidebar-width);
@@ -1048,6 +1045,10 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
        Os ícones das tabelas ficam em 28 px e já passam: a densidade delas,
        escolhida em 18/09, não muda. (21/09/2026) */
     .btn-export, .segmentado button, .btn-metrica, .demo-dica button { min-height: 32px; }
+    /* Os dois links de saida criados em 22/09 caiam em 22 px de altura,
+       o mesmo problema dos tres acima: "Ver no Analitico" no Dashboard e
+       "Ver em Fretes" no cartao da central. */
+    .dash-ver-completo, .central-card-abrir { min-height: 32px; }
 }
 
 /* ══════════════════════════════════════════════
@@ -1209,8 +1210,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 /* Ícone da logo usa --primary-subtle para seguir a cor primária */
 [data-theme="light"] .sidebar-logo-icon { background: var(--primary-subtle); }
 [data-theme="light"] .sidebar-logo-icon svg { stroke: var(--primary); }
-[data-theme="light"] .sidebar-section-label { color: #94a3b8; }
-[data-theme="light"] .sidebar-divider { background: #e2e8f0; }
 [data-theme="light"] .sidebar-item { color: #334155; }
 [data-theme="light"] .sidebar-item:hover { background: #f1f5f9; color: #0f172a; }
 [data-theme="light"] .sidebar-item:hover .sidebar-item-icon svg { stroke: var(--primary); }
@@ -1352,7 +1351,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 .sidebar-item         { color: rgba(255,255,255,0.68); }
 .sidebar-item:hover   { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.93); }
-.sidebar-section-label { color: rgba(255,255,255,0.38); }
 .campo label          { color: var(--text-muted); font-size: 0.72rem; }
 
 /* =====================================================
@@ -2477,15 +2475,23 @@ button.confirmado-local::after {
 .alerta-comparativo--caiu  { background: var(--success-light); border-color: var(--success); color: var(--text); }
 
 /* Cadastros */
+/* O histórico virou `<details>` recolhido em 21/09/2026: aberto, empurrava
+   os campos do formulário para baixo e crescia sem limite. A rolagem
+   própria só vale depois de aberto. */
 .historico-cadastro {
     margin-top: var(--space-4); padding: var(--space-3) var(--space-4);
     background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius);
-    font-size: 0.78rem; color: var(--text-muted); max-height: 160px; overflow-y: auto;
+    font-size: 0.78rem; color: var(--text-muted);
 }
+.historico-cadastro[open] { max-height: 200px; overflow-y: auto; }
 .historico-cadastro-titulo {
     display: block; font-size: 0.63rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--text-light);
+    letter-spacing: 0.1em; color: var(--text-light); cursor: pointer; user-select: none;
 }
+.historico-cadastro[open] .historico-cadastro-titulo { margin-bottom: var(--space-2); color: var(--text-muted); }
+/* Mesmo tratamento no detalhe da nota. */
+.detalhe-obs--historico > summary { cursor: pointer; user-select: none; }
+.detalhe-obs--historico[open] > summary { margin-bottom: var(--space-2); }
 .vazio.vazio--conjuntos { padding: var(--space-3) !important; color: var(--text-muted); }
 /* O bloco de nome e placas não encolhia, então no celular um conjunto de
    três placas empurrava os ícones para uma segunda linha e a linha ficava
@@ -3208,3 +3214,169 @@ input[type="checkbox"], input[type="radio"] {
     .rel-kpis { grid-template-columns: 1fr 1fr; }
     .rel-kpi-valor { font-size: 1.05rem; }
 }
+
+/* ── ESCOLHA DE EMPRESAS DO FECHAMENTO (22/09/2026) ────────────────
+   Cada linha é clicável inteira, e não só a caixinha: a lista é curta e
+   o alvo pequeno de um checkbox é o erro mais comum num modal que decide
+   o conteúdo de um documento. */
+.fm-escolha {
+    display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+    padding: 11px 14px; border: 1px solid var(--border-light);
+    border-radius: var(--radius); background: var(--surface-alt);
+    transition: border-color 0.12s, background 0.12s;
+}
+.fm-escolha:hover { border-color: var(--primary); }
+.fm-escolha input { width: auto; margin: 2px 0 0; cursor: pointer; flex-shrink: 0; }
+.fm-escolha span { display: flex; flex-direction: column; gap: 2px; font-size: 0.875rem; }
+.fm-escolha em { font-style: normal; font-size: 0.78rem; color: var(--text-muted); }
+
+/* ── PRÉVIA DETALHADA DA IMPORTAÇÃO (22/09/2026) ───────────────────
+   A lista completa vive dentro de um <details>: fechada ela não empurra o
+   botão de confirmar para fora da tela, e aberta tem altura máxima com
+   rolagem própria, para 128 placas não virarem uma página de rolar. */
+.cad-imp-detalhe { margin-top: 10px; }
+.cad-imp-detalhe summary {
+    cursor: pointer; font-size: 0.82rem; color: var(--text-muted);
+    padding: 7px 0; user-select: none;
+}
+.cad-imp-detalhe summary:hover { color: var(--primary); }
+.cad-imp-itens {
+    max-height: 190px; overflow-y: auto;
+    background: var(--surface-alt); border: 1px solid var(--border-light);
+    border-radius: var(--radius); padding: 11px 14px; margin: 0;
+    font-size: 0.8rem; line-height: 2; word-break: break-word;
+}
+.cad-imp-itens em { font-style: normal; color: var(--text-muted); font-size: 0.74rem; }
+
+/* ── CENTRAL DE RELATÓRIOS (22/09/2026) ────────────────────────────
+   A lista do que o sistema emite. O desenho mudou no mesmo dia, depois de
+   o dono usar: o cartão era um botão gigante que abria outra tela, e os
+   formatos eram etiquetas miúdas no canto. O alvo grande fazia a coisa
+   fraca e o pequeno fazia a forte, então a página lia como um segundo
+   menu. Agora o cartão é só a descrição do documento, os botões de
+   formato são a ação, e "Ver em Fretes" é um link discreto no rodapé.
+
+   `auto-fill` com mínimo de 320px: em tela larga saem três colunas, no
+   celular uma, sem media query. */
+.central-lista {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+/* Sem `cursor: pointer` e sem `:hover` de elevação: o cartão não é mais
+   clicável, e fingir que é foi o defeito que esta versão corrige. */
+.central-card {
+    display: flex; flex-direction: column; gap: 9px;
+    background: var(--surface); border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+}
+/* A base de data subiu para o topo, ao lado do nome: ela qualifica o
+   documento, e no rodapé competia por atenção com os botões. */
+.central-card-topo {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+}
+.central-card-nome {
+    margin: 0; font-family: 'Syne', sans-serif; font-size: 0.98rem;
+    font-weight: 700; color: var(--text); letter-spacing: -0.01em;
+}
+.central-card-base {
+    font-size: 0.68rem; color: var(--text-muted); font-style: italic;
+    white-space: nowrap;
+}
+.central-card-linha {
+    margin: 0; font-size: 0.82rem; line-height: 1.55; color: var(--text-muted);
+}
+.central-card-rodape {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 6px;
+}
+.central-card-formatos { display: flex; gap: 7px; flex-wrap: wrap; }
+/* Os botões de formato agora são a ação principal, e têm o tamanho de
+   quem é: os mesmos 0.78rem dos botões do resto do sistema, não os
+   0.72rem de etiqueta que tinham quando eram secundários. */
+.central-card .central-formato { font-size: 0.78rem; padding: 6px 13px; }
+/* No celular a regra geral estica todo `.btn-export` a meia largura, para
+   a barra de exportação sair com dois por linha. Aqui isso empilhava PDF e
+   Excel um sobre o outro dentro do cartão. Mesma solução da barra de
+   filtros, que tem a mesma regra. */
+.central-card-formatos .btn-export { flex: 0 0 auto; }
+/* O link para a tela de origem: discreto em repouso, porque é a saída de
+   quem quer conferir antes de emitir, não a ação que a página oferece.
+   `--text-muted` e não `--primary`: o vinho da marca sobre a superfície
+   escura dá 2,46:1, abaixo do mínimo de texto pequeno mesmo sem nenhuma
+   transparência. */
+.central-card-abrir {
+    display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+    background: none; border: none; padding: 4px 0; margin-left: auto;
+    font-family: inherit; font-size: 0.74rem; font-weight: 600;
+    color: var(--text-muted); cursor: pointer; transition: color 0.14s;
+}
+.central-card-abrir svg { width: 13px; height: 13px; }
+.central-card-abrir:hover { color: var(--text); text-decoration: underline; }
+.central-card-abrir:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+
+/* O segmentado miúdo do alvo do período rápido, na barra de filtros do
+   histórico: o de tamanho normal empurraria os quatro atalhos para a
+   linha de baixo. */
+.segmentado--mini { padding: 2px; }
+.segmentado--mini button { padding: 3px 10px; font-size: 0.72rem; }
+
+@media (max-width: 480px) {
+    .central-lista { grid-template-columns: 1fr; }
+    .central-card { padding: 15px 16px; }
+    .central-card-abrir { margin-left: 0; }
+}
+
+/* ── O TÍTULO DO CABEÇALHO EM TELA MÉDIA (22/09/2026) ──────────────
+   Num notebook de 1024 px o título ficava com 7,8 px dos 248 de que
+   precisa: o nome da tela sumia por completo, em TODAS as telas, porque
+   `.header-actions` tem `flex-shrink: 0` e não cede nada. Sobrava a
+   reticência sozinha.
+
+   Achado ao conferir a renomeação de "Relatórios" para "Histórico", e é
+   por ela que deixou de ser cosmético: agora há duas telas de nome
+   parecido, o `<h2>` interno fica escondido de propósito, e esse título
+   é a única coisa na página que diz em qual das duas você está.
+
+   A dieta é a mesma que o celular já faz desde 21/09, começando antes:
+   o relógio (118 px, e a hora está no sistema operacional), o rótulo
+   "Empresa:" (48 px, o nome ao lado já se explica) e a tecla do Ctrl+K
+   (49 px, o atalho continua funcionando), e o "?" dos atalhos de teclado,
+   que o celular também já esconde. Libera 259 px sem tirar ação nenhuma de
+   ninguém: o Ctrl+K continua abrindo a busca e o "?" continua respondendo.
+
+   Os 259 px são o que faz "Histórico de lançamentos", o título mais longo
+   do sistema com 248 px, caber inteiro. Sem o "?" ele parava em
+   "Histórico de lançament…", que é onde o nome deixa de distinguir. */
+@media (max-width: 1200px) {
+    .header-datetime { display: none; }
+    .header-empresa-rotulo { display: none; }
+    .busca-kbd { display: none; }
+    .header-action-btn--atalhos { display: none; }
+}
+
+/* ── "VER NO ANALÍTICO" NOS BLOCOS DE PRÉVIA (22/09/2026) ──────────
+   Dois blocos do Dashboard repetem, em miniatura, o que o Analítico faz
+   por inteiro. O link fica na mesma linha do título, alinhado à direita,
+   discreto em repouso: é uma saída, não a ação do bloco.
+
+   `--text-muted` e não `--primary`: o vinho da marca sobre a superfície
+   escura dá 2,46:1, abaixo do mínimo de texto pequeno mesmo sem nenhuma
+   transparência. */
+.dash-bloco-cabecalho {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+}
+/* O `h3` dentro do cabeçalho já recebe a margem do bloco, então a dele
+   zera: com as duas, o título descolava do conteúdo que ele nomeia. */
+.dash-bloco-cabecalho h3 { margin-bottom: 0; }
+.dash-ver-completo {
+    display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+    background: none; border: none; padding: 4px 0;
+    font-family: inherit; font-size: 0.76rem; font-weight: 600;
+    color: var(--text-muted); cursor: pointer; transition: color 0.14s;
+}
+.dash-ver-completo svg { width: 13px; height: 13px; }
+.dash-ver-completo:hover { color: var(--text); text-decoration: underline; }
+.dash-ver-completo:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }

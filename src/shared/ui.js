@@ -10,7 +10,8 @@
 const TITULOS_TELAS = {
     dashboard:    "Dashboard",
     lancamentos:  "Lançamentos",
-    relatorios:   "Relatórios",
+    central:      "Relatórios",
+    relatorios:   "Histórico de lançamentos",
     analitico:    "Analítico",
     fretes:       "Fretes",
     grupo:        "Grupo",
@@ -115,7 +116,7 @@ window._uiNavHook = function(telaId) {
 
 /* ========== ABAS DOS CADASTROS UNIFICADOS ========== */
 function trocarAbaCadastro(aba, btnEl) {
-    ["motoristas","veiculos","empresas","combustiveis","bases","conjuntos"].forEach(a => {
+    ["motoristas","veiculos","empresas","combustiveis","bases","conjuntos","importar"].forEach(a => {
         const el = document.getElementById("cad-" + a);
         if (el) el.style.display = "none";
     });
@@ -292,7 +293,8 @@ function _comandosPaleta() {
         { rotulo: "Novo lançamento", palavras: "novo lancar lancamento nota entrada",
           acao: "mostrarTela('lancamentos')", disponivel: () => true },
         irPara("dashboard", "Ir para o Dashboard", "dashboard inicio visao geral painel"),
-        irPara("relatorios", "Ir para Relatórios", "relatorio relatorios notas lista"),
+        irPara("central", "Ir para Relatórios", "relatorio relatorios central emitir documento fechamento exportar"),
+        irPara("relatorios", "Ir para o Histórico de lançamentos", "historico lancamentos notas lista relatorio filtrar"),
         irPara("analitico", "Ir para o Analítico", "analitico graficos analise"),
         irPara("fretes", "Ir para Fretes", "frete fretes transportador"),
         irPara("grupo", "Comparar as empresas do grupo", "grupo empresas comparar consolidado"),
@@ -440,7 +442,7 @@ function _realizarBusca() {
     // Empresas
     if (empresas.length) {
         html += secao('Empresas', empresas.map(e =>
-            itemSimples(`_buscaAbrirFiltrado('empresa','${escapeJsAttr(e.nome)}'); fecharBuscaGlobal();`, escapeHtml(e.nome), 'Ver relatório →')).join(''));
+            itemSimples(`_buscaAbrirFiltrado('empresa','${escapeJsAttr(e.nome)}'); fecharBuscaGlobal();`, escapeHtml(e.nome), 'Ver histórico →')).join(''));
     }
 
     resultadosDiv.innerHTML = html;
@@ -527,7 +529,7 @@ const _ATALHOS = [
         ]
     },
     {
-        grupo: "Relatórios",
+        grupo: "Histórico de lançamentos",
         itens: [
             { teclas: ["Ctrl", "F"],   descricao: "Ir para a busca rápida" },
             { teclas: ["↓", "↑"], ou: true, descricao: "Percorrer as notas da tabela" },

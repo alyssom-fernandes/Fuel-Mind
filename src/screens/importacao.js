@@ -704,7 +704,7 @@ function importacaoProcessar() {
         const dataDescarga = importacaoNormalizarData(get("dataDescarga"));
         const numeroNota   = get("numeroNota").replace(/\./g,"").replace(/,/g,""); // remove pontos de milhar do NF
         const baseTxt      = get("base");
-        const base         = (db.bases || []).find(b => normalizarTexto(b.nome) === normalizarTexto(baseTxt))?.nome || baseTxt;
+        const base         = _cadastroPorNomeOuApelido(db.bases, baseTxt)?.nome || baseTxt;
         // Empresa pelo cadastro, sem acento e sem caixa: "TRANSPORTADORA X" é
         // o cadastro "Transportadora X". Empresa que não existe ou que quem importa
         // não acessa vira erro da linha. Antes a nota era aceita com um nome
@@ -716,7 +716,7 @@ function importacaoProcessar() {
             : empresaAtivaCad;
         const empresa      = empresaCad ? empresaCad.nome : "";
         const motoristaTxt = get("motorista");
-        const motorista    = (db.motoristas || []).find(m => normalizarTexto(m.nome) === normalizarTexto(motoristaTxt))?.nome || motoristaTxt;
+        const motorista    = _cadastroPorNomeOuApelido(db.motoristas, motoristaTxt)?.nome || motoristaTxt;
         const placaTxt     = get("placa").toUpperCase();
         const placa        = (db.veiculos || []).find(v => normalizarPlaca(v.nome) === normalizarPlaca(placaTxt))?.nome
                              || (placaTxt ? normalizarPlaca(placaTxt) : "");
@@ -1116,7 +1116,7 @@ async function importacaoConfirmar() {
                 <p><strong>${totalItens}</strong> item(ns) de combustível registrados.</p>
                 <div class="linha-acoes linha-acoes--centro mt-4">
 
-                    <button class="btn-primario" onclick="mostrarTela('relatorios')"> Ver Relatórios</button>
+                    <button class="btn-primario" onclick="mostrarTela('relatorios')"> Ver no histórico</button>
                     <button class="btn-secundario" onclick="importacaoReiniciar()"> Importar outro arquivo</button>
                 </div>
             </div>

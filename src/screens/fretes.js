@@ -59,20 +59,21 @@ function _taxaFreteGrupo(grupo) {
 /** Taxa do grupo formatada para as tabelas da tela. */
 function _fmtTaxaGrupo(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? fmtRL(taxa) : "—";
+    return taxa > 0 ? fmtFreteL(taxa) : "—";
 }
 
 /** Taxa do grupo como NÚMERO, para a célula da planilha somar e ordenar.
-    Vazio quando o grupo mistura taxas diferentes. */
+    Vazio quando o grupo mistura taxas diferentes.
+    Duas casas desde 22/09/2026, para a planilha dizer o mesmo que a tela. */
 function _taxaGrupoNum(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? Number(taxa.toFixed(4)) : "";
+    return taxa > 0 ? Number(taxa.toFixed(2)) : "";
 }
 
 /** Taxa do grupo com prefixo R$, para PDF e impressão. */
 function _taxaGrupoMoeda(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? fmtRL(taxa) : "—";
+    return taxa > 0 ? fmtFreteL(taxa) : "—";
 }
 
 /*=================================================
@@ -175,7 +176,7 @@ function renderFreteResumo() {
                 ${htmlVariacao(d.totalNotas, ant.totalNotas, rot, false)}
             </div>
             <div class="kpi-card roxo">
-                <div class="kpi-valor">${fmtRL(porLitro)}</div>
+                <div class="kpi-valor">${fmtFreteL(porLitro)}</div>
                 <div class="kpi-label">Frete por litro</div>
                 <div class="kpi-base">frete ÷ litros do mês</div>
                 ${htmlVariacao(porLitro, porLitroAnt, rot, true)}
@@ -195,7 +196,7 @@ function renderFreteResumo() {
  * tabelas têm larguras diferentes (Por Placa tem a coluna Conjunto a
  * mais). Sem isso as sublinhas caem sob os cabeçalhos errados.
  */
-function linhasDetalhes(detalhes, colunasNome = 2) {
+function linhasDetalhes(detalhes, colunasNome = 2, comPagamento = false) {
     // Bolinha na cor do combustível (a mesma dos gráficos) no lugar do "↳",
     // e as células de número pela classe: na tabela Por Placa a 2ª coluna
     // é texto, e a célula de litros da sublinha (que é a 2ª dela, por causa
@@ -206,6 +207,7 @@ function linhasDetalhes(detalhes, colunasNome = 2) {
             <td class="celula-num">${_fmtLitrosFrete(d.litros)}</td>
             <td class="celula-num"></td>
             <td class="celula-num">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
+            ${comPagamento ? `<td class="celula-num">${d.pagamento > 0 ? fmtR(d.pagamento) : "—"}</td>` : ""}
         </tr>
     `).join("");
 }
@@ -231,7 +233,7 @@ function renderAbaPlacas() {
 
     tbody.innerHTML = lista.map(p => `
         <tr class="linha-clicavel" onclick="_freteAbreRelatorio('placa', '${escapeJsAttr(p.nome)}')"
-            title="Ver as notas desta placa no Relatório">
+            title="Ver as notas desta placa no Histórico, pela data da descarga">
             <td><strong>${escapeHtml(p.nome)}</strong></td>
             <td class="celula-fraca">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
@@ -243,13 +245,25 @@ function renderAbaPlacas() {
     `).join("");
 }
 
+/* O `title` da célula: de onde saiu o número. Um motorista que rodou para
+   as duas empresas no mês tem duas regras somadas, e sem isso a conta na
+   calculadora não fecharia. */
+function _explicacaoPagamento(grupo) {
+    const pcts = [...(grupo.empresas || [])]
+        .map(nome => db.empresas.find(e => e.nome === nome))
+        .filter(Boolean)
+        .map(e => `${e.nome}: ${fmtPct(_percentualMotoristaDaEmpresa(e), 2)} do frete`);
+    return pcts.length ? "Pagamento ao motorista\n" + pcts.join("\n")
+                       : "Pagamento ao motorista, percentual do frete";
+}
+
 function renderAbaMotoristasFrete() {
     const tbody = document.getElementById("tabelaFreteMotoristas");
     if (!tbody || !dadosFretesAtual) return;
 
     const lista = dadosFretesAtual.porMotorista;
     if (lista.length === 0) {
-        tbody.innerHTML = linhaTabelaVazia(5, "Nenhuma descarga neste mês",
+        tbody.innerHTML = linhaTabelaVazia(6, "Nenhuma descarga neste mês",
             "O frete conta pela data da descarga: nenhuma nota foi descarregada no mês escolhido.",
             { texto: "Ver os lançamentos", onclick: "mostrarTela('relatorios')" });
         return;
@@ -257,14 +271,15 @@ function renderAbaMotoristasFrete() {
 
     tbody.innerHTML = lista.map(m => `
         <tr class="linha-clicavel" onclick="_freteAbreRelatorio('motorista', '${escapeJsAttr(m.nome)}')"
-            title="Ver as notas deste motorista no Relatório">
+            title="Ver as notas deste motorista no Histórico, pela data da descarga">
             <td><strong>${escapeHtml(m.nome)}</strong></td>
             <td>${m.viagens}</td>
             <td>${_fmtLitrosFrete(m.litros)}</td>
             <td>${_fmtTaxaGrupo(m)}</td>
             <td><strong>${fmtR(m.frete)}</strong></td>
+            <td title="${escapeHtml(_explicacaoPagamento(m))}">${m.pagamento > 0 ? fmtR(m.pagamento) : "—"}</td>
         </tr>
-        ${linhasDetalhes(m.detalhes)}
+        ${linhasDetalhes(m.detalhes, 1, true)}
     `).join("");
 }
 
@@ -274,7 +289,7 @@ function renderAbaEmpresasFrete() {
 
     const lista = dadosFretesAtual.porEmpresa;
     if (lista.length === 0) {
-        tbody.innerHTML = linhaTabelaVazia(5, "Nenhuma descarga neste mês",
+        tbody.innerHTML = linhaTabelaVazia(6, "Nenhuma descarga neste mês",
             "O frete conta pela data da descarga: nenhuma nota foi descarregada no mês escolhido.",
             { texto: "Ver os lançamentos", onclick: "mostrarTela('relatorios')" });
         return;
@@ -348,11 +363,22 @@ function trocarAbaFretes(nomeAba, botao) {
    deixar o operador achar que os dois recortes são o mesmo. */
 function _freteAbreRelatorio(campo, valor) {
     if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
-    const filtros = { ..._mesParaPeriodo(dadosFretesAtual.mes) };
+    /* O período vai no par da DESCARGA (22/09/2026), e isso apaga o aviso
+       que existia aqui.
+
+       Até ontem o Histórico só sabia recortar pela emissão, então este
+       clique entregava um mês PARECIDO com o dos Fretes e a função tinha
+       de avisar que a nota da virada podia não aparecer. Um aviso é o que
+       sobra quando a ferramenta não faz o que se precisa. Com o par da
+       descarga no Histórico, o recorte passa a ser o MESMO que gerou o
+       número clicado, e a lista fecha com o total de onde se saiu. */
+    const mes = dadosFretesAtual.mes;
+    const periodo = _mesParaPeriodo(mes);
+    const filtros = { descargaInicio: periodo.inicio, descargaFim: periodo.fim };
     filtros[campo] = valor;
     irParaRelatorioFiltrado(filtros,
-        `Relatório filtrado por ${campo} "${valor}", ${nomeMes(dadosFretesAtual.mes)}. `
-        + `O frete conta pela descarga e o Relatório pela emissão: nota da virada do mês pode não aparecer.`);
+        `Histórico de ${nomeMes(mes)} filtrado por ${campo} "${valor}", pela data da descarga: `
+        + `o mesmo recorte que o frete conta.`);
 }
 
 /* ── FRETE MÊS A MÊS (17/09/2026) ───────────────────────────────────
@@ -394,7 +420,7 @@ function renderFreteHistorico() {
                 <td><strong>${nomeMes(x.mes)}</strong></td>
                 <td>${_fmtLitrosFrete(x.litros)}</td>
                 <td><strong>${fmtR(x.frete)}</strong></td>
-                <td>${x.porLitro > 0 ? fmtRL(x.porLitro) : "—"}</td>
+                <td>${x.porLitro > 0 ? fmtFreteL(x.porLitro) : "—"}</td>
             </tr>`).join("")}</tbody></table>
         </div>`;
 
@@ -424,7 +450,7 @@ function renderFreteHistorico() {
             plugins: {
                 legend: { display: false },
                 tooltip: { callbacks: {
-                    label: ctx => `${fmtR(ctx.raw)} · ${fmtRL(serie[ctx.dataIndex].porLitro)}/L`,
+                    label: ctx => `${fmtR(ctx.raw)} · ${fmtFreteL(serie[ctx.dataIndex].porLitro)}/L`,
                     afterLabel: () => "Clique para abrir este mês"
                 } }
             },
@@ -512,7 +538,7 @@ function abrirFreteNotaANota() {
                     <td>${escapeHtml(x.placa)}</td>
                     <td class="celula-texto-longo" title="${escapeHtml(x.conjunto)}">${escapeHtml(x.conjunto) || "—"}</td>
                     <td class="celula-num">${fmtL(x.litros, Number.isInteger(x.litros) ? 0 : 3)}</td>
-                    <td class="celula-num">${x.taxa > 0 ? fmtRL(x.taxa) : "—"}</td>
+                    <td class="celula-num">${x.taxa > 0 ? fmtFreteL(x.taxa) : "—"}</td>
                     <td class="celula-num"><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
@@ -618,11 +644,11 @@ function exportarFretesExcel() {
     linhas.push([]);
 
     linhas.push(["POR MOTORISTA"]);
-    linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
+    linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)", "A pagar (R$)"]);
     d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, _num(m.litros, 3), _taxaGrupoNum(m), _num(m.frete, 2)]);
+        linhas.push([m.nome, m.viagens, _num(m.litros, 3), _taxaGrupoNum(m), _num(m.frete, 2), _num(m.pagamento, 2)]);
         Object.entries(m.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", _num(det.litros, 3), "", _num(det.frete, 2)]);
+            linhas.push([`  ↳ ${tipo}`, "", _num(det.litros, 3), "", _num(det.frete, 2), _num(det.pagamento, 2)]);
         });
     });
     linhas.push(_totalSecao(d.porMotorista, 5));
@@ -714,6 +740,7 @@ function exportarFechamentoDoMes() {
 // ========== EXPORTAÇÃO PDF ==========
 function exportarFretesPDF() {
     if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFretesPDF())) return;
+    if (adiarAteLogoPdf(() => exportarFretesPDF())) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
         mostrarToast("Não há dados para exportar.", "aviso", 4000);
         return;
@@ -737,22 +764,30 @@ function exportarFretesPDF() {
     doc.text(`Notas: ${d.totalNotas}  |  Litros (carga): ${fmtL3(d.totalLitros)}  |  Frete total: ${fmtR(d.totalFrete)}`, 14, yCab);
 
     const cabecalho = ["Nome", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
+    // Só a tabela de motoristas tem a coluna do pagamento: ela é a folha que
+    // vai virar pagamento, e repetir o número nas outras três só somaria
+    // ruído a uma página que já é densa (22/09/2026).
+    const cabecalhoMotorista = [...cabecalho, "A pagar"];
 
     // Números em português ("158.500 L", "R$ 42.140,00"): com `toFixed` o
     // PDF saía "158500.000" e "R$ 42140.00". E as sublinhas usam "·": o
     // "↳" não existe na fonte padrão do PDF e virava lixo (18/09/2026).
     const sub = { fontSize: 7.5, textColor: [90, 90, 90] };
-    const montarCorpo = (lista) => {
+    const montarCorpo = (lista, comPagamento = false) => {
         const rows = [];
         lista.forEach(item => {
-            rows.push([{ content: item.nome, styles: { fontStyle: "bold" } }, item.viagens, _fmtLitrosFrete(item.litros), _taxaGrupoMoeda(item), { content: fmtR(item.frete), styles: { fontStyle: "bold" } }]);
+            const linha = [{ content: item.nome, styles: { fontStyle: "bold" } }, item.viagens, _fmtLitrosFrete(item.litros), _taxaGrupoMoeda(item), { content: fmtR(item.frete), styles: { fontStyle: "bold" } }];
+            if (comPagamento) linha.push(item.pagamento > 0 ? fmtR(item.pagamento) : "—");
+            rows.push(linha);
             Object.entries(item.detalhes).forEach(([tipo, det]) => {
-                rows.push([
+                const sublinha = [
                     { content: `   · ${tipo}`, styles: sub }, "",
                     { content: _fmtLitrosFrete(det.litros), styles: sub },
                     "",
                     { content: det.frete > 0 ? fmtR(det.frete) : "—", styles: sub }
-                ]);
+                ];
+                if (comPagamento) sublinha.push({ content: det.pagamento > 0 ? fmtR(det.pagamento) : "—", styles: sub });
+                rows.push(sublinha);
             });
         });
         return rows;
@@ -777,7 +812,7 @@ function exportarFretesPDF() {
     const secoes = [
         { titulo: "Por conjunto",   corpo: montarCorpoConjuntos(d.porConjunto) },
         { titulo: "Por placa",      corpo: montarCorpo(d.porPlaca) },
-        { titulo: "Por motorista",  corpo: montarCorpo(d.porMotorista) },
+        { titulo: "Por motorista",  corpo: montarCorpo(d.porMotorista, true), cabecalho: cabecalhoMotorista },
         { titulo: "Por empresa",    corpo: montarCorpo(d.porEmpresa) }
     ];
 
@@ -788,7 +823,7 @@ function exportarFretesPDF() {
         doc.text(s.titulo, 14, startY + 4);
 
         doc.autoTable({
-            head: [cabecalho],
+            head: [s.cabecalho || cabecalho],
             body: s.corpo,
             startY: startY + 7,
             theme: "grid",
@@ -797,7 +832,7 @@ function exportarFretesPDF() {
             styles: { fontSize: 8 },
             // Larguras fixas nas colunas de número: as quatro tabelas ficam
             // alinhadas umas com as outras na página.
-            columnStyles: { 1: { halign: "right", cellWidth: 20 }, 2: { halign: "right", cellWidth: 32 }, 3: { halign: "right", cellWidth: 28 }, 4: { halign: "right", cellWidth: 34 } },
+            columnStyles: { 1: { halign: "right", cellWidth: 20 }, 2: { halign: "right", cellWidth: 32 }, 3: { halign: "right", cellWidth: 28 }, 4: { halign: "right", cellWidth: 34 }, 5: { halign: "right", cellWidth: 26 } },
             didParseCell: function(data) { if (data.section === "head" && data.column.index >= 1) data.cell.styles.halign = "right"; },
             didDrawPage: function(data) { data.settings.margin.top = 10; }
         });
@@ -820,7 +855,7 @@ function exportarFretesCSV() {
 
     // Vírgula decimal: com ponto, o Excel em português lê a coluna como
     // texto e não soma (17/09/2026).
-    const brTaxa = g => { const t = _taxaFreteGrupo(g); return t > 0 ? t.toFixed(3).replace('.', ',') : ''; };
+    const brTaxa = g => { const t = _taxaFreteGrupo(g); return t > 0 ? t.toFixed(2).replace('.', ',') : ''; };
     const br = (v, casas) => (Number(v) || 0).toFixed(casas).replace('.', ',');
     const totalCsv = (lista, colunas) => {
         const viagens = lista.reduce((s2, x) => s2 + (x.viagens || 0), 0);
@@ -860,9 +895,9 @@ function exportarFretesCSV() {
     linhas.push([]);
 
     linhas.push(["POR MOTORISTA"]);
-    linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
+    linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)", "A pagar (R$)"]);
     d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, br(m.litros, 3), brTaxa(m), br(m.frete, 2)]);
+        linhas.push([m.nome, m.viagens, br(m.litros, 3), brTaxa(m), br(m.frete, 2), br(m.pagamento, 2)]);
         Object.entries(m.detalhes).forEach(([tipo, det]) => {
             linhas.push([`  ↳ ${tipo}`, "", br(det.litros, 3), "", br(det.frete, 2)]);
         });

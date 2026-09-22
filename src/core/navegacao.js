@@ -218,7 +218,7 @@ async function mostrarTela(id) {
     if (el) el.style.display = "block";
     // Telas que exportam ou leem planilha: as bibliotecas vêm agora, em
     // segundo plano, para estarem prontas quando o botão for clicado.
-    if (["relatorios", "fretes", "grupo", "conferencia", "sistema"].includes(id)
+    if (["central", "relatorios", "fretes", "grupo", "conferencia", "sistema"].includes(id)
         && typeof garantirBibliotecas === "function") {
         garantirBibliotecas(["xlsx", "jspdf", "autotable"]).catch(() => {});
     }
@@ -228,6 +228,7 @@ async function mostrarTela(id) {
     if (id === "sistema")      atualizarInfoSistema();
     if (id === "usuarios")     { if (typeof carregarUsuarios === 'function') carregarUsuarios(); }
     if (id === "dashboard")    carregarDashboard();
+    if (id === "central")      { if (typeof carregarCentral === 'function') carregarCentral(); }
     if (id === "relatorios")   carregarRelatorio();
     if (id === "fretes")       carregarFretes();
     if (id === "grupo")        { if (typeof carregarGrupo === 'function') carregarGrupo(); }

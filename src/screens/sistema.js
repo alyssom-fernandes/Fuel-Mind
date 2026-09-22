@@ -28,7 +28,36 @@ function trocarAbaSistema(aba, btn) {
         carregarConfiguracoesTela();
         // A migração é operação de supremo. Some para os demais.
         const secao = document.getElementById("secaoMigracaoEmpresa");
-        if (secao) secao.style.display = window._usuarioAtual?.role === "supremo" ? "block" : "none";
+        if (secao) {
+            const ehSupremo = window._usuarioAtual?.role === "supremo";
+            secao.style.display = ehSupremo ? "block" : "none";
+            if (ehSupremo) _esconderMigracaoSeJaFeita(secao);
+        }
+    }
+}
+
+/* A migração é de uso único, e a seção não sabia disso (22/09/2026).
+   A condição de exibição era só "você é supremo", então ela ficava na tela
+   para sempre depois de cumprir o trabalho, ocupando espaço permanente por
+   uma tarefa terminada. A checagem de "já rodou" existia, mas só dentro do
+   clique, tarde demais para poupar a tela.
+
+   Em caso de erro de leitura a seção FICA VISÍVEL, e é de propósito: o
+   preço de mostrá-la à toa é um bloco a mais na tela; o de escondê-la por
+   engano é o supremo sem caminho para uma migração que talvez precise
+   fazer. O botão já recusa rodar duas vezes, então mostrar demais é
+   seguro.
+
+   Ela volta sozinha se o documento `compartilhado` deixar de existir, que
+   é exatamente a situação em que alguém precisaria dela de novo. */
+async function _esconderMigracaoSeJaFeita(secao) {
+    if (!window._firestore || typeof window._firestore.firestoreCarregarDoc !== "function") return;
+    if (typeof demoAtivo === "function" && demoAtivo()) return;
+    try {
+        const jaMigrado = await window._firestore.firestoreCarregarDoc("compartilhado");
+        if (jaMigrado) secao.style.display = "none";
+    } catch (_) {
+        // Silencioso: a seção continua visível, que é o lado seguro.
     }
 }
 
@@ -224,16 +253,26 @@ async function conferirMigracao() {
 }
 
 /* ========== BACKUP ========== */
+/* Baixar estando na demonstração gerava um arquivo de dados FICTÍCIOS com
+   cara de backup legítimo, e restaurá-lo numa conta real mesclava os
+   cadastros da demo na base de verdade. O arquivo agora sai marcado e com
+   outro nome, e o restaurar recusa quem tem a marca. (21/09/2026) */
 function baixarBackup() {
     if (!exigirPapel("admin", "Baixar backup")) return;
-    const json = JSON.stringify(db, null, 2);
+    const ehDemo = typeof demoAtivo === 'function' && demoAtivo();
+    const saida  = ehDemo ? Object.assign({ _demonstracao: true }, db) : db;
+    const json = JSON.stringify(saida, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     const data = _hojeISO();
-    a.href = url; a.download = `backup-combustivel-${data}.json`;
+    a.href = url;
+    a.download = ehDemo ? `DEMONSTRACAO-dados-ficticios-${data}.json`
+                        : `backup-combustivel-${data}.json`;
     a.click(); URL.revokeObjectURL(url);
-    mostrarToast("Backup baixado com sucesso!", "sucesso");
+    mostrarToast(ehDemo
+        ? "Arquivo de DEMONSTRAÇÃO baixado. Ele não serve de backup e não pode ser restaurado numa conta real."
+        : "Backup baixado com sucesso!", ehDemo ? "aviso" : "sucesso", ehDemo ? 8000 : 4000);
 }
 
 /* ========== RESTAURAR BACKUP ========== */
@@ -251,6 +290,10 @@ async function restaurarBackup(input) {
         });
 
         const dados = JSON.parse(text);
+        if (dados && dados._demonstracao && !(typeof demoAtivo === 'function' && demoAtivo())) {
+            throw new Error("Este arquivo é do modo demonstração, com dados fictícios. "
+                          + "Restaurá-lo colocaria empresas e cadastros inventados na sua base.");
+        }
         if (!Array.isArray(dados.motoristas) || !Array.isArray(dados.veiculos) ||
             !Array.isArray(dados.empresas)   || !Array.isArray(dados.combustiveis) ||
             !Array.isArray(dados.lancamentos)) {

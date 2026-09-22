@@ -26,6 +26,8 @@ normal todo dia.
 - Clonar e editar com log de auditoria completo
 
 ### 📊 Relatórios e Exportação
+- Central de relatórios: tudo que o sistema emite numa lista só, com o mês escolhido ali aplicado na tela de origem antes de gerar o arquivo
+- Histórico de lançamentos com filtro por data de emissão e por data de descarga ao mesmo tempo: é o cruzamento que isola a nota da virada de mês
 - Tabela filtrável com paginação e detalhe inline
 - Colunas ordenáveis (data, litros, total)
 - Exportação PDF com logo, margens e cores personalizadas, quebra por mês
@@ -34,7 +36,7 @@ normal todo dia.
 - Busca global (Ctrl+K)
 
 ### 📈 Analítico
-- Abas: mensal, motorista, veículo, combustível, comparativo, distribuição, evolução de preços
+- Abas: mensal, motorista, veículo, combustível, distribuição, preços por litro
 - Cards KPI com variação vs. mês anterior
 - Alternar Valor (R$) / Litros
 - Gráfico de evolução de preços por combustível
@@ -192,12 +194,15 @@ fuel-mind/
 │   │
 │   └── screens/            # Uma tela, um arquivo
 │       ├── lancamentos.js  # Formulário, XML da NF-e, salvar/editar/clonar
-│       ├── relatorios.js   # Tabela, filtros, paginação e exportações
-│       ├── analitico.js    # Sete abas de análise + gráficos
+│       ├── central.js      # Central de relatórios: tudo que o sistema emite
+│       ├── relatorios.js   # Histórico: tabela, filtros, paginação e exportações
+│       ├── analitico.js    # Seis abas de análise + gráficos
 │       ├── dashboard.js    # Números, alertas e detalhe por combustível
 │       ├── fretes.js       # Cálculo e exportação de fretes
+│       ├── fechamento.js   # O fechamento do mês em PDF
 │       ├── grupo.js        # Comparativo entre as empresas
 │       ├── cadastros.js    # Motoristas, veículos, empresas, combustíveis…
+│       ├── cadastros-importar.js # Importar a frota de uma planilha
 │       ├── sistema.js      # Backup, config do PDF e conferência
 │       ├── importacao.js   # Planilhas com detecção de formato
 │       ├── usuarios.js     # Usuários e permissões

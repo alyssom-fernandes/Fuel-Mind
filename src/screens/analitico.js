@@ -5,7 +5,7 @@
 =================================================*/
 
 // Instâncias globais dos gráficos
-let chartMensal, chartMotoristas, chartVeiculos, chartCombustivel, chartComparativo, chartPizzaComb, chartPizzaMotor, chartEvolucaoPrecos;
+let chartMensal, chartMotoristas, chartVeiculos, chartCombustivel, chartPizzaComb, chartPizzaMotor, chartEvolucaoPrecos;
 
 // Cache dos dados calculados
 let _dadosAnaliticoAtual = null;
@@ -21,7 +21,6 @@ function baixarGrafico(nomeGrafico) {
         motoristas: () => chartMotoristas,
         veiculos: () => chartVeiculos,
         combustivel: () => chartCombustivel,
-        comparativo: () => chartComparativo,
         pizzaCombustivel: () => chartPizzaComb,
         pizzaMotorista: () => chartPizzaMotor,
         evolucaoPrecos: () => chartEvolucaoPrecos,
@@ -135,7 +134,6 @@ function carregarAnalitico() {
     renderAbaMotoristas(dados);
     renderAbaVeiculos(dados);
     renderAbaCombustivel(dados);
-    renderAbaComparativo(dados);
     renderAbaDistribuicao(dados);
     renderAbaEvolucaoPrecos(dados);
 }
@@ -271,7 +269,6 @@ function destruirGraficos() {
     if (chartMotoristas) chartMotoristas.destroy();
     if (chartVeiculos) chartVeiculos.destroy();
     if (chartCombustivel) chartCombustivel.destroy();
-    if (chartComparativo) chartComparativo.destroy();
     if (chartPizzaComb) chartPizzaComb.destroy();
     if (chartPizzaMotor) chartPizzaMotor.destroy();
     if (chartEvolucaoPrecos) chartEvolucaoPrecos.destroy();
@@ -593,94 +590,6 @@ function renderAbaCombustivel(dados) {
     _ligarCliqueGrafico(chartCombustivel, lista.map(c => c.nome), comb => ({ combustivel: comb }));
 }
 
-function renderAbaComparativo(dados) {
-    const tbody = document.getElementById("tabelaComparativo");
-    const meses = dados.mensal;
-    if (meses.length < 2) {
-        tbody.innerHTML = `<tr><td colspan="5" class="td-vazio">São necessários pelo menos 2 meses de dados.</td></tr>`;
-        _graficoVazio("graficoComparativo", "Dados insuficientes para o comparativo.");
-        document.getElementById("alertaComparativo").style.display = "none";
-        return;
-    }
-    const custosMedias = meses.map(m => m.litrosNota > 0 ? m.gasto/m.litrosNota : 0);
-    tbody.innerHTML = meses.map((m, idx) => {
-        const cm = custosMedias[idx];
-        const varBadge = idx > 0 ? badgeVariacao(cm, custosMedias[idx-1]) : "—";
-        return `<tr>
-            <td>${nomeMes(m.mes)}</td><td>${cm>0?fmtRL(cm):"—"}</td>
-            <td>${varBadge}</td><td>${fmtL(m.litros)}</td><td>${fmtR(m.gasto)}</td>
-        </tr>`;
-    }).join("");
-    
-    const canvas = _graficoPronto("graficoComparativo");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (chartComparativo) chartComparativo.destroy();
-    const colors = getChartColors();
-    chartComparativo = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: meses.map(m => _rotuloMesGrafico(m.mes)),
-            datasets: [{
-                label: 'Custo médio (R$/L)',
-                data: custosMedias,
-                borderColor: colors.primary,
-                backgroundColor: colors.primary + '20',
-                tension: 0.1,
-                fill: true,
-                pointBackgroundColor: colors.primary,
-                pointBorderColor: 'white',
-                pointRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => fmtRL(ctx.raw)
-                    }
-                }
-            },
-            scales: {
-                y: { 
-                    ticks: {
-                        callback: (val) => fmtR(val),
-                        color: colors.text
-                    },
-                    grid: { color: colors.grid }
-                },
-                x: { ticks: { color: colors.text, maxRotation: 45, minRotation: 0 } }
-            }
-        }
-    });
-
-    // Alerta de variação
-    const ultimo   = custosMedias[custosMedias.length - 1] || 0;
-    const anterior = custosMedias[custosMedias.length - 2] || 0;
-    const alerta   = document.getElementById("alertaComparativo");
-
-    if (ultimo > 0 && anterior > 0) {
-        const diff = (ultimo - anterior) / anterior * 100;
-        if (Math.abs(diff) >= 1) {
-            alerta.style.display = "block";
-            if (diff > 0) {
-                alerta.innerHTML = `<strong>Atenção:</strong> o custo médio subiu <strong>${fmtPct(diff)}</strong> no último mês.`;
-                // Cores do tema: as fixas eram de tema claro e ofuscavam no escuro.
-                alerta.className = "alerta-comparativo alerta-comparativo--subiu";
-            } else {
-                alerta.innerHTML = `<strong>Boa notícia:</strong> o custo médio caiu <strong>${fmtPct(Math.abs(diff))}</strong> no último mês.`;
-                alerta.className = "alerta-comparativo alerta-comparativo--caiu";
-            }
-        } else {
-            alerta.style.display = "none";
-        }
-    } else {
-        alerta.style.display = "none";
-    }
-}
 
 function renderAbaDistribuicao(dados) {
     const canvasComb = _graficoPronto("graficoPizzaCombustivel");
@@ -779,6 +688,7 @@ function renderAbaEvolucaoPrecos(dados) {
 
     if (Object.keys(precosPorComb).length === 0 || meses.length < 2) {
         _graficoVazio("graficoEvolucaoPrecos", "Dados insuficientes para evolução de preços.");
+        _alertaVariacaoPreco(null);
         return;
     }
 
@@ -787,6 +697,37 @@ function renderAbaEvolucaoPrecos(dados) {
     const colors = getChartColors();
     const datasets = [];
     const combustiveis = Object.keys(precosPorComb).sort();
+
+    /* A MÉDIA GERAL entra como mais uma linha (22/09/2026), e com ela a
+       aba "Comparativo" deixou de ter razão de existir: ela era este mesmo
+       gráfico com esta única linha.
+
+       Tracejada e mais grossa de propósito: ela não é "mais um
+       combustível", é o resultado de todos juntos, e no meio das outras
+       precisa se distinguir sem depender só da cor. `order: -1` a deixa
+       por cima das demais, e fora da ordem alfabética dos tipos.
+
+       A conta é a mesma do resto do sistema: gasto dividido pelos litros
+       FATURADOS do mês, não média simples dos preços das notas. */
+    const mediaDoMes = {};
+    (dados.mensal || []).forEach(m => {
+        mediaDoMes[m.mes] = m.litrosNota > 0 ? m.gasto / m.litrosNota : null;
+    });
+    const custosMedias = meses.map(mes => mediaDoMes[mes] ?? null);
+    if (custosMedias.some(v => v > 0)) {
+        datasets.push({
+            label: "Média geral",
+            data: custosMedias,
+            borderColor: colors.text,
+            backgroundColor: "transparent",
+            borderDash: [6, 4],
+            borderWidth: 2.5,
+            tension: 0.1,
+            pointRadius: 3,
+            spanGaps: true,
+            order: -1
+        });
+    }
 
     combustiveis.forEach((tipo, idx) => {
         const dadosTipo = precosPorComb[tipo];
@@ -848,6 +789,31 @@ function renderAbaEvolucaoPrecos(dados) {
             }
         }
     });
+
+    _alertaVariacaoPreco(custosMedias);
+}
+
+/* O aviso de que o custo médio subiu ou caiu no último mês. Era a única
+   coisa que a aba "Comparativo" tinha e esta não, então veio junto quando
+   as duas viraram uma (22/09/2026). O corte de 1% é o mesmo de antes:
+   abaixo disso é ruído de composição de compra, não tendência. */
+function _alertaVariacaoPreco(custosMedias) {
+    const alerta = document.getElementById("alertaComparativo");
+    if (!alerta) return;
+    const validos = (custosMedias || []).filter(v => v > 0);
+    if (validos.length < 2) { alerta.style.display = "none"; return; }
+    const ultimo   = validos[validos.length - 1];
+    const anterior = validos[validos.length - 2];
+    const diff = (ultimo - anterior) / anterior * 100;
+    if (Math.abs(diff) < 1) { alerta.style.display = "none"; return; }
+    alerta.style.display = "block";
+    if (diff > 0) {
+        alerta.innerHTML = `<strong>Atenção:</strong> o custo médio subiu <strong>${fmtPct(diff)}</strong> no último mês.`;
+        alerta.className = "alerta-comparativo alerta-comparativo--subiu";
+    } else {
+        alerta.innerHTML = `<strong>Boa notícia:</strong> o custo médio caiu <strong>${fmtPct(Math.abs(diff))}</strong> no último mês.`;
+        alerta.className = "alerta-comparativo alerta-comparativo--caiu";
+    }
 }
 
 /** Mês no eixo dos gráficos; o mês em andamento ganha "*": a barra dele é
@@ -876,7 +842,6 @@ function trocarAba(nomeAba, botao) {
             if (nomeAba === "motoristas")  renderAbaMotoristas(_dadosAnaliticoAtual);
             if (nomeAba === "veiculos")    renderAbaVeiculos(_dadosAnaliticoAtual);
             if (nomeAba === "combustivel") renderAbaCombustivel(_dadosAnaliticoAtual);
-            if (nomeAba === "comparativo") renderAbaComparativo(_dadosAnaliticoAtual);
             if (nomeAba === "distribuicao") renderAbaDistribuicao(_dadosAnaliticoAtual);
             if (nomeAba === "evolucaoPrecos") renderAbaEvolucaoPrecos(_dadosAnaliticoAtual);
         });

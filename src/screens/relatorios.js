@@ -60,6 +60,13 @@ function irParaRelatorioFiltrado(filtros, aviso) {
     // do que filtro nenhum.
     por("filtroDataInicio", f.inicio);
     por("filtroDataFim",    f.fim);
+    // O par da descarga (22/09/2026). É o que faltava para o drill-through
+    // ser honesto: os litros do Dashboard e o mês dos Fretes nascem da
+    // DESCARGA, e até aqui só existia como filtrar pela emissão. Quem
+    // clicava num total de frete caía num recorte diferente do que viu, e
+    // a função só podia avisar disso num toast.
+    por("filtroDescargaInicio", f.descargaInicio);
+    por("filtroDescargaFim",    f.descargaFim);
     por("filtroMotorista",  f.motorista);
     por("filtroPlaca",      f.placa);
     por("filtroCombustivel", f.combustivel);
@@ -193,6 +200,8 @@ function _textoBuscavel(l) {
 function _aplicarFiltroRelatorio() {
     const dataInicio  = document.getElementById("filtroDataInicio").value;
     const dataFim     = document.getElementById("filtroDataFim").value;
+    const descIni     = document.getElementById("filtroDescargaInicio")?.value || "";
+    const descFim     = document.getElementById("filtroDescargaFim")?.value || "";
     const motorista   = document.getElementById("filtroMotorista").value;
     const placa       = document.getElementById("filtroPlaca").value;
     const combustivel = document.getElementById("filtroCombustivel").value;
@@ -202,8 +211,12 @@ function _aplicarFiltroRelatorio() {
 
     const mostrarInativos = document.getElementById("filtroMostrarInativos")?.checked;
 
-    const dentroDoIntervalo = (d) => !!d && (!dataInicio || d >= dataInicio) && (!dataFim || d <= dataFim);
     const temPeriodo = !!(dataInicio || dataFim);
+    const temDescarga = !!(descIni || descFim);
+    // A regra dos dois pares mora em `_passaPeriodos` (utils.js), sem DOM,
+    // para os testes a cobrirem: é ela que decide quais notas somam.
+    const periodos = { emissaoInicio: dataInicio, emissaoFim: dataFim,
+                       descargaInicio: descIni,   descargaFim: descFim };
 
     // Todos os filtros menos o de data. Serve à tabela e à conta das notas
     // da fronteira, logo abaixo.
@@ -243,20 +256,34 @@ function _aplicarFiltroRelatorio() {
         // dois meses somavam 29.500 L a mais que o intervalo inteiro no modo
         // demo. A intenção de não esconder nota ficou no resumo, que diz
         // quantas notas da fronteira ficaram de fora.
-        if (temPeriodo && !dentroDoIntervalo(dataEmissaoDe(l))) return false;
+        //
+        // Desde 22/09/2026 o par da DESCARGA vale junto, com E: os dois
+        // preenchidos pedem a nota que satisfaz os dois recortes ao mesmo
+        // tempo. Sozinho, o par da descarga faz desta tela o espelho exato
+        // do que Fretes e Dashboard contam, que era o pedido do dono.
+        if ((temPeriodo || temDescarga) && !_passaPeriodos(l, periodos)) return false;
 
         return passaSemData(l);
     });
 
-    // As notas da fronteira: emitidas no período e descarregadas fora dele, e
-    // descarregadas no período e emitidas fora dele. Só as que valem.
+    // As notas da fronteira: as que ficam de um lado do período por uma data
+    // e do outro pela outra. Só as que valem.
+    //
+    // A contagem só roda com UM dos dois pares preenchido, e é de propósito:
+    // ela existe para declarar a escolha que a tela fez sozinha entre as duas
+    // datas. Com os dois pares preenchidos não há escolha a declarar, porque
+    // o dono pediu os dois recortes de viva voz, e a etiqueta viraria ruído.
     let emitidasDescarregadasFora = 0, descarregadasEmitidasFora = 0;
-    if (temPeriodo) {
+    if (temPeriodo !== temDescarga) {
+        // O intervalo que manda é o que está preenchido.
+        const ini = temPeriodo ? dataInicio : descIni;
+        const fim = temPeriodo ? dataFim    : descFim;
+        const dentro = (d) => !!d && (!ini || d >= ini) && (!fim || d <= fim);
         db.lancamentos.forEach(l => {
             if (!lancamentoAtivo(l)) return;
             if (empresaFiltroGlobal && l.empresa !== empresaFiltroGlobal) return;
-            const emissaoDentro  = dentroDoIntervalo(dataEmissaoDe(l));
-            const descargaDentro = dentroDoIntervalo(dataDescargaDe(l));
+            const emissaoDentro  = dentro(dataEmissaoDe(l));
+            const descargaDentro = dentro(dataDescargaDe(l));
             if (emissaoDentro === descargaDentro || !passaSemData(l)) return;
             if (emissaoDentro) emitidasDescarregadasFora++;
             else descarregadasEmitidasFora++;
@@ -395,7 +422,7 @@ function _aplicarFiltroRelatorio() {
                     <span class="rel-kpi-nota">sobre ${fmtL3(mPreco.litrosNota)} faturados</span>
                 </div>` : ''}
             </div>
-            ${_chipsResumoRelatorio(temPeriodo, emitidasDescarregadasFora, descarregadasEmitidasFora, mPreco)}
+            ${_chipsResumoRelatorio({ temPeriodo, temDescarga }, emitidasDescarregadasFora, descarregadasEmitidasFora, mPreco)}
             <div class="rel-cards">
                 ${cardsComb}
                 ${topMotHtml}
@@ -408,17 +435,40 @@ function _aplicarFiltroRelatorio() {
  *  data é o período, quem ficou na fronteira e o custo recebido) virou uma
  *  fila de etiquetas curtas; a explicação inteira abre com um clique
  *  (18/09/2026). `<details>` e não `title`: no celular não há mouse. */
-function _chipsResumoRelatorio(temPeriodo, emitidasFora, descarregadasFora, mPreco) {
+function _chipsResumoRelatorio(quais, emitidasFora, descarregadasFora, mPreco) {
+    const temPeriodo  = !!(quais && quais.temPeriodo);
+    const temDescarga = !!(quais && quais.temDescarga);
     const chips = [];
-    if (temPeriodo) {
-        chips.push(`<span class="rel-chip">Período pela data de emissão</span>`);
+    // A etiqueta diz de qual data é o período que está valendo. Com os dois
+    // pares preenchidos ela diz os dois, porque aí a conta é o cruzamento e
+    // não há base "escolhida" a declarar (22/09/2026).
+    if (temPeriodo || temDescarga) {
+        const base = temPeriodo && temDescarga ? "por emissão e por descarga, as duas ao mesmo tempo"
+                   : temPeriodo ? "pela data de emissão"
+                   : "pela data da descarga";
+        chips.push(`<span class="rel-chip">Período ${base}</span>`);
+    }
+    // A fronteira só é contada com um dos pares preenchido, e a frase segue
+    // a data que manda: com o recorte da descarga, quem entra e quem fica de
+    // fora troca de lado.
+    if (temPeriodo !== temDescarga) {
         const partes = [];
-        if (emitidasFora) partes.push(`${emitidasFora} emitida${emitidasFora > 1 ? 's' : ''} no período e descarregada${emitidasFora > 1 ? 's' : ''} depois dele, <strong>incluída${emitidasFora > 1 ? 's' : ''}</strong>`);
-        if (descarregadasFora) partes.push(`${descarregadasFora} descarregada${descarregadasFora > 1 ? 's' : ''} no período e emitida${descarregadasFora > 1 ? 's' : ''} fora dele, <strong>não incluída${descarregadasFora > 1 ? 's' : ''}</strong>`);
+        const dentro = temPeriodo ? "emitida" : "descarregada";
+        const fora   = temPeriodo ? "descarregada" : "emitida";
+        if (emitidasFora) {
+            const p = emitidasFora > 1 ? 's' : '';
+            const incl = temPeriodo ? `<strong>incluída${p}</strong>` : `<strong>não incluída${p}</strong>`;
+            partes.push(`${emitidasFora} emitida${p} no período e descarregada${p} fora dele, ${incl}`);
+        }
+        if (descarregadasFora) {
+            const p = descarregadasFora > 1 ? 's' : '';
+            const incl = temPeriodo ? `<strong>não incluída${p}</strong>` : `<strong>incluída${p}</strong>`;
+            partes.push(`${descarregadasFora} descarregada${p} no período e emitida${p} fora dele, ${incl}`);
+        }
         const n = emitidasFora + descarregadasFora;
         if (n) chips.push(`<details class="rel-chip-detalhe">
             <summary class="rel-chip rel-chip--aviso">${n} ${n > 1 ? 'notas' : 'nota'} na fronteira do período</summary>
-            <p>${partes.join('<br>')}.</p>
+            <p>O período conta pela data de ${escapeHtml(dentro === "emitida" ? "emissão" : "descarga")}; a de ${escapeHtml(fora === "descarregada" ? "descarga" : "emissão")} destas caiu do outro lado.<br>${partes.join('<br>')}.</p>
         </details>`);
     }
     if (mPreco.custoRecebido > 0) {
@@ -432,7 +482,7 @@ function _chipsResumoRelatorio(temPeriodo, emitidasFora, descarregadasFora, mPre
 
 function limparFiltros(contexto) {
     if (!contexto || contexto === "relatorio") {
-        ["filtroDataInicio","filtroDataFim",
+        ["filtroDataInicio","filtroDataFim","filtroDescargaInicio","filtroDescargaFim",
          "filtroMotorista","filtroPlaca","filtroCombustivel","filtroNota","filtroBase","filtroBusca"].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = "";
@@ -440,6 +490,10 @@ function limparFiltros(contexto) {
         // "Limpar" volta a tela ao padrão, e o padrão é não mostrar excluídas.
         const inativos = document.getElementById("filtroMostrarInativos");
         if (inativos) inativos.checked = false;
+        // O alvo do período rápido também volta ao padrão: deixá-lo em
+        // "Descarga" depois de limpar tudo faria o próximo "Este mês"
+        // preencher um par que quem clicou em Limpar não está mais vendo.
+        relatorioAlvoPeriodo("emissao");
         carregarRelatorio();
     }
 }
@@ -687,8 +741,8 @@ function _buildConteudoDetalhe(l) {
             </div>` : ''}
 
             ${l.logs && l.logs.length > 0 ? `
-            <div class="detalhe-obs detalhe-obs--historico">
-                <strong>Histórico de Alterações</strong>
+            <details class="detalhe-obs detalhe-obs--historico">
+                <summary><strong>Histórico de alterações (${l.logs.length})</strong></summary>
                 <ul class="log-list">${l.logs.map(log => {
                     // Suporta log novo (objeto {acao, ts, usuario}) e log antigo (string)
                     if (typeof log === 'object' && log !== null) {
@@ -712,7 +766,7 @@ function _buildConteudoDetalhe(l) {
                     }
                     return `<li>${escapeHtml(log)}</li>`;
                 }).join('')}</ul>
-            </div>` : ''}
+            </details>` : ''}
 
             ${lancamentoAtivo(l) ? `
             <div class="detalhe-acoes-estado">
@@ -794,15 +848,54 @@ function _irParaPagina(pagina, contexto) {
  *
  * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  */
-/** O período do Relatório em texto, com a base: vai no cabeçalho do PDF e
- *  do Excel. O período desta tela é pela data de emissão (rodada 11). */
+/** O período do Histórico em texto, com a base: vai no cabeçalho do PDF, do
+ *  Excel, do CSV e das mensagens de WhatsApp e e-mail.
+ *
+ *  Desde 22/09/2026 são dois pares de datas, e o texto diz os dois: um
+ *  arquivo que não declara de qual data é o recorte é um arquivo em que
+ *  ninguém pode conferir o total. */
+function _trechoPeriodo(rotulo, ini, fim) {
+    if (ini && fim) return `${rotulo} de ${formatarData(ini)} a ${formatarData(fim)}`;
+    if (ini) return `${rotulo} a partir de ${formatarData(ini)}`;
+    if (fim) return `${rotulo} até ${formatarData(fim)}`;
+    return "";
+}
+
 function _descricaoPeriodoRelatorio() {
-    const ini = document.getElementById("filtroDataInicio")?.value || "";
-    const fim = document.getElementById("filtroDataFim")?.value || "";
-    return ini && fim ? `emissão de ${formatarData(ini)} a ${formatarData(fim)}`
-         : ini ? `emissão a partir de ${formatarData(ini)}`
-         : fim ? `emissão até ${formatarData(fim)}`
-         : "todas as datas de emissão";
+    const ini     = document.getElementById("filtroDataInicio")?.value || "";
+    const fim     = document.getElementById("filtroDataFim")?.value || "";
+    const descIni = document.getElementById("filtroDescargaInicio")?.value || "";
+    const descFim = document.getElementById("filtroDescargaFim")?.value || "";
+    const partes = [
+        _trechoPeriodo("emissão", ini, fim),
+        _trechoPeriodo("descarga", descIni, descFim)
+    ].filter(Boolean);
+    return partes.length ? partes.join(", e ") : "todas as datas";
+}
+
+/* ── O NOME DO ARQUIVO (22/09/2026) ─────────────────────────────────
+   Os três formatos usavam a data de HOJE no nome, e isso passava porque
+   montar o filtro de um mês à mão era trabalhoso o bastante para ninguém
+   exportar dois no mesmo dia. A central desfez essa proteção acidental:
+   tirar agosto, julho e junho agora são três cliques, e os três arquivos
+   sairiam com o mesmo nome, um sobrescrevendo o outro na pasta de
+   downloads. O nome passa a carregar o período, quando há um. */
+function _nomeArquivoRelatorio(contexto, extensao) {
+    const ini     = document.getElementById("filtroDataInicio")?.value || "";
+    const fim     = document.getElementById("filtroDataFim")?.value || "";
+    const descIni = document.getElementById("filtroDescargaInicio")?.value || "";
+    const descFim = document.getElementById("filtroDescargaFim")?.value || "";
+    const trecho = (rotulo, a, b) => {
+        if (a && b) return a === b ? `${rotulo}-${a}` : `${rotulo}-${a}-a-${b}`;
+        if (a) return `${rotulo}-desde-${a}`;
+        if (b) return `${rotulo}-ate-${b}`;
+        return "";
+    };
+    const partes = [trecho("emissao", ini, fim), trecho("descarga", descIni, descFim)].filter(Boolean);
+    // Sem período o nome continua sendo o de sempre: a data em que se
+    // exportou é a única referência que o arquivo tem.
+    const miolo = partes.length ? partes.join("-") : _hojeISO();
+    return `controle-combustivel-${contexto}-${miolo}.${extensao}`;
 }
 
 function exportarExcel(contexto) {
@@ -843,7 +936,7 @@ function exportarExcel(contexto) {
     const ws = XLSX.utils.aoa_to_sheet(linhas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
-    XLSX.writeFile(wb, `controle-combustivel-${contexto}-${_hojeISO()}.xlsx`);
+    XLSX.writeFile(wb, _nomeArquivoRelatorio(contexto, 'xlsx'));
 }
 
 /* ── UM CABEÇALHO SÓ PARA OS TRÊS PDFs (18/09/2026) ─────────────────
@@ -856,15 +949,58 @@ function exportarExcel(contexto) {
    a pedido do dono: a aparência do documento passa a ser uma só. O que
    continua configurável em Sistema são as COLUNAS e a orientação. Sem
    logo, a faixa do cabeçalho é a variante centrada. */
-const _PDF_COR   = [26, 58, 92];     // #1a3a5c
+/* A cor dos PDFs é a do sistema, e não um azul próprio (22/09/2026).
+   `--primary` do `style.css` é #a02828; aqui ela vai em RGB porque o jsPDF
+   não lê CSS. Mudou a identidade, muda aqui. */
+const _PDF_COR   = [160, 40, 40];    // #a02828, o mesmo --primary da tela
 const _PDF_FONTE = "helvetica";
+/* ── LOGO NOS PDFS (22/09/2026) ────────────────────────────────────
+   A logo é SVG e o jsPDF só aceita bitmap, então ela é desenhada uma vez
+   num canvas e guardada como PNG. É a versão de letras brancas
+   (`logo-dark.svg`), porque a faixa do cabeçalho é escura.
+
+   `undefined` significa "ainda não tentei", `null` significa "tentei e não
+   deu". A diferença importa: sem ela, uma falha de carregamento faria cada
+   exportação tentar de novo e travar o clique do operador toda vez. */
+let _pdfLogoCache = undefined;
+
+function _pdfRasterizarLogo() {
+    return new Promise((ok, falhou) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                // 640 px de largura para 32 mm de papel dá cerca de 500 dpi,
+                // de sobra para impressão. Rasterizar no tamanho original
+                // (1199 px) engordava o PDF do fechamento de 250 KB para
+                // 1,5 MB sem nenhum ganho visível.
+                const c = document.createElement("canvas");
+                c.width  = 640; c.height = Math.round(640 * 291 / 1199);
+                const ctx = c.getContext("2d");
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                ok({ dados: c.toDataURL("image/png"), proporcao: 1199 / 291 });
+            } catch (e) { falhou(e); }
+        };
+        img.onerror = falhou;
+        img.src = "assets/logo-dark.svg";
+    });
+}
+
+/** Guarda de entrada: devolve `true` quando adiou, e quem chamou sai. */
+function adiarAteLogoPdf(acao) {
+    if (_pdfLogoCache !== undefined) return false;
+    _pdfRasterizarLogo()
+        .then(l => { _pdfLogoCache = l; acao(); })
+        .catch(() => { _pdfLogoCache = null; acao(); });
+    return true;
+}
+
 function _pdfEstilo() {
     const cfg = Object.assign({
         titulo: "Controle de Entradas de Combustível", rodapeTexto: ""
     }, db.configRelatorio || {});
     cfg.titulo = "Controle de Entradas de Combustível";
     cfg.rodapeTexto = "";
-    return { cfg, cor: _PDF_COR, logo: null, fonte: _PDF_FONTE };
+    return { cfg, cor: _PDF_COR, logo: _pdfLogoCache || null, fonte: _PDF_FONTE };
 }
 
 /** Faixa de cabeçalho com logo, título e subtítulo. Devolve o Y livre. */
@@ -874,14 +1010,20 @@ function _pdfCabecalho(doc, estilo, titulo, subtitulo) {
     doc.setFillColor(...estilo.cor);
     doc.rect(0, 0, W, alt, "F");
     doc.setTextColor(255, 255, 255);
+    let fimLogo = 0;
     if (estilo.logo) {
         try {
-            const m = estilo.logo.match(/^data:image\/(\w+);base64,/);
-            doc.addImage(estilo.logo.split(",")[1] || estilo.logo, m ? m[1].toUpperCase() : "JPEG", 14, 3, 22, 22);
+            // Largura fixa e altura pela proporção real: a logo é bem mais
+            // larga que alta, e o quadrado de 22x22 que havia aqui antes a
+            // esmagaria a ponto de o nome não se ler.
+            const larg = 32;
+            const altLogo = larg / (estilo.logo.proporcao || 4.12);
+            doc.addImage(estilo.logo.dados, "PNG", 14, (alt - altLogo) / 2, larg, altLogo);
+            fimLogo = 14 + larg + 8;
         } catch (_) { /* logo inválida: segue sem ela */ }
     }
-    const x = estilo.logo ? 40 : W / 2;
-    const alinhar = estilo.logo ? "left" : "center";
+    const x = fimLogo || W / 2;
+    const alinhar = fimLogo ? "left" : "center";
     doc.setFont(estilo.fonte, "bold"); doc.setFontSize(14);
     doc.text(titulo, x, estilo.logo ? 13 : 11, { align: alinhar });
     doc.setFont(estilo.fonte, "normal"); doc.setFontSize(9);
@@ -1007,7 +1149,10 @@ async function exportarPDF(contexto) {
     // O cabeçalho diz o período e de que data ele é. Antes dizia só
     // "Relatório — Gerado em", e quem recebia o PDF (o contador) não sabia
     // se aquilo era o mês inteiro, parte dele ou tudo (rodada 11).
-    const tituloCtx = `${contexto === 'relatorio' ? 'Relatório' : 'Histórico'} de ${_descricaoPeriodoRelatorio()}`;
+    // "Relatório" e não "Histórico": a TELA mudou de nome em 22/09/2026, o
+    // documento não. Quem recebe o PDF recebe um relatório de lançamentos.
+    // Havia aqui um ramo por contexto que nenhum chamador alcançava.
+    const tituloCtx = `Relatório de ${_descricaoPeriodoRelatorio()}`;
 
     // ── Monta colunas dinamicamente ──
     const head = ["Data Nota", "Data Desc.", "Nota"];
@@ -1167,7 +1312,7 @@ async function exportarPDF(contexto) {
         doc.text(`Página ${p} de ${totalPages}`, W - mR, H - mRod, { align: 'right' });
     }
 
-    doc.save(`controle-combustivel-${contexto}-${_hojeISO()}.pdf`);
+    doc.save(_nomeArquivoRelatorio(contexto, 'pdf'));
     mostrarToast('PDF gerado com sucesso!', 'sucesso', 3000);
 }
 
@@ -1212,7 +1357,7 @@ function exportarCSV(contexto) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `controle-combustivel-${contexto}-${_hojeISO()}.csv`;
+    a.download = _nomeArquivoRelatorio(contexto, 'csv');
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1574,6 +1719,26 @@ function _executarRelatorioMensal() {
  * @param {'hoje'|'semana'|'mes'|'mes_anterior'|'30dias'|'90dias'|'ano'} [arg2]
  *   Período (obrigatório se `arg1` for o contexto)
  */
+/* ── O ALVO DO PERÍODO RÁPIDO (22/09/2026) ──────────────────────────
+   Os quatro atalhos de período ("Hoje", "Este mês"...) preenchiam o único
+   par de datas que existia. Com o par da descarga ao lado, eles precisam
+   dizer em qual escrevem, e a resposta não pode ser adivinhada do estado
+   dos campos: quem tem os dois preenchidos não tem como ser adivinhado, e
+   um atalho que às vezes escreve num lugar e às vezes noutro é pior que
+   atalho nenhum. Dois botões, sem estado escondido. */
+let _relatorioAlvoPeriodo = 'emissao';
+
+/* Só troca o alvo dos atalhos. Não mexe nos campos nem recarrega: apagar
+   uma data que a pessoa acabou de digitar à mão não é o que o botão
+   promete, e recarregar sem ter mudado filtro nenhum pisca a tela à toa. */
+function relatorioAlvoPeriodo(qual) {
+    _relatorioAlvoPeriodo = qual === 'descarga' ? 'descarga' : 'emissao';
+    const emissao  = document.getElementById("btnAlvoEmissao");
+    const descarga = document.getElementById("btnAlvoDescarga");
+    if (emissao)  emissao.classList.toggle("ativo",  _relatorioAlvoPeriodo === 'emissao');
+    if (descarga) descarga.classList.toggle("ativo", _relatorioAlvoPeriodo === 'descarga');
+}
+
 function filtroRapido(arg1, arg2) {
     let contexto, periodo;
     if (arg2 === undefined) { contexto = 'relatorio'; periodo = arg1; }
@@ -1599,10 +1764,23 @@ function filtroRapido(arg1, arg2) {
     }
 
     if (contexto === 'relatorio') {
-        const elI = document.getElementById("filtroDataInicio");
-        const elF = document.getElementById("filtroDataFim");
+        // Com dois pares de datas, o atalho escreve no par que o segmentado
+        // aponta, e limpa o outro. Preencher os dois de uma vez pareceria
+        // gentileza e seria armadilha: o cruzamento dos dois recortes
+        // esconde justamente a nota da fronteira, sem ninguém ter pedido.
+        const alvoDescarga = _relatorioAlvoPeriodo === 'descarga';
+        const idIni = alvoDescarga ? "filtroDescargaInicio" : "filtroDataInicio";
+        const idFim = alvoDescarga ? "filtroDescargaFim"    : "filtroDataFim";
+        const outros = alvoDescarga ? ["filtroDataInicio", "filtroDataFim"]
+                                    : ["filtroDescargaInicio", "filtroDescargaFim"];
+        const elI = document.getElementById(idIni);
+        const elF = document.getElementById(idFim);
         if (elI) elI.value = inicio;
         if (elF) elF.value = fim;
+        outros.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
         _aplicarFiltroRelatorio();
     } else if (contexto === 'analitico') {
         const elI = document.getElementById("analiticoInicio");

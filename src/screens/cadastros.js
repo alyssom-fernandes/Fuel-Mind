@@ -56,7 +56,7 @@ function _historicoTaxaTexto(empresa) {
     if (!hist.length) return "Taxa sem histórico: vale para todo o período.";
     return "Vigências da taxa:\n" + [...hist]
         .sort((a, b) => String(a.vigenciaDe).localeCompare(String(b.vigenciaDe)))
-        .map(v => `${fmtRL(Number(v.taxa) || 0)}/L, de ${formatarData(v.vigenciaDe)}`
+        .map(v => `${fmtFreteL(Number(v.taxa) || 0)}/L, de ${formatarData(v.vigenciaDe)}`
                 + (v.vigenciaAte ? ` a ${formatarData(v.vigenciaAte)}` : " (atual)"))
         .join("\n");
 }
@@ -106,7 +106,7 @@ window.resolverConjuntoPorPlaca = function(placa, data) {
 // ========== MODAL DE EDIÇÃO ==========
 let modalContexto = null;
 
-function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '', taxaFreteAtual = '') {
+function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '', taxaFreteAtual = '', pctMotoristaAtual = '') {
     modalContexto = { lista, id };
     document.getElementById("modalTitulo").textContent = titulo;
     const podeRenomear = typeof ehSupremoAtual === "function" ? ehSupremoAtual() : true;
@@ -123,6 +123,8 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
         // Campo de texto agora: o número precisa entrar já em português,
         // senão "0.28" apareceria com ponto e voltaria mal interpretado.
         fmNumericoDefinir(document.getElementById("modalInputTaxaFrete"), taxaFreteAtual === "" ? null : taxaFreteAtual);
+        // Em branco significa "vale o padrão", e o placeholder mostra qual é.
+        fmNumericoDefinir(document.getElementById("modalInputPctMotorista"), pctMotoristaAtual === "" ? null : pctMotoristaAtual);
     } else if (wrapperMunicipio) {
         wrapperMunicipio.style.display = "none";
     }
@@ -138,14 +140,12 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     const item = db[lista].find(i => String(i.id) === String(id));
     const logsDiv = document.getElementById("modalLogs");
     if (logsDiv) {
-        // Sem linhas, nada: "Histórico:" sozinho aparecia em cadastro sem log.
-        logsDiv.innerHTML = item?.logs?.length ?
-            `<div class="historico-cadastro">
-                <span class="historico-cadastro-titulo">Histórico</span>
-                <ul class="lista-limpa log-list">
-                    ${item.logs.map(log => `<li>${escapeHtml(log)}</li>`).join('')}
-                </ul>
-            </div>` : '';
+        /* Recolhido, com a contagem no título. Antes vinha aberto e crescia
+           sem limite, empurrando os campos do formulário para baixo: editar
+           e auditar são tarefas diferentes, e a segunda é a rara. Um clique
+           abre. `fmLogBloco` lê tanto o registro novo quanto o texto puro
+           que já está gravado. (21/09/2026) */
+        logsDiv.innerHTML = fmLogBloco(item?.logs, "Histórico");
     }
 
     document.getElementById("modalOverlay").style.display = "flex";
@@ -226,7 +226,7 @@ function _confirmarCadastroRapido() {
         id: gerarId(),
         nome,
         ativo: true,
-        logs: [`Cadastrado pelo formulário de lançamento em ${new Date().toLocaleString("pt-BR")}`]
+        logs: [fmLogNovo("Criado", "pelo formulário de lançamento")]
     };
     if (lista === "bases") item.municipio = "";
     db[lista].push(item);
@@ -276,7 +276,7 @@ function confirmarEdicao() {
     if (nomeAntigo !== valorFinal && typeof exigirPapel === "function" && !exigirPapel("supremo", "Renomear cadastro")) return;
     if (nomeAntigo !== valorFinal) {
         if (!item.logs) item.logs = [];
-        item.logs.push(`Nome alterado de "${nomeAntigo}" para "${valorFinal}" em ${new Date().toLocaleString('pt-BR')}`);
+        item.logs.push(fmLogNovo("Nome alterado", `de "${nomeAntigo}" para "${valorFinal}"`));
     }
     item.nome = valorFinal;
 
@@ -286,7 +286,7 @@ function confirmarEdicao() {
             const novoMun = munInput.value.trim();
             if (item.municipio !== novoMun) {
                 if (!item.logs) item.logs = [];
-                item.logs.push(`Município alterado de "${item.municipio || 'vazio'}" para "${novoMun || 'vazio'}" em ${new Date().toLocaleString('pt-BR')}`);
+                item.logs.push(fmLogNovo("Município alterado", `de "${item.municipio || 'vazio'}" para "${novoMun || 'vazio'}"`));
                 item.municipio = novoMun;
             }
         }
@@ -298,7 +298,7 @@ function confirmarEdicao() {
             const taxaAntiga = _taxaFreteDaEmpresa(item);
             if (taxaAntiga !== novaTaxa) {
                 if (!item.logs) item.logs = [];
-                item.logs.push(`Taxa de frete alterada de ${fmtRL(taxaAntiga)}/L para ${fmtRL(novaTaxa)}/L em ${new Date().toLocaleString('pt-BR')}`);
+                item.logs.push(fmLogNovo("Taxa de frete alterada", `de ${fmtFreteL(taxaAntiga)}/L para ${fmtFreteL(novaTaxa)}/L`));
                 // ── VIGÊNCIA DA TAXA (17/09/2026) ───────────────────────
                 // A taxa nova vale de hoje em diante; a anterior fica
                 // fechada em ontem. Sem isso, mudar a taxa em outubro
@@ -317,6 +317,24 @@ function confirmarEdicao() {
                 item.taxaFrete = novaTaxa;
             }
         }
+
+        const pctInput = document.getElementById("modalInputPctMotorista");
+        if (pctInput) {
+            // Campo vazio volta a "sem valor gravado", que é o padrão de 1%.
+            // Gravar 1 no lugar de apagar seria o mesmo número hoje, mas
+            // congelaria a empresa caso o padrão mude.
+            const parsed = parseNumeroBR(pctInput.value);
+            const novoPct = pctInput.value.trim() === "" ? undefined
+                          : (parsed === null || parsed < 0 ? 0 : parsed);
+            const antigoPct = _percentualMotoristaDaEmpresa(item);
+            if (_percentualMotoristaDaEmpresa({ percentualMotorista: novoPct }) !== antigoPct) {
+                if (!item.logs) item.logs = [];
+                item.logs.push(fmLogNovo("Pagamento ao motorista alterado",
+                    `de ${fmtPct(antigoPct, 2)} para ${fmtPct(_percentualMotoristaDaEmpresa({ percentualMotorista: novoPct }), 2)} do frete`));
+            }
+            if (novoPct === undefined) delete item.percentualMotorista;
+            else item.percentualMotorista = novoPct;
+        }
     }
 
     if (lista === "combustiveis") {
@@ -324,7 +342,7 @@ function confirmarEdicao() {
         const perdaAntiga = item.perda;
         if (perdaAntiga !== perdaInput) {
             if (!item.logs) item.logs = [];
-            item.logs.push(`% perda alterada de ${perdaAntiga}% para ${perdaInput}% em ${new Date().toLocaleString('pt-BR')}`);
+            item.logs.push(fmLogNovo("Perda alterada", `de ${perdaAntiga}% para ${perdaInput}%`));
         }
         item.perda = isNaN(perdaInput) ? 0 : perdaInput;
     }
@@ -418,7 +436,7 @@ function salvarMotorista() {
         id: gerarId(),
         nome,
         ativo: true,
-        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+        logs: [fmLogNovo('Criado')]
     });
     input.value = "";
     salvarDB();
@@ -456,7 +474,7 @@ async function salvarVeiculo() {
         id: gerarId(),
         nome: placa,
         ativo: true,
-        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+        logs: [fmLogNovo('Criado')]
     });
     input.value = "";
     salvarDB();
@@ -486,7 +504,7 @@ async function converterTodasPlacasMercosul() {
     let propagados = 0;
     paraConverter.forEach(({ veiculo, antiga, nova }) => {
         if (!veiculo.logs) veiculo.logs = [];
-        veiculo.logs.push(`Placa convertida de "${antiga}" para "${nova}" (Mercosul) em ${new Date().toLocaleString('pt-BR')}`);
+        veiculo.logs.push(fmLogNovo("Placa convertida para Mercosul", `de "${antiga}" para "${nova}"`));
         veiculo.nome = nova;
 
         // Todos os lançamentos, inclusive os que não estão ativos, pelo
@@ -521,7 +539,7 @@ function migrarEmpresas() {
             nome,
             municipio: '',
             ativo: true,
-            logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+            logs: [fmLogNovo('Criado')]
         }));
         salvarDB();
     }
@@ -532,10 +550,14 @@ function salvarEmpresa() {
     const input = document.getElementById("nomeEmpresa");
     const inputMun = document.getElementById("municipioEmpresa");
     const inputTaxa = document.getElementById("taxaFreteEmpresa");
+    const inputPct  = document.getElementById("pctMotoristaEmpresa");
     const nome = input.value.trim();
     const municipio = inputMun ? inputMun.value.trim() : '';
     const taxaParsed = parseNumeroBR(inputTaxa ? inputTaxa.value : '');
     const taxaFrete = taxaParsed === null || taxaParsed < 0 ? 0 : taxaParsed;
+    const pctParsed = parseNumeroBR(inputPct ? inputPct.value : '');
+    const pctMotorista = (!inputPct || inputPct.value.trim() === "") ? undefined
+                       : (pctParsed === null || pctParsed < 0 ? 0 : pctParsed);
     if (!nome) {
         mostrarToast("Digite o nome da empresa.", "erro", 4000);
         return;
@@ -544,7 +566,7 @@ function salvarEmpresa() {
         mostrarToast("Essa empresa já está cadastrada.", "erro", 4000);
         return;
     }
-    db.empresas.push({
+    const registroEmpresa = {
         id: gerarId(),
         nome,
         municipio,
@@ -553,11 +575,14 @@ function salvarEmpresa() {
         // recalculado por uma taxa futura (17/09/2026).
         taxaHistorico: taxaFrete > 0 ? [{ taxa: taxaFrete, vigenciaDe: _hojeISO(), vigenciaAte: null }] : [],
         ativo: true,
-        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
-    });
+        logs: [fmLogNovo('Criado')]
+    };
+    if (pctMotorista !== undefined) registroEmpresa.percentualMotorista = pctMotorista;
+    db.empresas.push(registroEmpresa);
     input.value = "";
     if (inputMun) inputMun.value = "";
     if (inputTaxa) inputTaxa.value = "";
+    if (inputPct) inputPct.value = "";
     salvarDB();
     atualizarListas();
     _destacarCadastro("empresas", db.empresas[db.empresas.length - 1].id);
@@ -582,7 +607,7 @@ function salvarCombustivel() {
         nome,
         perda,
         ativo: true,
-        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+        logs: [fmLogNovo('Criado')]
     });
     inputNome.value = ""; inputPerda.value = "";
     salvarDB();
@@ -615,7 +640,7 @@ function salvarBase() {
         id: gerarId(),
         nome,
         ativo: true,
-        logs: [`Criado em ${new Date().toLocaleString('pt-BR')}`]
+        logs: [fmLogNovo('Criado')]
     });
     input.value = "";
     salvarDB();
@@ -633,7 +658,7 @@ async function toggleAtivo(lista, id) {
     if (!await fmConfirm({ titulo: `${acao.charAt(0).toUpperCase()+acao.slice(1)} "${item.nome}"?`, confirmTxt: acao.charAt(0).toUpperCase()+acao.slice(1), tipo: "aviso" })) return;
     item.ativo = item.ativo !== false ? false : true;
     if (!item.logs) item.logs = [];
-    item.logs.push(`${acao === 'inativar' ? 'Inativado' : 'Reativado'} em ${new Date().toLocaleString('pt-BR')}`);
+    item.logs.push(fmLogNovo(acao === 'inativar' ? 'Inativado' : 'Reativado'));
     salvarDB();
     atualizarListas();
     // Inativado com "mostrar inativos" desligado some da lista; aí o aviso
@@ -747,7 +772,7 @@ async function toggleAtivoConjunto(id) {
     if (!await fmConfirm({ titulo: `${acao.charAt(0).toUpperCase()+acao.slice(1)} conjunto?`, confirmTxt: acao.charAt(0).toUpperCase()+acao.slice(1), tipo: "aviso" })) return;
     conj.ativo = conj.ativo !== false ? false : true;
     if (!conj.logs) conj.logs = [];
-    conj.logs.push(`${conj.ativo ? 'Reativado' : 'Inativado'} em ${new Date().toLocaleString('pt-BR')}`);
+    conj.logs.push(fmLogNovo(conj.ativo ? 'Reativado' : 'Inativado'));
     // A vigência é o que decide os Fretes de cada data: inativar fecha a
     // composição hoje, e reativar reabre a que foi fechada pela inativação.
     const ultimo = (conj.historico || [])[conj.historico.length - 1];
@@ -915,7 +940,7 @@ async function salvarConjunto() {
                 vigenciaAte: null
             });
             if (!conj.logs) conj.logs = [];
-            conj.logs.push(`Composição alterada em ${agora} (vigência: ${dataVigencia})`);
+            conj.logs.push(fmLogNovo('Composição alterada', `vigência a partir de ${dataVigencia}`));
         }
         conj.nome = nome;
         conj.composicaoAtual = placas;
@@ -931,7 +956,7 @@ async function salvarConjunto() {
                 vigenciaAte: null
             }],
             ativo: true,
-            logs: [`Criado em ${agora}`]
+            logs: [fmLogNovo('Criado')]
         });
         mostrarToast("Conjunto cadastrado com sucesso!", "sucesso");
     }
@@ -973,7 +998,7 @@ function atualizarListas() {
         ulV.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhum cadastro ainda.</li>`
             : lista.map(v => `
                 <li class="${v.ativo !== false ? "" : "inativo"}">
-                    <span>${escapeHtml(v.nome)}${v.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
+                    <span>${escapeHtml(v.nome)}${v.placaAntiga ? ` <em class="tag-perda" title="Placa no formato antigo, como está no documento do veículo">antiga ${escapeHtml(v.placaAntiga)}</em>` : ''}${v.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}</span>
                     <div class="acoes-lista">
                         <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="veiculos" data-id="${v.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
                         <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="veiculos" data-id="${v.id}" title="${v.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${v.ativo !== false ? "Inativar" : "Reativar"}">${v.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
@@ -992,7 +1017,8 @@ function atualizarListas() {
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtRL(_taxaFreteDaEmpresa(e))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtFreteL(_taxaFreteDaEmpresa(e))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="Fatia do frete que vai para o motorista que rodou a nota${e.percentualMotorista === undefined ? '. Valor padrão: esta empresa não tem percentual próprio gravado.' : ''}">Motorista: ${fmtPct(_percentualMotoristaDaEmpresa(e), 2)}</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
@@ -1166,7 +1192,7 @@ document.addEventListener('click', function(e) {
     } else if (acao === 'editar') {
         if (lista === 'motoristas') abrirModal('Editar motorista',  'Nome',  item.nome, lista, id);
         else if (lista === 'veiculos')    abrirModal('Editar veículo',    'Placa', item.nome, lista, id);
-        else if (lista === 'empresas')    abrirModal('Editar empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '', item.taxaFrete ?? '');
+        else if (lista === 'empresas')    abrirModal('Editar empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '', item.taxaFrete ?? '', item.percentualMotorista ?? '');
         else if (lista === 'combustiveis') abrirModal('Editar combustível','Nome',  item.nome, lista, id, item.perda);
         else if (lista === 'bases')       abrirModal('Editar base',       'Nome',  item.nome, lista, id);
     }

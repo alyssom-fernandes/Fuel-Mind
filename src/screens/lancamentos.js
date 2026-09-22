@@ -1284,8 +1284,14 @@ async function editarLancamento(id) {
         const banner = document.getElementById("bannerEdicao");
         banner.style.display = "block";
         let bannerHtml = `Editando nota <strong>${escapeHtml(l.numeroNota)}</strong> · <a href="#" onclick="limparFormulario(); return false;">Cancelar edição</a>`;
+        /* O banner prometia "você pode substituí-los ao salvar", e não há
+           mais como: o anexo de nota foi descontinuado e não existe campo
+           de arquivo nesta tela (22/09/2026). A menção fica, porque a nota
+           antiga REALMENTE tem os arquivos gravados e some-los do texto
+           faria parecer que a edição os apagou, mas ela agora diz a
+           verdade: eles continuam lá e a edição não os toca. */
         if (l.anexos && l.anexos.length > 0)
-            bannerHtml += `<br><small>Este lançamento possui ${l.anexos.length} anexo(s). Você pode substituí-los ao salvar.</small>`;
+            bannerHtml += `<br><small>Esta nota tem ${l.anexos.length} anexo(s) de um formato que saiu do sistema. Eles continuam guardados e esta edição não mexe neles.</small>`;
         banner.innerHTML = bannerHtml;
         document.getElementById("tituloLancamentos").textContent  = "Editando lançamento";
         _aplicarMarcadorSujo();   // trocar o texto do título apagava o marcador

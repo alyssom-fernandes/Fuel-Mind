@@ -23,18 +23,22 @@
   e basta esquecer um para o valor voltar quebrado.
 =================================================*/
 
-/** Casas decimais por campo, na DIGITAÇÃO. Litros com três, preço e taxa
- *  com quatro (é como a NF-e traz; arredondar na entrada mudaria o total),
- *  percentual com dois. A EXIBIÇÃO do valor por litro é com três (`fmtRL`,
- *  18/09/2026): quem mostra arredonda, quem guarda não. */
+/** Casas decimais por campo, na DIGITAÇÃO. Litros com três; o preço com
+ *  quatro (é como a NF-e traz; arredondar na entrada mudaria o total da
+ *  nota); a taxa de frete com duas, porque vem de contrato e os contratos
+ *  são redondos (22/09/2026); percentual com dois. A EXIBIÇÃO do preço por
+ *  litro é com três (`fmtRL`, 18/09/2026) e a do frete por litro com duas
+ *  (`fmtFreteL`): quem mostra arredonda, quem guarda não. */
 const FM_CASAS = {
     qtd:                  3,
     qtdDescargada:        3,
     valor:                4,
-    taxaFreteEmpresa:     4,
+    taxaFreteEmpresa:     2,
     perdaCombustivel:     2,
-    modalInputTaxaFrete:  4,
+    modalInputTaxaFrete:  2,
     modalInputPerda:      2,
+    pctMotoristaEmpresa:  2,
+    modalInputPctMotorista: 2,
     _cfgPrecoDif:         2
 };
 

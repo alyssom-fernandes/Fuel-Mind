@@ -31,6 +31,8 @@ data resets every day.
 - Clone and edit with full audit log
 
 ### 📊 Reports & Analytics
+- Report hub: everything the system issues in one list, with the month picked there applied to the source screen before the file is generated
+- Entry history filterable by invoice date and by unloading date at the same time: the cross-section isolates month-boundary invoices
 - Filterable table with pagination and inline detail
 - Sortable columns (date, liters, total)
 - PDF export with logo, custom margins, colors, and per-month page break
@@ -39,7 +41,7 @@ data resets every day.
 - Global quick search (Ctrl+K)
 
 ### 📈 Analytics Dashboard
-- Monthly, per-driver, per-vehicle, per-fuel, comparative, distribution, price evolution tabs
+- Monthly, per-driver, per-vehicle, per-fuel, distribution, price-per-litre tabs
 - KPI cards with delta vs. previous month
 - Toggle Value (R$) / Liters
 - Price evolution chart by fuel type
@@ -197,12 +199,15 @@ fuel-mind/
 │   │
 │   └── screens/            # One screen, one file
 │       ├── lancamentos.js  # Entry form, NF-e XML, save/edit/clone
-│       ├── relatorios.js   # Table, filters, pagination, exports
-│       ├── analitico.js    # Seven analytics tabs + charts
+│       ├── central.js      # Report hub: everything the system issues
+│       ├── relatorios.js   # History: table, filters, pagination, exports
+│       ├── analitico.js    # Six analytics tabs + charts
 │       ├── dashboard.js    # KPIs, alerts, per-fuel breakdown
 │       ├── fretes.js       # Freight calculation and export
+│       ├── fechamento.js   # Month-end closing report (PDF)
 │       ├── grupo.js        # Company comparison
 │       ├── cadastros.js    # Drivers, vehicles, companies, fuels…
+│       ├── cadastros-importar.js # Fleet import from a spreadsheet
 │       ├── sistema.js      # Backup, PDF settings, reconciliation
 │       ├── importacao.js   # Spreadsheets with format detection
 │       ├── usuarios.js     # Users and permissions

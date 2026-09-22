@@ -24,9 +24,16 @@ let empresaFiltroId     = null;
 
 /* ─── INICIALIZAÇÃO DO AUTH ─── */
 let _authJaProcessado = false;
+/* Verdadeiro enquanto um logout pedido pelo usuário está em curso. O
+   observador de auth ignora tudo nesse intervalo: sem isso, um evento
+   chegando durante o `signOut` refazia o login e devolvia a pessoa ao
+   seletor de empresa, ainda logada. (21/09/2026) */
+let _saindo = false;
 
 window.addEventListener("firebaseReady", () => {
     window._firestore.authEscutar(async (user) => {
+        // Saída em curso: quem manda é o `fazerLogout`, não este evento.
+        if (_saindo) return;
         if (user) {
             if (_authJaProcessado && window._usuarioAtual?.uid === user.uid) return;
             _authJaProcessado = true;
@@ -76,10 +83,16 @@ function _escutarPerfil(uid) {
 }
 
 function _derrubarSessao(mensagem) {
+    // Mesma trava do `fazerLogout`: sem ela o observador reentrava e
+    // devolvia a pessoa ao seletor de empresa.
+    _saindo = true;
     _encerrarSessaoDados();
     window._usuarioAtual = null;
     _authJaProcessado = false;
-    try { window._firestore?.authLogout(); } catch (_) {}
+    Promise.resolve()
+        .then(() => window._firestore?.authLogout())
+        .catch(() => {})
+        .finally(() => { _saindo = false; });
     _mostrarTelaLogin(mensagem);
 }
 
@@ -120,6 +133,10 @@ function _aplicarPerfilAtualizado(perfil) {
 /* ─── TELA DE LOGIN ─── */
 function _mostrarTelaLogin(erroMsg) {
     document.getElementById("appContainer").style.display = "none";
+    // O seletor de empresa é um overlay à parte: se ficar aberto, aparece
+    // por cima do login.
+    const sel = document.getElementById("selecaoEmpresaOverlay");
+    if (sel) sel.style.display = "none";
     const overlay = document.getElementById("loginOverlay");
     overlay.style.display = "flex";
     const emailInput = document.getElementById("loginEmail");
@@ -466,9 +483,51 @@ async function fazerLogout() {
     // sessão do turno anterior.
     if (typeof limparFormulario === 'function') limparFormulario();
     if (typeof _idsSessao !== 'undefined') { _idsSessao = []; if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar(); }
+
+    /* Sair ESTANDO no modo demonstração tem que desligar o modo também.
+       Sem isto, `_demoAtivo` continuava true depois do logout (só o botão
+       "Sair da demo" o desligava) e a página não recarregava: quem entrasse
+       em seguida com a conta de verdade seguia preso na demonstração, com
+       `carregarDB` voltando sem buscar nada e `salvarDB` gravando no
+       armazenamento da demo. A pessoa via dados fictícios achando que eram
+       os dela, e o que lançasse não chegava à nuvem. (21/09/2026) */
+    if (typeof demoAtivo === 'function' && demoAtivo()) {
+        if (typeof sairModoDemo === 'function') { sairModoDemo(); return; }
+        window._demoAtivo = false;
+        window.location.reload();
+        return;
+    }
+
+    /* O "Sair" não saía: voltava para o seletor de empresa, ainda logado.
+       Duas coisas somadas. Primeira: `window._usuarioAtual` era zerado ANTES
+       de esperar o `signOut`, e é ele que sustenta a trava de reentrada do
+       observador de auth (`_usuarioAtual?.uid === user.uid`). Com o campo
+       nulo a comparação vira `undefined === uid`, ou seja, falsa, então
+       qualquer evento de auth que chegasse durante o `signOut` REFAZIA o
+       login e chamava `_mostrarSelecaoEmpresa`. Segunda: a troca de tela
+       dependia do observador disparar com `null`, e ele pode não disparar.
+       Agora a saída é marcada com `_saindo`, o observador ignora tudo
+       enquanto ela corre, e a tela de login é mostrada aqui mesmo, sem
+       depender de evento nenhum. (21/09/2026) */
+    _saindo = true;
     _encerrarSessaoDados();
     window._usuarioAtual = null;
-    await window._firestore.authLogout();
+    _authJaProcessado = false;
+    try {
+        await window._firestore.authLogout();
+    } catch (e) {
+        /* O servidor não confirmou a saída. Recarregar aqui traria a pessoa
+           de volta logada, porque a sessão do Firebase continua de pé. */
+        _saindo = false;
+        _mostrarTelaLogin("Não consegui encerrar a sessão no servidor. Confira a conexão e tente de novo.");
+        return;
+    }
+    /* Saída confirmada: recarrega. A limpeza à mão é o que deu origem aos
+       dois defeitos de hoje (o modo demo que não desligava e o observador
+       que reentrava), e nenhuma lista de variáveis para zerar compete com
+       começar do zero. Nada se perde: o que ainda não subiu está na cópia
+       local deste navegador e sobe no próximo login. */
+    window.location.reload();
 }
 
 /**

@@ -206,3 +206,84 @@ test("parseNumeroBR: vírgula decimal, milhar e texto inválido", () => {
     assert.equal(parseNumeroBR(""), null);
     assert.equal(parseNumeroBR("abc"), null);
 });
+
+/* ── DUAS CASAS NO FRETE, TRÊS NO PREÇO (22/09/2026) ─────────────────── */
+/*  O dono separou os dois números: a taxa vem de contrato e os contratos
+ *  dele são redondos (R$ 0,10/L); o preço vem da NF-e, que traz até dez
+ *  casas. Estes testes existem para que ninguém volte a juntar as duas
+ *  funções — se `fmtFreteL` passar a chamar `fmtRL`, o preço da nota perde
+ *  uma casa na tela inteira sem ninguém notar.
+ */
+test("fmtFreteL: taxa de frete com duas casas", () => {
+    assert.equal(fmtFreteL(0.10),   "R$ 0,10");
+    assert.equal(fmtFreteL(0.1),    "R$ 0,10");
+    assert.equal(fmtFreteL(0),      "R$ 0,00");
+    assert.equal(fmtFreteL(0.125),  "R$ 0,13");
+    assert.equal(fmtFreteL(1.5),    "R$ 1,50");
+});
+
+test("fmtRL continua com três casas: o preço da nota não foi junto", () => {
+    assert.equal(fmtRL(6.18),   "R$ 6,180");
+    assert.equal(fmtRL(5.8765), "R$ 5,877");
+    assert.equal(fmtRL(0.10),   "R$ 0,100");
+});
+
+test("frete de R$ 0,10/L: a tela reproduz a conta na calculadora", () => {
+    // O que motivou a mudança: com 3 casas a tela escrevia "R$ 0,100/L", e
+    // quem conferia na mão multiplicava por um número com uma casa a mais
+    // do que o contrato tem. Com 0,10 o texto e a conta agora coincidem.
+    const taxa = 0.10, litros = 2458000;
+    assert.equal(fmtFreteL(taxa), "R$ 0,10");
+    assert.equal(fmtR(litros * taxa), "R$ 245.800,00");
+});
+
+test("_formatoPlanilhaPorCabecalho: a planilha diz o mesmo que a tela", () => {
+    const f = _formatoPlanilhaPorCabecalho;
+    // Frete: duas casas, como na tela desde 22/09/2026.
+    assert.equal(f("taxa (r$/l)", 0.10),                 "#,##0.00");
+    assert.equal(f("frete/l", 0.10),                     "#,##0.00");
+    assert.equal(f("frete (r$)", 245800),                "#,##0.00");
+    assert.equal(f("frete (descarga)", 245800),          "#,##0.00");
+    // Preço do combustível: continua com três.
+    assert.equal(f("preço médio/l (faturado)", 6.18),    "#,##0.000");
+    assert.equal(f("valor unit.", 5.8765),               "#,##0.000");
+    // Litros: inteiro sem casas, quebrado com três.
+    assert.equal(f("litros (l)", 60000),                 "#,##0");
+    assert.equal(f("litros (l)", 60000.5),               "#,##0.000");
+    assert.equal(f("viagens", 4),                        "");
+});
+
+/* ── APELIDOS DE CADASTRO (22/09/2026) ───────────────────────────────
+ *  A equipe escreve "BMAD" e "RICARDO R"; o cadastro guarda o nome
+ *  completo. Estes testes guardam as duas cautelas da regra: nome exato
+ *  nunca perde para apelido, e apelido ambíguo não é resolvido no chute.
+ */
+test("_cadastroPorNomeOuApelido: nome, apelido, e o que NÃO pode acontecer", () => {
+    const bases = [
+        { nome: "RAIZEN · S. F. CONDE", apelidos: "BMAD / MADRE DE DEUS" },
+        { nome: "RAIZEN · BRASILIA",    apelidos: "BSB" },
+        { nome: "PETROBAHIA · LEM" }
+    ];
+    assert.equal(_cadastroPorNomeOuApelido(bases, "RAIZEN · S. F. CONDE").nome, "RAIZEN · S. F. CONDE");
+    assert.equal(_cadastroPorNomeOuApelido(bases, "BMAD").nome,          "RAIZEN · S. F. CONDE");
+    assert.equal(_cadastroPorNomeOuApelido(bases, "bmad").nome,          "RAIZEN · S. F. CONDE");
+    assert.equal(_cadastroPorNomeOuApelido(bases, "Madre de Deus").nome, "RAIZEN · S. F. CONDE");
+    assert.equal(_cadastroPorNomeOuApelido(bases, "BSB").nome,           "RAIZEN · BRASILIA");
+    assert.equal(_cadastroPorNomeOuApelido(bases, "PETROBAHIA · LEM").nome, "PETROBAHIA · LEM");
+    assert.equal(_cadastroPorNomeOuApelido(bases, "não existe"), null);
+    assert.equal(_cadastroPorNomeOuApelido(bases, ""), null);
+
+    // Nome exato vence apelido: senão, cadastrar uma base chamada "BMAD"
+    // faria as notas dela irem parar na de São Francisco do Conde.
+    const comConflito = [...bases, { nome: "BMAD", apelidos: "" }];
+    assert.equal(_cadastroPorNomeOuApelido(comConflito, "BMAD").nome, "BMAD");
+
+    // Apelido repetido não é sorteado: devolve null e a linha fica para
+    // quem importa resolver.
+    const ambiguo = [
+        { nome: "RICARDO RODRIGUES DA COSTA", apelidos: "RICARDO" },
+        { nome: "RICARDO SANTOS DE OLIVEIRA", apelidos: "RICARDO" }
+    ];
+    assert.equal(_cadastroPorNomeOuApelido(ambiguo, "RICARDO"), null);
+    assert.equal(_cadastroPorNomeOuApelido(ambiguo, "RICARDO RODRIGUES DA COSTA").nome, "RICARDO RODRIGUES DA COSTA");
+});

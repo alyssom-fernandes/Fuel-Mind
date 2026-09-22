@@ -188,6 +188,43 @@ function dataEmissaoDe(l) {
     return (l && l.dataNota) || "";
 }
 
+/**
+ * A nota passa nos dois recortes de data ao mesmo tempo (22/09/2026).
+ *
+ * O Histórico ganhou o par de datas da DESCARGA além do par da EMISSÃO, a
+ * pedido do dono: a operação dele gira em torno da descarga, e ela é a base
+ * do frete. Os dois pares somam, não substituem, e a regra é E, nunca OU.
+ *
+ * O E é o ponto, e vale escrever por que: com OU, pedir "emitidas em agosto"
+ * junto de "descarregadas em agosto" traria a nota emitida em 31/07 e
+ * descarregada em 01/08 e a emitida em 31/08 e descarregada em 01/09, as
+ * duas fora do que se pediu, e o total do mês passaria a somar litros que
+ * não são dele. Foi esse mesmo erro, com uma data só, que em 16/09/2026
+ * fazia julho e agosto somarem 29.500 L a mais que o intervalo inteiro.
+ *
+ * Com o E, preencher os dois pares é justamente o que isola a nota da
+ * fronteira: "emitida em agosto E descarregada em setembro" é uma pergunta
+ * que antes não tinha como fazer nesta tela.
+ *
+ * Par vazio não filtra nada. Data ausente na nota reprova quando o par
+ * correspondente está preenchido: sem a data não há como afirmar que ela
+ * está dentro.
+ *
+ * @param {object} l - o lançamento
+ * @param {{emissaoInicio?:string, emissaoFim?:string, descargaInicio?:string, descargaFim?:string}} p
+ * @returns {boolean}
+ */
+function _passaPeriodos(l, p) {
+    const f = p || {};
+    const dentro = (d, ini, fim) => {
+        if (!ini && !fim) return true;
+        if (!d) return false;
+        return (!ini || d >= ini) && (!fim || d <= fim);
+    };
+    return dentro(dataEmissaoDe(l),  f.emissaoInicio,  f.emissaoFim)
+        && dentro(dataDescargaDe(l), f.descargaInicio, f.descargaFim);
+}
+
 /** `"YYYY-MM-DD"` de uma data pelo relógio do computador.
  *  Nunca `toISOString().slice(0, 10)`: é a data em UTC, e no horário de
  *  Brasília ela já é o dia seguinte a partir das 21h. */
@@ -271,6 +308,47 @@ function _taxaFreteDaEmpresaNaData(empresa, iso) {
     return isFinite(t) && t > 0 ? t : _taxaFreteDaEmpresa(empresa);
 }
 
+/* Um cadastro pelo nome ou por um dos apelidos (22/09/2026).
+
+   O apelido existe porque a equipe escreve "BMAD" e "RICARDO R" há anos,
+   enquanto o cadastro guarda "RAIZEN · S. F. CONDE" e "RICARDO RODRIGUES
+   DA COSTA". O seletor da tela já achava pelos dois; esta função leva a
+   mesma regra para a IMPORTAÇÃO de lançamentos, que casava só pelo nome e
+   gravaria a nota com a base "BMAD" solta, fora do cadastro.
+
+   Duas cautelas que não são detalhe:
+   - Nome exato vence sempre. Um apelido nunca rouba de um nome de verdade.
+   - Apelido repetido em dois cadastros devolve `null` em vez de sortear
+     um. Quem importa vê a linha como não resolvida e decide; adivinhar
+     aqui gravaria a nota no motorista errado sem nenhum rastro. */
+function _cadastroPorNomeOuApelido(lista, texto) {
+    const alvo = normalizarTexto(texto || "");
+    if (!alvo) return null;
+    const cadastros = (lista || []).filter(c => c && c.nome);
+    const porNome = cadastros.find(c => normalizarTexto(c.nome) === alvo);
+    if (porNome) return porNome;
+    const porApelido = cadastros.filter(c =>
+        String(c.apelidos || "").split("/").some(a => a.trim() && normalizarTexto(a) === alvo));
+    return porApelido.length === 1 ? porApelido[0] : null;
+}
+
+/* Percentual do frete que vai para o motorista (22/09/2026).
+
+   Veio da planilha do dono: em agosto ele pagou R$ 5.967,00 sobre
+   R$ 596.700,00 de frete, que é 1% exato, e a conta dele era
+   "(litros POSTO + litros TRR) ÷ 1.000", ou seja, R$ 1,00 por mil litros,
+   que com a taxa de R$ 0,10/L dá no mesmo. Guardamos como PERCENTUAL do
+   frete, não como valor fixo por mil litros: assim, no dia em que a taxa
+   subir, o que o motorista recebe acompanha, que é o que ele confirmou
+   querer.
+
+   Padrão 1% quando a empresa não tem o campo. Zero digitado é zero de
+   verdade: quem não paga percentual grava 0 e o campo respeita. */
+function _percentualMotoristaDaEmpresa(empresa) {
+    const p = parseFloat(empresa && empresa.percentualMotorista);
+    return isFinite(p) && p >= 0 ? p : 1;
+}
+
 function _taxaFreteDaEmpresa(empresa) {
     const taxa = parseFloat(empresa?.taxaFrete);
     return isNaN(taxa) || taxa < 0 ? 0 : taxa;
@@ -296,6 +374,47 @@ function getChartColors() {
         info:    v('--info',    '#3b82f6'),
         background: isDark ? '#18181b' : '#ffffff'
     };
+}
+
+// ========== HISTÓRICO DE ALTERAÇÕES ==========
+/* Um registro de log é sempre `{acao, ts, usuario, detalhe?}`. Os
+   lançamentos já usavam esse formato; os cadastros gravavam texto puro, do
+   tipo "Criado em 21/09/2026, 10:00", que dizia QUANDO mas não QUEM. Numa
+   base com mais de uma pessoa lançando, um log que não diz quem mexeu não
+   serve para o que o log existe. (21/09/2026)
+
+   Os textos puros antigos continuam sendo lidos: `fmLogLinha` aceita os
+   dois formatos, porque o que já está gravado não vai ser reescrito. */
+function fmLogNovo(acao, detalhe) {
+    const reg = {
+        acao: acao,
+        ts: new Date().toISOString(),
+        usuario: (typeof window !== "undefined" && window._usuarioAtual?.nome) || "—"
+    };
+    if (detalhe) reg.detalhe = detalhe;
+    return reg;
+}
+
+/** Uma linha do histórico, em HTML. Aceita o registro novo e o texto antigo. */
+function fmLogLinha(log) {
+    if (typeof log === "string") return `<li>${escapeHtml(log)}</li>`;
+    if (!log || typeof log !== "object") return "";
+    let quando = "";
+    try { quando = new Date(log.ts).toLocaleString("pt-BR"); } catch (_) { quando = ""; }
+    const quem = log.usuario && log.usuario !== "—" ? `, por ${escapeHtml(log.usuario)}` : "";
+    const oQue = log.detalhe ? `: ${escapeHtml(log.detalhe)}` : "";
+    return `<li><strong>${escapeHtml(log.acao || "Alterado")}</strong>`
+         + (quando ? ` em ${quando}` : "") + quem + oQue + `</li>`;
+}
+
+/** O histórico inteiro, recolhido, com a contagem no título. */
+function fmLogBloco(logs, titulo) {
+    const lista = Array.isArray(logs) ? logs : [];
+    if (!lista.length) return "";
+    return `<details class="historico-cadastro">
+        <summary class="historico-cadastro-titulo">${escapeHtml(titulo || "Histórico")} (${lista.length})</summary>
+        <ul class="lista-limpa log-list">${lista.map(fmLogLinha).join("")}</ul>
+    </details>`;
 }
 
 // ========== FORMATAÇÃO DE DATAS ==========
@@ -335,13 +454,27 @@ function _compacto(v) {
 function fmtEixoR(v) { return "R$ " + _compacto(v); }
 function fmtEixoL(v) { return _compacto(v) + " L"; }
 
-/* Reais por litro: preço, taxa de frete, frete por litro. Três casas,
-   como a bomba mostra (R$ 5,899); valor em reais fica com duas (`fmtR`).
-   Era `fmtR4`, com quatro, até 18/09/2026, a pedido do dono: "não precisam
-   de tantos dígitos". A digitação do preço continua aceitando quatro, que é
-   como a NF-e traz: arredondar na entrada mudaria o total da nota. */
+/* Reais por litro do COMBUSTÍVEL: preço da nota, preço médio, régua de
+   preço. Três casas, como a bomba mostra (R$ 5,899); valor em reais fica
+   com duas (`fmtR`). Era `fmtR4`, com quatro, até 18/09/2026, a pedido do
+   dono: "não precisam de tantos dígitos". A digitação do preço continua
+   aceitando quatro, que é como a NF-e traz: arredondar na entrada mudaria
+   o total da nota. */
 function fmtRL(v) {
     return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:3, maximumFractionDigits:3 });
+}
+
+/* Reais por litro do FRETE: a taxa contratada e o frete por litro que sai
+   dela. Duas casas, decisão do dono em 22/09/2026.
+   Por que é função separada de `fmtRL`, e não um parâmetro: são dois
+   números de origens diferentes. O preço vem da NF-e, que traz até dez
+   casas, e arredondá-lo esconde diferença real. A taxa vem de contrato, e
+   os contratos do dono são redondos (R$ 0,10/L), e escrever "R$ 0,100" só
+   sugeria uma precisão que não existe. Juntar os dois numa função só
+   obrigaria cada chamador a lembrar qual é qual, e bastava errar um para o
+   preço da nota perder uma casa em silêncio. */
+function fmtFreteL(v) {
+    return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
 
 /* Porcentagem em português: "2,4%". `toFixed(1) + "%"` escrevia "2.4%" nas
@@ -660,14 +793,26 @@ function calcularFretesDoMes(opts) {
     });
 
     const porPlaca = {}, porMotorista = {}, porEmpresa = {}, porConjunto = {};
-    let totalLitros = 0, totalFrete = 0;
+    let totalLitros = 0, totalFrete = 0, totalPagamento = 0;
 
-    const acumular = (grupo, tipo, litros, frete) => {
+    /* `porEmpresa` dentro de cada grupo (22/09/2026): o fechamento que o
+       dono entrega mostra, para cada conjunto, o volume e o frete
+       separados por empresa: POSTO numa coluna, TRR na outra. Sem essa
+       quebra só dava para somar o conjunto inteiro, e a planilha dele
+       ficaria impossível de reproduzir. */
+    const acumular = (grupo, tipo, litros, frete, pagamento, empresaNome) => {
         grupo.litros += litros;
         grupo.frete  += frete;
-        if (!grupo.detalhes[tipo]) grupo.detalhes[tipo] = { litros: 0, frete: 0 };
+        grupo.pagamento = (grupo.pagamento || 0) + pagamento;
+        if (!grupo.detalhes[tipo]) grupo.detalhes[tipo] = { litros: 0, frete: 0, pagamento: 0 };
         grupo.detalhes[tipo].litros += litros;
         grupo.detalhes[tipo].frete  += frete;
+        grupo.detalhes[tipo].pagamento += pagamento;
+        if (!grupo.porEmpresa) grupo.porEmpresa = {};
+        if (!grupo.porEmpresa[empresaNome]) grupo.porEmpresa[empresaNome] = { litros: 0, frete: 0, pagamento: 0 };
+        grupo.porEmpresa[empresaNome].litros += litros;
+        grupo.porEmpresa[empresaNome].frete  += frete;
+        grupo.porEmpresa[empresaNome].pagamento += pagamento;
     };
 
     lancamentosMes.forEach(l => {
@@ -677,6 +822,9 @@ function calcularFretesDoMes(opts) {
         const empresa    = (cadEmpresa && cadEmpresa.nome) || l.empresa || "(sem empresa)";
         const dataRef    = dataDescargaDe(l) || mes + "-01";
         const taxa       = _taxaFreteDaEmpresaNaData(cadEmpresa, dataRef);
+        // O percentual é da empresa do lançamento: um motorista que rodou
+        // para as duas no mês recebe cada parte pela regra da sua empresa.
+        const pctMot     = _percentualMotoristaDaEmpresa(cadEmpresa);
         if (!cadEmpresa) semTaxa++;
         else if (!(taxa > 0)) { taxaZero++; empresasTaxaZero.add(cadEmpresa.nome); }
 
@@ -687,13 +835,13 @@ function calcularFretesDoMes(opts) {
         const conjKey   = conjObj ? conjObj.id : null;
         const conjLabel = conjObj ? (conjObj.nome || `Conjunto ${placasPeriodo[0] || ""}`) : null;
 
-        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set(), conjunto: conjLabel };
-        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista, viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set() };
-        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,   viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set() };
+        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), conjunto: conjLabel };
+        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista, viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set() };
+        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,   viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set() };
         if (conjKey && !porConjunto[conjKey]) {
             porConjunto[conjKey] = {
                 id: conjKey, nome: conjLabel, placas: placasPeriodo.slice(),
-                viagens: 0, litros: 0, frete: 0, detalhes: {}, empresas: new Set(), porPlacaInterna: {}
+                viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), porPlacaInterna: {}
             };
         }
 
@@ -708,24 +856,27 @@ function calcularFretesDoMes(opts) {
             const conj = porConjunto[conjKey];
             conj.viagens++;
             conj.empresas.add(empresa);
-            if (!conj.porPlacaInterna[placa]) conj.porPlacaInterna[placa] = { viagens: 0, litros: 0, frete: 0 };
+            if (!conj.porPlacaInterna[placa]) conj.porPlacaInterna[placa] = { viagens: 0, litros: 0, frete: 0, pagamento: 0 };
             conj.porPlacaInterna[placa].viagens++;
         }
 
         (l.itens || []).forEach(item => {
             const litros = Number(item.qtd) || 0;
             const frete  = litros * taxa;
+            const pagamento = frete * pctMot / 100;
             const tipo   = item.tipo || "Desconhecido";
             totalLitros += litros;
             totalFrete  += frete;
-            acumular(porPlaca[placa], tipo, litros, frete);
-            acumular(porMotorista[motorista], tipo, litros, frete);
-            acumular(porEmpresa[empresa], tipo, litros, frete);
+            totalPagamento += pagamento;
+            acumular(porPlaca[placa], tipo, litros, frete, pagamento, empresa);
+            acumular(porMotorista[motorista], tipo, litros, frete, pagamento, empresa);
+            acumular(porEmpresa[empresa], tipo, litros, frete, pagamento, empresa);
             if (conjKey) {
                 const conj = porConjunto[conjKey];
-                acumular(conj, tipo, litros, frete);
+                acumular(conj, tipo, litros, frete, pagamento, empresa);
                 conj.porPlacaInterna[placa].litros += litros;
                 conj.porPlacaInterna[placa].frete  += frete;
+                conj.porPlacaInterna[placa].pagamento += pagamento;
             }
         });
     });
@@ -736,6 +887,11 @@ function calcularFretesDoMes(opts) {
         totalNotas: lancamentosMes.length,
         totalLitros,
         totalFrete,
+        totalPagamento,
+        // Os nomes das empresas do mês, na ordem em que sairão nas colunas
+        // do fechamento. Ordenado para o relatório de dois meses seguidos
+        // não trocar as colunas de lugar.
+        empresasDoMes: Object.keys(porEmpresa).sort((a, b) => a.localeCompare(b, "pt-BR")),
         semTaxa,
         taxaZero,
         empresasTaxaZero: [...empresasTaxaZero],
@@ -827,6 +983,24 @@ function garantirBiblioteca(nome) {
    cada aba ganha largura pelo conteúdo e formato pelo cabeçalho da coluna:
    reais com 2 casas, litros com 3 (inteiros sem casas), preço e taxa por
    litro com 3. A célula continua NÚMERO: soma e ordena no Excel. */
+/* O formato de número de uma célula, decidido pelo cabeçalho da coluna
+   (já em minúsculas). Função separada para caber nos testes: `XLSX` não
+   existe fora do navegador e `ajustarPlanilha` sai na primeira linha.
+
+   A ordem dos testes é a regra. "Frete (descarga)" é dinheiro, não litro;
+   "Total litros (L)" é litro, não dinheiro. E o por-litro do FRETE vem
+   antes do por-litro em geral (22/09/2026): "Taxa (R$/L)" e "Frete/L" têm
+   duas casas, enquanto "Preço médio/L" continua com três. Sem esse
+   primeiro teste o Excel escrevia "0,100" onde a tela já dizia "R$ 0,10". */
+function _formatoPlanilhaPorCabecalho(h, valor) {
+    if (/taxa|frete\s*\/\s*l/.test(h))                             return "#,##0.00";
+    if (/\/l\b|pre[çc]o|unit/.test(h))                             return "#,##0.000";
+    if (/r\$|frete|gasto|valor/.test(h))                           return "#,##0.00";
+    if (/litro|\(l\)|carga|descarga|entrada|diferen/.test(h))      return Number.isInteger(valor) ? "#,##0" : "#,##0.000";
+    if (/total/.test(h) || !Number.isInteger(valor))               return "#,##0.00";
+    return "";
+}
+
 function ajustarPlanilha(ws) {
     if (!ws || !ws["!ref"] || typeof XLSX === "undefined") return;
     const faixa = XLSX.utils.decode_range(ws["!ref"]);
@@ -846,13 +1020,7 @@ function ajustarPlanilha(ws) {
             // não alarga a coluna: ele transborda para as vizinhas.
             if (i === 0 && preenchidas.length === 1 && cel.t === "s") return;
             if (cel.t === "n" && !ehCabecalho) {
-                const h = cabecalho[i] || "";
-                // A ordem importa: "Frete (descarga)" é dinheiro, não litro;
-                // "Total litros (L)" é litro, não dinheiro.
-                if (/\/l\b|taxa|pre[çc]o|unit/.test(h))                    cel.z = "#,##0.000";
-                else if (/r\$|frete|gasto|valor/.test(h))                   cel.z = "#,##0.00";
-                else if (/litro|\(l\)|carga|descarga|entrada|diferen/.test(h)) cel.z = Number.isInteger(cel.v) ? "#,##0" : "#,##0.000";
-                else if (/total/.test(h) || !Number.isInteger(cel.v))       cel.z = "#,##0.00";
+                cel.z = _formatoPlanilhaPorCabecalho(cabecalho[i] || "", cel.v) || cel.z;
             }
             const texto = cel.t === "n"
                 ? cel.v.toLocaleString("pt-BR", { minimumFractionDigits: cel.z && cel.z.includes(".000") ? 3 : (cel.z ? 2 : 0) })

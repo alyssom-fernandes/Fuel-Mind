@@ -129,3 +129,98 @@ test("mês sem descarga devolve tudo zerado, sem erro", () => {
     assert.equal(r.totalFrete, 0);
     assert.deepEqual(r.porPlaca, []);
 });
+
+/* ── PAGAMENTO AO MOTORISTA (22/09/2026) ─────────────────────────────
+ *  A regra saiu da planilha do dono: em agosto de 2026 ele pagou
+ *  R$ 5.967,00 sobre R$ 596.700,00 de frete, exatamente 1%. A conta dele
+ *  era "(litros POSTO + litros TRR) ÷ 1.000", que com taxa de R$ 0,10/L dá
+ *  no mesmo. Guardamos como percentual para que o pagamento acompanhe uma
+ *  futura mudança de taxa.
+ */
+const POSTO = { id: "p1", nome: "Posto Rosario", taxaFrete: 0.10, taxaHistorico: [] };
+const TRR   = { id: "p2", nome: "Fabiandra",     taxaFrete: 0.10, taxaHistorico: [] };
+
+function _notaFrete(empresa, litros, dia, motorista) {
+    return {
+        id: "n" + dia + empresa, empresa, motorista, placa: "ABC1D23",
+        dataDescarga: `2026-08-${String(dia).padStart(2, "0")}`,
+        itens: [{ tipo: "Diesel S10", qtd: litros, valor: 6 }]
+    };
+}
+
+test("_percentualMotoristaDaEmpresa: padrão 1%, zero é zero, valor próprio manda", () => {
+    assert.equal(_percentualMotoristaDaEmpresa(undefined), 1);
+    assert.equal(_percentualMotoristaDaEmpresa({}), 1);
+    assert.equal(_percentualMotoristaDaEmpresa({ percentualMotorista: 0 }), 0);
+    assert.equal(_percentualMotoristaDaEmpresa({ percentualMotorista: 2.5 }), 2.5);
+    // Lixo no campo não zera o pagamento em silêncio: volta ao padrão.
+    assert.equal(_percentualMotoristaDaEmpresa({ percentualMotorista: "abc" }), 1);
+    assert.equal(_percentualMotoristaDaEmpresa({ percentualMotorista: -3 }), 1);
+});
+
+test("agosto de 2026: R$ 596.700,00 de frete e R$ 5.967,00 aos motoristas", () => {
+    const empresas = [POSTO, TRR];
+    const lancamentos = [
+        _notaFrete("Posto Rosario", 2458000, 10, "ADALBERON"),
+        _notaFrete("Fabiandra",     3509000, 11, "ADALBERON")
+    ];
+    const r = calcularFretesDoMes({
+        lancamentos, mes: "2026-08",
+        empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
+    });
+    assert.equal(r.totalLitros, 5967000);
+    assert.equal(+r.totalFrete.toFixed(2), 596700.00);
+    assert.equal(+r.totalPagamento.toFixed(2), 5967.00);
+    // O que o dono confere: R$ 1,00 por mil litros.
+    assert.equal(+(r.totalPagamento / (r.totalLitros / 1000)).toFixed(4), 1.0000);
+    // E o mesmo número chega no agrupamento por motorista.
+    assert.equal(+r.porMotorista[0].pagamento.toFixed(2), 5967.00);
+});
+
+test("cada empresa com o seu percentual, no mesmo motorista", () => {
+    const empresas = [
+        Object.assign({}, POSTO, { percentualMotorista: 1 }),
+        Object.assign({}, TRR,   { percentualMotorista: 2 })
+    ];
+    const r = calcularFretesDoMes({
+        lancamentos: [_notaFrete("Posto Rosario", 100000, 5, "BENTO"),
+                      _notaFrete("Fabiandra",     100000, 6, "BENTO")],
+        mes: "2026-08",
+        empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
+    });
+    // 100.000 x 0,10 = 10.000 de frete em cada. 1% + 2% = 100 + 200.
+    assert.equal(+r.totalFrete.toFixed(2), 20000.00);
+    assert.equal(+r.porMotorista[0].pagamento.toFixed(2), 300.00);
+});
+
+test("percentual zerado não paga, e a nota continua gerando frete", () => {
+    const empresas = [Object.assign({}, POSTO, { percentualMotorista: 0 })];
+    const r = calcularFretesDoMes({
+        lancamentos: [_notaFrete("Posto Rosario", 50000, 7, "ELIS")],
+        mes: "2026-08",
+        empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
+    });
+    assert.equal(+r.totalFrete.toFixed(2), 5000.00);
+    assert.equal(r.totalPagamento, 0);
+});
+
+test("cada grupo se abre por empresa, como o fechamento do dono entrega", () => {
+    const empresas = [POSTO, TRR];
+    const r = calcularFretesDoMes({
+        lancamentos: [
+            _notaFrete("Posto Rosario", 118000, 10, "ADALBERON"),
+            _notaFrete("Fabiandra",     236000, 11, "ADALBERON")
+        ],
+        mes: "2026-08",
+        empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
+    });
+    const m = r.porMotorista[0];
+    // É a linha do ADALBERON na planilha de agosto: 118.000 no POSTO,
+    // 236.000 no TRR, 354.000 no total, R$ 354,00 a receber.
+    assert.equal(m.porEmpresa["Posto Rosario"].litros, 118000);
+    assert.equal(m.porEmpresa["Fabiandra"].litros,     236000);
+    assert.equal(+m.porEmpresa["Posto Rosario"].frete.toFixed(2), 11800.00);
+    assert.equal(+m.porEmpresa["Fabiandra"].frete.toFixed(2),     23600.00);
+    assert.equal(+m.pagamento.toFixed(2), 354.00);
+    assert.deepEqual(r.empresasDoMes, ["Fabiandra", "Posto Rosario"]);
+});

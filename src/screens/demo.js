@@ -75,10 +75,14 @@ function _demoRand(semente) {
     };
 }
 
+/* Taxas com duas casas desde 22/09/2026, acompanhando a digitação. Com
+   0,3450 a tela escrevia "R$ 0,35/L" e o frete era calculado com 0,345:
+   a demonstração reintroduziria justamente a divergência entre o que se lê
+   e o que se soma que a mudança foi feita para tirar. */
 const DEMO_EMPRESAS = [
-    { id: "demo-emp-1", nome: "Transportadora Aurora",   municipio: "Campinas, SP",  taxaFrete: 0.2800 },
-    { id: "demo-emp-2", nome: "Rodoviário Bandeirante",  municipio: "Sorocaba, SP",  taxaFrete: 0.3450 },
-    { id: "demo-emp-3", nome: "Expresso Vale Verde",     municipio: "Ribeirão Preto, SP", taxaFrete: 0.3100 }
+    { id: "demo-emp-1", nome: "Transportadora Aurora",   municipio: "Campinas, SP",  taxaFrete: 0.28 },
+    { id: "demo-emp-2", nome: "Rodoviário Bandeirante",  municipio: "Sorocaba, SP",  taxaFrete: 0.35 },
+    { id: "demo-emp-3", nome: "Expresso Vale Verde",     municipio: "Ribeirão Preto, SP", taxaFrete: 0.31 }
 ];
 
 const DEMO_MOTORISTAS = [
