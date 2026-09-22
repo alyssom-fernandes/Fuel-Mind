@@ -1221,8 +1221,15 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     border-right: 1px solid #e2e8f0;
     box-shadow: 2px 0 12px rgba(0,0,0,0.04);
 }
+/* Sem fundo proprio (22/09/2026). O tema claro pintava a area da logo de
+   #f8fafc contra o #ffffff da barra: 4,6% mais escura, numa superficie de
+   259 por 64 px colada nela. Sutil para medir, visivel para o olho, e o
+   dono reparou. O tema escuro nunca fez isso, deixa a area transparente e
+   ela herda o fundo da barra, entao a diferenca era so entre os temas.
+   E desde que a area passou a ter a mesma altura do cabecalho, a linha de
+   baixo ja a delimita: o fundo era uma segunda marcacao para a mesma
+   coisa. */
 [data-theme="light"] .sidebar-logo {
-    background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
 }
 [data-theme="light"] .sidebar-logo-title { color: #0f172a; }
