@@ -391,6 +391,28 @@ async function _mostrarSelecaoEmpresa(perfil) {
     overlay.style.display = "flex";
 }
 
+/* O CARTÃO DO USUÁRIO, no rodapé da barra lateral (22/09/2026).
+   Antes daqui só existia o primeiro nome, espremido no cabeçalho ao lado
+   de mais sete coisas. Ele desceu junto com o tema e o "Sair", que é onde
+   as ferramentas de referência põem os três, e de quebra ancorou o rodapé
+   da barra, que terminava em 321px de vazio.
+
+   O nome inteiro, e não só o primeiro: o espaço aqui é de uma coluna, e
+   quem administra usuários precisa saber com qual conta está, não só o
+   apelido. */
+function _pintarUsuarioDaBarra() {
+    const u = window._usuarioAtual;
+    const nome = document.getElementById("sidebarNomeUsuario");
+    if (!nome || !u) return;
+    const completo = (u.nome || "").trim();
+    nome.textContent = completo || u.email || "—";
+    /* O papel e o e-mail vivem no `title`, e nao numa segunda linha: eles
+       quase nunca mudam, quem precisa deles esta na tela de Usuarios, e
+       na barra so somavam altura. Quem quiser conferir, passa o mouse. */
+    const papel = typeof _rotuloPapel === "function" ? _rotuloPapel(u.role) : (u.role || "");
+    nome.title = [completo, papel, u.email].filter(Boolean).join(" · ");
+}
+
 /* ─── PERMISSÕES NA TELA ───
    Quem vê o quê. A regra do servidor é a barreira de verdade; a tela só
    não oferece o que o servidor vai recusar, e não deixa o operador perto
@@ -570,10 +592,7 @@ function _aplicarEmpresaAtiva(nome) {
     const label = document.getElementById("empresaAtivaLabel");
     if (label) label.textContent = nome || "—";
 
-    const nomeUsuario = document.getElementById("headerNomeUsuario");
-    if (nomeUsuario && window._usuarioAtual) {
-        nomeUsuario.textContent = (window._usuarioAtual.nome || '').split(" ")[0];
-    }
+    if (typeof _pintarUsuarioDaBarra === "function") _pintarUsuarioDaBarra();
 
     const telaAtualId = document.querySelector(".tela[style*='block']")?.id || "dashboard";
     if (typeof atualizarTituloHeader === "function") atualizarTituloHeader(telaAtualId);

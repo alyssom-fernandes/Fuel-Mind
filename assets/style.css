@@ -212,11 +212,23 @@ body {
 .sidebar::-webkit-scrollbar { width: 3px; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
 
+/* A MESMA ALTURA DA BARRA DE CIMA (22/09/2026).
+   A area da logo tinha 83px contra os 64px do cabecalho, e as duas tem
+   uma linha embaixo: eram dois riscos horizontais separados por 19px,
+   perto demais para parecer intencao e longe demais para passar
+   despercebido. Com a altura igual eles viram um risco so, atravessando a
+   tela, e a barra lateral passa a ser lida junto com o conteudo em vez de
+   ao lado dele.
+   `height` e nao `padding`: e a altura que precisa casar com a do
+   cabecalho, e amarrar as duas na mesma variavel e o que mantem isso
+   verdade se ela mudar. A logo tem 40px, entao sobram 12px em cima e
+   embaixo. */
 .sidebar-logo {
     display: flex;
     align-items: center;
     gap: 13px;
-    padding: 22px 18px 20px;
+    height: var(--header-height);
+    padding: 0 18px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     text-decoration: none;
     flex-shrink: 0;
@@ -256,7 +268,16 @@ body {
     border: none; background: transparent;
     color: rgba(255,255,255,0.68);
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.875rem; font-weight: 500;
+    /* 1rem, nao 0.875rem (22/09/2026). A raiz deste projeto e 14px, entao
+       0.875rem dava 12,25px de texto dentro de um item de 240px de largura:
+       o conteudo boiava na area e quase metade da barra ficava vazia. A
+       razao entre o tamanho da fonte e a largura da coluna era de 4,7%,
+       contra os 5,8% de uma barra de 240px com texto de 14px, que e a
+       proporcao das ferramentas que servem de referencia.
+       A largura de 260px NAO mudou, de proposito: ela ja esta dentro da
+       faixa usada por elas, de 240 a 280. Quem estava fora do padrao era o
+       texto. */
+    font-size: 1rem; font-weight: 500;
     width: 100%; text-align: left;
     white-space: nowrap; overflow: hidden;
     position: relative;
@@ -385,7 +406,6 @@ body {
     .btn-busca-global { min-width: unset; padding: 7px 10px; }
 }
 
-.header-sep { width: 1px; height: 22px; background: var(--border-light); }
 
 .header-datetime {
     font-size: 0.78rem; color: var(--text-light);
@@ -2285,8 +2305,6 @@ button.confirmado-local::after {
 .header-empresa-rotulo { font-size: 0.8rem; color: var(--text-light); }
 .icone-chevron { width: 12px; height: 12px; flex-shrink: 0; opacity: 0.6; }
 .icone-busca   { width: 15px; height: 15px; flex-shrink: 0; }
-.header-usuario { font-size: 0.82rem; color: var(--text-muted); }
-.header-action-btn--atalhos { font-size: 0.9rem; font-weight: 700; padding: 4px 9px; opacity: 0.7; font-family: monospace; letter-spacing: -0.5px; }
 .header-action-btn--texto   { font-size: 0.75rem; padding: 4px 8px; opacity: 0.7; }
 
 /* O título de cada tela mora no cabeçalho; o h2 interno nasce escondido
@@ -3187,7 +3205,7 @@ input[type="checkbox"], input[type="radio"] {
    para o lado. Fica o essencial — menu, empresa, busca, sair e tema. */
 @media (max-width: 768px) {
     .header-actions { gap: 6px; min-width: 0; }
-    .header-empresa-rotulo, .header-sep, .header-usuario, .header-action-btn--atalhos, .busca-kbd { display: none; }
+    .header-empresa-rotulo, .busca-kbd { display: none; }
     /* Sem as teclas, o rodapé da busca virava "navegar abrir fechar" solto. */
     .busca-global-footer { display: none; }
     .header-empresa { min-width: 0; }
@@ -3328,6 +3346,48 @@ input[type="checkbox"], input[type="radio"] {
     .central-card-abrir { margin-left: 0; }
 }
 
+/* ── O RODAPÉ DA BARRA LATERAL (22/09/2026) ────────────────────────
+   A barra terminava em 321px de vazio, 37% da altura dela, porque nada
+   ancorava o fim. O dono trouxe quatro referências e todas prendiam algo
+   embaixo: o sair numa, o sair mais o tema noutra, as ações mais o cartão
+   do usuário na terceira. Nelas o vazio fica ENTRE duas âncoras e lê como
+   respiro; aqui ficava depois da última e lia como inacabado.
+
+   `margin-top: auto` num filho de coluna flex empurra o bloco para o fim
+   e deixa a sobra no meio, que é exatamente o desenho das referências. */
+.sidebar-nav { flex: 1 1 auto; }
+.sidebar-rodape {
+    flex: 0 0 auto; margin-top: auto;
+    padding: 10px 10px 12px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+/* O cartão da identidade: quem está logado e com qual papel. Fica abaixo
+   das ações e separado delas, porque é informação e não botão. */
+/* O mesmo `gap` e o mesmo `padding` lateral do `.sidebar-item`, para o
+   nome cair na coluna exata dos rótulos acima. Com o círculo de 30px que
+   havia aqui antes o texto começava 11px à direita deles. */
+.sidebar-usuario {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 12px 3px; margin-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    min-width: 0;
+}
+.sidebar-usuario-icone { flex-shrink: 0; color: rgba(255,255,255,0.55); }
+/* `min-width: 0` para o nome longo caber com reticência em vez de empurrar
+   o ícone para fora da barra. */
+.sidebar-usuario-nome {
+    min-width: 0;
+    font-size: 0.93rem; font-weight: 600; color: rgba(255,255,255,0.92);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* No tema claro a barra tem fundo claro, entao o branco fixo do cartao
+   ficava invisivel: sobrava o avatar sozinho. As cores seguem as mesmas
+   que os itens do menu ja usam aqui, logo acima. */
+[data-theme="light"] .sidebar-rodape,
+[data-theme="light"] .sidebar-usuario { border-top-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .sidebar-usuario-nome  { color: #0f172a; }
+[data-theme="light"] .sidebar-usuario-icone { color: #64748b; }
+
 /* ── O TÍTULO DO CABEÇALHO EM TELA MÉDIA (22/09/2026) ──────────────
    Num notebook de 1024 px o título ficava com 7,8 px dos 248 de que
    precisa: o nome da tela sumia por completo, em TODAS as telas, porque
@@ -3353,7 +3413,6 @@ input[type="checkbox"], input[type="radio"] {
     .header-datetime { display: none; }
     .header-empresa-rotulo { display: none; }
     .busca-kbd { display: none; }
-    .header-action-btn--atalhos { display: none; }
 }
 
 /* ── "VER NO ANALÍTICO" NOS BLOCOS DE PRÉVIA (22/09/2026) ──────────

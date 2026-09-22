@@ -170,6 +170,48 @@
       </button>
     </div>
   </nav>
+  <!-- O RODAPE DA BARRA LATERAL (22/09/2026).
+       O dono olhou a barra e disse que ela passava uma sensacao estranha,
+       de espaco vazio. O vazio era VERTICAL, e media 321px: 37% da altura.
+       O conteudo parava no ultimo item e o resto terminava em nada.
+
+       As quatro referencias que ele mandou ancoram todas alguma coisa
+       embaixo: "Sign Out" numa, "Logout" e o tema noutra, as acoes mais o
+       cartao do usuario na terceira. Nelas o vazio fica ENTRE duas
+       ancoras, e ai ele le como respiro; aqui ficava DEPOIS da ultima, e
+       espaco vazio no fim de uma coluna le como inacabado.
+
+       Tema, Sair e a identidade desceram do cabecalho para ca, que e onde
+       essas tres coisas moram nas ferramentas de referencia. O cabecalho
+       ganhou 95px de folga junto, e era ele que estava espremendo o titulo
+       da tela. A empresa ativa NAO desceu: ela e um seletor que o dono usa
+       para trocar de empresa, nao uma etiqueta, e fica a mao no topo. -->
+  <div class="sidebar-rodape">
+    <button class="sidebar-item" onclick="toggleModoEscuro()" title="Alternar tema claro e escuro">
+      <span class="sidebar-item-icon" id="sidebarIconeTema"></span>
+      <span class="sidebar-item-label" id="sidebarRotuloTema">Tema</span>
+    </button>
+    <button class="sidebar-item" onclick="abrirAtalhos()" title="Atalhos de teclado">
+      <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+      <span class="sidebar-item-label">Atalhos</span>
+    </button>
+    <button class="sidebar-item" onclick="fazerLogout()" title="Sair do sistema">
+      <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+      <span class="sidebar-item-label">Sair</span>
+    </button>
+    <!-- O icone de contorno, e nao um circulo preenchido: ele e a mesma
+         linguagem dos icones do menu logo acima, entao o nome cai na mesma
+         coluna que "Tema claro", "Atalhos" e "Sair". Com o circulo de
+         30px o texto comecava 11px a direita dos outros, e era esse
+         desalinho que fazia o bloco parecer colado de outro lugar. O
+         vermelho tambem competia com o item ativo, que usa a mesma cor.
+         O nivel do usuario saiu: ele nao muda, quem precisa dele esta na
+         tela de Usuarios, e aqui so somava uma linha. (22/09/2026) -->
+    <div class="sidebar-usuario">
+      <span class="sidebar-item-icon sidebar-usuario-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+      <span class="sidebar-usuario-nome" id="sidebarNomeUsuario"></span>
+    </div>
+  </div>
 </aside>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="fecharSidebar()"></div>
 <div class="main-area">
@@ -192,12 +234,6 @@
       <kbd class="busca-kbd">Ctrl K</kbd>
     </button>
     <span class="header-datetime" id="headerDatetime"></span>
-    <div class="header-sep"></div>
-    <span id="headerNomeUsuario" class="header-usuario"></span>
-    <!-- BOTÃO ATALHOS: abre modal de atalhos de teclado (ui.js:abrirAtalhos) -->
-    <button class="header-action-btn header-action-btn--atalhos" onclick="abrirAtalhos()" title="Atalhos de teclado" aria-label="Atalhos de teclado">?</button>
-    <button class="header-action-btn header-action-btn--texto" onclick="fazerLogout()" title="Sair" aria-label="Sair do sistema">Sair</button>
-    <button class="header-action-btn" onclick="toggleModoEscuro()" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro" id="btnTema"><span id="iconeTema"></span></button>
   </div>
 </header>
 <main class="content-area">

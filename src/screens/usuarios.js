@@ -394,8 +394,8 @@ async function confirmarEditarProprioPerfil() {
         fecharUsuarioModal();
         mostrarToast("Perfil atualizado com sucesso!", "sucesso");
         await _recarregarListaUsuarios();
-        const badgeNome = document.getElementById("headerNomeUsuario");
-        if (badgeNome) badgeNome.textContent = nome;
+        // O nome vive no cartão do rodapé da barra lateral desde 22/09/2026.
+        if (typeof _pintarUsuarioDaBarra === "function") _pintarUsuarioDaBarra();
     } catch (e) {
         if (btn) esconderSpinner(btn);
         mostrarToast("Erro ao salvar: " + e.message, "erro", 6000);
