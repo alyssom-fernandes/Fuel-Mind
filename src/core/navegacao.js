@@ -253,11 +253,15 @@ async function mostrarTela(id) {
         if (typeof _sessaoRenderizar === 'function') _sessaoRenderizar();
     }
 
-    // Atualiza highlight da sidebar
-    document.querySelectorAll(".sidebar-item").forEach(b => b.classList.remove("ativa"));
-    const navBtn = document.getElementById("nav-" + id);
-    if (navBtn) navBtn.classList.add("ativa");
-
+    /* O destaque da barra lateral tem UM dono: `marcarNavAtivo`, em ui.js.
+       Aqui havia um segundo bloco que aplicava a classe `ativa`, e o CSS
+       estiliza `ativo`: o item ficava com as duas, e quem pintava era
+       sempre a outra funcao. Funcionava por acidente, e um dia em que
+       alguem mexesse numa das duas o destaque sumiria sem motivo
+       aparente. `marcarNavAtivo` tambem sabe o que este bloco nao sabia:
+       que as telas de cadastro individual acendem o item "Cadastros".
+       (22/09/2026) */
     if (typeof window._uiNavHook === 'function') window._uiNavHook(id);
+    else if (typeof marcarNavAtivo === 'function') marcarNavAtivo(id);
     if (typeof atualizarTitulosInternos === 'function') atualizarTitulosInternos();
 }

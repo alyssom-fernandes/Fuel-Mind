@@ -288,12 +288,23 @@ body {
     color: #a02828;
     font-weight: 600;
 }
-.sidebar-item.ativo::before {
+/* A MARCA DO ITEM ATIVO CRESCE, em vez de piscar (22/09/2026).
+   Ela existia so sob `.ativo`, entao nascia e morria junto com a classe e
+   nao havia estado anterior para transicionar: aparecia de uma vez. Agora
+   o pseudo-elemento existe em todos os itens, encolhido em `scaleY(0)`, e
+   so estica no que esta ativo.
+   `transform` e nao `height`: a altura recalcularia layout a cada quadro,
+   a escala a GPU compoe sozinha. E quem pede menos movimento no sistema
+   ja e atendido pela regra global de `prefers-reduced-motion`. */
+.sidebar-item::before {
     content: '';
     position: absolute; left: 0; top: 6px; bottom: 6px;
     width: 3px; background: var(--primary);
     border-radius: 0 3px 3px 0;
+    transform: scaleY(0);
+    transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.sidebar-item.ativo::before { transform: scaleY(1); }
 .sidebar-item-icon {
     width: 20px; height: 20px;
     display: flex; align-items: center; justify-content: center;
@@ -977,29 +988,31 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 
 
 /* ══════════════════════════════════════════════
-   INPUT DATE / MONTH — ícone do calendário
-   No modo escuro (padrão) o picker nativo é preto;
-   invertemos para ficar branco e visível.
-   No modo claro restauramos o padrão do sistema.
-══════════════════════════════════════════════ */
+   INPUT DATE / MONTH: o ícone do calendário
+
+   Aqui havia DUAS correções para o mesmo problema, escritas em momentos
+   diferentes, e a segunda desfazia a primeira.
+
+   O `filter: invert(1)` nasceu quando o ícone vinha preto por padrão e não
+   havia mais nada cuidando dos controles nativos. Em 21/09/2026 entrou
+   `color-scheme` por tema (no topo deste arquivo), que manda o NAVEGADOR
+   desenhar caixa de marcar, barra de rolagem e calendário no tom certo: no
+   escuro o ícone já nasce branco. A partir dali o `invert` passou a fazer
+   o contrário do que prometia, devolvendo o ícone branco para preto, e no
+   fundo escuro ele sumia. O dono achou no seletor de mês da central.
+
+   Sobra a opacidade, que é a única coisa que ainda é decisão nossa: o
+   ícone fica discreto em repouso e firme no hover. Não há mais bloco
+   separado por tema, porque o `color-scheme` já resolve os dois.
+   (22/09/2026) */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="month"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) opacity(0.6);
+    opacity: 0.75;
     cursor: pointer;
+    transition: opacity 0.15s;
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover,
 input[type="month"]::-webkit-calendar-picker-indicator:hover {
-    filter: invert(1) opacity(1);
-}
-
-[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
-[data-theme="light"] input[type="month"]::-webkit-calendar-picker-indicator {
-    filter: none;
-    opacity: 0.6;
-}
-[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator:hover,
-[data-theme="light"] input[type="month"]::-webkit-calendar-picker-indicator:hover {
-    filter: none;
     opacity: 1;
 }
 
@@ -1297,6 +1310,14 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 /* ══ ABAS TELA UNIFICADA RELATÓRIOS ══════════════════ */
 .rel-aba-conteudo { animation: fadeSlideIn 0.18s ease; }
+/* As outras vinte abas do sistema, que trocavam secas (22/09/2026).
+   Cadastros tem sete, o Analitico seis, Fretes quatro e Sistema tres, e
+   nenhuma delas animava, enquanto a troca de TELA e as abas do Historico
+   ja faziam isto desde sempre. Nao era escolha: era esta regra, que
+   existia so para a classe do Historico.
+   Medido: 8,9 ms a mais por troca, metade de um quadro a 60 fps, e as
+   duas propriedades animadas sao compostas pela GPU. */
+.aba-conteudo, .sistema-aba-conteudo { animation: fadeSlideIn 0.18s ease; }
 
 /* ══ BUSCA GLOBAL — REDESIGN ═════════════════════════ */
 .busca-global-modal {
