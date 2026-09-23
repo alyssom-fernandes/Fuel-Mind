@@ -35,6 +35,13 @@
        continuam no --primary. No tema claro os dois são a mesma cor.
        (21/09/2026) */
     --primary-texto:   #d06a6a;
+    /* Cor do contorno de foco (23/09/2026). Era o --primary, e o vinho sobre
+       o fundo escuro dá de 1,9 a 2,7 de contraste: abaixo dos 3 que um
+       indicador precisa para ser visto, e quem anda pelo teclado perdia o
+       lugar. O --primary-texto dá de 4,1 a 5,6 nos seis fundos escuros; no
+       tema claro ele é o próprio vinho (6,3 a 7,4). Por apontar para ele,
+       este token troca sozinho com o tema. */
+    --foco:            var(--primary-texto);
     --primary-hover:   #8c2222;        /* escurecido ~12%, feedback visual de hover */
     --primary-light:   rgba(139,34,82,0.2);
     --primary-glow:    rgba(139,34,82,0.4);
@@ -1199,8 +1206,11 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ========== FOCO VISÍVEL ========== */
-button:focus-visible, input:focus-visible, select:focus-visible {
-    outline: 2px solid var(--primary);
+/* Campo de texto longo, link e o que recebe foco por `tabindex` (a prévia
+   do PDF no celular, por exemplo) também ganham o contorno. */
+button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, a:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid var(--foco);
     outline-offset: 2px;
 }
 
@@ -1455,7 +1465,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
    sem tabindex, e quem trabalha só com teclado não conseguia trocar de
    empresa. Estas linhas desfazem o estilo nativo do botão. */
 button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
-.empresa-ativa-badge:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.empresa-ativa-badge:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
 
 /* O campo Empresa travado pela empresa ativa era idêntico a um campo
    editável: mesmo fundo, mesma cor, mesma borda. Não havia regra para
@@ -2134,11 +2144,11 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .fm-sem-permissao { display: none !important; }
 
 /* Resultado destacado pelo teclado na busca global. */
-#buscaGlobalResultados .busca-item-ativo { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--surface-raised) !important; }
+#buscaGlobalResultados .busca-item-ativo { outline: 2px solid var(--foco); outline-offset: -2px; background: var(--surface-raised) !important; }
 
 /* Foco visível nos interruptores do modal de alertas: o checkbox real tem
    tamanho zero, então o anel vai no desenho. */
-._cfg-toggle input:focus-visible + ._cfg-slider { outline: 2px solid var(--primary); outline-offset: 2px; }
+._cfg-toggle input:focus-visible + ._cfg-slider { outline: 2px solid var(--foco); outline-offset: 2px; }
 
 /* ══ A AÇÃO RESPONDE ONDE ACONTECEU (programa 3.5, 3.6, 3.7, 18/09/2026) ══
    Só transform, opacity e cor; durações dos tokens. Com movimento reduzido
@@ -3012,7 +3022,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
-.input-arquivo-oculto:focus-visible + *, .btn-arquivo:has(+ .input-arquivo-oculto:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.input-arquivo-oculto:focus-visible + *, .btn-arquivo:has(+ .input-arquivo-oculto:focus-visible) { outline: 2px solid var(--foco); outline-offset: 2px; }
 
 .lanc-painel {
     background: var(--surface); border: 1px solid var(--border-light);
@@ -3479,7 +3489,7 @@ input[type="checkbox"], input[type="radio"] {
 }
 .central-card-abrir svg { width: 13px; height: 13px; }
 .central-card-abrir:hover { color: var(--text); text-decoration: underline; }
-.central-card-abrir:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.central-card-abrir:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: 4px; }
 
 /* O segmentado miúdo do alvo do período rápido, na barra de filtros do
    histórico: o de tamanho normal empurraria os quatro atalhos para a
@@ -3585,7 +3595,7 @@ input[type="checkbox"], input[type="radio"] {
 }
 .dash-ver-completo svg { width: 13px; height: 13px; }
 .dash-ver-completo:hover { color: var(--text); text-decoration: underline; }
-.dash-ver-completo:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.dash-ver-completo:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: 4px; }
 
 /* ── PRÉVIA DO PDF (22/09/2026) ────────────────────────────────────
    O documento aparece antes de ser salvo, num `iframe` que é o próprio
