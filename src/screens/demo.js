@@ -395,7 +395,7 @@ function _demoMostrarFaixa() {
     const faixa = document.createElement("div");
     faixa.id = "demoFaixa";
     faixa.innerHTML = `
-        <span><strong>Modo demonstração</strong>: dados fictícios, restaurados todo dia. Nada aqui é gravado na nuvem.</span>
+        <span><strong>Modo demonstração</strong><span class="demo-faixa-detalhe">: dados fictícios, restaurados todo dia. Nada aqui é gravado na nuvem.</span></span>
         <span class="demo-faixa-acoes">
             <button onclick="demoResetarDados(false)">Restaurar dados</button>
             <button onclick="sairModoDemo()">Sair da demo</button>

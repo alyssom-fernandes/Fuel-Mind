@@ -253,8 +253,11 @@ function _fmAbrir(est) {
             || (i.placaAntiga ? `antiga ${i.placaAntiga}` : '')
             || i.apelidos || '';
         const extra = segundo ? ` <span class="fm-combo-extra">${escapeHtml(segundo)}</span>` : '';
+        // O nome num span próprio: solto, ele não tinha como encolher e um
+        // nome longo de base ou transportadora criava rolagem lateral
+        // dentro da lista, no celular.
         return `<li class="fm-combo-item" role="option" aria-selected="false"
-                    id="${est.lista.id}-opt-${idx}" data-idx="${idx}">${escapeHtml(i.nome)}${extra}</li>`;
+                    id="${est.lista.id}-opt-${idx}" data-idx="${idx}"><span class="fm-combo-nome">${escapeHtml(i.nome)}</span>${extra}</li>`;
     }).join('');
 
     if (!itens.length && tokensBusca.length) {
@@ -272,9 +275,15 @@ function _fmAbrir(est) {
 
     if (!html) { _fmFechar(est); return; }
 
+    // A lista já aberta (a pessoa está digitando) mantém o lado em que
+    // abriu: recalcular a cada tecla a fazia pular de baixo para cima
+    // conforme sobravam mais ou menos resultados.
+    const jaAberta = est.aberta;
     est.lista.innerHTML = html;
     est.lista.hidden = false;
+    _fmPosicionar(est, jaAberta);
     est.aberta = true;
+    if (!jaAberta) _fmAcompanharTela(est);
     est.input.setAttribute('aria-expanded', 'true');
     est.status.textContent = itens.length
         ? `${itens.length} ${itens.length === 1 ? 'resultado' : 'resultados'}`
@@ -291,7 +300,69 @@ function _fmAbrir(est) {
     });
 }
 
+/* Para cima ou para baixo, e com que altura (23/09/2026).
+   A lista abria sempre embaixo do campo, com até 260 px. Num notebook com
+   zoom de 125% sobram uns 530 px de janela, e no celular o teclado come
+   metade da tela: o campo Base, no pé do formulário, abria a lista para
+   fora da área visível. Agora ela abre para o lado que tem mais espaço, e
+   nunca maior que esse espaço.
+
+   O espaço de cima desconta o cabeçalho, que fica grudado no topo e passa
+   por cima da lista (z-index 100 contra 60). O `visualViewport` é o que
+   sobra de tela com o teclado aberto; sem ele, vale a janela.
+
+   `manterLado`: só a altura é refeita, o lado fica. É o caso de quem está
+   digitando ou rolando a página com a lista aberta. */
+function _fmPosicionar(est, manterLado) {
+    const r  = est.input.getBoundingClientRect();
+    const vv = window.visualViewport;
+    const topoVisivel = vv ? vv.offsetTop : 0;
+    const fimVisivel  = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    const cabecalho   = document.querySelector('.app-header');
+    const topoUtil    = Math.max(topoVisivel, cabecalho ? cabecalho.getBoundingClientRect().bottom : 0);
+
+    const folga   = 8;
+    const abaixo  = fimVisivel - r.bottom - folga;
+    const acima   = r.top - topoUtil - folga;
+    est.lista.style.maxHeight = '';
+    const desejada = Math.min(est.lista.scrollHeight, 260);
+    const paraCima = manterLado
+        ? est.lista.classList.contains('fm-combo-lista--acima')
+        : abaixo < desejada && acima > abaixo;
+
+    est.lista.classList.toggle('fm-combo-lista--acima', paraCima);
+    const espaco = paraCima ? acima : abaixo;
+    // Menos de 120 px não mostra nem três nomes: aí é melhor a lista passar
+    // da borda e a página rolar do que virar uma fresta.
+    if (espaco < desejada) est.lista.style.maxHeight = Math.max(120, Math.floor(espaco)) + 'px';
+}
+
+/* No celular a lista abre no `focus`, ANTES de o teclado subir: ela
+   escolhia o lado com a tela inteira e o teclado a cobria em seguida,
+   até a primeira tecla. Enquanto ela estiver aberta, a área visível
+   mudando (teclado subindo ou descendo) faz escolher o lado de novo, e a
+   página rolando refaz só a altura. `_fmFechar` solta os ouvintes. */
+function _fmAcompanharTela(est) {
+    const vv = window.visualViewport;
+    est._aoMudarTela = () => { if (est.aberta) _fmPosicionar(est, false); };
+    est._aoRolar     = () => { if (est.aberta) _fmPosicionar(est, true); };
+    if (vv) {
+        vv.addEventListener('resize', est._aoMudarTela);
+        vv.addEventListener('scroll', est._aoRolar);
+    }
+    window.addEventListener('scroll', est._aoRolar, { passive: true });
+}
+
 function _fmFechar(est) {
+    const vv = window.visualViewport;
+    if (est._aoMudarTela) {
+        if (vv) {
+            vv.removeEventListener('resize', est._aoMudarTela);
+            vv.removeEventListener('scroll', est._aoRolar);
+        }
+        window.removeEventListener('scroll', est._aoRolar);
+        est._aoMudarTela = est._aoRolar = null;
+    }
     est.lista.hidden = true;
     est.aberta = false;
     est.ativo = -1;

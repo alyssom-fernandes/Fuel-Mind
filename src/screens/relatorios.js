@@ -1046,7 +1046,35 @@ function _pdfMarca(doc, x, y, tamanho) {
    acumularia todos.
 
    Imprimir chama o `print()` de DENTRO do iframe, e não o da página: o da
-   página mandaria a tela do sistema para a impressora, não o documento. */
+   página mandaria a tela do sistema para a impressora, não o documento.
+
+   NO CELULAR E NO TABLET O IFRAME NÃO SERVE (23/09/2026). O Chrome do
+   Android não desenha PDF dentro da página: o quadro fica em branco, ou
+   com um botão de abrir. O Safari do iPhone mostra a primeira página e
+   para. Nesses aparelhos as páginas são desenhadas como imagem pelo
+   PDF.js, que só é baixado nessa hora. "Imprimir" vira "Compartilhar"
+   onde o aparelho aceita compartilhar arquivo (Android e iPhone: WhatsApp,
+   e-mail, e no iPhone também imprimir), e "Abrir o PDF" onde não aceita.
+   O computador continua com o leitor nativo, que tem zoom, busca e
+   impressão direta. */
+function _pdfPreviaDesenhada() {
+    const toque = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+    return toque || navigator.pdfViewerEnabled === false;
+}
+
+/* O arquivo para o botão Compartilhar, ou `null` onde o aparelho não
+   compartilha arquivo. No Android, abrir o blob numa aba nova costuma
+   baixar um arquivo de nome sem sentido; compartilhar leva o nome certo. */
+function _pdfArquivoCompartilhavel(doc, nomeArquivo) {
+    if (typeof File !== "function" || !navigator.canShare) return null;
+    try {
+        const arquivo = new File([doc.output("blob")], nomeArquivo, { type: "application/pdf" });
+        return navigator.canShare({ files: [arquivo] }) ? arquivo : null;
+    } catch (_) {
+        return null;
+    }
+}
+
 function _pdfEntregar(doc, nomeArquivo) {
     let url;
     try {
@@ -1059,27 +1087,53 @@ function _pdfEntregar(doc, nomeArquivo) {
         return;
     }
 
+    const desenhada = _pdfPreviaDesenhada();
+    const arquivo = desenhada ? _pdfArquivoCompartilhavel(doc, nomeArquivo) : null;
     const modal = document.createElement("div");
     modal.id = "_modalPdfPrevia";
     modal.className = "modal-overlay";
     modal.style.display = "flex";
 
+    let aoRedimensionar = null;
+    let abriuFora = false;
+    let caixa = null;
     const fechar = () => {
-        URL.revokeObjectURL(url);
+        if (aoRedimensionar) window.removeEventListener("resize", aoRedimensionar);
+        if (caixa && caixa._encerrar) caixa._encerrar();
+        // Aberto numa aba nova, o documento ainda pode estar sendo lido por
+        // ela: o blob só é solto um minuto depois.
+        if (abriuFora) setTimeout(() => URL.revokeObjectURL(url), 60000);
+        else URL.revokeObjectURL(url);
         modal.remove();
     };
     modal.onclick = e => { if (e.target === modal) fechar(); };
+    const abrirFora = () => {
+        abriuFora = true;
+        window.open(url, "_blank");
+    };
 
+    const botaoPrincipal = !desenhada
+        ? `<button class="btn-primario" data-acao="imprimir">Imprimir</button>`
+        : arquivo
+            ? `<button class="btn-primario" data-acao="compartilhar">Compartilhar</button>`
+            : `<button class="btn-primario" data-acao="abrir">Abrir o PDF</button>`;
+
+    // O nome inteiro fica no `title`: na tela ele é cortado numa linha só,
+    // para não roubar altura da prévia.
     modal.innerHTML = `
         <div class="modal modal--pdf" role="dialog" aria-label="Prévia do documento" onclick="event.stopPropagation()">
             <div class="modal-cabecalho">
-                <h3>Prévia · ${escapeHtml(nomeArquivo)}</h3>
+                <h3 title="${escapeHtml(nomeArquivo)}">Prévia · ${escapeHtml(nomeArquivo)}</h3>
                 <button class="modal-fechar" aria-label="Fechar" title="Fechar">✕</button>
             </div>
-            <iframe class="pdf-previa" title="Prévia do documento" src="${url}"></iframe>
+            ${desenhada
+                ? `<div class="pdf-previa pdf-previa--paginas" role="document" aria-label="Prévia do documento" tabindex="0">
+                       <p class="pdf-previa-aviso">Preparando a prévia…</p>
+                   </div>`
+                : `<iframe class="pdf-previa" title="Prévia do documento" src="${url}"></iframe>`}
             <div class="modal-acoes">
-                <button class="btn-primario" data-acao="imprimir">Imprimir</button>
-                <button class="btn-secundario" data-acao="salvar">Salvar no computador</button>
+                ${botaoPrincipal}
+                <button class="btn-secundario" data-acao="salvar">${desenhada ? "Salvar" : "Salvar no computador"}</button>
                 <button class="btn-cancelar" data-acao="fechar">Fechar</button>
             </div>
         </div>`;
@@ -1090,23 +1144,185 @@ function _pdfEntregar(doc, nomeArquivo) {
         doc.save(nomeArquivo);
         mostrarToast("Documento salvo.", "sucesso", 3000, { local: false });
     };
-    modal.querySelector('[data-acao="imprimir"]').onclick = () => {
-        const q = modal.querySelector(".pdf-previa");
-        try {
-            q.contentWindow.focus();
-            q.contentWindow.print();
-        } catch (e) {
-            // Alguns navegadores bloqueiam o print de dentro do iframe.
-            // Abrir numa aba deixa a pessoa imprimir de lá, em vez de
-            // deixá-la sem caminho.
-            console.error("imprimir PDF", e);
-            window.open(url, "_blank");
-            mostrarToast("Abri o documento numa aba nova: imprima por lá.", "info", 6000);
-        }
-    };
+    const botao = acao => modal.querySelector(`[data-acao="${acao}"]`);
+    if (botao("compartilhar")) {
+        botao("compartilhar").onclick = () => {
+            navigator.share({ files: [arquivo], title: nomeArquivo }).catch(e => {
+                // Desistir da folha de compartilhar não é erro. Qualquer
+                // outra falha cai no caminho antigo, para não deixar a
+                // pessoa sem saída.
+                if (e && e.name === "AbortError") return;
+                console.error("compartilhar PDF", e);
+                abrirFora();
+            });
+        };
+    }
+    if (botao("abrir")) botao("abrir").onclick = abrirFora;
+    if (botao("imprimir")) {
+        botao("imprimir").onclick = () => {
+            const q = modal.querySelector(".pdf-previa");
+            try {
+                q.contentWindow.focus();
+                q.contentWindow.print();
+            } catch (e) {
+                // Alguns navegadores bloqueiam o print de dentro do iframe.
+                // Abrir numa aba deixa a pessoa imprimir de lá, em vez de
+                // deixá-la sem caminho.
+                console.error("imprimir PDF", e);
+                abrirFora();
+                mostrarToast("Abri o documento numa aba nova: imprima por lá.", "info", 6000);
+            }
+        };
+    }
 
     document.body.appendChild(modal);
     if (typeof _modalAcessivel === "function") _modalAcessivel(modal, fechar);
+
+    if (desenhada) {
+        caixa = modal.querySelector(".pdf-previa--paginas");
+        _pdfDesenharPaginas(doc, caixa);
+        // Girar o celular muda a largura: as páginas foram desenhadas para
+        // a largura antiga e ficariam borradas, então são refeitas. Sem
+        // largura registrada, a primeira rodada ainda não mediu, e ela vai
+        // medir a largura nova quando começar: nada a refazer.
+        let espera = null;
+        aoRedimensionar = () => {
+            clearTimeout(espera);
+            espera = setTimeout(() => {
+                const antes = caixa._larguraDesenhada;
+                if (caixa.isConnected && antes && Math.abs(caixa.clientWidth - antes) > antes * 0.15) {
+                    _pdfDesenharPaginas(doc, caixa);
+                }
+            }, 250);
+        };
+        window.addEventListener("resize", aoRedimensionar);
+    }
+}
+
+/* Desenha as páginas do PDF na largura da caixa, SÓ as que estão perto da
+   vista (23/09/2026). Cada página vira primeiro uma folha vazia com a
+   proporção certa, para a rolagem já ter o tamanho final; a imagem entra
+   quando a folha chega a uma altura e meia da área visível, e sai quando
+   se afasta. Desenhar todas de uma vez, a 2x, passava do teto de memória
+   de canvas do Safari do iPad num fechamento com a lista nota a nota: o
+   `getContext` devolve `null` e a prévia inteira caía.
+
+   A resolução acompanha a tela até 2x: menos que isso borra o texto num
+   celular de tela densa, e mais pesa sem ganho que se veja.
+
+   Uma rodada nova (girar a tela) encerra a anterior antes de começar:
+   cancela os desenhos em curso, solta as imagens e o documento. Toda
+   espera termina conferindo se a rodada ainda é a atual, senão uma página
+   velha entraria no meio das novas. `isEvalSupported: false` porque a
+   3.11 é anterior à correção do CVE-2024-4367: o PDF é gerado aqui mesmo,
+   mas desligar custa nada. */
+async function _pdfDesenharPaginas(doc, caixa) {
+    if (caixa._encerrar) caixa._encerrar();
+    const rodada = (caixa._rodada || 0) + 1;
+    caixa._rodada = rodada;
+    const viva = () => caixa.isConnected && caixa._rodada === rodada;
+
+    let pdf = null;
+    const folhas = [];
+    const soltar = folha => {
+        if (folha._tarefa) { folha._tarefa.cancel(); folha._tarefa = null; }
+        const c = folha.querySelector("canvas");
+        // Zerar o canvas devolve a memória na hora, sem esperar o coletor.
+        if (c) { c.width = 0; c.height = 0; }
+        folha.replaceChildren();
+        folha._desenhada = false;
+    };
+    let verificar = null;
+    caixa._encerrar = () => {
+        if (verificar) caixa.removeEventListener("scroll", verificar);
+        folhas.forEach(soltar);
+        if (pdf) pdf.destroy();
+        caixa._encerrar = null;
+    };
+
+    try {
+        await garantirBiblioteca("pdfjs");
+        if (!viva()) return;
+        const lib = window.pdfjsLib;
+        if (!lib.GlobalWorkerOptions.workerSrc) lib.GlobalWorkerOptions.workerSrc = _BIBLIOTECAS.pdfjs.worker;
+
+        const carregado = await lib.getDocument({
+            data: new Uint8Array(doc.output("arraybuffer")),
+            isEvalSupported: false
+        }).promise;
+        if (!viva()) { carregado.destroy(); return; }
+        pdf = carregado;
+
+        const estilo = getComputedStyle(caixa);
+        const largura = caixa.clientWidth - parseFloat(estilo.paddingLeft) - parseFloat(estilo.paddingRight);
+        caixa._larguraDesenhada = caixa.clientWidth;
+        const densidade = Math.min(window.devicePixelRatio || 1, 2);
+        const primeira = (await pdf.getPage(1)).getViewport({ scale: 1 });
+        if (!viva()) return;
+
+        for (let n = 1; n <= pdf.numPages; n++) {
+            const folha = document.createElement("div");
+            folha.className = "pdf-pagina";
+            folha.dataset.pagina = String(n);
+            folha.style.aspectRatio = `${primeira.width} / ${primeira.height}`;
+            folha.setAttribute("role", "img");
+            folha.setAttribute("aria-label", `Página ${n} de ${pdf.numPages}`);
+            folhas.push(folha);
+        }
+        caixa.replaceChildren(...folhas);
+
+        const desenhar = async folha => {
+            if (folha._desenhada || folha._tarefa) return;
+            const n = Number(folha.dataset.pagina);
+            try {
+                const pagina = await pdf.getPage(n);
+                if (!viva() || folha._desenhada || folha._tarefa) return;
+                const base = pagina.getViewport({ scale: 1 });
+                const vista = pagina.getViewport({ scale: (largura / base.width) * densidade });
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.floor(vista.width);
+                canvas.height = Math.floor(vista.height);
+                const contexto = canvas.getContext("2d");
+                if (!contexto) throw new Error("sem memória para a imagem da página");
+                folha._tarefa = pagina.render({ canvasContext: contexto, viewport: vista });
+                await folha._tarefa.promise;
+                folha._tarefa = null;
+                if (!viva()) { canvas.width = 0; canvas.height = 0; return; }
+                folha.style.aspectRatio = `${base.width} / ${base.height}`;
+                folha.replaceChildren(canvas);
+                folha._desenhada = true;
+            } catch (e) {
+                folha._tarefa = null;
+                if (e && e.name === "RenderingCancelledException") return;
+                console.error("pagina da previa do PDF", n, e);
+                if (viva()) {
+                    folha.innerHTML = `<p class="pdf-previa-aviso">Não deu para mostrar a página ${n} aqui.
+                        O documento está inteiro: use os botões abaixo.</p>`;
+                }
+            }
+        };
+
+        verificar = () => {
+            if (!viva()) return;
+            const area = caixa.getBoundingClientRect();
+            const margem = area.height * 1.5;
+            for (const folha of folhas) {
+                const r = folha.getBoundingClientRect();
+                const perto = r.bottom > area.top - margem && r.top < area.bottom + margem;
+                if (perto) desenhar(folha);
+                else if (folha._desenhada || folha._tarefa) soltar(folha);
+            }
+        };
+        caixa.addEventListener("scroll", verificar, { passive: true });
+        verificar();
+    } catch (e) {
+        console.error("previa desenhada do PDF", e);
+        if (viva()) {
+            if (caixa._encerrar) caixa._encerrar();
+            caixa.innerHTML = `<p class="pdf-previa-aviso">Não deu para mostrar a prévia neste aparelho.
+                O documento está pronto: use os botões abaixo.</p>`;
+        }
+    }
 }
 
 function _pdfEstilo() {

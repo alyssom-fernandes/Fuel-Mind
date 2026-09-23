@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   FUEL MIND — Dark Design System v3.1
+   FUEL MIND: Dark Design System v3.1
    Layout: Sidebar + Header + Content
    Fonts: Syne (headings) + DM Sans (body) + JetBrains Mono (numbers)
    Theme: Dark default | Light toggle
@@ -9,7 +9,7 @@
 /* Fontes carregadas por <link> no index.html: dentro do CSS o navegador
    só descobre a fonte depois de baixar o arquivo inteiro (17/09/2026). */
 
-/* ── TOKENS DARK (DEFAULT) — Ultra Dark ── */
+/* ── TOKENS DARK (DEFAULT), Ultra Dark ── */
 :root {
     --bg:              #0a0a0a;        /* fundo principal quase preto */
     --surface:         #151515;        /* cards, superfícies elevadas */
@@ -30,15 +30,15 @@
     --text-on-dark:    #f8fafc;
     --primary:         #a02828;        /* tom vinho (pode ajustar) */
     /* O vinho da marca como TEXTO sobre fundo escuro: #a02828 sobre #151515
-       dá contraste 2,3 — ilegível. Vale só para texto (etiqueta de papel,
+       dá contraste 2,3: ilegível. Vale só para texto (etiqueta de papel,
        @usuario, aba ativa, seta de ordenação); preenchimentos e botões
        continuam no --primary. No tema claro os dois são a mesma cor.
        (21/09/2026) */
     --primary-texto:   #d06a6a;
-    --primary-hover:   #8c2222;        /* escurecido ~12% — feedback visual de hover */
+    --primary-hover:   #8c2222;        /* escurecido ~12%, feedback visual de hover */
     --primary-light:   rgba(139,34,82,0.2);
     --primary-glow:    rgba(139,34,82,0.4);
-    --primary-mid:     #b84040;        /* clareado ~15% — ícones, labels secundários */
+    --primary-mid:     #b84040;        /* clareado ~15%, para ícones, labels secundários */
     /* Derivadas de --primary usadas em badges e superfícies sutis.
        Quando o usuário altera --primary via aplicarCorPersonalizada(),
        essas três variáveis são recalculadas via JS para manter consistência. */
@@ -88,14 +88,14 @@
        Três durações e uma curva, para a ferramenta ter um ritmo só. O
        arquivo tinha sete durações soltas; as novas entram por aqui.
        Regra: animar transform e opacity, nunca largura, altura ou
-       margem — e nada longo numa ação que se repete trinta vezes por
+       margem. E nada longo numa ação que se repete trinta vezes por
        dia, como lançar nota. */
     --duration-fast:   0.12s;   /* estado de botão, hover, foco */
     --duration-base:   0.2s;    /* abrir lista, trocar aba */
     --duration-slow:   0.3s;    /* entrada de tela e de modal */
     --ease-standard:   cubic-bezier(0.2, 0, 0.2, 1);
 
-    /* ── ESPAÇAMENTO (programa 3.3 — 18/09/2026) ────────────────────
+    /* ── ESPAÇAMENTO (programa 3.3, 18/09/2026) ────────────────────
        Uma escala só, de 4 em 4. O arquivo usava 6, 7, 10, 14, 18 e 22
        ao lado de 8, 12, 16, 20 e 24; o que sai do estilo inline entra
        por aqui, arredondado para o degrau mais perto. */
@@ -133,7 +133,7 @@
     --text:            #212529;
     /* Escurecidos em 21/09/2026. Os anteriores (#6c757d e #868e96) davam
        contraste 4,22 e 2,99 sobre --surface-alt, abaixo do mínimo de 4,5
-       para texto normal — e são usados em rótulos de 9 a 11 px nas dez
+       para texto normal, e são usados em rótulos de 9 a 11 px nas dez
        telas. A hierarquia entre os dois continua visível. */
     --text-muted:      #5c646c;
     --text-light:      #6b737b;
@@ -607,7 +607,7 @@ body {
    150 px, com título, lista e explicação dentro. (21/09/2026) */
 .info-sistema > .faixa-validacao { grid-column: 1 / -1; }
 /* Cartão de número pequeno (Sistema, Conferência): rótulo em cima, número
-   embaixo, como os cartões das outras telas — `column-reverse` porque no
+   embaixo, como os cartões das outras telas. É `column-reverse` porque no
    HTML o número vem antes. O número não quebra linha ("L" sozinho). */
 .info-card {
     display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 6px;
@@ -630,7 +630,7 @@ body {
 .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .campo { display: flex; flex-direction: column; gap: 6px; }
 .campo label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.09em; }
-/* Marcador de campo obrigatório — asterisco sutil na cor de perigo */
+/* Marcador de campo obrigatório: asterisco sutil na cor de perigo */
 .campo-obrigatorio {
     color: var(--danger);
     font-size: 0.75rem;
@@ -668,8 +668,8 @@ input[type="checkbox"] { width: auto; padding: 0; cursor: pointer; accent-color:
 
 /* ══ LINKS ═══════════════════════════════════ */
 /* O site não tinha regra nenhuma para `a`. A única que existia era a da
-   faixa de validação, então os poucos links soltos — os anexos do detalhe
-   da nota e o "Cancelar edição" do banner — saíam no azul padrão do
+   faixa de validação, então os poucos links soltos (os anexos do detalhe
+   da nota e o "Cancelar edição" do banner) saíam no azul padrão do
    navegador (#0000EE). No tema escuro isso é azul sobre preto, ilegível.
    Achado em 21/09/2026, montando na memória uma nota com anexo: o demo não
    tem nenhuma, e por isso nunca tinha aparecido. */
@@ -694,7 +694,7 @@ button {
 .btn-primario:active { transform: translateY(0); }
 /* Secundário com texto na cor normal: em cinza sobre cinza ele parecia
    desabilitado nos dois temas. Cancelar não fica vermelho ao passar o
-   mouse — vermelho é de apagar, e cancelar não apaga nada. */
+   mouse: vermelho é de apagar, e cancelar não apaga nada. */
 .btn-secundario {
     background: var(--surface-alt); color: var(--text); border: 1px solid var(--border);
 }
@@ -741,7 +741,13 @@ button {
 .btn-csv:hover { background: var(--success-light) !important; border-color: var(--success) !important; }
 
 /* ══ TABELAS ═════════════════════════════════ */
+/* `position: relative` não é enfeite. Sem ele, o `.sr-only` do cabeçalho
+   ("Abrir", "Ações"), que é `position: absolute`, tinha como referência a
+   janela e não este contêiner, e a rolagem daqui não o recortava. No
+   celular ele ficava lá na direita, a 596 px, e o navegador reduzia o zoom
+   da página inteira para caber: tudo miúdo, a partir do Dashboard. */
 .tabela-container {
+    position: relative;
     overflow-x: auto; border: 1px solid var(--border-light);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
     background: var(--surface);
@@ -785,7 +791,7 @@ ul li.inativo { opacity: 0.45; }
 .tag-perda   { font-size: 0.64rem; background: var(--info-light); color: var(--info); padding: 2px 7px; border-radius: 10px; font-style: normal; font-weight: 700; margin-left: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
 .vazio { color: var(--text-light); font-style: italic; font-size: 0.875rem; justify-content: flex-start !important; padding: 20px 16px !important; border: none !important; }
 
-/* Botão de ação dentro do toast — o "Desfazer" (18/09/2026). */
+/* Botão de ação dentro do toast, o "Desfazer" (18/09/2026). */
 .toast-acao {
     margin-left: 10px; padding: 3px 10px; border-radius: var(--radius-sm);
     border: 1px solid currentColor; background: transparent; color: inherit;
@@ -820,7 +826,10 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 /* ══ LANÇAMENTOS ════════════════════════════ */
 .linha-combustivel {
     /* As colunas são declaradas junto da célula de descarga, mais abaixo:
-       com o campo oculto a linha tem uma coluna a menos. */
+       com o campo oculto a linha tem uma coluna a menos. É lá também que
+       elas viram uma coluna só, abaixo de 640 px. Havia regras para 768 e
+       480 px no bloco responsivo, mas nunca valeram: vinham antes no
+       arquivo e perdiam sempre para esta (saíram em 23/09/2026). */
     display: grid;
     gap: 8px; align-items: center; margin-bottom: 8px;
     padding: 12px 14px; background: var(--surface-alt);
@@ -956,8 +965,11 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .tabela-preview th { background: var(--surface-alt); padding: 8px 12px; text-align: left; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
 .tabela-preview td { padding: 7px 12px; border-bottom: 1px solid var(--border-light); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tabela-preview tr:hover td { background: var(--row-hover); }
-.mapeamento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 10px; margin-top: 10px; }
-.mapeamento-linha { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius); }
+/* Mínimo de 360 px por coluna, mas nunca mais que a largura que existe: no
+   celular de 320 ou 360 a grade passava da tela. Sem espaço para rótulo e
+   seletor lado a lado, o seletor desce (23/09/2026). */
+.mapeamento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 10px; margin-top: 10px; }
+.mapeamento-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius); }
 .mapeamento-label { flex: 1; font-size: 0.855rem; min-width: 160px; }
 .mapeamento-label.obrigatorio { font-weight: 700; }
 .mapeamento-label.obrigatorio::after { content: " *"; color: var(--danger); }
@@ -1022,7 +1034,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
     .main-area { margin-left: 0 !important; }
     /* A folha montada (Relatório, Fretes) só substitui a tela quando o
        sistema pediu a impressão. No Ctrl+P de qualquer outra tela saía uma
-       folha em branco — ou o último relatório impresso (18/09/2026). */
+       folha em branco, ou o último relatório impresso (18/09/2026). */
     body.imprimindo .tela { display: none !important; }
     body.imprimindo .area-impressao { display: block !important; }
     body { background: white; color: black; font-size: 11px; font-family: Arial, sans-serif; }
@@ -1041,18 +1053,41 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
     :root { --sidebar-width: 220px; }
     .content-area { padding: 20px 20px 48px; }
 }
-@media (max-width: 768px) {
+/* A barra lateral vira gaveta abaixo de 1024 px, e não só no celular
+   (23/09/2026). Entre 769 e 1023 ela ficava fixa com 220 px: num tablet em
+   pé (820) sobravam 565 px para o conteúdo, e a legenda da Distribuição
+   caía para 8 px de largura. No celular deitado (844x390) a barra ocupava
+   um quarto da tela, a tela inteira de altura. Notebook de 1366 com zoom
+   de 125% continua com a barra fixa: a janela dele tem 1093. O limite em
+   JS que fecha a gaveta ao tocar num item (ui.js) usa o mesmo número. */
+/* Fechada, a gaveta também fica `visibility: hidden`: só com o
+   `transform` ela saía da vista mas não do Tab, e quem navega pelo
+   teclado numa janela de 960 px passava por quinze itens invisíveis antes
+   de chegar à tela. O `visibility` espera a animação de saída terminar
+   (atraso de 0,3 s) e volta na hora ao abrir. */
+@media (max-width: 1023px) {
     :root { --sidebar-width: 260px; }
-    .sidebar { transform: translateX(-100%); }
-    .sidebar.aberta { transform: translateX(0); box-shadow: var(--shadow-lg); }
+    .sidebar {
+        transform: translateX(-100%); visibility: hidden;
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.3s;
+    }
+    .sidebar.aberta {
+        transform: translateX(0); visibility: visible; box-shadow: var(--shadow-lg);
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), visibility 0s;
+    }
     .main-area { margin-left: 0; }
     .btn-hamburger { display: flex; }
+}
+/* O fundo escuro da gaveta não existe com a barra fixa. Sem isto, um
+   tablet girado de em pé para deitado com o menu aberto ficava com o
+   fundo escuro por cima de tudo até mais um toque. */
+@media (min-width: 1024px) { .sidebar-overlay.visivel { display: none; } }
+@media (max-width: 768px) {
     .content-area { padding: 16px 14px 48px; }
     .kpi-container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .kpi-valor { font-size: 1.4rem; }
     .form-grid { grid-template-columns: 1fr; }
     .filtros { grid-template-columns: 1fr; padding: 14px; }
-    .linha-combustivel { grid-template-columns: 1fr 1fr; gap: 8px; }
     th { padding: 10px 12px; font-size: 0.6rem; }
     td { padding: 9px 12px; }
     .aba-btn { font-size: 0.78rem; padding: 8px 11px; }
@@ -1062,7 +1097,6 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 @media (max-width: 480px) {
     .kpi-container { grid-template-columns: 1fr; }
-    .linha-combustivel { grid-template-columns: 1fr; }
     .resumo-cards { flex-direction: column; }
     .mapeamento-grid { grid-template-columns: 1fr; }
     td, th {
@@ -1085,7 +1119,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ══════════════════════════════════════════════
-   DASHBOARD — POR COMBUSTÍVEL (único bloco)
+   DASHBOARD: POR COMBUSTÍVEL (único bloco)
 ══════════════════════════════════════════════ */
 .dash-combs-wrapper {
     background: var(--surface);
@@ -1319,7 +1353,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
    duas propriedades animadas sao compostas pela GPU. */
 .aba-conteudo, .sistema-aba-conteudo { animation: fadeSlideIn 0.18s ease; }
 
-/* ══ BUSCA GLOBAL — REDESIGN ═════════════════════════ */
+/* ══ BUSCA GLOBAL: REDESIGN ═════════════════════════ */
 .busca-global-modal {
     padding: 0 !important;
     overflow: hidden;
@@ -1353,8 +1387,12 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     border: none !important;
     box-shadow: none !important;
 }
+/* 420 px, ou menos em janela baixa: no notebook com zoom (530 px de
+   janela) e no celular deitado, o campo de busca e os resultados não
+   cabiam juntos. Os 170 px são o campo, o rodapé de atalhos e o recuo da
+   camada escura; a faixa da demonstração, quando existe, sai também. */
 .busca-global-resultados {
-    max-height: 420px;
+    max-height: min(420px, calc(100vh - var(--faixa-demo-h) - 170px));
     overflow-y: auto;
     padding: 8px;
 }
@@ -1402,7 +1440,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .campo label          { color: var(--text-muted); font-size: 0.72rem; }
 
 /* =====================================================
-   EMPRESA ATIVA — Badge no header
+   EMPRESA ATIVA: Badge no header
    ===================================================== */
 .empresa-ativa-badge {
     display:flex; align-items:center; gap:5px;
@@ -1420,7 +1458,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 .empresa-ativa-badge:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* O campo Empresa travado pela empresa ativa era idêntico a um campo
-   editável — mesmo fundo, mesma cor, mesma borda. Não havia regra para
+   editável: mesmo fundo, mesma cor, mesma borda. Não havia regra para
    input desabilitado no projeto. */
 #empresaInput:disabled {
     border-style: dashed;
@@ -1451,7 +1489,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 .btn-empresa-troca.ativa .icone-check { color: var(--primary-mid); }
 
 /* =====================================================
-   USUÁRIOS — Badges de role e status
+   USUÁRIOS: Badges de role e status
    ===================================================== */
 .badge-role {
     display:inline-flex; align-items:center;
@@ -1460,7 +1498,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 }
 /* badge-role-supremo usa --primary-subtle3 para seguir a cor primária */
 .badge-role-supremo { background: var(--primary-subtle3); color:var(--primary-texto); }
-/* Estas quatro etiquetas tinham a cor escrita na mão — e escrita com os
+/* Estas quatro etiquetas tinham a cor escrita na mão, e escrita com os
    valores do tema ESCURO (#3b82f6, #10b981, #ef4444, #f59e0b), que ficavam
    também no tema claro. Sobre o fundo claro delas o contraste caía para
    1,87 ("Você"), 2,16 ("Operador") e 3,03 ("Admin"), abaixo do mínimo de
@@ -1568,7 +1606,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 /* No tema claro a barra é branca: o × branco sumia (18/09/2026). */
 [data-theme="light"] .btn-fechar-sidebar { color: #64748b; }
 [data-theme="light"] .btn-fechar-sidebar:hover { color: #0f172a; background: #f1f5f9; }
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .btn-fechar-sidebar { display: flex; }
     /* Garante que logo e botão fechar fiquem lado a lado */
     .sidebar-logo {
@@ -1593,7 +1631,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
         display: block;
     }
 
-    /* Colunas secundárias nas tabelas de relatório — ocultar em telas pequenas.
+    /* Colunas secundárias nas tabelas de relatório: ocultar em telas pequenas.
        No Relatório (sem a coluna Empresa desde 18/09/2026): base e placa. */
     #tabelaRelatorio > tr.linha-nota > td:nth-child(4),
     #tabelaRelatorio > tr.linha-nota > td:nth-child(6),
@@ -1624,7 +1662,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
     /* KPI cards do dashboard em 2 colunas no mobile médio */
     .kpi-container { grid-template-columns: repeat(2, 1fr); }
 
-    /* Formulário de lançamento — campos essenciais destacados */
+    /* Formulário de lançamento: campos essenciais destacados */
     .linha-combustivel {
         background: var(--surface-alt);
         border-radius: var(--radius);
@@ -1637,7 +1675,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
     /* KPI em coluna única em telas muito pequenas */
     .kpi-container { grid-template-columns: 1fr; }
 
-    /* Ocultar mais colunas secundárias. No Relatório fica o essencial —
+    /* Ocultar mais colunas secundárias. No Relatório fica o essencial:
        emissão, NOTA, litros, total e ações; antes o número da nota era
        justamente o que sumia. */
     #tabelaRelatorio > tr.linha-nota > td:nth-child(2),
@@ -1667,7 +1705,7 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
 }
 
 /* ══════════════════════════════════════════════
-   RESPONSIVIDADE MOBILE — COMPLEMENTAR
+   RESPONSIVIDADE MOBILE, COMPLEMENTAR
    Cobre tabelas de fretes, usuários
    e melhorias gerais não cobertas anteriormente
 ══════════════════════════════════════════════ */
@@ -1763,11 +1801,19 @@ button.empresa-ativa-badge { font-family: inherit; line-height: inherit; }
     cursor: pointer;
 }
 #demoFaixa button:hover { background: rgba(255,255,255,0.28); }
+/* No celular a faixa tinha três linhas (116 px de 844) e ficava por cima de
+   tudo. Fica o aviso e os dois botões numa linha só; a explicação continua
+   na tela de entrada da demonstração. */
+@media (max-width: 560px) {
+    #demoFaixa { flex-wrap: nowrap; gap: var(--space-2); padding: 6px 12px; }
+    #demoFaixa .demo-faixa-detalhe { display: none; }
+    #demoFaixa .demo-faixa-acoes { flex-shrink: 0; }
+}
 body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 
 
 /* =================================================================
-   AFN SYSTEMS — marca compartilhada
+   AFN SYSTEMS: marca compartilhada
    Padrao dos projetos do Alyssom Fernandes. Tokens e medidas vem do
    brand guide; nao ajustar cor, peso ou letter-spacing por projeto.
    O tema escuro e o padrao aqui, entao os valores base sao os dark e
@@ -1804,7 +1850,7 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
     flex-wrap: wrap;
 }
 
-/* Rodapé de página — AFN Systems. Fica no fim da área de conteúdo, não na
+/* Rodapé de página, AFN Systems. Fica no fim da área de conteúdo, não na
    sidebar: é rodapé da página, e acompanha a rolagem do conteúdo. */
 .page-footer {
     padding: 20px 36px;
@@ -1821,7 +1867,7 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 @media print {
     .page-footer, #demoFaixa, #toastPilha, .modal-overlay { display: none !important; }
     /* A folha é a mesma em qualquer tema: texto preto, cabeçalho cinza-claro.
-       Antes o cabeçalho herdava a cor do tema — texto escuro sobre a faixa
+       Antes o cabeçalho herdava a cor do tema: texto escuro sobre a faixa
        escura, ou cinza-claro no papel quando o tema era o escuro. */
     .area-impressao, .area-impressao * { color: #111 !important; }
     .area-impressao th {
@@ -1881,7 +1927,13 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .fm-combo-item:hover { background: var(--surface-hover); }
 .fm-combo-item.ativo { background: var(--primary); color: var(--text-on-dark); }
 .fm-combo-item.ativo .fm-combo-extra { color: var(--text-on-dark); opacity: 0.75; }
-.fm-combo-extra { font-size: 0.75rem; color: var(--text-light); flex-shrink: 0; }
+/* Nome longo quebra a linha em vez de empurrar a lista para o lado. O
+   texto de apoio (município, placa antiga, apelido) pode ocupar até
+   metade e também quebra, alinhado à direita. */
+.fm-combo-nome { min-width: 0; overflow-wrap: anywhere; }
+.fm-combo-extra { font-size: 0.75rem; color: var(--text-light); flex: 0 1 auto; max-width: 50%; text-align: right; overflow-wrap: anywhere; }
+/* Sem espaço embaixo do campo, a lista abre em cima (combobox.js). */
+.fm-combo-lista--acima { top: auto; bottom: calc(100% + 4px); box-shadow: 0 -8px 24px rgba(0,0,0,0.28); }
 .fm-combo-vazio {
     padding: 8px 10px; font-size: 0.83rem; color: var(--text-light); font-style: italic;
 }
@@ -1973,7 +2025,7 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .campo-alerta   { border-color: var(--warning) !important; }
 
 /* Referência de preço: a régua que o alerta usa, mostrada antes do erro.
-   Discreta de propósito — é informação, não julgamento, e por isso não
+   Discreta de propósito: é informação, não julgamento, e por isso não
    usa a cor de aviso nem ícone. */
 .ref-preco {
     display: block; margin-top: 4px;
@@ -2026,7 +2078,7 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 .demo-dica button:hover { background: rgba(255,255,255,0.08); }
 
 /* A regra global `ul li` do arquivo transforma item de lista em linha
-   flex com espaço entre as pontas — serve às listas de cadastro, mas
+   flex com espaço entre as pontas. Isso serve às listas de cadastro, mas
    estica o texto corrido destas duas listas. Aqui elas voltam a ser
    lista de texto normal. */
 .demo-dica li,
@@ -2049,7 +2101,7 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 /* ══ QUANTIDADE DESCARREGADA, FORA DO CAMINHO ════════════════════════
    O campo só aparece quando a descarga foi diferente da carga, que é a
    exceção. Escondido, ele sai do grid e a linha fica com uma coluna a
-   menos — daí os dois modelos de colunas. */
+   menos, daí os dois modelos de colunas. */
 .celula-descarga { display: none; }
 .linha-combustivel { grid-template-columns: 2fr 1fr 1fr auto; }
 .linha-combustivel.mostra-descarga { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
@@ -2088,12 +2140,12 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
    tamanho zero, então o anel vai no desenho. */
 ._cfg-toggle input:focus-visible + ._cfg-slider { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-/* ══ A AÇÃO RESPONDE ONDE ACONTECEU (programa 3.5, 3.6, 3.7 — 18/09/2026) ══
+/* ══ A AÇÃO RESPONDE ONDE ACONTECEU (programa 3.5, 3.6, 3.7, 18/09/2026) ══
    Só transform, opacity e cor; durações dos tokens. Com movimento reduzido
    a regra geral do topo encurta as animações, e o sinal continua: a cor e o
    texto não dependem de movimento. */
 
-/* 3.5 — confirmação no lugar: o botão ou a linha piscam em verde, com ✓. */
+/* 3.5: confirmação no lugar: o botão ou a linha piscam em verde, com ✓. */
 .confirmado-local {
     animation: confirmadoLocal 1.6s var(--ease-standard) both;
     position: relative;
@@ -2123,7 +2175,7 @@ button.confirmado-local::after {
     100% { opacity: 0; transform: scale(1); }
 }
 
-/* 3.6 — o erro fica escrito no alto da tela (ou do modal) onde falhou. */
+/* 3.6: o erro fica escrito no alto da tela (ou do modal) onde falhou. */
 .erros-locais { display: grid; gap: 6px; margin-bottom: 14px; }
 .erro-local {
     display: flex; align-items: flex-start; gap: 10px;
@@ -2147,7 +2199,7 @@ button.confirmado-local::after {
 .erro-local-fechar:hover, .erro-local-fechar:focus-visible { color: var(--text); }
 @keyframes erroLocalEntra { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
-/* 3.7 — recalculando: os números esmaecem e aparece o aviso. O atraso de
+/* 3.7: recalculando: os números esmaecem e aparece o aviso. O atraso de
    90 ms faz a conta rápida não piscar; só a lenta mostra o sinal. */
 .tela.recalculando :is(.kpi-container, .alertas-container, .dash-combs-wrapper,
     #dashComparativoContainer, .tabela-container, .resumo, #freteHistoricoContainer,
@@ -2173,12 +2225,12 @@ button.confirmado-local::after {
 @keyframes recalculoEsmaece { from { opacity: 1; } to { opacity: 0.45; } }
 @keyframes recalculoAviso   { from { opacity: 0; } to { opacity: 1; } }
 
-/* ══ REDESENHO: O QUE SAIU DO ESTILO INLINE (programa 3.2 e 3.3 — 18/09/2026) ══
+/* ══ REDESENHO: O QUE SAIU DO ESTILO INLINE (programa 3.2 e 3.3, 18/09/2026) ══
    Token não vence valor inline, por isso o inline saiu primeiro. Os
    espaços vêm da escala `--space-*`; os `display:none` que o JS liga e
    desliga continuam no HTML, porque são estado e não aparência. */
 
-/* Utilitários de margem — só para o caso solto; padrão que se repete ganha nome.
+/* Utilitários de margem: só para o caso solto; padrão que se repete ganha nome.
    `!important` de propósito: substituem o estilo inline, que vencia qualquer
    regra de componente (`.tela h3`, `.sistema-secao h3`); sem isso o h3 dos
    Fretes, que tinha 4px, voltaria a ter os 28px do componente. */
@@ -2233,7 +2285,7 @@ button.confirmado-local::after {
 .busca-global-modal { max-width: 800px; width: 90%; }
 .modal-subtitulo { color: var(--text-muted); font-size: 0.85rem; margin-bottom: var(--space-6); }
 
-/* Login e escolha de empresa — cartão em duas partes (18/09/2026).
+/* Login e escolha de empresa: cartão em duas partes (18/09/2026).
    A marca é sempre escura, nos dois temas: a logo usada é a de letras
    brancas. O fundo da tela tem um brilho leve da cor principal. */
 .modal-overlay.login-overlay {
@@ -2382,13 +2434,21 @@ button.confirmado-local::after {
 .dash-comb-kpi-label--nota { opacity: 0.8; }
 .grafico-wrapper--comparativo { height: 280px; margin-bottom: var(--space-4); }
 .grafico-wrapper--pizza { max-width: 400px; margin: 0 auto; }
-/* Gasto por combustível: anel à esquerda, valores e fatias à direita. */
+/* Gasto por combustível: anel à esquerda, valores e fatias à direita.
+
+   Quem decide se a lista cabe ao lado do anel é o espaço do CARTÃO, não o
+   da janela (23/09/2026). Com grade fixa de 240 px e empilhamento só
+   abaixo de 640 px de janela, um tablet em pé deixava a lista com 8 px e
+   os nomes viravam reticências. Agora a lista pede 280 px; sem eles, desce
+   para baixo do anel. `container-type` na lista é o que faz a regra de
+   @container mais abaixo olhar a largura dela. */
 .distribuicao-cartao {
-    display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--space-7); align-items: center;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-4) var(--space-7); align-items: center;
     padding: var(--space-5) var(--space-6); background: var(--surface);
     border: 1px solid var(--border-light); border-radius: var(--radius-lg);
 }
-.distribuicao-grafico { position: relative; height: 220px; }
+.distribuicao-grafico { position: relative; height: 220px; flex: 0 0 240px; max-width: 100%; }
+.distribuicao-cartao > .distribuicao-lista { flex: 1 1 280px; min-width: 0; container-type: inline-size; }
 .distribuicao-centro {
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     pointer-events: none; text-align: center;
@@ -2412,15 +2472,31 @@ button.confirmado-local::after {
 .distribuicao-valor { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text); text-align: right; }
 .distribuicao-pct { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); text-align: right; }
 @media (max-width: 640px) {
-    .distribuicao-cartao { grid-template-columns: 1fr; gap: var(--space-4); padding: var(--space-4); }
-    .distribuicao-grafico { height: 200px; }
+    .distribuicao-cartao { padding: var(--space-4); }
+    .distribuicao-grafico { height: 200px; flex-basis: 200px; }
     .distribuicao-lista li, .distribuicao-lista li:first-child { grid-template-columns: 12px minmax(0, 1fr) auto 52px; font-size: 0.85rem; }
 }
+/* Lista estreita: o valor e a porcentagem empilham à direita do nome. Em
+   uma linha só, a 320 px sobravam 51 px para o nome e "Cleiton Andrade"
+   pede 94. */
+@container (max-width: 340px) {
+    .distribuicao-lista li, .distribuicao-lista li:first-child {
+        grid-template-columns: 12px minmax(0, 1fr) auto;
+        grid-template-areas: "cor nome valor" "cor nome pct";
+        row-gap: 0;
+    }
+    .distribuicao-cor   { grid-area: cor; }
+    .distribuicao-nome  { grid-area: nome; }
+    .distribuicao-valor { grid-area: valor; }
+    .distribuicao-pct   { grid-area: pct; font-size: 0.75rem; }
+}
 .titulo-nota { font-weight: 400; font-size: 0.72rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
-.modal--detalhe { max-width: 680px; width: 100%; max-height: 85vh; overflow-y: auto; }
+/* O teto de altura e a rolagem vêm do `.modal` desde 23/09/2026 (100% da
+   área livre, que numa janela baixa é menos que os 85vh que havia aqui). */
+.modal--detalhe { max-width: 680px; width: 100%; }
 .alerta-corpo { cursor: pointer; }
 
-/* Relatórios — o resumo acima da tabela */
+/* Relatórios: o resumo acima da tabela */
 .rel-totais { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-2); }
 .rel-totais > span { font-size: 0.85rem; color: var(--text-muted); }
 .rel-totais > span.rel-totais-nota { font-size: 0.8rem; }
@@ -2505,7 +2581,7 @@ button.confirmado-local::after {
 .tabela-frete-notas thead th { position: sticky; top: 0; z-index: 1; }
 .tabela-frete-notas tfoot td { position: sticky; bottom: 0; background: var(--surface-alt); }
 
-/* Impressão dos Fretes — o conteúdo só aparece no papel */
+/* Impressão dos Fretes: o conteúdo só aparece no papel */
 .imp-titulo { margin-top: 20px; }
 .area-impressao tr.imp-grupo { background: #f0f0f0; }   /* vence a listra da tabela */
 .imp-subitem { color: #666; font-size: 0.85em; }
@@ -2591,7 +2667,8 @@ button.confirmado-local::after {
 .modal--largo-800 { max-width: 800px; width: 90%; }
 .modal--largo-640 { max-width: 640px; }
 .campo-senha-sorteada { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
-.modal--rolagem { max-height: 90vh; overflow-y: auto; }
+/* `.modal--rolagem` ficou sem regra: todo `.modal` rola por dentro desde
+   23/09/2026. A classe continua no HTML dos atalhos, sem efeito. */
 .modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
 .modal-cabecalho h3 { margin: 0; }
 .modal-cabecalho--colado { margin-bottom: var(--space-1); }
@@ -2651,7 +2728,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .celula-notas-dia { padding: var(--space-2) var(--space-3) !important; background: var(--surface-alt); }
 .notas-dia-titulo { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; }
 
-/* Busca global — seções e itens */
+/* Busca global: seções e itens */
 .busca-secao { margin-bottom: var(--space-4); }
 .busca-secao-titulo {
     display: block; padding: 0 2px; margin-bottom: 6px;
@@ -2701,7 +2778,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .fm-prompt-erro  { color: var(--danger); font-size: 0.8rem; margin-top: 6px; }
 
 /* Atalhos de teclado */
-.modal--atalhos { max-width: 480px; width: 92%; max-height: 85vh; }
+.modal--atalhos { max-width: 480px; width: 92%; }
 .icone-titulo { width: 18px; height: 18px; color: var(--primary); }
 .atalhos-grupo { margin-bottom: var(--space-5); }
 .atalhos-grupo-titulo { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0 0 10px; }
@@ -2796,7 +2873,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .td-vazio-titulo { display: block; color: var(--text); font-size: 0.95rem; margin-bottom: var(--space-1); }
 .acoes-celula .btn-secundario { font-size: 0.75rem; padding: 4px 10px; }   /* do tamanho dos vizinhos da linha */
 
-/* ══ REDESENHO VISÍVEL — 18/09/2026 ══════════════════════════════════
+/* ══ REDESENHO VISÍVEL, 18/09/2026 ══════════════════════════════════
    Depois de tirar o inline (3.2/3.3), o desenho em si, tela por tela. */
 
 /* Relatório: uma nota por linha */
@@ -2842,7 +2919,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 #resumoRelatorio { padding: var(--space-4) var(--space-5); }
 
 /* Cartões de número (Dashboard, Analítico, Grupo): rótulo em cima, número
-   grande embaixo, ícone no canto — sem uma linha inteira só para o ícone. */
+   grande embaixo, ícone no canto, sem uma linha inteira só para o ícone. */
 .kpi-container { gap: var(--space-4); margin-bottom: var(--space-7); }
 .kpi-card { display: flex; flex-direction: column; padding: 18px 20px 16px; }
 .kpi-card::after { display: none; }
@@ -2883,7 +2960,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 /* Por combustível: os quatro cartões ocupam a largura toda, e a nota longa
    do custo recebido fica em texto normal, não em maiúsculas espremidas. */
 .dash-comb-kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-/* Rótulo em cima, número grande embaixo — o desenho dos cartões do topo. */
+/* Rótulo em cima, número grande embaixo: o desenho dos cartões do topo. */
 .dash-comb-kpi { display: flex; flex-direction: column; gap: 6px; background: var(--surface); padding: 14px 16px 12px; }
 .dash-comb-kpi .dash-comb-kpi-label {
     order: 0; margin: 0; display: block; font-weight: 700; font-size: 0.66rem;
@@ -2961,7 +3038,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 }
 .kpi-container--fretes .kpi-card:first-child .kpi-valor { color: var(--primary-mid); }
 
-/* Títulos de seção legíveis: eram 0,66rem, maiúsculas e cinza-claro — o
+/* Títulos de seção legíveis: eram 0,66rem, maiúsculas e cinza-claro, e o
    olho não achava onde começava cada bloco. Agora seguem o título das
    seções do Sistema: fonte de título, cor do texto, tamanho de leitura. */
 .tela h3 {
@@ -2971,7 +3048,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .tela h3 .titulo-nota { font-family: 'DM Sans', sans-serif; }
 
 /* Detalhe da nota no Relatório: um painel de verdade. Até aqui não tinha
-   estilo nenhum — encostava na borda, herdava a `ul li` das listas de
+   estilo nenhum: encostava na borda, herdava a `ul li` das listas de
    Cadastros (o histórico se espalhava de ponta a ponta) e o negrito de cada
    linha do histórico virava título ("CRIADO" sozinho numa linha). */
 .linha-detalhe-inline > td { background: var(--bg) !important; }
@@ -3088,7 +3165,11 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .alerta-item--data   .alerta-tipo { background: var(--danger-light);  color: var(--danger); }
 .alerta-conteudo { min-width: 0; cursor: pointer; }
 .alerta-item-titulo { font-weight: 600; font-size: 0.875rem; color: var(--text); }
-.alerta-item-msg { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A mensagem quebra a linha em vez de terminar em reticências
+   (23/09/2026). Cortada, ela escondia justamente o que o alerta existe
+   para mostrar: o preço, a mediana e quantas notas entraram na conta. No
+   tablet e no notebook ela era cortada em quase todo alerta de preço. */
+.alerta-item-msg { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
 .alerta-item-msg strong { color: var(--text); font-weight: 600; }
 .alerta-confirmar {
     padding: 6px 12px; font-size: 0.78rem; font-weight: 600;
@@ -3130,7 +3211,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .kpi-card { container-type: inline-size; }
 .kpi-card .kpi-valor { font-size: min(1.85rem, 10.5cqi); white-space: nowrap; }
 
-/* Analítico: nas tabelas das abas, da segunda coluna em diante é número —
+/* Analítico: nas tabelas das abas, da segunda coluna em diante é número,
    alinhado à direita, em fonte de número, para comparar de olho. */
 #analitico .aba-conteudo table th:nth-child(n+2),
 #analitico .aba-conteudo table td:nth-child(n+2) { text-align: right; }
@@ -3192,8 +3273,8 @@ input[type="file"]::file-selector-button:hover { background: var(--surface-hover
 
 /* Tabela de números: a primeira coluna é o nome; da segunda em diante
    (ou da terceira, com --3), número à direita em fonte de número. */
-/* Só as células da própria tabela (`>`): uma tabela dentro dela — as notas
-   do dia na Conferência — tem colunas de texto e herdava o alinhamento. */
+/* Só as células da própria tabela (`>`): uma tabela dentro dela (as notas
+   do dia na Conferência) tem colunas de texto e herdava o alinhamento. */
 .tabela-numeros > * > tr > th:nth-child(n+2), .tabela-numeros > * > tr > td:nth-child(n+2) { text-align: right; }
 .tabela-numeros > * > tr > td:nth-child(n+2) { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; white-space: nowrap; }
 .tabela-numeros.tabela-numeros--3 > * > tr > th:nth-child(2), .tabela-numeros.tabela-numeros--3 > * > tr > td:nth-child(2) {
@@ -3217,7 +3298,7 @@ input[type="file"]::file-selector-button:hover { background: var(--surface-hover
 
 /* Caixa de marcar e botão de opção voltam a ser desenhados pelo navegador.
    A regra geral de `input` tira a aparência nativa (por causa da seta do
-   select) e dá `width: auto`: a caixa encolhia para 2 px e sumia — em
+   select) e dá `width: auto`: a caixa encolhia para 2 px e sumia, em
    "Mostrar excluídas", "Mostrar inativos", "Informar quantidade
    descarregada", nas opções do PDF. Defeito antigo, achado em 18/09/2026. */
 input[type="checkbox"], input[type="radio"] {
@@ -3230,20 +3311,51 @@ input[type="checkbox"], input[type="radio"] {
 ._cfg-toggle input { width: 0; height: 0; min-width: 0; opacity: 0; }
 
 /* Celular: o cabeçalho tinha 502 px numa tela de 375 e empurrava a página
-   para o lado. Fica o essencial — menu, empresa, busca, sair e tema. */
+   para o lado. Fica o essencial: menu, empresa, busca, sair e tema. */
 @media (max-width: 768px) {
     .header-actions { gap: 6px; min-width: 0; }
     .header-empresa-rotulo, .busca-kbd { display: none; }
     /* Sem as teclas, o rodapé da busca virava "navegar abrir fechar" solto. */
     .busca-global-footer { display: none; }
     .header-empresa { min-width: 0; }
-    .empresa-ativa-badge { max-width: 150px; }
-    .empresa-ativa-badge #empresaAtivaLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .btn-busca-global { padding: 7px 9px; }
+    .app-header { padding: 0 14px; gap: 10px; }
     /* Atalhos de período no tamanho natural, como na barra de filtros. */
     .dash-filtros-rapidos .btn-filtro-rapido { flex: 0 0 auto; }
     .dash-filtros-rapidos .filtros-rapidos-sep { flex-basis: 100%; }
     #dashFiltrosPeriodo .campo-data { flex: 1 1 130px; min-width: 0; }
+}
+/* O nome da empresa ativa tem teto em qualquer largura (23/09/2026). O
+   limite existia só no celular; acima de 768 px um nome de transportadora
+   com 40 letras empurrava o título da tela para fora. O nome inteiro
+   aparece ao tocar, no modal de troca. */
+.empresa-ativa-badge { max-width: 240px; min-width: 0; }
+.empresa-ativa-badge #empresaAtivaLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.empresa-ativa-badge .icone-chevron { flex-shrink: 0; }
+/* Até 768 px o teto acompanha a janela: 150 px perto de 480, onde o título
+   mais longo ainda precisa caber ao lado, e os 240 inteiros a partir de
+   570. Com 150 fixos, um celular deitado cortava o nome com a linha vazia. */
+@media (max-width: 768px) { .empresa-ativa-badge { max-width: min(240px, calc(100vw - 330px)); } }
+
+/* Celular estreito: cabeçalho em duas linhas (23/09/2026). Numa linha só,
+   o título da tela ficava com 11 px a 320 e 51 px a 360: "Dash...", e
+   "Histórico de lançamentos" precisa de 191. Ele é a única coisa na página
+   que diz em qual tela se está (o h2 interno é escondido de propósito),
+   então ele fica com a primeira linha, entre o menu e a busca, e a empresa
+   ativa desce para a segunda, com o nome inteiro à vista. O
+   `display: contents` solta a empresa e a busca do grupo de ações para que
+   cada uma vá para a sua linha. */
+@media (max-width: 480px) {
+    .app-header { height: auto; min-height: var(--header-height); flex-wrap: wrap; row-gap: 4px; padding: 6px 14px; }
+    .header-actions { display: contents; }
+    .btn-hamburger { order: 0; }
+    .header-page-title { order: 1; flex: 1 1 0; }
+    .btn-busca-global { order: 2; }
+    .header-empresa { order: 3; flex: 1 1 100%; }
+    /* `.app-header` na frente para vencer o mínimo de 36 px do bloco de
+       toque, que vem depois no arquivo: aqui a segunda linha pesa mais
+       que 4 px de alvo. */
+    .app-header .empresa-ativa-badge { max-width: 100%; min-height: 32px; }
 }
 /* O campo de arquivo escondido fica preso dentro da faixa do XML (solto,
    ele empurrava a página 30 px para o lado no celular). */
@@ -3251,8 +3363,13 @@ input[type="checkbox"], input[type="radio"] {
 .input-arquivo-oculto { left: 0; top: 0; }
 /* Celular: os filtros do Relatório em duas colunas (eram oito campos
    empilhados, uma tela inteira antes da primeira nota). */
+/* `minmax(0, 1fr)` e o campo com `min-width: 0`: com `1fr` puro a coluna
+   não fica menor que o conteúdo, e no celular (campos em 16 px para o
+   iPhone não dar zoom) a data empurrava as duas colunas para fora da tela
+   (23/09/2026). */
 @media (max-width: 768px) {
-    #relatorios .filtros { grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); padding: var(--space-3); }
+    #relatorios .filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-3); }
+    #relatorios .filtros .campo input:not([type="checkbox"]), #relatorios .filtros .campo select { min-width: 0; width: 100%; }
     #relatorios .filtros .campo input[type="date"] { font-size: 0.78rem; padding: 8px 8px; }
     #relatorios .filtros .campo-checkbox { grid-column: 1 / -1; }
 }
@@ -3303,10 +3420,12 @@ input[type="checkbox"], input[type="radio"] {
    formato são a ação, e "Ver em Fretes" é um link discreto no rodapé.
 
    `auto-fill` com mínimo de 320px: em tela larga saem três colunas, no
-   celular uma, sem media query. */
+   celular uma, sem media query. O `min(100%, ...)` é para o celular de
+   320: sobram 292 px e a coluna de 320 passava da tela, com os botões de
+   formato cortados pela borda (23/09/2026). */
 .central-lista {
     display: grid; gap: 14px;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
 }
 /* Sem `cursor: pointer` e sem `:hover` de elevação: o cartão não é mais
    clicável, e fingir que é foi o defeito que esta versão corrige. */
@@ -3515,3 +3634,246 @@ input[type="checkbox"], input[type="radio"] {
 /* O cabeçalho e os botões não encolhem: quem cede espaço é o quadro. */
 .modal--pdf .modal-cabecalho,
 .modal--pdf .modal-acoes { flex: 0 0 auto; }
+
+/* ══ RESPONSIVIDADE, REVISÃO DE 23/09/2026 ══════════════════════════
+   Medido tela por tela em quinze tamanhos, de 320x568 a 2560x1440,
+   passando por celular deitado (844x390) e notebook com zoom de 125%
+   (1093x530). O roteiro de medição está em `.claude/auditoria.js`. */
+
+/* ── Todo modal cabe na janela ──────────────────────────────────────
+   Só a prévia do PDF tinha teto de altura. Os outros cresciam com o
+   conteúdo e quem rolava era o fundo: numa janela baixa, o detalhe da
+   nota, o cadastro de usuário, o frete nota a nota e a conferência antes
+   de gravar perdiam de vista o X e os botões ao rolar para ver o meio.
+   Agora o modal para na altura que existe e rola por dentro, com o
+   cabeçalho grudado em cima e os botões embaixo.
+
+   O `padding` com `margin` negativa do mesmo tamanho não muda nada quando
+   o modal cabe; quando ele rola, é o respiro entre o texto grudado e a
+   borda. O fundo opaco e o `z-index` impedem que o conteúdo que passa por
+   baixo (tabelas têm `position: relative`) apareça por cima deles.
+
+   `top` e `bottom` NEGATIVOS, do tamanho do padding do modal (28 px): o
+   grudado para no limite do padding, não na borda. Com `0`, sobrava uma
+   faixa de 28 px em cima e embaixo por onde o formulário aparecia rolando
+   (conferido no cadastro de usuário, a 530 px de altura).
+
+   O respiro entre o grudado e o conteúdo que passa por baixo dele é um
+   degradê de 12 px (`::after` no cabeçalho, `::before` nos botões), e não
+   `padding`: ele fica sobre a margem que já existia, então com o modal
+   parado não muda espaçamento nenhum. Com `padding` o espaço acima dos
+   botões crescia até 12 px nos diálogos de confirmação.
+
+   O campo focado que para atrás dos botões grudados (Tab, teclado do
+   celular) é resolvido em ui.js, no `focusin`. Com `scroll-padding` aqui,
+   o diálogo que abre com o foco num botão grudado já abria rolado até o
+   fim. */
+.modal { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.modal .modal-cabecalho {
+    position: sticky; top: -28px; z-index: 3;
+    background: var(--surface-raised);
+    padding-top: 16px; margin-top: -16px;
+}
+.modal .modal-cabecalho::after,
+.modal .modal-acoes::before,
+.modal > .linha-acoes:last-child::before {
+    content: ""; position: absolute; left: 0; right: 0; height: 12px; pointer-events: none;
+}
+.modal .modal-cabecalho::after { top: 100%; background: linear-gradient(var(--surface-raised), transparent); }
+/* Sem degradê onde a margem é menor que ele: no cabeçalho "colado" (4 px
+   até o subtítulo) ele cobriria o alto do texto; a prévia do PDF não rola. */
+.modal .modal-cabecalho--colado::after,
+.modal--pdf .modal-cabecalho::after,
+.modal--pdf .modal-acoes::before { display: none; }
+.modal .modal-acoes::before,
+.modal > .linha-acoes:last-child::before { bottom: 100%; background: linear-gradient(transparent, var(--surface-raised)); }
+.modal .modal-cabecalho h3 { min-width: 0; overflow-wrap: anywhere; }
+.modal .modal-acoes {
+    position: sticky; bottom: -28px; z-index: 3;
+    background: var(--surface-raised);
+    padding-bottom: 16px; margin-bottom: -16px;
+}
+/* Alguns modais (o do fechamento em PDF) fecham com `.linha-acoes`. Só a
+   do fim gruda: no meio de um modal ela é outra coisa, como o "Marcar
+   todas" das empresas de um usuário. */
+.modal > .linha-acoes:last-child {
+    position: sticky; bottom: -28px; z-index: 3;
+    background: var(--surface-raised);
+    padding-bottom: 16px; margin-bottom: -16px;
+}
+/* O aviso de erro entra no alto do modal, ANTES do cabeçalho (ui.js,
+   `fixarErroNoLocal`). A margem negativa do cabeçalho o fazia subir 2 px
+   por cima da caixa do erro. */
+.modal > .erros-locais + .modal-cabecalho { margin-top: 0; padding-top: 0; }
+/* A busca tem a rolagem dela na lista de resultados: o modal inteiro
+   rolando levava o campo de busca para fora da vista. */
+.modal.busca-global-modal { overflow: hidden; }
+
+/* A tabela do "frete nota a nota" tinha 52% da altura da JANELA, somada
+   ao resto do modal. Agora o modal é uma coluna e a tabela fica com o que
+   sobra: é ela que rola, e o cabeçalho e o botão de Excel não saem. */
+.modal--tabela { display: flex; flex-direction: column; }
+.modal--tabela > .tabela-container--rolagem { flex: 1 1 auto; min-height: 120px; max-height: none; }
+.modal--tabela > :not(.tabela-container--rolagem) { flex: 0 0 auto; }
+
+/* ── Rolar até um ponto da página sem parar embaixo do cabeçalho ────
+   O cabeçalho é grudado no topo (64 px, mais a faixa da demonstração).
+   Quem rola a página até um elemento, como o Histórico ao trocar de
+   página da tabela, ou o navegador ao focar um campo, deixava o topo dele
+   escondido ali embaixo. No celular o cabeçalho tem duas linhas. */
+html { scroll-padding-top: calc(var(--faixa-demo-h) + var(--header-height) + 8px); }
+@media (max-width: 480px) { html { scroll-padding-top: calc(var(--faixa-demo-h) + 96px); } }
+
+/* ── Tela larga: o conteúdo no meio ─────────────────────────────────
+   As telas param em 1400 px. A 2560 sobravam 857 px vazios à direita,
+   tudo encostado na barra lateral. Abaixo de uns 1716 px de janela não
+   muda nada, porque o conteúdo não chega ao limite. */
+.tela { margin-inline: auto; }
+
+/* ── Cartões por combustível do Dashboard no celular ────────────────
+   Duas colunas abaixo de 480 px, e o valor em fonte grande sem quebra:
+   um gasto de sete dígitos passava da borda do cartão. O tamanho acompanha
+   a largura do cartão, como já fazem os cartões do topo. */
+.dash-comb-kpi { min-width: 0; container-type: inline-size; }
+.dash-comb-kpi .dash-comb-kpi-val { font-size: min(1.4rem, 13cqi); }
+/* O mesmo no resumo do Histórico: a 320 px, "R$ 27.789.913,95" pedia
+   129 px num cartão de 118 e passava da borda. O `container-type` do
+   cartão de combustível só vale no celular, onde a largura dele vem da
+   grade: no computador ela vem do conteúdo, e a contenção a zeraria. */
+.rel-kpi { container-type: inline-size; }
+.rel-kpi .rel-kpi-valor { font-size: min(1.35rem, 11cqi); }
+@media (max-width: 768px) { .rel-kpi .rel-kpi-valor { font-size: min(1.05rem, 11cqi); } }
+@media (max-width: 480px) {
+    .rel-card { container-type: inline-size; }
+    .rel-card .rel-card-valor { font-size: min(0.82rem, 10.5cqi); }
+}
+
+/* ── Linha de combustível com a descarga à vista, em tela média ─────
+   Cinco colunas entre 641 e 820 px deixavam de 112 a 124 px para cada
+   número, e com o campo em 16 px (toque) "1.234.567,89" já não cabia. O
+   combustível sobe para uma linha própria e os três números dividem a de
+   baixo. Vai até 820 para pegar o tablet em pé, que desde a gaveta tem a
+   largura toda da tela para o formulário. */
+@media (min-width: 641px) and (max-width: 820px) {
+    .linha-combustivel.mostra-descarga { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+    .linha-combustivel.mostra-descarga > .tipo { grid-column: 1 / -1; }
+}
+
+/* ── Login em janela baixa ──────────────────────────────────────────
+   Com duas colunas, o cartão tinha 573 px de altura; num notebook com
+   zoom (530 px de janela) o fim dele ficava fora. Menos respiro, a mesma
+   informação. */
+@media (max-height: 620px) and (min-width: 761px) {
+    .login-marca { padding: 28px 32px; gap: var(--space-4); }
+    .login-form { padding: 24px 32px 16px; }
+    .login-subtitulo { margin-bottom: var(--space-4); }
+    .login-ou { margin: var(--space-3) 0 var(--space-2); }
+    .login-form .pf-assinatura { margin-top: var(--space-3); }
+}
+/* Janela muito baixa, como o celular deitado: fica só o formulário. Com a
+   faixa da marca por cima, a 360 px de altura o campo de senha e o botão
+   Entrar ficavam abaixo da dobra. A assinatura AFN continua no pé. */
+@media (max-height: 500px) {
+    .modal-overlay.login-overlay { align-items: flex-start; padding: var(--space-3); }
+    .login-cartao { grid-template-columns: 1fr; width: min(440px, 100%); }
+    .login-cartao > .login-marca { display: none; }
+    .login-form { padding: var(--space-5) var(--space-5) var(--space-3); }
+    .login-subtitulo { margin-bottom: var(--space-3); }
+}
+
+/* ── Tela de toque ──────────────────────────────────────────────────
+   Vale para qualquer aparelho cujo apontador principal é o dedo:
+   celular, tablet. No computador nada muda, e a densidade das tabelas
+   escolhida em 18/09 continua a mesma.
+
+   1. Campos com 16 px. Abaixo disso o Safari do iPhone dá zoom sozinho
+      ao tocar no campo, e a página pula a cada campo do formulário. Com a
+      raiz em 14 px, todo campo do site estava entre 11,2 e 12,6 px. O
+      `!important` é de propósito: há regras de campo mais específicas
+      espalhadas pelo arquivo (data, mês, número, busca), e todas precisam
+      ceder aqui.
+   2. Alvos de 40 px. Os ícones de ação das tabelas tinham 28 px com 2 px
+      entre eles: no dedo, tocar em Editar e acertar Excluir era questão
+      de milímetro. Abas, paginação, filtros de período e os botões de
+      fechar ficavam entre 22 e 31 px. */
+@media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select, textarea { font-size: 16px !important; }
+
+    .btn-icone { width: 40px; height: 40px; }
+    .celula-acoes .btn-icone + .btn-icone { margin-left: 4px; }
+    #cadastros .acoes-lista, .acoes-celula.acoes-celula--icones { gap: 4px; }
+    .aba-btn { min-height: 40px; }
+    .btn-filtro-rapido { min-height: 36px; }
+    .pag-btn { min-width: 40px; min-height: 40px; }
+    .modal-fechar { min-width: 40px; min-height: 40px; }
+    .btn-hamburger, .btn-fechar-sidebar { min-width: 40px; min-height: 40px; align-items: center; justify-content: center; }
+    .btn-busca-global { min-height: 40px; min-width: 40px; justify-content: center; }
+    .busca-global-input { min-height: 40px; }
+    .empresa-ativa-badge { min-height: 36px; }
+    .alerta-confirmar, .dash-ver-completo, .central-card-abrir { min-height: 36px; }
+    .btn-export, .segmentado button, .btn-metrica, .demo-dica button { min-height: 36px; }
+    .btn-primario, .btn-secundario, .btn-cancelar { min-height: 40px; justify-content: center; }
+    /* O mês por extenso ("setembro de 2026") em 16 px não cabia nos 180 px
+       do campo, e o ano saía cortado. */
+    .campo-mes { max-width: 240px; }
+    /* As duas datas do Dashboard dividiam a linha com 137 px cada, e a data
+       em 16 px pede 150: saía "01/09/202". Com a base em 150 elas ficam lado
+       a lado a partir de uns 390 px de tela e uma embaixo da outra abaixo. */
+    #dashFiltrosPeriodo .campo-data { flex-basis: 150px; }
+    /* Data em 16 px na fonte mono pedia 138 px, e os filtros do Histórico
+       a 320 de largura dão 125 por coluna. Na fonte do resto do site, com
+       algarismos de largura igual, ela cabe e continua alinhada. */
+    input[type="date"], input[type="month"] { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; }
+    input[type="file"]:not(.input-arquivo-oculto) { min-height: 40px; }
+    .login-esqueci { min-height: 40px; }
+    .login-ver-senha { width: 40px; height: 40px; }
+    #demoFaixa button { min-height: 32px; }
+    input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; min-width: 20px; }
+    /* Os interruptores das Configurações de alertas escondem a caixa de
+       propósito: a regra de cima, que vem depois, a traria de volta. */
+    ._cfg-toggle input { width: 0; height: 0; min-width: 0; }
+}
+/* Celular de 320: as datas dos filtros do Histórico ocupam a linha
+   inteira, e os outros filtros seguem em duas colunas. Em meia linha
+   (125 px) a data não cabia, e no iPhone ela aparece por extenso
+   ("23 de set. de 2026"), que é ainda mais larga. */
+@media (max-width: 340px) {
+    #relatorios .filtros .campo:has(input[type="date"]) { grid-column: 1 / -1; }
+}
+
+/* ── Prévia do PDF em qualquer tela ─────────────────────────────────
+   O nome do arquivo numa linha só, cortado: um relatório com os dois
+   filtros de data tem nome de 90 caracteres, que quebrava em três linhas
+   e tirava altura da prévia. O nome inteiro fica no `title`. */
+.modal--pdf .modal-cabecalho h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* No celular e no tablet as páginas vêm desenhadas pelo PDF.js
+   (_pdfEntregar): uma embaixo da outra, na largura da caixa, rolando
+   dentro dela. */
+.pdf-previa--paginas {
+    overflow: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+    padding: var(--space-3);
+}
+/* A folha existe desde o início, com a proporção da página (`aspect-ratio`
+   vem do JS); a imagem entra e sai conforme a rolagem. */
+.pdf-pagina { display: flex; width: 100%; flex: 0 0 auto; background: #fff; box-shadow: var(--shadow-sm); }
+.pdf-pagina canvas { display: block; width: 100%; height: auto; }
+.pdf-pagina .pdf-previa-aviso { color: #555; }
+.pdf-previa-aviso { margin: auto; padding: var(--space-5); color: var(--text-muted); text-align: center; line-height: 1.5; }
+/* Celular: os três botões dividem a linha, em vez de dois e um sobrando. */
+@media (max-width: 480px) {
+    .modal--pdf .modal-acoes button { flex: 1 1 auto; }
+}
+/* Janela baixa ou celular: a prévia ocupa a janela inteira, com o mínimo
+   de moldura. No celular deitado (360 px de altura, menos a faixa da
+   demonstração) o recuo, o cabeçalho e os botões deixavam 80 px para o
+   documento. Sem `:has` (navegador antigo) o recuo fica, e nada quebra. */
+@media (max-height: 560px), (max-width: 480px) {
+    .modal-overlay:has(> .modal--pdf) { padding: 0; }
+    .modal--pdf { width: 100%; max-width: 100%; border-radius: 0; padding: 10px 12px; }
+    .modal--pdf .modal-cabecalho { padding-top: 0; margin: 0; }
+    .modal--pdf .modal-cabecalho h3 { font-size: 0.9rem; }
+    .modal--pdf .pdf-previa { margin: 8px 0; }
+    .modal--pdf .modal-acoes { margin: 0; padding: 0; }
+}

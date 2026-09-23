@@ -42,12 +42,24 @@ function fecharSidebar() {
     document.getElementById("sidebarOverlay").classList.remove("visivel");
 }
 
-// Fecha a sidebar mobile ao clicar em qualquer item
+// A barra é gaveta abaixo de 1024 px: a mesma pergunta do CSS, feita pelo
+// `matchMedia` para as duas nunca discordarem por causa da barra de
+// rolagem, que entra no `innerWidth` e não na media query.
+const _gavetaMQ = typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 1023px)") : null;
+const _ehGaveta = () => _gavetaMQ ? _gavetaMQ.matches : window.innerWidth <= 1023;
+
+// Fecha a gaveta ao clicar em qualquer item.
 document.addEventListener("click", function(e) {
-    if (window.innerWidth <= 768 && e.target.closest(".sidebar-item")) {
+    if (_ehGaveta() && e.target.closest(".sidebar-item")) {
         fecharSidebar();
     }
 });
+// Ao passar de gaveta para barra fixa (tablet deitado, janela alargada),
+// a gaveta aberta se fecha: senão ela voltaria aberta, com o fundo
+// escuro, na próxima vez que a tela estreitasse.
+if (_gavetaMQ && typeof _gavetaMQ.addEventListener === "function") {
+    _gavetaMQ.addEventListener("change", e => { if (!e.matches) fecharSidebar(); });
+}
 
 /* ========== MARCAÇÃO DO ITEM ATIVO ========== */
 function marcarNavAtivo(telaId) {
@@ -601,6 +613,34 @@ document.addEventListener("keydown", function(e) {
 });
 
 /* ========== INICIALIZAÇÃO ========== */
+
+/* ========== CAMPO FOCADO NUM MODAL QUE ROLA (23/09/2026) ========== */
+/* Desde que todo modal rola por dentro, o cabeçalho e os botões ficam
+   grudados em cima e embaixo. Ao passar por Tab (ou tocar num campo com o
+   teclado subindo), o navegador rola só até o campo encostar na borda, e
+   ele parava escondido atrás dos botões. Aqui, se o campo focado ficou
+   atrás de um dos dois, o modal rola o que falta.
+
+   Não é `scroll-padding` no CSS de propósito: com ele, o diálogo que abre
+   com o foco num botão grudado (a conferência antes de gravar) já abria
+   rolado até o fim, com o título e o começo do resumo fora de vista. */
+document.addEventListener("focusin", e => {
+    const alvo = e.target;
+    const modal = alvo && alvo.closest ? alvo.closest(".modal") : null;
+    if (!modal || modal.scrollHeight <= modal.clientHeight + 1) return;
+    // Os grudados já estão sempre à vista. A `.linha-acoes` só gruda quando
+    // é a última coisa do modal; no meio ("Marcar todas") ela rola junto.
+    const acoes = modal.querySelector(".modal-acoes") || modal.querySelector(":scope > .linha-acoes:last-child");
+    if (alvo.closest(".modal-cabecalho") || (acoes && acoes.contains(alvo))) return;
+    const cabecalho = modal.querySelector(".modal-cabecalho");
+    const caixa = modal.getBoundingClientRect();
+    const topo = cabecalho ? cabecalho.getBoundingClientRect().bottom : caixa.top;
+    const fim = acoes ? acoes.getBoundingClientRect().top : caixa.bottom;
+    const r = alvo.getBoundingClientRect();
+    const folga = 12;
+    if (r.top < topo) modal.scrollTop -= topo - r.top + folga;
+    else if (r.bottom > fim) modal.scrollTop += r.bottom - fim + folga;
+});
 
 /* ========== MODAL DE CONFIRMAÇÃO / ALERTA (fmConfirm / fmAlert) ========== */
 /**

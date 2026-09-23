@@ -12,7 +12,7 @@ let _dadosAnaliticoAtual = null;
 
 /**
  * Baixa como PNG o gráfico Chart.js da aba do Analítico indicada por `nomeGrafico`.
- * OBS: esta função nunca existia — os botões "Baixar PNG" já presentes no HTML
+ * OBS: esta função nunca existia: os botões "Baixar PNG" já presentes no HTML
  * (ex: Evolução de Preços) chamavam uma função inexistente e não funcionavam.
  */
 function baixarGrafico(nomeGrafico) {
@@ -204,7 +204,7 @@ function calcularDadosAnalitico(lancamentos, filtroCombustivel) {
 
             // Evolução de preços: média PONDERADA pela carga faturada
             // (17/09/2026). Antes era média simples dos preços dos itens, e
-            // uma nota de 5 mil litros pesava igual a uma de 30 mil — na
+            // uma nota de 5 mil litros pesava igual a uma de 30 mil, na
             // mesma tela em que a aba Por Combustível mostrava a ponderada.
             if (!precosPorMes[mesKey]) precosPorMes[mesKey] = {};
             if (!precosPorMes[mesKey][tipo]) precosPorMes[mesKey][tipo] = { gasto: 0, litrosNota: 0 };
@@ -277,7 +277,7 @@ function destruirGraficos() {
 /* ── ESTADO VAZIO DO GRÁFICO ─────────────────────────────────────────
    Nunca apagar o <canvas> com innerHTML no wrapper: ele não volta, e a
    passada seguinte COM dados chamava getContext num null. O TypeError
-   estourava dentro de carregarAnalitico e as abas seguintes não rodavam —
+   estourava dentro de carregarAnalitico e as abas seguintes não rodavam, e
    a tela ficava misturando número novo com número velho até um F5.
    Reproduzido em 17/09/2026 no modo demonstração: período sem nota,
    Atualizar, período com nota, Atualizar.
@@ -302,7 +302,7 @@ function _graficoVazio(idCanvas, msg) {
 }
 
 /* O "Baixar PNG" e a nota do mês em andamento, que ficam logo depois do
-   gráfico, só aparecem quando há gráfico — com o aviso de "sem dados" eles
+   gráfico, só aparecem quando há gráfico. Com o aviso de "sem dados" eles
    ofereciam baixar uma imagem vazia (18/09/2026). */
 function _acessoriosDoGrafico(wrapper, visiveis) {
     for (let el = wrapper.nextElementSibling; el; el = el.nextElementSibling) {
@@ -627,7 +627,7 @@ function renderAbaDistribuicao(dados) {
         label: m.nome, value: metricaAtual === 'gasto' ? m.gasto : m.litros })));
 
     // Anel com o total no meio e, ao lado, cada fatia com valor e
-    // porcentagem — o mesmo desenho do Dashboard. As pizzas soltas só davam
+    // porcentagem, o mesmo desenho do Dashboard. As pizzas soltas só davam
     // o número passando o mouse (18/09/2026).
     const coresMotor = ['#a02828', '#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#64748b'];
     const desenhar = (canvas, antigo, itens, cores) => {

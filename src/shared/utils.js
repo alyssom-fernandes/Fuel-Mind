@@ -956,7 +956,13 @@ const _BIBLIOTECAS = {
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF) },
     autotable: { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF
-                                && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) }
+                                && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) },
+    // Só para a prévia de PDF em celular e tablet, que não têm leitor de PDF
+    // dentro da página (ver _pdfEntregar). A 3.11 é a última versão com
+    // script comum; da 4 em diante ela só vem como módulo.
+    pdfjs:     { src: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+                 worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
+                 pronta: () => typeof window !== "undefined" && !!window.pdfjsLib }
 };
 const _bibliotecaPromessa = {};
 
