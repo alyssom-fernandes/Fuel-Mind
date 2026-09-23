@@ -106,12 +106,124 @@ function calcularEExibirFretes() {
         resolverConjunto: typeof resolverConjuntoEPeriodo === 'function' ? resolverConjuntoEPeriodo : null
     });
 
+    renderFechamentoMes();
     renderFreteResumo();
     renderFreteHistorico();
     renderAbaPlacas();
     renderAbaMotoristasFrete();
     renderAbaEmpresasFrete();
     renderAbaConjuntosFretes();
+}
+
+/* ── FECHAR E REABRIR O MÊS (23/09/2026) ───────────────────────────
+   Decisão do dono: o mês é fechado por empresa, só admin e supremo fecham
+   e reabrem, reabrir pede motivo, e fechado trava tudo do mês para todos,
+   inclusive o supremo. A regra da trava mora em mes-fechado.js; aqui fica
+   só a faixa que diz em que pé o mês está e os dois botões.
+
+   Só fecha mês que já terminou: fechar o mês corrente travaria as notas
+   que ainda estão chegando. */
+function _empresaAtivaFrete() {
+    return empresaFiltroGlobal ? (db.empresas || []).find(e => e.nome === empresaFiltroGlobal) || null : null;
+}
+
+function renderFechamentoMes() {
+    const alvo = document.getElementById("fretesFechamentoMes");
+    const mes = document.getElementById("fretesSelectMes")?.value;
+    if (!alvo || !mes) return;
+    const empresa = _empresaAtivaFrete();
+    const podeMexer = typeof ehAdminOuSupremoAtual === "function" && ehAdminOuSupremoAtual();
+    if (!empresa) {
+        alvo.innerHTML = podeMexer
+            ? `<p class="dica mb-4">Para fechar ou reabrir um mês, escolha uma empresa no topo da tela.</p>` : "";
+        return;
+    }
+    const reg = _registroFechamento(db.fechamentosMes, empresa.id, mes);
+    const historico = reg && Array.isArray(reg.logs) && reg.logs.length
+        ? fmLogBloco(reg.logs, "Histórico do fechamento") : "";
+    const nomeMesTxt = _nomeMesLongo(mes);
+    const mesCap = nomeMesTxt.charAt(0).toUpperCase() + nomeMesTxt.slice(1);
+
+    if (reg && reg.fechado) {
+        const ultimo = [...(reg.logs || [])].reverse().find(l => l.acao === "Fechado");
+        let quando = "";
+        try { quando = ultimo ? new Date(ultimo.ts).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""; } catch (_) {}
+        alvo.innerHTML = `<div class="faixa-fechamento faixa-fechamento--fechado">
+            <div class="faixa-fechamento-texto">
+                <strong>Mês fechado</strong>
+                <span>${escapeHtml(mesCap)} da empresa ${escapeHtml(empresa.nome)}${ultimo ? `, fechado${/[a-zà-ú]/i.test(ultimo.usuario || "") ? ` por ${escapeHtml(ultimo.usuario)}` : ""} em ${escapeHtml(quando)}` : ""}.
+                Nada deste mês pode ser alterado: notas com descarga nele, taxa de frete, % do motorista e conjuntos nos dias dele.</span>
+            </div>
+            ${podeMexer ? `<button class="btn-secundario" onclick="reabrirMesFrete()">Reabrir mês</button>` : ""}
+        </div>${historico}`;
+        return;
+    }
+
+    const terminou = mes < _hojeISO().slice(0, 7);
+    alvo.innerHTML = `<div class="faixa-fechamento">
+        <div class="faixa-fechamento-texto">
+            <strong>Mês aberto</strong>
+            <span>${escapeHtml(mesCap)} da empresa ${escapeHtml(empresa.nome)} ainda pode ser alterado.${
+                podeMexer && !terminou ? " O mês só pode ser fechado depois que terminar." : ""}</span>
+        </div>
+        ${podeMexer && terminou ? `<button class="btn-primario" onclick="fecharMesFrete()">Fechar mês</button>` : ""}
+    </div>${historico}`;
+}
+
+async function fecharMesFrete() {
+    if (!exigirPapel("admin", "Fechar mês")) return;
+    const mes = document.getElementById("fretesSelectMes")?.value;
+    const empresa = _empresaAtivaFrete();
+    if (!mes || !empresa) return;
+    if (!(mes < _hojeISO().slice(0, 7))) {
+        mostrarToast("O mês só pode ser fechado depois que terminar.", "aviso", 5000);
+        return;
+    }
+    if (!await fmConfirm({
+        titulo: `Fechar ${_nomeMesLongo(mes)} da empresa ${empresa.nome}?`,
+        msg: `Depois de fechado, nada deste mês pode ser alterado, por ninguém: `
+           + `notas com descarga nele (lançar, editar, excluir, restaurar, importar), `
+           + `a taxa de frete e o % do motorista dos dias dele, e os conjuntos de veículos desses dias.\n\n`
+           + `Para alterar depois, é preciso reabrir o mês, com motivo.`,
+        confirmTxt: "Fechar mês", cancelTxt: "Cancelar", tipo: "aviso"
+    })) return;
+    await _gravarFechamento(empresa, mes, true, null, `Mês fechado: ${_nomeMesLongo(mes)}, empresa ${empresa.nome}`);
+}
+
+async function reabrirMesFrete() {
+    if (!exigirPapel("admin", "Reabrir mês")) return;
+    const mes = document.getElementById("fretesSelectMes")?.value;
+    const empresa = _empresaAtivaFrete();
+    if (!mes || !empresa || !mesEstaFechado(db.fechamentosMes, empresa.id, mes)) return;
+    const motivo = await fmPrompt({
+        titulo: `Reabrir ${_nomeMesLongo(mes)} da empresa ${empresa.nome}?`,
+        msg: "Com o mês aberto, as notas, as taxas e os conjuntos dele voltam a poder ser alterados. "
+           + "O motivo fica no histórico do fechamento.",
+        label: "Motivo da reabertura",
+        minimo: 10,
+        confirmTxt: "Reabrir mês",
+        tipo: "aviso"
+    });
+    if (motivo === null) return;
+    await _gravarFechamento(empresa, mes, false, motivo, `Mês reaberto: ${_nomeMesLongo(mes)}, empresa ${empresa.nome}`);
+}
+
+/* O registro nunca sai da lista: reabrir marca `fechado: false` e soma uma
+   linha ao histórico. A regra do banco não deixa o admin encolher a lista
+   e não deixa o operador tocar nela. */
+async function _gravarFechamento(empresa, mes, fechar, motivo, rotulo) {
+    if (!Array.isArray(db.fechamentosMes)) db.fechamentosMes = [];
+    const id = _fechamentoId(empresa.id, mes);
+    const idx = db.fechamentosMes.findIndex(f => f && f.id === id);
+    const atual = idx >= 0 ? db.fechamentosMes[idx] : { id, empresaId: empresa.id, mes, logs: [] };
+    // O motivo vai como `detalhe`, que é onde o histórico o mostra.
+    const entrada = fmLogNovo(fechar ? "Fechado" : "Reaberto", motivo || undefined);
+    if (fechar) entrada.sessao = _SESSAO_TRAVA;
+    const novo = Object.assign({}, atual, { fechado: !!fechar, logs: (atual.logs || []).concat([entrada]) });
+    if (idx >= 0) db.fechamentosMes[idx] = novo; else db.fechamentosMes.push(novo);
+    renderFechamentoMes();
+    // A mensagem diz a verdade sobre a nuvem, como a importação e o backup.
+    await _salvarEConfirmar(rotulo);
 }
 
 /* ── O MÊS EM NÚMEROS (18/09/2026) ─────────────────────────────────
@@ -252,7 +364,8 @@ function _explicacaoPagamento(grupo) {
     const pcts = [...(grupo.empresas || [])]
         .map(nome => db.empresas.find(e => e.nome === nome))
         .filter(Boolean)
-        .map(e => `${e.nome}: ${fmtPct(_percentualMotoristaDaEmpresa(e), 2)} do frete`);
+        // O % do mês exibido, como a taxa ao lado (vigência, 23/09/2026).
+        .map(e => `${e.nome}: ${fmtPct(_percentualMotoristaDaEmpresaNaData(e, dadosFretesAtual && dadosFretesAtual.mes ? dadosFretesAtual.mes + "-15" : _hojeISO()), 2)} do frete`);
     return pcts.length ? "Pagamento ao motorista\n" + pcts.join("\n")
                        : "Pagamento ao motorista, percentual do frete";
 }

@@ -141,7 +141,8 @@ service cloud.firestore {
         && listaNaoEncolheu('empresas')
         && listaNaoEncolheu('combustiveis')
         && listaNaoEncolheu('bases')
-        && listaNaoEncolheu('conjuntosVeiculos');
+        && listaNaoEncolheu('conjuntosVeiculos')
+        && listaNaoEncolheu('fechamentosMes');
     }
 
     // O que o operador pode fazer no documento de cadastros: acrescentar,
@@ -150,12 +151,21 @@ service cloud.firestore {
     // Dashboard de todos; só admin e supremo a alteram, decisão de
     // 16/09/2026). Cobre o "Cadastrar X" do combobox, que é a única razão
     // pela qual quem só lança nota precisa escrever aqui.
+    //
+    // O mês fechado (23/09/2026) entra aqui: fechar e reabrir é de admin e
+    // supremo, e o operador não toca na lista dos fechamentos. Reabrir não
+    // apaga o registro (marca fechado = false), então a lista só cresce e
+    // o admin também não a encolhe. A trava das NOTAS de um mês fechado é
+    // do sistema, não desta regra: as notas vivem numa lista dentro de um
+    // documento, e a regra não percorre lista.
     function cadastroSoCresce() {
       return listasNaoEncolheram()
         && request.resource.data.get('configRelatorio', {})
         == resource.data.get('configRelatorio', {})
         && request.resource.data.get('configAlertas', {})
-        == resource.data.get('configAlertas', {});
+        == resource.data.get('configAlertas', {})
+        && request.resource.data.get('fechamentosMes', [])
+        == resource.data.get('fechamentosMes', []);
     }
 
     // ── Cadastros compartilhados ─────────────────────────────────────────
@@ -174,7 +184,11 @@ service cloud.firestore {
     match /dados/compartilhado {
       allow read:   if ativo();
       allow create: if gerenciaUsuarios();
-      allow update: if ehSupremo()
+      // Nem o supremo encolhe a lista dos fechamentos (23/09/2026): uma aba
+      // aberta com o código de antes dela gravaria o documento sem o
+      // campo, e todos os meses voltariam a abrir sem motivo e sem
+      // histórico.
+      allow update: if (ehSupremo() && listaNaoEncolheu('fechamentosMes'))
                     || (ehAdmin() && listasNaoEncolheram())
                     || (ativo() && cadastroSoCresce());
       allow delete: if ehSupremo();

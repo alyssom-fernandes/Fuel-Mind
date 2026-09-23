@@ -377,6 +377,8 @@ async function cadImportarConfirmar() {
     })) return;
 
     const log = fmLogNovo("Criado", "importado da planilha de cadastros");
+    // Um conjunto novo vale desde 01/01/2026 e pode entrar num mês fechado.
+    const fotoTrava = _travaFoto();
 
     novos(p.veiculos).forEach(v => {
         const registro = { id: gerarId(), nome: v.valor, ativo: true, logs: [log] };
@@ -409,6 +411,7 @@ async function cadImportarConfirmar() {
         ativo: true, logs: [log]
     }));
 
+    if (_travaBarrar(fotoTrava, "Importar cadastros")) return;
     salvarDB();
     if (typeof atualizarListas === "function") atualizarListas();
     if (typeof renderizarConjuntos === "function") renderizarConjuntos();

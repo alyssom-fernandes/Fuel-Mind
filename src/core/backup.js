@@ -139,6 +139,9 @@ function _resumoRestauracao(dados) {
 
 function _aplicarBackupNaMemoria(dados) {
     _LISTAS_COMPARTILHADO.forEach(campo => {
+        // Os fechamentos ficam como estão hoje: o de um backup antigo
+        // reabriria, sem motivo e sem histórico, o mês fechado depois dele.
+        if (campo === 'fechamentosMes') return;
         const doBackup = Array.isArray(dados[campo]) ? dados[campo] : [];
         const chaves   = new Set(doBackup.map(_chaveItem));
         db[campo] = doBackup.concat((db[campo] || []).filter(i => !chaves.has(_chaveItem(i))));
@@ -191,7 +194,9 @@ async function restaurarBackupAutomatico(chave) {
         msg: `Data: ${chave.slice(prefixo.length)}\n\n${_resumoRestauracao(dados)}`,
         confirmTxt: "Restaurar", cancelTxt: "Cancelar", tipo: "perigo" })) return;
     try {
+        const foto = _travaFoto();
         _aplicarBackupNaMemoria(_mesclarComPadrao(dados));
+        if (_travaBarrar(foto, "Restaurar backup")) return;
         migrarDados();
         atualizarListas();
         _reconciliarEmpresaAtiva();

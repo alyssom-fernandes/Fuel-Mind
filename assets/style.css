@@ -3887,3 +3887,30 @@ html { scroll-padding-top: calc(var(--faixa-demo-h) + var(--header-height) + 8px
     .modal--pdf .pdf-previa { margin: 8px 0; }
     .modal--pdf .modal-acoes { margin: 0; padding: 0; }
 }
+
+/* ══ MÊS FECHADO E VIGÊNCIAS (23/09/2026) ═══════════════════════════ */
+/* A faixa da tela de Fretes: em que pé o mês da empresa ativa está. */
+.faixa-fechamento {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;
+    margin-bottom: var(--space-3); padding: var(--space-3) var(--space-4);
+    background: var(--surface); border: 1px solid var(--border-light); border-left: 4px solid var(--border-strong);
+    border-radius: var(--radius); font-size: 0.85rem; line-height: 1.5;
+}
+.faixa-fechamento--fechado { background: var(--success-light); border-color: var(--success); }
+.faixa-fechamento-texto { display: flex; flex-direction: column; gap: 2px; flex: 1 1 320px; min-width: 0; }
+.faixa-fechamento-texto strong { color: var(--text); }
+.faixa-fechamento-texto span { color: var(--text-muted); }
+#fretesFechamentoMes .historico-cadastro { margin: 0 0 var(--space-4); }
+
+/* O editor de vigências da taxa e do % no cadastro da empresa. */
+.vigencias-titulo { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.09em; }
+.vigencias { display: flex; flex-direction: column; gap: 6px; }
+.vigencia-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto 110px 32px; gap: 8px; align-items: center; }
+.vigencia-inicio { font-size: 0.85rem; color: var(--text-muted); }
+.vigencia-ate { font-size: 0.78rem; color: var(--text-light); white-space: nowrap; }
+.vigencia-linha .vigencia-data, .vigencia-linha .fm-numero { width: 100%; min-width: 0; }
+.btn-vigencia-nova { align-self: flex-start; }
+@media (max-width: 480px) {
+    .vigencia-linha { grid-template-columns: minmax(0, 1fr) 96px 32px; }
+    .vigencia-ate { grid-column: 1 / -1; grid-row: 2; }
+}

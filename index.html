@@ -386,6 +386,7 @@
     <input type="month" id="fretesSelectMes" class="campo-mes" onchange="recalcularTela('fretes', calcularEExibirFretes)">
     <button class="btn-primario" onclick="recalcularTela('fretes', calcularEExibirFretes)">Atualizar</button>
   </div>
+  <div id="fretesFechamentoMes"></div>
   <div id="fretesResumoMes" class="mb-4"></div>
   <h3 class="mt-1">Frete mês a mês, últimos 6 meses</h3>
   <p class="dica">Pela data da descarga, com a taxa que valia em cada mês. Clique numa barra ou numa linha para abrir aquele mês.</p>
@@ -1030,12 +1031,13 @@
     <div class="campo"><label for="modalInput" id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
     <div class="campo mt-3" id="modalCampoMunicipioWrapper" style="display:none">
       <label for="modalInputMunicipio">Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
-      <label for="modalInputTaxaFrete" class="mt-3">Taxa de frete (R$/litro)</label>
-      <input id="modalInputTaxaFrete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="0,00">
-      <p class="dica mt-1">Valor pago por litro transportado para esta empresa.</p>
-      <label for="modalInputPctMotorista" class="mt-3">Pagamento ao motorista (% do frete)</label>
-      <input id="modalInputPctMotorista" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="1,00">
+      <span class="vigencias-titulo mt-3">Taxa de frete (R$/litro)</span>
+      <div id="modalVigTaxa" class="vigencias"></div>
+      <p class="dica mt-1">Valor pago por litro transportado para esta empresa. Cada linha vale a partir da data dela até a véspera da linha seguinte.</p>
+      <span class="vigencias-titulo mt-3">Pagamento ao motorista (% do frete)</span>
+      <div id="modalVigPct" class="vigencias"></div>
       <p class="dica mt-1">Quanto do frete vai para o motorista que rodou a nota. Com 1% e taxa de R$ 0,10/L, dá R$ 1,00 por mil litros transportados.</p>
+      <p class="dica mt-1">Não dá para mudar valor em dia de mês fechado: reabra o mês na tela de Fretes antes.</p>
     </div>
     <div class="campo mt-3" id="modalCampoPerdaWrapper" style="display:none">
       <label for="modalInputPerda">Perda tolerada (%)</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
@@ -1079,6 +1081,7 @@
 <!-- SCRIPTS -->
 <script type="module" src="src/core/firebase.js"></script>
 <script src="src/shared/utils.js"></script>
+<script src="src/shared/mes-fechado.js"></script>
 <!-- O antigo app.js, em arquivos por responsabilidade (18/09/2026).
      Dividem o mesmo escopo global; a ordem importa só para o que roda na
      carga: erros primeiro, para registrar falha dos seguintes. -->

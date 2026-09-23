@@ -349,6 +349,24 @@ function _percentualMotoristaDaEmpresa(empresa) {
     return isFinite(p) && p >= 0 ? p : 1;
 }
 
+/* O percentual que VALIA numa data (23/09/2026). Ganhou vigência igual à
+   da taxa, a pedido do dono, junto com o mês fechado: sem ela, mudar o %
+   reescrevia o pagamento de todos os meses, inclusive os já fechados.
+   Empresa sem `pctHistorico` usa o percentual único, como sempre usou; data
+   anterior à primeira vigência usa a mais antiga, como a taxa. */
+function _percentualMotoristaDaEmpresaNaData(empresa, iso) {
+    const hist = Array.isArray(empresa && empresa.pctHistorico) ? empresa.pctHistorico : [];
+    if (!hist.length || !iso) return _percentualMotoristaDaEmpresa(empresa);
+    const valido = v => { const p = Number(v && v.pct); return isFinite(p) && p >= 0 ? p : null; };
+    const achada = [...hist]
+        .sort((a, b) => String(b.vigenciaDe || "").localeCompare(String(a.vigenciaDe || "")))
+        .find(v => String(v.vigenciaDe || "") <= iso && (!v.vigenciaAte || iso <= String(v.vigenciaAte)));
+    if (achada) { const p = valido(achada); return p === null ? _percentualMotoristaDaEmpresa(empresa) : p; }
+    const maisAntiga = [...hist].sort((a, b) => String(a.vigenciaDe || "").localeCompare(String(b.vigenciaDe || "")))[0];
+    const p = valido(maisAntiga);
+    return p === null ? _percentualMotoristaDaEmpresa(empresa) : p;
+}
+
 function _taxaFreteDaEmpresa(empresa) {
     const taxa = parseFloat(empresa?.taxaFrete);
     return isNaN(taxa) || taxa < 0 ? 0 : taxa;
@@ -774,7 +792,8 @@ function julgarPreco(valor, mediana) {
    - só nota válida (`lancamentoAtivo`) gera frete;
    - o mês é o da DESCARGA (rodada 11);
    - a quantidade é a da NOTA, a carga (08/09/2026);
-   - a taxa é a que VALIA na data da descarga (vigência, 17/09/2026);
+   - a taxa é a que VALIA na data da descarga (vigência, 17/09/2026), e o
+     % do motorista também (23/09/2026);
    - o conjunto é o que continha a placa NAQUELA data. */
 function calcularFretesDoMes(opts) {
     const o = opts || {};
@@ -824,7 +843,8 @@ function calcularFretesDoMes(opts) {
         const taxa       = _taxaFreteDaEmpresaNaData(cadEmpresa, dataRef);
         // O percentual é da empresa do lançamento: um motorista que rodou
         // para as duas no mês recebe cada parte pela regra da sua empresa.
-        const pctMot     = _percentualMotoristaDaEmpresa(cadEmpresa);
+        // E é o que valia na data da descarga, como a taxa (23/09/2026).
+        const pctMot     = _percentualMotoristaDaEmpresaNaData(cadEmpresa, dataRef);
         if (!cadEmpresa) semTaxa++;
         else if (!(taxa > 0)) { taxaZero++; empresasTaxaZero.add(cadEmpresa.nome); }
 

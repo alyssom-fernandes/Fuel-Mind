@@ -308,7 +308,9 @@ async function restaurarBackup(input) {
             tipo: "perigo"
         })) { input.value = ""; return; }
 
+        const foto = _travaFoto();
         _aplicarBackupNaMemoria(_mesclarComPadrao(dados));
+        if (_travaBarrar(foto, "Restaurar backup")) { input.value = ""; return; }
         migrarDados();
         atualizarListas();
         if (typeof _reconciliarEmpresaAtiva === 'function') _reconciliarEmpresaAtiva();
@@ -332,12 +334,20 @@ async function restaurarBackup(input) {
    ficam, como última saída. */
 async function resetSeguro() {
     if (!exigirPapel("supremo", "Apagar todos os dados")) return;
+    // Mês fechado trava para todos, e apagar tudo é a alteração maior que
+    // existe (23/09/2026): reabre-se o mês antes, como em qualquer outra.
+    if (haMesFechado()) {
+        mostrarToast("Há meses fechados. Apagar tudo alteraria esses meses: reabra-os na tela de Fretes antes.", "erro", 9000);
+        return;
+    }
     if (!await fmConfirm({ titulo: "Apagar todos os dados?", msg: "Esta ação apagará da nuvem TODOS os lançamentos de todas as empresas e todos os cadastros, permanentemente.\n\nBaixe um backup antes de continuar.", confirmTxt: "Continuar", cancelTxt: "Cancelar", tipo: "perigo" })) return;
     if (!await fmConfirm({ titulo: "Última confirmação", msg: "Todos os lançamentos, motoristas, veículos, empresas, combustíveis, bases e conjuntos serão apagados, para todos os usuários.\n\nTem CERTEZA que deseja apagar tudo?", confirmTxt: "Apagar tudo", cancelTxt: "Cancelar", tipo: "perigo" })) return;
 
+    // Os registros de fechamento ficam: estão todos reabertos (a guarda
+    // acima), e a regra do banco não deixa a lista encolher, nem ao supremo.
     const limparMemoria = () => {
         db.lancamentos = [];
-        _LISTAS_COMPARTILHADO.forEach(c => { db[c] = []; });
+        _LISTAS_COMPARTILHADO.forEach(c => { if (c !== 'fechamentosMes') db[c] = []; });
     };
 
     if (typeof demoAtivo === 'function' && demoAtivo()) {
@@ -363,10 +373,11 @@ async function resetSeguro() {
         limparMemoria();
         await window._firestore.firestoreGravarMesclando(_NOME_COMPARTILHADO, atual => {
             const d = Object.assign({}, atual || {});
-            _LISTAS_COMPARTILHADO.forEach(c => { d[c] = []; });
+            _LISTAS_COMPARTILHADO.forEach(c => { if (c !== 'fechamentosMes') d[c] = []; });
             return d;
         });
         _base[_NOME_COMPARTILHADO] = _fotografar(_payloadDoc(_NOME_COMPARTILHADO));
+        _travaAtualizarAprovado();
         _pendentesLimpar();
         _pendentesSincronizacao = false;
         _gravarCopiaLocal();
@@ -746,6 +757,7 @@ async function executarCorrecaoMassa() {
     const usuario = window._usuarioAtual?.nome || 'Desconhecido';
     const ts = new Date().toISOString();
     let count = 0;
+    const foto = _travaFoto();
     db.lancamentos = db.lancamentos.map(l => {
         const tem = campoCorrecaoAtual === 'combustivel'
             ? (l.itens || []).some(i => i.tipo === antigo)
@@ -765,6 +777,7 @@ async function executarCorrecaoMassa() {
             alteracoes: [{ campo: campoCorrecaoAtual, de: antigo, para: novo }] }]);
         return c;
     });
+    if (_travaBarrar(foto, 'Correção em massa')) return;
     atualizarListas();
     _rerenderTelaAtual();
     await _salvarEConfirmar(`${count} lançamento(s) do histórico atualizados com ${rotulo.toLowerCase()} = "${novo}"`);

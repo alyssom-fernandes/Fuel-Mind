@@ -116,6 +116,10 @@ function _marcarPendentesDasMudancas() {
 function salvarDB(opcoes) {
     // Toda gravação muda a versão dos dados (o cache da busca do relatório a usa).
     window._versaoDados = (window._versaoDados || 0) + 1;
+    // Mês fechado (mes-fechado.js, 23/09/2026): a alteração que mexe nele
+    // volta inteira, e nada é gravado. Vem antes do modo demonstração para
+    // a trava valer também lá, onde ela é testada.
+    if (!_travaConferirAntesDeGravar()) return;
     // Modo demonstração: nada sai da máquina. Esta é a trava: se ela
     // falhar, dados fictícios acabam na base real. Vem antes de tudo.
     if (typeof demoAtivo === 'function' && demoAtivo()) {
@@ -164,6 +168,9 @@ function _executarSave() {
     if (!_layoutNovo) return _executarSaveLegado();
 
     clearTimeout(_timerRetry);
+    // A nota pendente que encontrou o mês fechado por outra aba volta ao
+    // que o servidor tem, antes de qualquer coisa subir.
+    _travaRevisarPendentes();
     const grupos   = _agruparLancamentos();
     const permitidos = new Set(_empresaIdsPermitidos());
     const nomes    = [_NOME_COMPARTILHADO, ...[...permitidos].map(_nomeDocLanc)];
@@ -231,6 +238,7 @@ function _executarSave() {
             // pode fazer. Repetir para sempre travava o documento inteiro: os
             // cadastros novos paravam de subir. A mudança é desfeita.
             _desfazerMudancasLocais(_NOME_COMPARTILHADO);
+            _travaAtualizarAprovado();
             mostrarToast("A nuvem recusou a alteração nos cadastros: seu perfil não tem permissão para ela. A alteração foi desfeita.", "erro", 9000);
             _rerenderTelaAtual();
         }
@@ -382,6 +390,7 @@ async function carregarDB() {
             const perfil = window._usuarioAtual;
             const antesDeCarregar = db;
             db = _mesclarComPadrao(Object.assign({}, compartilhado, { lancamentos: [] }));
+            _travaAtualizarAprovado();
             const ids = _empresaIdsPermitidos();
             let docs;
             try {
@@ -454,6 +463,9 @@ async function carregarDB() {
         }
         _timerRecarga = setTimeout(() => { if (window._usuarioAtual) carregarDB(); }, espera);
     } finally {
+        // O que acabou de chegar é o ponto de partida da trava do mês
+        // fechado: dali em diante, o que mudar é alteração de alguém.
+        _travaAtualizarAprovado();
         _mostrarLoading(false);
         _criarIndicadorConexao();
         _setStatusConexao(!window._firestore ? "offline"
@@ -523,7 +535,13 @@ function _garantirListeners() {
         const id = _empresaIdDoLancamento(l);
         return !id || permitidos.has(id);
     });
-    if (db.lancamentos.length !== antes) _rerenderTelaAtual();
+    if (db.lancamentos.length !== antes) {
+        // Não é alteração de ninguém: sem isto, a trava do mês fechado
+        // veria as notas da empresa que saiu como "apagadas" e recusaria a
+        // gravação seguinte, levando junto a nota que acabou de ser salva.
+        _travaAtualizarAprovado();
+        _rerenderTelaAtual();
+    }
 }
 
 function _desligarListeners() {
@@ -544,6 +562,7 @@ function _aoReceberDoc(nome, dados) {
         const h = _hashStr(JSON.stringify(dados));
         if (_hashPorDoc[_NOME_LEGADO] && h === _hashPorDoc[_NOME_LEGADO]) return;
         db = _mesclarComPadrao(dados);
+        _travaAtualizarAprovado();
         _rerenderTelaAtual();
         return;
     }
@@ -647,7 +666,7 @@ function _mesclarComPadrao(dados) {
     // silêncio (e, quando ainda havia conjuntos semeados no código, os ids
     // mudavam e quebravam o histórico de vigência).
     ['motoristas','veiculos','empresas','combustiveis','lancamentos','bases',
-     'conjuntosVeiculos'].forEach(campo => {
+     'conjuntosVeiculos','fechamentosMes'].forEach(campo => {
         if (Array.isArray(dados[campo])) resultado[campo] = dados[campo];
     });
 

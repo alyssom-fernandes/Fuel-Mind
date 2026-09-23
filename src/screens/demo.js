@@ -277,6 +277,7 @@ function demoResetarDados(silencioso) {
     }
     if (!silencioso) {
         db = _mesclarComPadrao(JSON.parse(JSON.stringify(base)));
+        _travaAtualizarAprovado();
         atualizarListas();
         mostrarTela("dashboard");
         carregarDashboard();
@@ -371,6 +372,8 @@ function entrarModoDemo(uid) {
     if (perfil.role !== "supremo") {
         db.lancamentos = db.lancamentos.filter(l => perfil.empresas.includes(l.empresa));
     }
+    // A base da demo é o ponto de partida da trava do mês fechado.
+    _travaAtualizarAprovado();
 
     document.getElementById("appContainer").style.display = "block";
     _aplicarEmpresaAtiva(visiveis[0] || "");

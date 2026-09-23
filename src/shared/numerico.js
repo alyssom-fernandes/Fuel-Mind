@@ -35,10 +35,11 @@ const FM_CASAS = {
     valor:                4,
     taxaFreteEmpresa:     2,
     perdaCombustivel:     2,
-    modalInputTaxaFrete:  2,
     modalInputPerda:      2,
     pctMotoristaEmpresa:  2,
-    modalInputPctMotorista: 2,
+    // As linhas de vigência do cadastro de empresa (23/09/2026), por classe.
+    "vigencia-taxa":      2,
+    "vigencia-pct":       2,
     _cfgPrecoDif:         2
 };
 
@@ -197,7 +198,7 @@ document.addEventListener("paste", function (e) {
 function fmNumericoAtivar(raiz) {
     const escopo = raiz || document;
     escopo.querySelectorAll(".qtd, .qtdDescargada, .valor, " +
-        "#taxaFreteEmpresa, #perdaCombustivel, #modalInputTaxaFrete, #modalInputPerda")
+        "#taxaFreteEmpresa, #perdaCombustivel, #modalInputPerda")
         .forEach(fmNumericoPreparar);
 }
 

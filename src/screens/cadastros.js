@@ -50,15 +50,169 @@ window.normalizarPlaca = function(placa) {
     return converterPlacaMercosul(limpa) || limpa;
 };
 
+/* ── VIGÊNCIAS DA TAXA E DO % DO MOTORISTA (23/09/2026) ─────────────────
+   O dono pediu para editar as datas. Até aqui a taxa nova valia sempre de
+   hoje em diante, e o % do motorista não tinha vigência nenhuma.
+
+   O editor trabalha com linhas "valor, a partir de": cada linha vale da
+   data dela até a véspera da seguinte, e a primeira vale desde o início.
+   Assim não existe buraco nem sobreposição para validar: a data final de
+   cada vigência sai da linha de baixo. A primeira é gravada a partir de
+   01/01/2000, que é o que o cálculo já fazia com a data anterior a toda
+   vigência (usava a mais antiga).
+
+   Uma vigência que mude o valor de algum dia de mês fechado é recusada
+   pela trava (mes-fechado.js), como qualquer outra alteração. */
+const _VIG = {
+    taxa: { campo: "taxaHistorico", valor: "taxa", classe: "vigencia-taxa", container: "modalVigTaxa",
+            nome: "taxa de frete", fmt: v => `${fmtFreteL(v)}/L` },
+    pct:  { campo: "pctHistorico",  valor: "pct",  classe: "vigencia-pct",  container: "modalVigPct",
+            nome: "pagamento ao motorista", fmt: v => `${fmtPct(v, 2)} do frete` }
+};
+let _vigLinhas = { taxa: [], pct: [] };
+
+/** As linhas do editor a partir do cadastro: `{de, valor}`, a primeira sem data. */
+function _vigLinhasDoCadastro(item, tipo) {
+    const c = _VIG[tipo];
+    const hist = Array.isArray(item && item[c.campo]) ? [...item[c.campo]] : [];
+    hist.sort((a, b) => String(a.vigenciaDe || "").localeCompare(String(b.vigenciaDe || "")));
+    let linhas = hist.map(v => ({ de: v.vigenciaDe, valor: Number(v[c.valor]) || 0 }));
+    if (!linhas.length) {
+        linhas = [{ de: null, valor: tipo === "taxa" ? _taxaFreteDaEmpresa(item) : _percentualMotoristaDaEmpresa(item) }];
+    }
+    linhas[0].de = null;
+    return linhas;
+}
+
+/** As vigências em texto: "R$ 0,10/L desde o início; R$ 0,12/L a partir de 01/10/2026". */
+function _vigResumo(item, tipo) {
+    const c = _VIG[tipo];
+    return _vigLinhasDoCadastro(item, tipo)
+        .map(l => `${c.fmt(l.valor)} ${l.de ? `a partir de ${formatarData(l.de)}` : "desde o início"}`)
+        .join("; ");
+}
+
 /** Histórico de taxa de frete em texto, para o `title` da lista. */
 function _historicoTaxaTexto(empresa) {
-    const hist = Array.isArray(empresa && empresa.taxaHistorico) ? empresa.taxaHistorico : [];
-    if (!hist.length) return "Taxa sem histórico: vale para todo o período.";
-    return "Vigências da taxa:\n" + [...hist]
-        .sort((a, b) => String(a.vigenciaDe).localeCompare(String(b.vigenciaDe)))
-        .map(v => `${fmtFreteL(Number(v.taxa) || 0)}/L, de ${formatarData(v.vigenciaDe)}`
-                + (v.vigenciaAte ? ` a ${formatarData(v.vigenciaAte)}` : " (atual)"))
-        .join("\n");
+    return "Vigências da taxa:\n" + _vigResumo(empresa, "taxa").split("; ").join("\n");
+}
+
+function _vigAbrir(item) {
+    Object.keys(_VIG).forEach(tipo => {
+        // O valor gravado vai junto do texto: a tela mostra duas casas, e um
+        // 0,125 gravado não pode virar 0,13 só porque o modal foi salvo.
+        _vigLinhas[tipo] = _vigLinhasDoCadastro(item, tipo).map(l => {
+            const txt = fmtNumeroExibicao(l.valor, 2);
+            return { de: l.de, txt, txtOriginal: txt, valorOriginal: l.valor };
+        });
+        _vigRender(tipo);
+    });
+}
+
+function _vigRender(tipo) {
+    const c = _VIG[tipo];
+    const alvo = document.getElementById(c.container);
+    if (!alvo) return;
+    const linhas = _vigLinhas[tipo];
+    alvo.innerHTML = linhas.map((l, i) => {
+        const prox = linhas[i + 1];
+        const ate = !prox ? "em diante"
+            : /^\d{4}-\d{2}-\d{2}$/.test(prox.de || "") ? `até ${formatarData(_somarDiasISO(prox.de, -1))}` : "até a próxima";
+        return `<div class="vigencia-linha">
+            ${i === 0
+                ? `<span class="vigencia-inicio">Desde o início</span>`
+                : `<input type="date" class="campo-data vigencia-data" value="${escapeHtml(l.de || "")}"
+                          aria-label="${escapeHtml(c.nome)}: vale a partir de" onchange="_vigSincronizar('${tipo}'); _vigRender('${tipo}')">`}
+            <span class="vigencia-ate">${ate}</span>
+            <input type="text" inputmode="decimal" autocomplete="off" class="fm-numero ${c.classe}"
+                   value="${escapeHtml(l.txt)}" aria-label="${escapeHtml(c.nome)}${i === 0 ? ", desde o início" : ""}">
+            ${linhas.length > 1
+                ? `<button type="button" class="btn-icone btn-icone--excluir" title="Tirar esta vigência" aria-label="Tirar esta vigência" onclick="_vigRemover('${tipo}', ${i})">✕</button>`
+                : `<span class="vigencia-sem-acao"></span>`}
+        </div>`;
+    }).join("") + `<button type="button" class="btn-secundario btn-vigencia-nova" onclick="_vigAdicionar('${tipo}')">+ Nova vigência</button>`;
+}
+
+/** Lê da tela o que foi digitado, sem validar: para redesenhar sem perder nada. */
+function _vigSincronizar(tipo) {
+    const c = _VIG[tipo];
+    const alvo = document.getElementById(c.container);
+    if (!alvo) return;
+    alvo.querySelectorAll(".vigencia-linha").forEach((linha, i) => {
+        const l = _vigLinhas[tipo][i];
+        if (!l) return;
+        const data = linha.querySelector(".vigencia-data");
+        if (data) l.de = data.value;
+        const valor = linha.querySelector("." + c.classe);
+        if (valor) l.txt = valor.value;
+    });
+}
+
+function _vigAdicionar(tipo) {
+    _vigSincronizar(tipo);
+    const linhas = _vigLinhas[tipo];
+    linhas.push({ de: "", txt: linhas.length ? linhas[linhas.length - 1].txt : "" });
+    _vigRender(tipo);
+    const datas = document.querySelectorAll(`#${_VIG[tipo].container} .vigencia-data`);
+    if (datas.length) datas[datas.length - 1].focus();
+}
+
+function _vigRemover(tipo, i) {
+    _vigSincronizar(tipo);
+    _vigLinhas[tipo].splice(i, 1);
+    if (_vigLinhas[tipo][0]) _vigLinhas[tipo][0].de = null;
+    _vigRender(tipo);
+}
+
+/**
+ * Valida as linhas e devolve o histórico a gravar.
+ * @returns {{hist: Array}|{erro: string}}
+ */
+function _vigLer(tipo) {
+    _vigSincronizar(tipo);
+    const c = _VIG[tipo];
+    const linhas = _vigLinhas[tipo];
+    const valores = [];
+    for (let i = 0; i < linhas.length; i++) {
+        const l = linhas[i];
+        if (i > 0 && !/^\d{4}-\d{2}-\d{2}$/.test(l.de || "")) {
+            return { erro: `Informe a data de início da ${i + 1}ª vigência de ${c.nome}.` };
+        }
+        if ((i === 1 && l.de <= "2000-01-01") || (i > 1 && l.de <= linhas[i - 1].de)) {
+            return { erro: `As vigências de ${c.nome} precisam estar em ordem de data, sem data repetida.` };
+        }
+        const v = (l.txtOriginal !== undefined && l.txt === l.txtOriginal) ? l.valorOriginal : parseNumeroBR(l.txt);
+        if (v === null || v < 0) {
+            return { erro: `Valor inválido na ${i + 1}ª vigência de ${c.nome}.` };
+        }
+        valores.push(v);
+    }
+    return {
+        hist: linhas.map((l, i) => ({
+            [c.valor]: valores[i],
+            vigenciaDe: i === 0 ? "2000-01-01" : l.de,
+            vigenciaAte: linhas[i + 1] ? _somarDiasISO(linhas[i + 1].de, -1) : null
+        }))
+    };
+}
+
+/** Grava as vigências no cadastro, com log, se mudaram. */
+function _vigAplicar(item, tipo, hist) {
+    const c = _VIG[tipo];
+    const igual = (a, b) => a.length === b.length && a.every((x, i) =>
+        x.de === b[i].de && Number(x.valor).toFixed(6) === Number(b[i].valor).toFixed(6));
+    const novas = hist.map((v, i) => ({ de: i === 0 ? null : v.vigenciaDe, valor: v[c.valor] }));
+    if (igual(_vigLinhasDoCadastro(item, tipo), novas)) return;
+    const antes = _vigResumo(item, tipo);
+    item[c.campo] = hist;
+    // O campo único continua dizendo o valor de hoje: é ele que as telas
+    // sem data (o cadastro, o painel) mostram.
+    const hoje = _hojeISO();
+    if (tipo === "taxa") item.taxaFrete = _taxaFreteDaEmpresaNaData(item, hoje);
+    else item.percentualMotorista = _percentualMotoristaDaEmpresaNaData(item, hoje);
+    if (!item.logs) item.logs = [];
+    item.logs.push(fmLogNovo(tipo === "taxa" ? "Vigências da taxa de frete alteradas" : "Vigências do pagamento ao motorista alteradas",
+        `de "${antes}" para "${_vigResumo(item, tipo)}"`));
 }
 
 /*=================================================
@@ -81,22 +235,11 @@ function garantirConjuntos() {
    cadastros) sumia também dos Fretes dos meses em que rodou, e o total por
    conjunto de um mês já fechado mudava. Inativar agora fecha a vigência na
    data da inativação; é ela que tira o conjunto dos meses seguintes. */
+/* A regra mora em `_resolverConjuntoNaLista` (mes-fechado.js) desde
+   23/09/2026: a trava do mês fechado precisa resolver a mesma pergunta
+   sobre a lista de antes e a de depois de uma alteração. */
 window.resolverConjuntoEPeriodo = function(placa, data) {
-    if (!placa || !db.conjuntosVeiculos) return null;
-    const placaNorm = normalizarPlaca(placa);
-    const dataRef = data || "9999-12-31";
-
-    for (const conj of db.conjuntosVeiculos) {
-        if (!data && conj.ativo === false) continue;
-        const hist = [...(conj.historico || [])].reverse();
-        for (const h of hist) {
-            if (h.vigenciaDe > dataRef) continue;
-            if (h.vigenciaAte && h.vigenciaAte < dataRef) continue;
-            const placasNorm = (h.placas || []).map(p => normalizarPlaca(p));
-            if (placasNorm.includes(placaNorm)) return { conj, periodo: h };
-        }
-    }
-    return null;
+    return _resolverConjuntoNaLista(db.conjuntosVeiculos, placa, data);
 };
 
 window.resolverConjuntoPorPlaca = function(placa, data) {
@@ -106,7 +249,7 @@ window.resolverConjuntoPorPlaca = function(placa, data) {
 // ========== MODAL DE EDIÇÃO ==========
 let modalContexto = null;
 
-function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '', taxaFreteAtual = '', pctMotoristaAtual = '') {
+function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '') {
     modalContexto = { lista, id };
     document.getElementById("modalTitulo").textContent = titulo;
     const podeRenomear = typeof ehSupremoAtual === "function" ? ehSupremoAtual() : true;
@@ -120,11 +263,8 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     if (lista === "empresas" && wrapperMunicipio) {
         wrapperMunicipio.style.display = "flex";
         document.getElementById("modalInputMunicipio").value = municipioAtual;
-        // Campo de texto agora: o número precisa entrar já em português,
-        // senão "0.28" apareceria com ponto e voltaria mal interpretado.
-        fmNumericoDefinir(document.getElementById("modalInputTaxaFrete"), taxaFreteAtual === "" ? null : taxaFreteAtual);
-        // Em branco significa "vale o padrão", e o placeholder mostra qual é.
-        fmNumericoDefinir(document.getElementById("modalInputPctMotorista"), pctMotoristaAtual === "" ? null : pctMotoristaAtual);
+        // A taxa e o % são editados por vigência (23/09/2026).
+        _vigAbrir(db.empresas.find(i => String(i.id) === String(id)));
     } else if (wrapperMunicipio) {
         wrapperMunicipio.style.display = "none";
     }
@@ -268,12 +408,26 @@ function confirmarEdicao() {
         return;
     }
 
+    // As vigências são validadas antes de qualquer mudança: recusar depois
+    // deixaria o cadastro meio alterado na memória.
+    let vigencias = null;
+    if (lista === "empresas") {
+        vigencias = {};
+        for (const tipo of Object.keys(_VIG)) {
+            const r = _vigLer(tipo);
+            if (r.erro) { mostrarToast(r.erro, "erro", 6000); return; }
+            vigencias[tipo] = r.hist;
+        }
+    }
+
     const nomeAntigo = item.nome;
     // Renomear é do supremo (decisão do dono, 17/09/2026): o nome é
     // reescrito nas notas, e só o supremo carrega as notas de todas as
     // empresas, nas mãos de outro perfil, as empresas que ele não enxerga
     // ficavam com o nome velho.
     if (nomeAntigo !== valorFinal && typeof exigirPapel === "function" && !exigirPapel("supremo", "Renomear cadastro")) return;
+    // Daqui em diante o cadastro muda: a trava do mês fechado compara com isto.
+    const fotoTrava = _travaFoto();
     if (nomeAntigo !== valorFinal) {
         if (!item.logs) item.logs = [];
         item.logs.push(fmLogNovo("Nome alterado", `de "${nomeAntigo}" para "${valorFinal}"`));
@@ -291,50 +445,11 @@ function confirmarEdicao() {
             }
         }
 
-        const taxaInput = document.getElementById("modalInputTaxaFrete");
-        if (taxaInput) {
-            const parsed = parseNumeroBR(taxaInput.value);
-            const novaTaxa = parsed === null || parsed < 0 ? 0 : parsed;
-            const taxaAntiga = _taxaFreteDaEmpresa(item);
-            if (taxaAntiga !== novaTaxa) {
-                if (!item.logs) item.logs = [];
-                item.logs.push(fmLogNovo("Taxa de frete alterada", `de ${fmtFreteL(taxaAntiga)}/L para ${fmtFreteL(novaTaxa)}/L`));
-                // ── VIGÊNCIA DA TAXA (17/09/2026) ───────────────────────
-                // A taxa nova vale de hoje em diante; a anterior fica
-                // fechada em ontem. Sem isso, mudar a taxa em outubro
-                // reescrevia o frete de janeiro a setembro, já pago, sem
-                // aviso nenhum. O único rastro era a linha de log acima.
-                const hoje = _hojeISO();
-                if (!Array.isArray(item.taxaHistorico)) item.taxaHistorico = [];
-                if (!item.taxaHistorico.length && taxaAntiga > 0) {
-                    // Primeira mudança de uma empresa antiga: o que valia
-                    // até ontem é a taxa que estava no registro.
-                    item.taxaHistorico.push({ taxa: taxaAntiga, vigenciaDe: "2000-01-01", vigenciaAte: _somarDiasISO(hoje, -1) });
-                }
-                item.taxaHistorico.forEach(v => { if (!v.vigenciaAte) v.vigenciaAte = _somarDiasISO(hoje, -1); });
-                item.taxaHistorico = item.taxaHistorico.filter(v => String(v.vigenciaDe) <= String(v.vigenciaAte));
-                item.taxaHistorico.push({ taxa: novaTaxa, vigenciaDe: hoje, vigenciaAte: null });
-                item.taxaFrete = novaTaxa;
-            }
-        }
-
-        const pctInput = document.getElementById("modalInputPctMotorista");
-        if (pctInput) {
-            // Campo vazio volta a "sem valor gravado", que é o padrão de 1%.
-            // Gravar 1 no lugar de apagar seria o mesmo número hoje, mas
-            // congelaria a empresa caso o padrão mude.
-            const parsed = parseNumeroBR(pctInput.value);
-            const novoPct = pctInput.value.trim() === "" ? undefined
-                          : (parsed === null || parsed < 0 ? 0 : parsed);
-            const antigoPct = _percentualMotoristaDaEmpresa(item);
-            if (_percentualMotoristaDaEmpresa({ percentualMotorista: novoPct }) !== antigoPct) {
-                if (!item.logs) item.logs = [];
-                item.logs.push(fmLogNovo("Pagamento ao motorista alterado",
-                    `de ${fmtPct(antigoPct, 2)} para ${fmtPct(_percentualMotoristaDaEmpresa({ percentualMotorista: novoPct }), 2)} do frete`));
-            }
-            if (novoPct === undefined) delete item.percentualMotorista;
-            else item.percentualMotorista = novoPct;
-        }
+        // A taxa e o % por vigência (23/09/2026). Antes cada um era um campo:
+        // a taxa nova valia de hoje em diante, sem escolha de data, e o %
+        // não tinha vigência, e mudá-lo reescrevia todos os meses.
+        _vigAplicar(item, "taxa", vigencias.taxa);
+        _vigAplicar(item, "pct",  vigencias.pct);
     }
 
     if (lista === "combustiveis") {
@@ -391,6 +506,9 @@ function confirmarEdicao() {
         }
     }
 
+    // Renomear reescreve as notas, e vigência nova pode cair num mês
+    // fechado: tudo volta, e o modal fica aberto para corrigir.
+    if (_travaBarrar(fotoTrava, nomeAntigo !== nomeNovo ? "Renomear" : "Salvar o cadastro")) return;
     salvarDB();
     fecharModal();
     atualizarListas();
@@ -502,6 +620,7 @@ async function converterTodasPlacasMercosul() {
     if (!await fmConfirm({ titulo: `Converter ${paraConverter.length} placa(s) para Mercosul?`, msg: `${lista}`, confirmTxt: "Converter", tipo: "aviso" })) return;
 
     let propagados = 0;
+    const fotoTrava = _travaFoto();
     paraConverter.forEach(({ veiculo, antiga, nova }) => {
         if (!veiculo.logs) veiculo.logs = [];
         veiculo.logs.push(fmLogNovo("Placa convertida para Mercosul", `de "${antiga}" para "${nova}"`));
@@ -526,6 +645,7 @@ async function converterTodasPlacasMercosul() {
         }
     });
 
+    if (_travaBarrar(fotoTrava, "Converter placas")) return;
     salvarDB();
     atualizarListas();
     mostrarToast(`${paraConverter.length} placa(s) convertida(s) para Mercosul.${propagados > 0 ? ` ${propagados} lançamento(s) atualizado(s).` : ""}`, "sucesso", 6000);
@@ -770,6 +890,7 @@ async function toggleAtivoConjunto(id) {
     if (!conj) return;
     const acao = conj.ativo !== false ? "inativar" : "reativar";
     if (!await fmConfirm({ titulo: `${acao.charAt(0).toUpperCase()+acao.slice(1)} conjunto?`, confirmTxt: acao.charAt(0).toUpperCase()+acao.slice(1), tipo: "aviso" })) return;
+    const fotoTrava = _travaFoto();
     conj.ativo = conj.ativo !== false ? false : true;
     if (!conj.logs) conj.logs = [];
     conj.logs.push(fmLogNovo(conj.ativo ? 'Reativado' : 'Inativado'));
@@ -785,6 +906,7 @@ async function toggleAtivoConjunto(id) {
             delete ultimo.fechadaPorInativacao;
         }
     }
+    if (_travaBarrar(fotoTrava, acao === "inativar" ? "Inativar conjunto" : "Reativar conjunto")) { renderizarConjuntos(); return; }
     salvarDB();
     renderizarConjuntos();
 }
@@ -917,6 +1039,7 @@ async function salvarConjunto() {
     }
 
     const agora = new Date().toLocaleString('pt-BR');
+    const fotoTrava = _travaFoto();
 
     if (_conjuntoEditandoId) {
         const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(_conjuntoEditandoId));
@@ -944,7 +1067,6 @@ async function salvarConjunto() {
         }
         conj.nome = nome;
         conj.composicaoAtual = placas;
-        mostrarToast("Conjunto atualizado com sucesso!", "sucesso");
     } else {
         db.conjuntosVeiculos.push({
             id: gerarId(),
@@ -958,9 +1080,12 @@ async function salvarConjunto() {
             ativo: true,
             logs: [fmLogNovo('Criado')]
         });
-        mostrarToast("Conjunto cadastrado com sucesso!", "sucesso");
     }
 
+    // Uma vigência que começa ou termina dentro de um mês fechado muda o
+    // conjunto das notas dele. O modal fica aberto para corrigir a data.
+    if (_travaBarrar(fotoTrava, _conjuntoEditandoId ? "Salvar o conjunto" : "Cadastrar o conjunto")) return;
+    mostrarToast(_conjuntoEditandoId ? "Conjunto atualizado com sucesso!" : "Conjunto cadastrado com sucesso!", "sucesso");
     salvarDB();
     fecharFormConjunto();
     renderizarConjuntos();
@@ -1017,8 +1142,8 @@ function atualizarListas() {
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtFreteL(_taxaFreteDaEmpresa(e))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="Fatia do frete que vai para o motorista que rodou a nota${e.percentualMotorista === undefined ? '. Valor padrão: esta empresa não tem percentual próprio gravado.' : ''}">Motorista: ${fmtPct(_percentualMotoristaDaEmpresa(e), 2)}</em>` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtFreteL(_taxaFreteDaEmpresaNaData(e, _hojeISO()))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
+                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml("Fatia do frete que vai para o motorista que rodou a nota. Vigências:\n" + _vigResumo(e, "pct").split("; ").join("\n"))}">Motorista: ${fmtPct(_percentualMotoristaDaEmpresaNaData(e, _hojeISO()), 2)}${(e.pctHistorico || []).length > 1 ? ' · ' + e.pctHistorico.length + ' vigências' : ''}</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
@@ -1192,7 +1317,7 @@ document.addEventListener('click', function(e) {
     } else if (acao === 'editar') {
         if (lista === 'motoristas') abrirModal('Editar motorista',  'Nome',  item.nome, lista, id);
         else if (lista === 'veiculos')    abrirModal('Editar veículo',    'Placa', item.nome, lista, id);
-        else if (lista === 'empresas')    abrirModal('Editar empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '', item.taxaFrete ?? '', item.percentualMotorista ?? '');
+        else if (lista === 'empresas')    abrirModal('Editar empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '');
         else if (lista === 'combustiveis') abrirModal('Editar combustível','Nome',  item.nome, lista, id, item.perda);
         else if (lista === 'bases')       abrirModal('Editar base',       'Nome',  item.nome, lista, id);
     }

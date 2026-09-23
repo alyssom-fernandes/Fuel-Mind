@@ -741,6 +741,11 @@ function importacaoProcessar() {
             return;
         }
         if (!permitidas.has(empresaCad.id)) { erros.push(`Linha ${linhaNum}: você não tem acesso à empresa "${empresaCad.nome}"`); return; }
+        // Mês fechado não recebe nota, nem pela planilha (23/09/2026).
+        if (mesEstaFechado(db.fechamentosMes, empresaCad.id, dataDescarga.slice(0, 7))) {
+            erros.push(`Linha ${linhaNum}: descarga em ${formatarData(dataDescarga)}, e ${_nomeMesLongo(dataDescarga.slice(0, 7))} está fechado na empresa ${empresaCad.nome} (reabra o mês na tela de Fretes para importar)`);
+            return;
+        }
 
         const qtd   = getNum("qtd");
         const valor = getNum("valor");
@@ -799,6 +804,10 @@ function importacaoProcessar() {
         // uma nota cancelada por uma ativa desfaria o cancelamento em silêncio.
         if (existente && existente.estado === 'cancelado') {
             erros.push(`Nota ${nota.numeroNota} (${formatarData(nota.dataNota)}): já lançada e marcada como cancelada na origem, não reimportada`);
+        } else if (existente && mesFechadoDaNota(existente)) {
+            // Reimportar substitui a nota que existe: se ela está num mês
+            // fechado, substituir é alterar esse mês.
+            erros.push(`Nota ${nota.numeroNota} (${formatarData(nota.dataNota)}): já lançada em ${_nomeMesLongo(mesDaDescarga(existente))}, mês fechado, não reimportada`);
         } else if (existente) duplicatas.push(nota);
         else novasNotas.push(nota);
     });
@@ -1024,6 +1033,9 @@ async function importacaoConfirmar() {
         return;
     }
 
+    // Um mês pode ter sido fechado entre o processamento e este clique.
+    const fotoTrava = _travaFoto();
+
     // Remove duplicatas selecionadas em operação atômica única.
     //
     // A chave inclui a empresa. Sem ela, este filtro rodava sobre o
@@ -1095,6 +1107,7 @@ async function importacaoConfirmar() {
     });
 
     if (btnConfirmar) esconderSpinner(btnConfirmar);
+    if (_travaBarrar(fotoTrava, "Importar")) return;
     atualizarListas();
     // A mensagem de conclusão diz a verdade sobre a nuvem.
     const confirmado = await _salvarEConfirmar(`${todasParaSalvar.length} nota(s) importada(s)`);

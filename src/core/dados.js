@@ -16,6 +16,9 @@ const DB_PADRAO = {
     lancamentos:   [],
     bases:         [],
     conjuntosVeiculos: [],
+    // Um registro por mês fechado de uma empresa (mes-fechado.js). Reabrir
+    // não apaga: marca `fechado: false` e o histórico continua.
+    fechamentosMes: [],
     configRelatorio: {
         titulo: "Controle de Entradas de Combustível",
         mostrarBase: true,
@@ -82,7 +85,7 @@ let _tentativasRecarga = 0;
    levar a mudança embora. */
 let _base = {};
 
-const _LISTAS_COMPARTILHADO  = ['motoristas', 'veiculos', 'empresas', 'combustiveis', 'bases', 'conjuntosVeiculos'];
+const _LISTAS_COMPARTILHADO  = ['motoristas', 'veiculos', 'empresas', 'combustiveis', 'bases', 'conjuntosVeiculos', 'fechamentosMes'];
 const _OBJETOS_COMPARTILHADO = ['configRelatorio', 'configAlertas'];
 
 // ========== GERADOR DE ID ÚNICO ==========
@@ -347,6 +350,9 @@ function _absorverDoc(nome, dados) {
     _aplicarNaMemoria(nome, mesclado);
     if (nome === _NOME_COMPARTILHADO) _normalizarNomesDeEmpresa();
     if (_mudancasLocais(nome)) _pendentesSincronizacao = true;
+    // O que veio do servidor não é alteração deste navegador: a trava do
+    // mês fechado parte daqui (mes-fechado.js).
+    _travaAtualizarAprovado();
     return JSON.stringify(_payloadDoc(nome)) !== antes;
 }
 

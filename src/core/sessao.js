@@ -347,6 +347,9 @@ async function _mostrarSelecaoEmpresa(perfil) {
             const local = _lerCopiaLocal();
             if (local) { try { db = _mesclarComPadrao(local); } catch (_) {} }
         }
+        // O banco foi trocado inteiro: é o novo ponto de partida da trava
+        // do mês fechado (mes-fechado.js).
+        _travaAtualizarAprovado();
     }
     if (window._usuarioAtual !== perfil) return;
 
@@ -577,6 +580,7 @@ function _encerrarSessaoDados() {
     _tentativasRecarga = 0;
     _pendentesSincronizacao = false;
     db = JSON.parse(JSON.stringify(DB_PADRAO));
+    _travaAtualizarAprovado();
     empresaFiltroGlobal = null;
     empresaFiltroNome   = "";
     empresaFiltroId     = null;

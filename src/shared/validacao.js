@@ -281,6 +281,28 @@ function validarLancamento() {
         marcar(null, "A nota em edição não existe mais neste computador. Cancele a edição e abra a nota de novo pelo relatório.", "bloqueio");
     }
 
+    // ── Mês fechado (23/09/2026) ──
+    // Bloqueio para todos, inclusive o supremo: o caminho é reabrir o mês.
+    // Vale para a descarga nova e, numa edição, para o mês de onde a nota
+    // vem: tirar uma nota de um mês fechado também o altera.
+    if (typeof mesFechadoDaEmpresa === "function") {
+        const regNovo = dataDescarga && empresa ? mesFechadoDaEmpresa(empresa, dataDescarga.slice(0, 7)) : null;
+        if (regNovo) {
+            marcar("dataDescarga",
+                `O mês de ${_nomeMesLongo(regNovo.mes)} está fechado na empresa ${empresa}: nota com descarga nele não entra. `
+                + `Para lançar, reabra o mês na tela de Fretes.`, "bloqueio");
+        }
+        const original = (typeof lancamentoEditandoId !== "undefined" && lancamentoEditandoId
+            && !(typeof isClonando !== "undefined" && isClonando))
+            ? (db.lancamentos || []).find(l => l.id === lancamentoEditandoId) : null;
+        const regOriginal = original ? mesFechadoDaNota(original) : null;
+        if (regOriginal && (!regNovo || regOriginal.id !== regNovo.id)) {
+            marcar(null,
+                `Esta nota é de ${_nomeMesLongo(regOriginal.mes)}, mês fechado da empresa ${original.empresa}, e não pode ser alterada. `
+                + `Para alterar, reabra o mês na tela de Fretes.`, "bloqueio");
+        }
+    }
+
     // ── Datas ──
     // Futuro é alerta: pode ser engano de digitação, pode ser relógio da
     // máquina, e a nota é de terceiro. Bloquear seria caro se errado.

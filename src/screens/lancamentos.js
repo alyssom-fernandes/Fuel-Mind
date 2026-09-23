@@ -817,6 +817,9 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
         });
     }
 
+    // A validação já recusa o mês fechado; esta guarda é para quem chegar
+    // aqui por outro caminho, e vem antes do "salvo com sucesso".
+    const fotoTrava = _travaFoto();
     if (lancamentoEditandoId && !isClonando) {
         const idx = db.lancamentos.findIndex(l => l.id === lancamentoEditandoId);
         // A validação já bloqueia este caso; a guarda fica aqui porque
@@ -827,11 +830,11 @@ function salvarLancamentoFinal(dataNota, dataDescarga, numeroNota, base, empresa
             return;
         }
         db.lancamentos[idx] = lancamento;
-        mostrarToast("Lançamento atualizado com sucesso!", "sucesso");
     } else {
         db.lancamentos.push(lancamento);
-        mostrarToast("Lançamento salvo com sucesso!", "sucesso");
     }
+    if (_travaBarrar(fotoTrava, "Salvar a nota")) return;
+    mostrarToast(eraEdicao ? "Lançamento atualizado com sucesso!" : "Lançamento salvo com sucesso!", "sucesso");
     // Marca antes de gravar: se a aba morrer entre o clique e a resposta
     // do Firestore, é esta marca que permite ao próximo carregamento
     // reconhecer a nota como não enviada, em vez de apagá-la.
@@ -1131,6 +1134,8 @@ function _marcarEstadoLancamento(l, novoEstado, acao, motivo) {
         mostrarToast("Esta nota não está mais neste computador. Nada foi alterado.", "erro", 7000);
         return false;
     }
+    // O mês pode ter sido fechado enquanto a pergunta estava aberta.
+    if (barrarNotaDeMesFechado(db.lancamentos[idx], acao)) return false;
     const novo = Object.assign({}, db.lancamentos[idx]);
     if (novoEstado) novo.estado = novoEstado;
     else delete novo.estado;
@@ -1228,6 +1233,7 @@ async function editarLancamento(id) {
             : "Este lançamento está excluído. Restaure antes de editar.", "aviso", 5000);
         return;
     }
+    if (barrarNotaDeMesFechado(l, "Editar")) return;
     // Uma nota só é editada sob a própria empresa. A busca global, a
     // auditoria de datas e o Dashboard abrem notas de qualquer empresa, e a
     // edição sob outra empresa ativa acabava movendo a nota na primeira
@@ -1472,6 +1478,7 @@ async function descartarFormulario() {
 async function excluirLancamento(id, contexto = 'relatorio') {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l) return;
+    if (barrarNotaDeMesFechado(l, "Excluir")) return;
 
     const descricao = [
         l.numeroNota ? `Nota ${l.numeroNota}` : null,
@@ -1522,6 +1529,7 @@ async function excluirLancamento(id, contexto = 'relatorio') {
 async function restaurarLancamento(id, contexto = 'relatorio') {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l || l.estado !== 'excluido') return;
+    if (barrarNotaDeMesFechado(l, "Restaurar")) return;
 
     const descricao = [
         l.numeroNota ? `Nota ${l.numeroNota}` : null,
@@ -1565,6 +1573,7 @@ async function restaurarLancamento(id, contexto = 'relatorio') {
 async function cancelarNaOrigem(id) {
     const l = db.lancamentos.find(x => x.id === id);
     if (!l || !lancamentoAtivo(l)) return;
+    if (barrarNotaDeMesFechado(l, "Marcar como cancelada")) return;
 
     const descricao = [
         l.numeroNota ? `Nota ${l.numeroNota}` : null,
