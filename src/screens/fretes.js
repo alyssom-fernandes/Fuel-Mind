@@ -740,7 +740,6 @@ function exportarFechamentoDoMes() {
 // ========== EXPORTAÇÃO PDF ==========
 function exportarFretesPDF() {
     if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFretesPDF())) return;
-    if (adiarAteLogoPdf(() => exportarFretesPDF())) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
         mostrarToast("Não há dados para exportar.", "aviso", 4000);
         return;
@@ -761,7 +760,7 @@ function exportarFretesPDF() {
     }
     doc.setFontSize(9);
     doc.setTextColor(60, 60, 60);
-    doc.text(`Notas: ${d.totalNotas}  |  Litros (carga): ${fmtL3(d.totalLitros)}  |  Frete total: ${fmtR(d.totalFrete)}`, 14, yCab);
+    doc.text(`Notas: ${d.totalNotas}  |  Litros (carga): ${fmtL3(d.totalLitros)}  |  Frete total: ${fmtR(d.totalFrete)}`, _PDF_MARGEM, yCab);
 
     const cabecalho = ["Nome", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
     // Só a tabela de motoristas tem a coluna do pagamento: ela é a folha que
@@ -820,7 +819,7 @@ function exportarFretesPDF() {
         if (!s.corpo || s.corpo.length === 0) return;
         doc.setFontSize(11);
         doc.setTextColor(...cor);
-        doc.text(s.titulo, 14, startY + 4);
+        doc.text(s.titulo, _PDF_MARGEM, startY + 4);
 
         doc.autoTable({
             head: [s.cabecalho || cabecalho],
@@ -828,7 +827,7 @@ function exportarFretesPDF() {
             startY: startY + 7,
             theme: "grid",
             headStyles: { fillColor: cor },
-            margin: { left: 14, right: 14 },
+            margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
             styles: { fontSize: 8 },
             // Larguras fixas nas colunas de número: as quatro tabelas ficam
             // alinhadas umas com as outras na página.
@@ -841,7 +840,7 @@ function exportarFretesPDF() {
     });
 
     if (estilo) _pdfRodapes(doc, estilo, `Fretes de ${mesLabel}`);
-    doc.save(`fretes-${d.mes}.pdf`);
+    _pdfEntregar(doc, `fretes-${d.mes}.pdf`);
 }
 
 // ========== EXPORTAÇÃO CSV ==========

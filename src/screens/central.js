@@ -382,17 +382,6 @@ async function centralExecutar(id, formato) {
         if (typeof garantirBibliotecas === "function") {
             try { await garantirBibliotecas(["xlsx", "jspdf", "autotable"]); } catch (_) {}
         }
-        /* A LOGO tem a mesma guarda e a mesma corrida das bibliotecas, e
-           custou achar: os dois PDFs saíam sem gerar arquivo nenhum na
-           primeira tentativa da sessão. `adiarAteLogoPdf` devolve `true`
-           quando adiou e chama de volta assim que a logo está rasterizada,
-           então esperar aqui é transformar esse adiamento em espera. Ela é
-           rasterizada uma vez só e fica em cache; da segunda em diante isto
-           resolve na hora. */
-        if (typeof adiarAteLogoPdf === "function") {
-            await new Promise(pronto => { if (!adiarAteLogoPdf(pronto)) pronto(); });
-        }
-
         if (!_centralPreparar(item, mes)) {
             mostrarToast("Não consegui preparar este relatório. Abra a tela dele e tente por lá.", "erro", 6000);
             return;

@@ -3467,3 +3467,51 @@ input[type="checkbox"], input[type="radio"] {
 .dash-ver-completo svg { width: 13px; height: 13px; }
 .dash-ver-completo:hover { color: var(--text); text-decoration: underline; }
 .dash-ver-completo:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+
+/* ── PRÉVIA DO PDF (22/09/2026) ────────────────────────────────────
+   O documento aparece antes de ser salvo, num `iframe` que é o próprio
+   visualizador de PDF do navegador. O modal é alto de propósito: uma
+   prévia em que só cabe meia página não deixa conferir nada, e é
+   justamente conferir que ela existe para permitir.
+
+   `min-height` além do `height` em vh porque numa janela baixa o
+   visualizador ficaria com uns poucos centímetros e a rolagem do PDF
+   dentro dele ficaria inutilizável. */
+/* A prévia ocupa quase a janela toda, e é de propósito: ela existe para
+   conferir um documento antes de mandá-lo para fora, e conferir tabela de
+   oito colunas numa janelinha não é conferir.
+
+   A ALTURA NÃO É FIXA, e a primeira versão errou nisso. Ela dava 80vh ao
+   quadro do PDF e esquecia que o cabeçalho do modal, os botões, o padding
+   e a faixa do modo demonstração também ocupam altura: a soma passava da
+   janela e o modal virava uma coisa para rolar, justamente ele, que existe
+   para ser visto de uma vez.
+
+   Agora quem manda é o `max-height: 100%` do modal. O `.modal-overlay` já
+   desconta a faixa da demonstração e tem 20px de recuo, então esse 100% é
+   o espaço que sobra de verdade. O quadro do PDF recebe o que restar
+   depois do cabeçalho e dos botões, e `min-height: 0` é o que permite ele
+   encolher: sem isso um filho de flex se recusa a ficar menor que o
+   próprio conteúdo e o modal estouraria de novo. */
+.modal--pdf {
+    max-width: min(1400px, 97vw);
+    width: 97vw;
+    /* `height` ALEM do `max-height`: só com o teto o modal encolhia até o
+       tamanho do conteúdo, e um iframe não tem altura própria para
+       empurrar, então a prévia colapsava para uns poucos centímetros. Com
+       os dois, ele ocupa exatamente o espaço que o overlay oferece. */
+    height: 100%;
+    max-height: 100%;
+    display: flex; flex-direction: column;
+}
+.pdf-previa {
+    width: 100%;
+    flex: 1 1 auto; min-height: 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    background: var(--surface-alt);
+    margin: var(--space-3) 0;
+}
+/* O cabeçalho e os botões não encolhem: quem cede espaço é o quadro. */
+.modal--pdf .modal-cabecalho,
+.modal--pdf .modal-acoes { flex: 0 0 auto; }

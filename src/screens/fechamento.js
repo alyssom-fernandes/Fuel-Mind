@@ -49,7 +49,7 @@ function _fechCartao(doc, estilo, x, y, largura, rotulo, valor, apoio, destaque)
 /** Título de seção: barra na cor de destaque e o texto ao lado. */
 function _fechTitulo(doc, estilo, texto, y, apoio) {
     doc.setFillColor(...estilo.cor);
-    doc.rect(14, y - 4, 2.2, 7, "F");
+    doc.rect(_PDF_MARGEM, y - 4, 2.2, 7, "F");
     doc.setFont(estilo.fonte, "bold");
     doc.setFontSize(11);
     doc.setTextColor(...estilo.cor);
@@ -83,7 +83,7 @@ function _fechTabela(doc, estilo, opcoes) {
         bodyStyles: { fontSize: 7.5 },
         alternateRowStyles: { fillColor: _fechClaro(estilo.cor, 0.965) },
         styles: { font: estilo.fonte, cellPadding: 1.8, lineColor: [225, 225, 225], lineWidth: 0.1 },
-        margin: { left: 14, right: 14 },
+        margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
         didParseCell: d => {
             if (d.section === "head") {
                 const h = (alinhamentos[d.column.index] || {}).halign;
@@ -194,7 +194,6 @@ function confirmarFechamentoPDF() {
 ─────────────────────────────────────────────*/
 function exportarFechamentoPDF(empresasEscolhidas) {
     if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFechamentoPDF(empresasEscolhidas))) return;
-    if (adiarAteLogoPdf(() => exportarFechamentoPDF(empresasEscolhidas))) return;
     if (!dadosFretesAtual || !dadosFretesAtual.mes) {
         mostrarToast("Escolha o mês primeiro.", "aviso", 4000);
         return;
@@ -239,11 +238,11 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     let y = _pdfCabecalho(doc, estilo, `Fechamento de frete · ${mesLabel}`,
         `${rotuloEmpresas} · pela data da descarga · gerado em ${new Date().toLocaleDateString("pt-BR")}`);
 
-    const larg = (W - 28 - 12) / 4;
-    _fechCartao(doc, estilo, 14,                    y, larg, "Frete do mês",   fmtR(d.totalFrete),    "", true);
-    _fechCartao(doc, estilo, 14 + (larg + 4),       y, larg, "Litros (carga)", fmtL(d.totalLitros),   "");
-    _fechCartao(doc, estilo, 14 + (larg + 4) * 2,   y, larg, "A pagar",        fmtR(d.totalPagamento), "aos motoristas");
-    y = _fechCartao(doc, estilo, 14 + (larg + 4) * 3, y, larg, "Notas",        String(d.totalNotas),  "descarregadas") + 10;
+    const larg = (W - _PDF_MARGEM * 2 - 12) / 4;
+    _fechCartao(doc, estilo, _PDF_MARGEM,                  y, larg, "Frete do mês",   fmtR(d.totalFrete),    "", true);
+    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4),     y, larg, "Litros (carga)", fmtL(d.totalLitros),   "");
+    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 2, y, larg, "A pagar",        fmtR(d.totalPagamento), "aos motoristas");
+    y = _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 3, y, larg, "Notas",      String(d.totalNotas),  "descarregadas") + 10;
 
     // ── Por empresa ────────────────────────────────────────────────
     y = _fechTitulo(doc, estilo, "Por empresa", y);
@@ -301,7 +300,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         const fora = d.totalFrete - somaConj.frete;
         if (Math.abs(fora) > 0.005) {
             doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
-            doc.text(`Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - somaConj.litros)} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`, 14, y);
+            doc.text(`Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - somaConj.litros)} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`, _PDF_MARGEM, y);
             doc.setTextColor(0, 0, 0);
             y += 8;
         }
@@ -371,6 +370,6 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     }
 
     _pdfRodapes(doc, estilo, `Fechamento de ${mesLabel} · ${rotuloEmpresas}`);
-    doc.save(`fechamento-${d.mes}.pdf`);
+    _pdfEntregar(doc, `fechamento-${d.mes}.pdf`);
     mostrarToast("Fechamento gerado.", "sucesso", 3000);
 }

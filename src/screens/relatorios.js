@@ -949,49 +949,164 @@ function exportarExcel(contexto) {
    a pedido do dono: a aparência do documento passa a ser uma só. O que
    continua configurável em Sistema são as COLUNAS e a orientação. Sem
    logo, a faixa do cabeçalho é a variante centrada. */
-/* A cor dos PDFs é a do sistema, e não um azul próprio (22/09/2026).
-   `--primary` do `style.css` é #a02828; aqui ela vai em RGB porque o jsPDF
-   não lê CSS. Mudou a identidade, muda aqui. */
-const _PDF_COR   = [160, 40, 40];    // #a02828, o mesmo --primary da tela
+/* A COR DA FAIXA DOS PDFS: vinho fechado, e não o vermelho da tela
+   (22/09/2026, segunda revisão).
+
+   Ela era #a02828, o `--primary` do `style.css`, e o dono apontou dois
+   problemas no papel: o vermelho saía claro demais, e a gota da logo
+   sumia. O segundo tem número: a gota, depois de rasterizada, é
+   #982331, e contra a faixa #a02828 o contraste era de 1,08. Abaixo de
+   1,2 o olho não separa duas superfícies, então a gota não ficava
+   "pouco visível", ela desaparecia.
+
+   Com #5c1620 a gota sobe para 1,65 e o texto branco do cabeçalho vai de
+   7,4:1 para 13,2:1. A tela continua com #a02828: papel e monitor não
+   precisam da mesma cor, e no papel o tom fechado imprime melhor. */
+const _PDF_COR   = [92, 22, 32];     // #5c1620, vinho fechado
 const _PDF_FONTE = "helvetica";
-/* ── LOGO NOS PDFS (22/09/2026) ────────────────────────────────────
-   A logo é SVG e o jsPDF só aceita bitmap, então ela é desenhada uma vez
-   num canvas e guardada como PNG. É a versão de letras brancas
-   (`logo-dark.svg`), porque a faixa do cabeçalho é escura.
 
-   `undefined` significa "ainda não tentei", `null` significa "tentei e não
-   deu". A diferença importa: sem ela, uma falha de carregamento faria cada
-   exportação tentar de novo e travar o clique do operador toda vez. */
-let _pdfLogoCache = undefined;
+/* A MARGEM LATERAL DOS QUATRO PDFS, em milímetros.
 
-function _pdfRasterizarLogo() {
-    return new Promise((ok, falhou) => {
-        const img = new Image();
-        img.onload = () => {
-            try {
-                // 640 px de largura para 32 mm de papel dá cerca de 500 dpi,
-                // de sobra para impressão. Rasterizar no tamanho original
-                // (1199 px) engordava o PDF do fechamento de 250 KB para
-                // 1,5 MB sem nenhum ganho visível.
-                const c = document.createElement("canvas");
-                c.width  = 640; c.height = Math.round(640 * 291 / 1199);
-                const ctx = c.getContext("2d");
-                ctx.drawImage(img, 0, 0, c.width, c.height);
-                ok({ dados: c.toDataURL("image/png"), proporcao: 1199 / 291 });
-            } catch (e) { falhou(e); }
-        };
-        img.onerror = falhou;
-        img.src = "assets/logo-dark.svg";
-    });
+   Era 14 e passou a 8, escolha do dono, para caber mais conteúdo na
+   página. Em A4 retrato isso leva a área útil de 182 para 194 mm, e em
+   paisagem de 269 para 281: o fechamento, que é paisagem e chega a oito
+   colunas quando duas empresas entram, é quem mais ganha.
+
+   8 mm ainda fica acima dos cerca de 5 mm que a maioria das impressoras
+   não alcança. Estava num número solto em quatro arquivos; agora é uma
+   constante, para os quatro documentos não divergirem. */
+const _PDF_MARGEM = 8;
+/* ── A MARCA NO RODAPÉ, E NÃO UMA LOGO NO CABEÇALHO (22/09/2026) ───
+   A logo do Fuel Mind saiu dos PDFs. Ela era SVG, o jsPDF só aceita
+   bitmap, e por isso havia aqui um canvas que a rasterizava, um cache
+   para não refazer isso a cada documento e uma guarda que adiava a
+   exportação até a imagem ficar pronta. Três peças para pôr um desenho
+   no topo da página.
+
+   E ele não funcionava no papel: a gota da logo é #982331 e a faixa do
+   cabeçalho é vinho, então a gota se dissolvia no fundo. Escurecer a
+   faixa melhorou, não resolveu.
+
+   No lugar entra a assinatura que o rodapé do site já usa, "AFN SYSTEMS",
+   que é TEXTO. Texto não precisa de canvas, não precisa de cache, não
+   adia exportação nenhuma, imprime nítido em qualquer resolução e sai em
+   todas as páginas, não só na primeira. O cabeçalho fica com o título
+   centrado, que é a variante que `_pdfCabecalho` já sabia desenhar para
+   quando não houvesse logo.
+
+   De quebra o documento emagrece: a logo rasterizada entrava como PNG em
+   cada PDF. */
+/* O "AFN" sai na MESMA cor da faixa do cabeçalho, e não num vermelho
+   próprio: o documento passa a ter um vinho só, do topo ao rodapé. Ele é
+   `_PDF_COR` e não uma cópia do valor, para os dois nunca divergirem se a
+   cor mudar de novo. */
+const _PDF_MARCA_SYS = [140, 140, 140];
+
+/* Desenha `AFN SYSTEMS | Fuel Mind` e devolve onde ela termina, para quem
+   chama continuar a linha.
+
+   É a assinatura inteira do rodapé do site, e não só as duas primeiras
+   palavras: "AFN SYSTEMS" sozinho diz quem fez a ferramenta, e quem recebe
+   o documento precisa saber de qual sistema ele saiu.
+
+   Cada pedaço é um `text` próprio porque as cores diferem, exatamente como
+   as classes `pf-afn`, `pf-sys`, `pf-pipe` e `pf-info` fazem na tela. */
+function _pdfMarca(doc, x, y, tamanho) {
+    const antes = doc.getFontSize();
+    doc.setFontSize(tamanho);
+    doc.setFont("courier", "bold");
+    let cursor = x;
+    const escrever = (texto, cor, espacoAntes) => {
+        cursor += espacoAntes;
+        doc.setTextColor(...cor);
+        doc.text(texto, cursor, y);
+        cursor += doc.getTextWidth(texto);
+    };
+    escrever("AFN",      _PDF_COR,       0);
+    escrever("SYSTEMS",  _PDF_MARCA_SYS, 1.4);
+    escrever("|",        _PDF_MARCA_SYS, 2.2);
+    escrever("Fuel Mind", _PDF_MARCA_SYS, 2.2);
+    doc.setFontSize(antes);
+    return cursor;
 }
 
-/** Guarda de entrada: devolve `true` quando adiou, e quem chamou sai. */
-function adiarAteLogoPdf(acao) {
-    if (_pdfLogoCache !== undefined) return false;
-    _pdfRasterizarLogo()
-        .then(l => { _pdfLogoCache = l; acao(); })
-        .catch(() => { _pdfLogoCache = null; acao(); });
-    return true;
+/* ── VER ANTES DE SALVAR (22/09/2026) ──────────────────────────────
+   Os quatro PDFs terminavam em `doc.save()`: o arquivo caía na pasta de
+   downloads e só ali a pessoa descobria o que tinha gerado. O dono pediu
+   uma prévia, e ela resolve um problema que ele já teve: o fechamento saiu
+   com uma empresa só e isso só apareceu depois de abrir o arquivo.
+
+   O jsPDF entrega o documento como blob, e o navegador já sabe desenhar
+   PDF: o `iframe` abaixo é o visualizador nativo, sem biblioteca nenhuma a
+   mais. Daqui saem os dois caminhos que o dono pediu, imprimir e salvar.
+
+   `revokeObjectURL` ao fechar não é zelo: cada PDF de fechamento tem
+   centenas de KB, e um blob que ninguém libera fica na memória da aba até
+   ela ser recarregada. Quem fecha um fechamento atrás do outro numa tarde
+   acumularia todos.
+
+   Imprimir chama o `print()` de DENTRO do iframe, e não o da página: o da
+   página mandaria a tela do sistema para a impressora, não o documento. */
+function _pdfEntregar(doc, nomeArquivo) {
+    let url;
+    try {
+        url = doc.output("bloburl");
+    } catch (e) {
+        // Sem prévia possível, o download direto continua valendo: é melhor
+        // entregar o documento sem a tela do que não entregar.
+        console.error("previa do PDF", e);
+        doc.save(nomeArquivo);
+        return;
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "_modalPdfPrevia";
+    modal.className = "modal-overlay";
+    modal.style.display = "flex";
+
+    const fechar = () => {
+        URL.revokeObjectURL(url);
+        modal.remove();
+    };
+    modal.onclick = e => { if (e.target === modal) fechar(); };
+
+    modal.innerHTML = `
+        <div class="modal modal--pdf" role="dialog" aria-label="Prévia do documento" onclick="event.stopPropagation()">
+            <div class="modal-cabecalho">
+                <h3>Prévia · ${escapeHtml(nomeArquivo)}</h3>
+                <button class="modal-fechar" aria-label="Fechar" title="Fechar">✕</button>
+            </div>
+            <iframe class="pdf-previa" title="Prévia do documento" src="${url}"></iframe>
+            <div class="modal-acoes">
+                <button class="btn-primario" data-acao="imprimir">Imprimir</button>
+                <button class="btn-secundario" data-acao="salvar">Salvar no computador</button>
+                <button class="btn-cancelar" data-acao="fechar">Fechar</button>
+            </div>
+        </div>`;
+
+    modal.querySelector(".modal-fechar").onclick = fechar;
+    modal.querySelector('[data-acao="fechar"]').onclick = fechar;
+    modal.querySelector('[data-acao="salvar"]').onclick = () => {
+        doc.save(nomeArquivo);
+        mostrarToast("Documento salvo.", "sucesso", 3000, { local: false });
+    };
+    modal.querySelector('[data-acao="imprimir"]').onclick = () => {
+        const q = modal.querySelector(".pdf-previa");
+        try {
+            q.contentWindow.focus();
+            q.contentWindow.print();
+        } catch (e) {
+            // Alguns navegadores bloqueiam o print de dentro do iframe.
+            // Abrir numa aba deixa a pessoa imprimir de lá, em vez de
+            // deixá-la sem caminho.
+            console.error("imprimir PDF", e);
+            window.open(url, "_blank");
+            mostrarToast("Abri o documento numa aba nova: imprima por lá.", "info", 6000);
+        }
+    };
+
+    document.body.appendChild(modal);
+    if (typeof _modalAcessivel === "function") _modalAcessivel(modal, fechar);
 }
 
 function _pdfEstilo() {
@@ -1000,34 +1115,20 @@ function _pdfEstilo() {
     }, db.configRelatorio || {});
     cfg.titulo = "Controle de Entradas de Combustível";
     cfg.rodapeTexto = "";
-    return { cfg, cor: _PDF_COR, logo: _pdfLogoCache || null, fonte: _PDF_FONTE };
+    return { cfg, cor: _PDF_COR, fonte: _PDF_FONTE };
 }
 
 /** Faixa de cabeçalho com logo, título e subtítulo. Devolve o Y livre. */
 function _pdfCabecalho(doc, estilo, titulo, subtitulo) {
     const W = doc.internal.pageSize.width;
-    const alt = estilo.logo ? 28 : 22;
+    const alt = 22;
     doc.setFillColor(...estilo.cor);
     doc.rect(0, 0, W, alt, "F");
     doc.setTextColor(255, 255, 255);
-    let fimLogo = 0;
-    if (estilo.logo) {
-        try {
-            // Largura fixa e altura pela proporção real: a logo é bem mais
-            // larga que alta, e o quadrado de 22x22 que havia aqui antes a
-            // esmagaria a ponto de o nome não se ler.
-            const larg = 32;
-            const altLogo = larg / (estilo.logo.proporcao || 4.12);
-            doc.addImage(estilo.logo.dados, "PNG", 14, (alt - altLogo) / 2, larg, altLogo);
-            fimLogo = 14 + larg + 8;
-        } catch (_) { /* logo inválida: segue sem ela */ }
-    }
-    const x = fimLogo || W / 2;
-    const alinhar = fimLogo ? "left" : "center";
     doc.setFont(estilo.fonte, "bold"); doc.setFontSize(14);
-    doc.text(titulo, x, estilo.logo ? 13 : 11, { align: alinhar });
+    doc.text(titulo, W / 2, 11, { align: "center" });
     doc.setFont(estilo.fonte, "normal"); doc.setFontSize(9);
-    doc.text(subtitulo, x, estilo.logo ? 22 : 18, { align: alinhar });
+    doc.text(subtitulo, W / 2, 18, { align: "center" });
     doc.setTextColor(0, 0, 0);
     return alt + 6;
 }
@@ -1038,10 +1139,14 @@ function _pdfRodapes(doc, estilo, textoEsquerda) {
     const total = doc.internal.getNumberOfPages();
     for (let p = 1; p <= total; p++) {
         doc.setPage(p);
+        /* A marca abre o rodapé de TODAS as páginas, e não o cabeçalho da
+           primeira: quem recebe uma folha solta de um fechamento de quatro
+           páginas continua sabendo de onde ela veio. */
+        const fimMarca = _pdfMarca(doc, _PDF_MARGEM, H - 8, 7);
         doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
         const esquerda = [textoEsquerda, estilo.cfg.rodapeTexto].filter(Boolean).join("  ·  ");
-        if (esquerda) doc.text(esquerda, 14, H - 8);
-        doc.text(`Página ${p} de ${total}`, W - 14, H - 8, { align: "right" });
+        if (esquerda) doc.text("·  " + esquerda, fimMarca + 3, H - 8);
+        doc.text(`Página ${p} de ${total}`, W - _PDF_MARGEM, H - 8, { align: "right" });
     }
 }
 
@@ -1074,8 +1179,8 @@ async function exportarPDF(contexto) {
         logo: null,
         fonte: _PDF_FONTE,
         corDestaque: "#1a3a5c",
-        margemEsq: 14,
-        margemDir: 14,
+        margemEsq: _PDF_MARGEM,
+        margemDir: _PDF_MARGEM,
         margemTopo: 14,
         margemRodape: 10,
         rodapeTexto: "",
@@ -1312,7 +1417,7 @@ async function exportarPDF(contexto) {
         doc.text(`Página ${p} de ${totalPages}`, W - mR, H - mRod, { align: 'right' });
     }
 
-    doc.save(_nomeArquivoRelatorio(contexto, 'pdf'));
+    _pdfEntregar(doc, _nomeArquivoRelatorio(contexto, 'pdf'));
     mostrarToast('PDF gerado com sucesso!', 'sucesso', 3000);
 }
 
@@ -1636,7 +1741,7 @@ function _executarRelatorioMensal() {
         columnStyles: { 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',fontStyle:'bold'}, 5:{halign:'right'} },
         // Cabeçalho das colunas de número à direita, sobre os valores.
         didParseCell: d => { if (d.section === 'head' && d.column.index >= 1) d.cell.styles.halign = 'right'; },
-        margin: { left: 14, right: 14 },
+        margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
         didDrawPage: d => { d.settings.margin.top = 14; },
     });
     y = doc.lastAutoTable.finalY + 10;
@@ -1670,14 +1775,14 @@ function _executarRelatorioMensal() {
             footStyles: { fillColor: [235,240,248], textColor: azul, fontSize: 8 },
             columnStyles: { 6:{halign:'right'}, 7:{halign:'right',fontStyle:'bold'} },
             didParseCell: d => { if ((d.section === 'head' || d.section === 'foot') && d.column.index >= 6) d.cell.styles.halign = 'right'; },
-            margin: { left: 14, right: 14 },
+            margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
             didDrawPage: d => { d.settings.margin.top = 14; },
         });
     }
 
     _pdfRodapes(doc, estiloPdf, `${empresa} · ${nomeMes(mes)}`);
 
-    doc.save(`relatorio-mensal-${mes}.pdf`);
+    _pdfEntregar(doc, `relatorio-mensal-${mes}.pdf`);
     mostrarToast('Relatório mensal gerado com sucesso!', 'sucesso', 4000);
 }
 
