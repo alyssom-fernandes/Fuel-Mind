@@ -827,11 +827,12 @@ ul li.inativo { opacity: 0.45; }
 /* A borda do hover seguia sempre a cor da marca, entao um cartao verde
    piscava vermelho ao passar o mouse. Agora cada variante usa a propria
    cor, a mesma do tracinho da esquerda e do icone. (21/09/2026) */
-/* O contorno tem a espessura da faixa (24/09/2026, pedido do dono): era
-   a borda de 1 px pintada, e a faixa de 4 px da esquerda ficava mais
-   grossa que o resto do contorno. Agora são a borda mais 3 px de sombra
-   interna, 4 px em volta, e a faixa some no hover para não somar 5 px do
-   lado esquerdo. Sombra, e não borda mais grossa: nada se mexe no layout. */
+/* Contorno uniforme no hover (24/09/2026, pedido do dono): era a borda de
+   1 px pintada, e a faixa de 4 px da esquerda ficava mais grossa que o
+   resto do contorno. Agora são a borda mais 2 px de sombra interna, 3 px
+   em volta (com 4 px o dono achou largo demais), e a faixa some no hover
+   para o lado esquerdo não ficar mais grosso. Sombra, e não borda mais
+   grossa: nada se mexe no layout. */
 .kpi-clicavel { --cor-kpi: var(--primary); }
 .kpi-clicavel.verde   { --cor-kpi: var(--success); }
 .kpi-clicavel.laranja { --cor-kpi: var(--warning); }
@@ -840,7 +841,7 @@ ul li.inativo { opacity: 0.45; }
 .kpi-clicavel::before { transition: opacity var(--duration-fast) var(--ease-standard); }
 .kpi-clicavel:hover {
     border-color: var(--cor-kpi);
-    box-shadow: var(--shadow), inset 0 0 0 3px var(--cor-kpi);
+    box-shadow: var(--shadow), inset 0 0 0 2px var(--cor-kpi);
     transform: translateY(-1px);
     transition: transform var(--duration-fast) var(--ease-standard),
                 border-color var(--duration-fast) var(--ease-standard),
