@@ -1335,18 +1335,21 @@ function _pdfEstilo() {
 }
 
 /** Faixa de cabeçalho com logo, título e subtítulo. Devolve o Y livre. */
-function _pdfCabecalho(doc, estilo, titulo, subtitulo) {
+/* `compacto` (24/09/2026, pedido do dono para o fechamento): a faixa com
+   a mesma folga em cima e embaixo do texto, sem o espaço vazio acima do
+   título. Os outros PDFs seguem com a faixa de 22 mm. */
+function _pdfCabecalho(doc, estilo, titulo, subtitulo, compacto) {
     const W = doc.internal.pageSize.width;
-    const alt = 22;
+    const alt = compacto ? 16 : 22;
     doc.setFillColor(...estilo.cor);
     doc.rect(0, 0, W, alt, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFont(estilo.fonte, "bold"); doc.setFontSize(14);
-    doc.text(titulo, W / 2, 11, { align: "center" });
-    doc.setFont(estilo.fonte, "normal"); doc.setFontSize(9);
-    doc.text(subtitulo, W / 2, 18, { align: "center" });
+    doc.setFont(estilo.fonte, "bold"); doc.setFontSize(compacto ? 13 : 14);
+    doc.text(titulo, W / 2, compacto ? 7.6 : 11, { align: "center" });
+    doc.setFont(estilo.fonte, "normal"); doc.setFontSize(compacto ? 8.5 : 9);
+    doc.text(subtitulo, W / 2, compacto ? 12.6 : 18, { align: "center" });
     doc.setTextColor(0, 0, 0);
-    return alt + 6;
+    return alt + (compacto ? 5 : 6);
 }
 
 /** Rodapé com o texto configurado e "Página X de Y", em todas as páginas. */

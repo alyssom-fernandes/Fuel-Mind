@@ -30,38 +30,53 @@ function _fechClaro(cor, fator) {
  * essencial do mês antes de qualquer tabela.
  */
 function _fechCartao(doc, estilo, x, y, largura, rotulo, valor, apoio, destaque) {
-    const alt = 24;
+    // Mais baixo desde 24/09/2026 (pedido do dono): 17 mm, com a mesma
+    // folga em cima do número e embaixo do rótulo. Antes, 24 mm.
+    const alt = apoio ? 20 : 17;
     doc.setFillColor(...(destaque ? estilo.cor : _fechClaro(estilo.cor, 0.93)));
     doc.roundedRect(x, y, largura, alt, 2, 2, "F");
     doc.setTextColor(...(destaque ? [255, 255, 255] : estilo.cor));
     doc.setFont(estilo.fonte, "bold");
-    doc.setFontSize(14);
-    doc.text(String(valor), x + 5, y + 12);
+    doc.setFontSize(13);
+    doc.text(String(valor), x + 5, y + 8);
     doc.setFont(estilo.fonte, "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...(destaque ? _fechClaro(estilo.cor, 0.75) : [110, 110, 110]));
-    doc.text(String(rotulo).toUpperCase(), x + 5, y + 18);
-    if (apoio) doc.text(String(apoio), x + 5, y + 22);
+    doc.text(String(rotulo).toUpperCase(), x + 5, y + 13);
+    if (apoio) doc.text(String(apoio), x + 5, y + 16.5);
     doc.setTextColor(0, 0, 0);
     return y + alt;
 }
 
-/** Título de seção: barra na cor de destaque e o texto ao lado. */
+/* Título de seção: barra na cor de destaque e o texto ao lado.
+
+   Refeito em 24/09/2026, a pedido do dono: a barra ficava deslocada do
+   texto e com um vão grande até ele, e o bloco ocupava 12 mm. Agora `y` é
+   o topo do bloco, a barra cobre exatamente o título (e a linha de apoio,
+   quando há), e o texto fica colado nela. Devolve onde a tabela começa. */
+const _FECH_TITULO_ALT = { so: 7.2, comApoio: 11 };
+/* Margem de cima das páginas seguintes e a de baixo, onde a tabela para. */
+const _FECH_TOPO = 10, _FECH_PE = 12;
+
 function _fechTitulo(doc, estilo, texto, y, apoio) {
+    const xTexto = _PDF_MARGEM + 2.2 + 2.8;
+    const base = y + 3.4;                    // linha de base do título, letra 10,5
+    const baseApoio = base + 3.9;            // linha de base do apoio, letra 7,5
+    const fimBarra = (apoio ? baseApoio : base) + 0.7;
     doc.setFillColor(...estilo.cor);
-    doc.rect(_PDF_MARGEM, y - 4, 2.2, 7, "F");
+    doc.rect(_PDF_MARGEM, y, 2.2, fimBarra - y, "F");
     doc.setFont(estilo.fonte, "bold");
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(...estilo.cor);
-    doc.text(texto, 19, y + 2);
+    doc.text(texto, xTexto, base);
     if (apoio) {
         doc.setFont(estilo.fonte, "normal");
-        doc.setFontSize(8);
+        doc.setFontSize(7.5);
         doc.setTextColor(120, 120, 120);
-        doc.text(apoio, 19, y + 7);
+        doc.text(apoio, xTexto, baseApoio);
     }
     doc.setTextColor(0, 0, 0);
-    return y + (apoio ? 12 : 8);
+    return y + (apoio ? _FECH_TITULO_ALT.comApoio : _FECH_TITULO_ALT.so);
 }
 
 /** Opções comuns das tabelas, para as seções não divergirem entre si. */
@@ -72,6 +87,16 @@ function _fechTabela(doc, estilo, opcoes) {
        texto), ou fica inteiro à esquerda (e "Frete" descola dos valores
        logo abaixo). Copiamos coluna a coluna. */
     const alinhamentos = opcoes.columnStyles || {};
+    /* A caixa proporcional à letra (pedido do dono, 24/09/2026): a folga em
+       volta do texto é uma fração da letra, então a tabela de letra menor
+       (o nota a nota, 7) tem a caixa menor na mesma medida. As outras ficam
+       com 7,5, que é o texto principal do fechamento. Com folga fixa de
+       1,8 mm, um mês cheio dava 10 páginas. */
+    const fonte = opcoes.fonte || 7.5;
+    const folga = { top: +(fonte * 0.13).toFixed(2), bottom: +(fonte * 0.13).toFixed(2),
+                    left: +(fonte * 0.24).toFixed(2), right: +(fonte * 0.24).toFixed(2) };
+    opcoes = Object.assign({}, opcoes);
+    delete opcoes.fonte;
     doc.autoTable(Object.assign({
         theme: "grid",
         // Sem `halign` aqui de propósito: o alinhamento vem de
@@ -79,11 +104,13 @@ function _fechTabela(doc, estilo, opcoes) {
         // Fixar "right" no cabeçalho deixava "Placa" e "Conjunto"
         // encostados à direita sobre uma coluna de texto alinhada à
         // esquerda, e era a primeira coisa que saltava no PDF.
-        headStyles: { fillColor: estilo.cor, textColor: 255, fontSize: 7.5 },
-        bodyStyles: { fontSize: 7.5 },
+        headStyles: { fillColor: estilo.cor, textColor: 255, fontSize: fonte },
+        bodyStyles: { fontSize: fonte },
         alternateRowStyles: { fillColor: _fechClaro(estilo.cor, 0.965) },
-        styles: { font: estilo.fonte, cellPadding: 1.8, lineColor: [225, 225, 225], lineWidth: 0.1 },
-        margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
+        styles: { font: estilo.fonte, cellPadding: folga, lineColor: [225, 225, 225], lineWidth: 0.1 },
+        // Em cima e embaixo, a margem da página e não a do autoTable (14 mm):
+        // 12 mm embaixo deixam o rodapé, que fica a 8 mm do pé, livre.
+        margin: { left: _PDF_MARGEM, right: _PDF_MARGEM, top: _FECH_TOPO, bottom: _FECH_PE },
         didParseCell: d => {
             if (d.section === "head") {
                 const h = (alinhamentos[d.column.index] || {}).halign;
@@ -104,15 +131,19 @@ function _fechTabela(doc, estilo, opcoes) {
 }
 
 /* Garante espaço para o próximo bloco; abre página nova quando não cabe.
-   `precisa` é o título, o cabeçalho da tabela e umas duas linhas: o bastante
-   para a seção não ficar órfã, e não mais que isso. A tabela continua na
-   página seguinte sozinha, com o cabeçalho repetido. Pedir 40 mm empurrava
-   seções inteiras para a página seguinte com meia página em branco
-   (24/09/2026). */
-function _fechEspaco(doc, y, precisa) {
-    if (y + precisa <= doc.internal.pageSize.height - 16) return y;
+   A reserva é a medida do que vem: o título (com ou sem a linha de apoio),
+   o cabeçalho da tabela e duas linhas. O bastante para o título não ficar
+   sozinho no pé da página, e não mais que isso: a tabela continua na
+   página seguinte sozinha, com o cabeçalho repetido. Uma reserva fixa e
+   folgada empurrava seções inteiras para a página seguinte com meia página
+   em branco (24/09/2026). O limite é o mesmo em que as tabelas param. */
+function _fechEspaco(doc, y, comApoio, linhasCabecalho) {
+    const linha = 7.5 * 0.3528 * 1.15 + 2 * 7.5 * 0.13;
+    const precisa = (comApoio ? _FECH_TITULO_ALT.comApoio : _FECH_TITULO_ALT.so)
+                  + linha * ((linhasCabecalho || 1) + 2);
+    if (y + precisa <= doc.internal.pageSize.height - _FECH_PE) return y;
     doc.addPage();
-    return 20;
+    return _FECH_TOPO;
 }
 
 /** O mês inteiro calculado na abertura do modal, reaproveitado na
@@ -248,14 +279,14 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     const agora = new Date();
     const geradoEm = `${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
     let y = _pdfCabecalho(doc, estilo, `Fechamento de frete - ${mesLabel}`,
-        `${rotuloEmpresas} · gerado em ${geradoEm}`);
+        `${rotuloEmpresas} · gerado em ${geradoEm}`, true);
 
     // Os rótulos dos cartões são os do dono (24/09/2026).
     const larg = (W - _PDF_MARGEM * 2 - 12) / 4;
     _fechCartao(doc, estilo, _PDF_MARGEM,                  y, larg, "Frete do mês (Veículos)",   fmtR(d.totalFrete),     "", true);
     _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4),     y, larg, "Litros (Carregados)",       fmtL(d.totalLitros),    "");
     _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 2, y, larg, "Frete do mês (Motoristas)", fmtR(d.totalPagamento), "");
-    y = _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 3, y, larg, "Notas (Descarregadas)", String(d.totalNotas),   "") + 10;
+    y = _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 3, y, larg, "Notas (Descarregadas)", String(d.totalNotas),   "") + 6;
 
     // ── Por empresa ────────────────────────────────────────────────
     y = _fechTitulo(doc, estilo, "Por empresa", y);
@@ -268,13 +299,13 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         body: corpoEmpresas, startY: y,
         columnStyles: { 0: { halign: "left", cellWidth: 70 }, 1: { halign: "right" }, 2: { halign: "right" },
                         3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } }
-    }) + 10;
+    }) + 7;
 
     // ── Por conjunto: o coração do fechamento ──────────────────────
     // Uma coluna de litros e uma de frete POR EMPRESA, que é como o dono
     // entrega hoje, mais o total do conjunto.
     if (d.porConjunto.length) {
-        y = _fechEspaco(doc, y, 34);
+        y = _fechEspaco(doc, y, true, 2);
         y = _fechTitulo(doc, estilo, "Por conjunto", y,
             "Cavalo e reboques que rodaram juntos na data da descarga. Volume e frete separados por empresa.");
         const cabTopo = [{ content: "Conjunto", rowSpan: 2 }, { content: "Placas", rowSpan: 2 }];
@@ -305,7 +336,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
 
         const estilos = { 0: { halign: "left", cellWidth: 22 }, 1: { halign: "left", cellWidth: 58 } };
         for (let i = 2; i < 2 + (empresas.length + 1) * 2; i++) estilos[i] = { halign: "right" };
-        y = _fechTabela(doc, estilo, { head: [cabTopo, cabBase], body: corpo, startY: y, columnStyles: estilos }) + 10;
+        y = _fechTabela(doc, estilo, { head: [cabTopo, cabBase], body: corpo, startY: y, columnStyles: estilos }) + 7;
 
         // As notas que não estavam em conjunto nenhum: o total por conjunto
         // não fecha com o do mês sem esta linha, e omitir isso faria o
@@ -315,12 +346,12 @@ function exportarFechamentoPDF(empresasEscolhidas) {
             doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
             doc.text(`Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - somaConj.litros)} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`, _PDF_MARGEM, y);
             doc.setTextColor(0, 0, 0);
-            y += 8;
+            y += 6;
         }
     }
 
     // ── Por motorista, com o que cada um recebe ────────────────────
-    y = _fechEspaco(doc, y, 30);
+    y = _fechEspaco(doc, y, true);
     y = _fechTitulo(doc, estilo, "Por motorista", y, "A coluna 'A pagar' é o percentual do frete definido em cada empresa.");
     const corpoMot = d.porMotorista.map(m => {
         const linha = [m.nome, m.viagens];
@@ -344,10 +375,10 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     y = _fechTabela(doc, estilo, {
         head: [["Motorista", "Viagens", ...empresas, "Litros", "Frete", "A pagar"]],
         body: corpoMot, startY: y, columnStyles: estMot
-    }) + 10;
+    }) + 7;
 
     // ── Por placa ──────────────────────────────────────────────────
-    y = _fechEspaco(doc, y, 26);
+    y = _fechEspaco(doc, y, false);
     y = _fechTitulo(doc, estilo, "Por placa", y);
     const corpoPlaca = d.porPlaca.map(p => [p.nome, p.conjunto || "—", p.viagens, _fmtLitrosFrete(p.litros), _fmtTaxaGrupo(p), fmtR(p.frete)]);
     corpoPlaca.push(["TOTAL", "", d.totalNotas, _fmtLitrosFrete(d.totalLitros), "", fmtR(d.totalFrete)]);
@@ -356,7 +387,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         body: corpoPlaca, startY: y,
         columnStyles: { 0: { halign: "left", cellWidth: 26 }, 1: { halign: "left", cellWidth: 30 },
                         2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } }
-    }) + 10;
+    }) + 7;
 
     // ── Nota a nota ────────────────────────────────────────────────
     // Das empresas escolhidas no modal, e não da ativa na tela: o PDF das
@@ -365,7 +396,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     // página em branco antes dela. A base entrou a pedido do dono.
     const notas = _freteNotaANota(d.mes, [...escolhidas]);
     if (notas.length) {
-        y = _fechEspaco(doc, y, 30);
+        y = _fechEspaco(doc, y, true);
         y = _fechTitulo(doc, estilo, "Nota a nota", y,
             `${notas.length} nota(s) descarregada(s) em ${mesLabel}, na ordem da descarga.`);
         const corpoNotas = notas.map(n => [
@@ -373,16 +404,28 @@ function exportarFechamentoPDF(empresasEscolhidas) {
             n.motorista, n.placa, n.conjunto || "—",
             _fmtLitrosFrete(n.litros), n.taxa > 0 ? fmtFreteL(n.taxa) : "—", fmtR(n.frete)
         ]);
-        corpoNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "", "",
+        // A contagem na coluna do Motorista, que é a larga: na do número da
+        // nota, "119 nota(s)" quebrava em duas linhas.
+        corpoNotas.push(["TOTAL", "", "", "", "", `${notas.length} nota(s)`, "", "",
             _fmtLitrosFrete(notas.reduce((s, n) => s + n.litros, 0)), "",
             fmtR(notas.reduce((s, n) => s + n.frete, 0))]);
+        // Larguras fixas, e o que sobra para o Motorista (24/09/2026). Soltas,
+        // a tabela dava 25 e 30 mm às colunas de número e 33 mm ao nome, e
+        // "CARLOS ALBERTO GONÇALVES DOS SANTOS" quebrava em duas linhas: com
+        // a Base, mais da metade das notas ocupava altura dobrada. Letra 7,
+        // a pedido do dono, e as larguras na mesma proporção dela.
+        const fonteNotas = 7;
+        const w = mm => +(mm * fonteNotas / 7.5).toFixed(1);
         _fechTabela(doc, estilo, {
+            fonte: fonteNotas,
             head: [["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros", "Taxa", "Frete"]],
             body: corpoNotas, startY: y,
-            columnStyles: { 0: { halign: "left", cellWidth: 19 }, 1: { halign: "left", cellWidth: 19 },
-                            2: { halign: "left", cellWidth: 18 }, 3: { halign: "left" }, 4: { halign: "left" },
-                            5: { halign: "left" }, 6: { halign: "left", cellWidth: 19 }, 7: { halign: "left", cellWidth: 22 },
-                            8: { halign: "right" }, 9: { halign: "right" }, 10: { halign: "right" } }
+            columnStyles: { 0: { halign: "left", cellWidth: w(17) }, 1: { halign: "left", cellWidth: w(17) },
+                            2: { halign: "left", cellWidth: w(17) }, 3: { halign: "left", cellWidth: w(26) },
+                            4: { halign: "left", cellWidth: w(38) }, 5: { halign: "left", cellWidth: "auto" },
+                            6: { halign: "left", cellWidth: w(17) }, 7: { halign: "left", cellWidth: w(16) },
+                            8: { halign: "right", cellWidth: w(20) }, 9: { halign: "right", cellWidth: w(14) },
+                            10: { halign: "right", cellWidth: w(24) } }
         });
     }
 
