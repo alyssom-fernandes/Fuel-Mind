@@ -103,7 +103,12 @@ function _fechTabela(doc, estilo, opcoes) {
     return doc.lastAutoTable.finalY;
 }
 
-/** Garante espaço para o próximo bloco; abre página nova quando não cabe. */
+/* Garante espaço para o próximo bloco; abre página nova quando não cabe.
+   `precisa` é o título, o cabeçalho da tabela e umas duas linhas: o bastante
+   para a seção não ficar órfã, e não mais que isso. A tabela continua na
+   página seguinte sozinha, com o cabeçalho repetido. Pedir 40 mm empurrava
+   seções inteiras para a página seguinte com meia página em branco
+   (24/09/2026). */
 function _fechEspaco(doc, y, precisa) {
     if (y + precisa <= doc.internal.pageSize.height - 16) return y;
     doc.addPage();
@@ -224,7 +229,10 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         mostrarToast("As empresas escolhidas não têm nota descarregada neste mês.", "aviso", 5000);
         return;
     }
-    const mesLabel = nomeMes(d.mes);
+    // "09/2026" em todo o documento, a pedido do dono (24/09/2026), no lugar
+    // de "Set/26".
+    const [anoMes, numMes] = String(d.mes).split("-");
+    const mesLabel = `${numMes}/${anoMes}`;
     const estilo = _pdfEstilo();
     const W = doc.internal.pageSize.width;
     const empresas = d.empresasDoMes || [];
@@ -235,14 +243,19 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     const rotuloEmpresas = empresas.length === (base.empresasDoMes || []).length
         ? (empresas.join(" · ") || "Todas as empresas")
         : `Somente ${empresas.join(" · ")}`;
-    let y = _pdfCabecalho(doc, estilo, `Fechamento de frete · ${mesLabel}`,
-        `${rotuloEmpresas} · pela data da descarga · gerado em ${new Date().toLocaleDateString("pt-BR")}`);
+    // Com a hora: no mesmo dia pode sair mais de uma versão, e a hora diz
+    // qual é a última (pedido do dono, 24/09/2026).
+    const agora = new Date();
+    const geradoEm = `${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    let y = _pdfCabecalho(doc, estilo, `Fechamento de frete - ${mesLabel}`,
+        `${rotuloEmpresas} · gerado em ${geradoEm}`);
 
+    // Os rótulos dos cartões são os do dono (24/09/2026).
     const larg = (W - _PDF_MARGEM * 2 - 12) / 4;
-    _fechCartao(doc, estilo, _PDF_MARGEM,                  y, larg, "Frete do mês",   fmtR(d.totalFrete),    "", true);
-    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4),     y, larg, "Litros (carga)", fmtL(d.totalLitros),   "");
-    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 2, y, larg, "A pagar",        fmtR(d.totalPagamento), "aos motoristas");
-    y = _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 3, y, larg, "Notas",      String(d.totalNotas),  "descarregadas") + 10;
+    _fechCartao(doc, estilo, _PDF_MARGEM,                  y, larg, "Frete do mês (Veículos)",   fmtR(d.totalFrete),     "", true);
+    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4),     y, larg, "Litros (Carregados)",       fmtL(d.totalLitros),    "");
+    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 2, y, larg, "Frete do mês (Motoristas)", fmtR(d.totalPagamento), "");
+    y = _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 3, y, larg, "Notas (Descarregadas)", String(d.totalNotas),   "") + 10;
 
     // ── Por empresa ────────────────────────────────────────────────
     y = _fechTitulo(doc, estilo, "Por empresa", y);
@@ -261,7 +274,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     // Uma coluna de litros e uma de frete POR EMPRESA, que é como o dono
     // entrega hoje, mais o total do conjunto.
     if (d.porConjunto.length) {
-        y = _fechEspaco(doc, y, 40);
+        y = _fechEspaco(doc, y, 34);
         y = _fechTitulo(doc, estilo, "Por conjunto", y,
             "Cavalo e reboques que rodaram juntos na data da descarga. Volume e frete separados por empresa.");
         const cabTopo = [{ content: "Conjunto", rowSpan: 2 }, { content: "Placas", rowSpan: 2 }];
@@ -307,7 +320,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     }
 
     // ── Por motorista, com o que cada um recebe ────────────────────
-    y = _fechEspaco(doc, y, 40);
+    y = _fechEspaco(doc, y, 30);
     y = _fechTitulo(doc, estilo, "Por motorista", y, "A coluna 'A pagar' é o percentual do frete definido em cada empresa.");
     const corpoMot = d.porMotorista.map(m => {
         const linha = [m.nome, m.viagens];
@@ -334,7 +347,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     }) + 10;
 
     // ── Por placa ──────────────────────────────────────────────────
-    y = _fechEspaco(doc, y, 40);
+    y = _fechEspaco(doc, y, 26);
     y = _fechTitulo(doc, estilo, "Por placa", y);
     const corpoPlaca = d.porPlaca.map(p => [p.nome, p.conjunto || "—", p.viagens, _fmtLitrosFrete(p.litros), _fmtTaxaGrupo(p), fmtR(p.frete)]);
     corpoPlaca.push(["TOTAL", "", d.totalNotas, _fmtLitrosFrete(d.totalLitros), "", fmtR(d.totalFrete)]);
@@ -343,29 +356,33 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         body: corpoPlaca, startY: y,
         columnStyles: { 0: { halign: "left", cellWidth: 26 }, 1: { halign: "left", cellWidth: 30 },
                         2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } }
-    });
+    }) + 10;
 
-    // ── Nota a nota, sempre em página própria ──────────────────────
-    const notas = _freteNotaANota(d.mes);
+    // ── Nota a nota ────────────────────────────────────────────────
+    // Das empresas escolhidas no modal, e não da ativa na tela: o PDF das
+    // duas empresas saía com as notas de uma só (24/09/2026). Continua logo
+    // abaixo da seção anterior quando cabe: a página própria deixava meia
+    // página em branco antes dela. A base entrou a pedido do dono.
+    const notas = _freteNotaANota(d.mes, [...escolhidas]);
     if (notas.length) {
-        doc.addPage();
-        let yn = _fechTitulo(doc, estilo, "Nota a nota", 20,
+        y = _fechEspaco(doc, y, 30);
+        y = _fechTitulo(doc, estilo, "Nota a nota", y,
             `${notas.length} nota(s) descarregada(s) em ${mesLabel}, na ordem da descarga.`);
         const corpoNotas = notas.map(n => [
-            formatarData(n.descarga), formatarData(n.emissao), n.nota, n.empresa,
+            formatarData(n.descarga), formatarData(n.emissao), n.nota, n.empresa, n.base || "",
             n.motorista, n.placa, n.conjunto || "—",
             _fmtLitrosFrete(n.litros), n.taxa > 0 ? fmtFreteL(n.taxa) : "—", fmtR(n.frete)
         ]);
-        corpoNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "",
+        corpoNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "", "",
             _fmtLitrosFrete(notas.reduce((s, n) => s + n.litros, 0)), "",
             fmtR(notas.reduce((s, n) => s + n.frete, 0))]);
         _fechTabela(doc, estilo, {
-            head: [["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros", "Taxa", "Frete"]],
-            body: corpoNotas, startY: yn,
-            columnStyles: { 0: { halign: "left", cellWidth: 20 }, 1: { halign: "left", cellWidth: 20 },
-                            2: { halign: "left", cellWidth: 22 }, 3: { halign: "left" }, 4: { halign: "left" },
-                            5: { halign: "left", cellWidth: 22 }, 6: { halign: "left", cellWidth: 22 },
-                            7: { halign: "right" }, 8: { halign: "right" }, 9: { halign: "right" } }
+            head: [["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros", "Taxa", "Frete"]],
+            body: corpoNotas, startY: y,
+            columnStyles: { 0: { halign: "left", cellWidth: 19 }, 1: { halign: "left", cellWidth: 19 },
+                            2: { halign: "left", cellWidth: 18 }, 3: { halign: "left" }, 4: { halign: "left" },
+                            5: { halign: "left" }, 6: { halign: "left", cellWidth: 19 }, 7: { halign: "left", cellWidth: 22 },
+                            8: { halign: "right" }, 9: { halign: "right" }, 10: { halign: "right" } }
         });
     }
 

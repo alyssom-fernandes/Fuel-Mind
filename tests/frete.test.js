@@ -224,3 +224,17 @@ test("cada grupo se abre por empresa, como o fechamento do dono entrega", () => 
     assert.equal(+m.pagamento.toFixed(2), 354.00);
     assert.deepEqual(r.empresasDoMes, ["Fabiandra", "Posto Rosario"]);
 });
+
+test("a placa que rodou para duas empresas com a mesma taxa guarda uma taxa só", () => {
+    const A = { id: "a", nome: "A", taxaFrete: 0.10 };
+    const B = { id: "b", nome: "B", taxaFrete: 0.10 };
+    const C = { id: "c", nome: "C", taxaFrete: 0.12 };
+    const emp = l => [A, B, C].find(e => e.nome === l.empresa);
+    const n = (id, empresa, placa) => ({ id, empresa, placa, motorista: "M", dataNota: "2026-09-02", dataDescarga: "2026-09-02", itens: [{ tipo: "S10", qtd: 1000 }] });
+    const r = calcularFretesDoMes({ mes: "2026-09", empresaDoLancamento: emp,
+        lancamentos: [n("1", "A", "P1"), n("2", "B", "P1"), n("3", "A", "P2"), n("4", "C", "P2")] });
+    const p1 = r.porPlaca.find(p => p.nome === "P1");
+    const p2 = r.porPlaca.find(p => p.nome === "P2");
+    assert.deepEqual([...p1.taxas], [0.10]);
+    assert.equal(p2.taxas.size, 2);
+});

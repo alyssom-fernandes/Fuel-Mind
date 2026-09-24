@@ -42,12 +42,17 @@ function _taxaFreteEmpresa(nomeEmpresa, iso) {
  * Taxa a exibir para um agrupamento que pode reunir mais de uma empresa:
  * uma placa ou motorista que rodou para duas contratantes no mesmo mês.
  *
- * Retorna a taxa quando há uma única empresa envolvida e `null` quando há
- * mistura. Nesse caso a coluna vira "—", mas o frete somado permanece
- * exato: ele é acumulado lançamento a lançamento, cada um já com a taxa
- * da sua própria empresa.
+ * Desde 24/09/2026 vale a taxa que as notas do grupo USARAM (`taxas`, do
+ * motor): uma só, ela aparece, mesmo com duas empresas no grupo; mais de
+ * uma, `null`, e a coluna diz que variou. Antes bastava a placa rodar
+ * para as duas empresas para a coluna sair vazia, com as duas cobrando o
+ * mesmo R$ 0,10. O frete somado é exato nos dois casos: é acumulado nota a
+ * nota, cada uma com a taxa da sua empresa na sua data.
  */
 function _taxaFreteGrupo(grupo) {
+    if (grupo && grupo.taxas instanceof Set && grupo.taxas.size) {
+        return grupo.taxas.size === 1 ? [...grupo.taxas][0] : null;
+    }
     if (!grupo || !grupo.empresas || grupo.empresas.size !== 1) return null;
     // A taxa do MÊS exibido, não a de hoje: depois que a taxa passou a ter
     // vigência, mostrar a atual num mês antigo não descreveria o frete
@@ -59,7 +64,8 @@ function _taxaFreteGrupo(grupo) {
 /** Taxa do grupo formatada para as tabelas da tela. */
 function _fmtTaxaGrupo(grupo) {
     const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? fmtFreteL(taxa) : "—";
+    if (taxa > 0) return fmtFreteL(taxa);
+    return grupo && grupo.taxas instanceof Set && grupo.taxas.size > 1 ? "várias" : "—";
 }
 
 /** Taxa do grupo como NÚMERO, para a célula da planilha somar e ordenar.
@@ -72,8 +78,7 @@ function _taxaGrupoNum(grupo) {
 
 /** Taxa do grupo com prefixo R$, para PDF e impressão. */
 function _taxaGrupoMoeda(grupo) {
-    const taxa = _taxaFreteGrupo(grupo);
-    return taxa > 0 ? fmtFreteL(taxa) : "—";
+    return _fmtTaxaGrupo(grupo);
 }
 
 /*=================================================
@@ -588,12 +593,19 @@ function _freteAbrirMes(mes) {
    combustível. Quando um transportador questiona um valor, o que resolve
    é a lista "nota, data, litros, taxa, R$", que antes só saía cruzando
    Fretes com Relatórios à mão. */
-function _freteNotaANota(mes) {
+/* `empresas` (24/09/2026): os nomes que entram. Sem ele, a empresa ativa,
+   como sempre foi. O fechamento em PDF deixa escolher as empresas e usava
+   a versão sem ele: o PDF das duas saía com o nota a nota só da ativa. */
+function _freteNotaANota(mes, empresas) {
     const linhas = [];
+    const escolhidas = empresas ? new Set(empresas) : null;
     db.lancamentos
-        .filter(l => lancamentoAtivo(l)
-            && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
-            && dataDescargaDe(l).startsWith(mes))
+        .filter(l => {
+            if (!lancamentoAtivo(l) || !dataDescargaDe(l).startsWith(mes)) return false;
+            if (!escolhidas) return !empresaFiltroGlobal || l.empresa === empresaFiltroGlobal;
+            const cad = _empresaDoLancamentoFrete(l);
+            return escolhidas.has((cad && cad.nome) || l.empresa);
+        })
         .sort((a, b) => dataDescargaDe(a).localeCompare(dataDescargaDe(b)))
         .forEach(l => {
             const emp  = _empresaDoLancamentoFrete(l);
@@ -607,6 +619,7 @@ function _freteNotaANota(mes) {
                 emissao:  dataEmissaoDe(l),
                 nota:     l.numeroNota || "",
                 empresa:  emp?.nome || l.empresa || "",
+                base:     l.base || "",
                 motorista: l.motorista || "",
                 placa:    l.placa || "",
                 conjunto: conj,
@@ -639,7 +652,7 @@ function abrirFreteNotaANota() {
                 <!-- Sem a coluna Empresa: a lista é sempre da empresa ativa, que
                      está no título (o Excel continua com ela). -->
                 <table class="tabela-frete-notas"><thead><tr>
-                    <th>Descarga</th><th>Emissão</th><th>Nota</th>
+                    <th>Descarga</th><th>Emissão</th><th>Nota</th><th>Base</th>
                     <th>Motorista</th><th>Placa</th><th>Conjunto</th>
                     <th class="celula-num">Litros (carga)</th><th class="celula-num">Taxa</th><th class="celula-num">Frete</th>
                 </tr></thead>
@@ -647,6 +660,7 @@ function abrirFreteNotaANota() {
                     <td>${formatarData(x.descarga)}</td>
                     <td>${formatarData(x.emissao)}</td>
                     <td>${escapeHtml(x.nota)}</td>
+                    <td class="celula-texto-longo" title="${escapeHtml(x.base)}">${escapeHtml(x.base)}</td>
                     <td class="celula-texto-longo" title="${escapeHtml(x.motorista)}">${escapeHtml(x.motorista)}</td>
                     <td>${escapeHtml(x.placa)}</td>
                     <td class="celula-texto-longo" title="${escapeHtml(x.conjunto)}">${escapeHtml(x.conjunto) || "—"}</td>
@@ -655,7 +669,7 @@ function abrirFreteNotaANota() {
                     <td class="celula-num"><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
-                    <td colspan="6"><strong>Total: ${linhas.length} nota(s)</strong></td>
+                    <td colspan="7"><strong>Total: ${linhas.length} nota(s)</strong></td>
                     <td class="celula-num"><strong>${fmtL(totalLitros, Number.isInteger(totalLitros) ? 0 : 3)}</strong></td>
                     <td></td>
                     <td class="celula-num"><strong>${fmtR(totalFrete)}</strong></td>
@@ -679,14 +693,14 @@ function exportarFreteNotaANota() {
         [`FRETE NOTA A NOTA DE ${nomeMes(dadosFretesAtual.mes)}`],
         [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${formatarData(_hojeISO())}`],
         [],
-        ["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
+        ["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
     ];
     linhas.forEach(x => aoa.push([
-        formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa,
+        formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa, x.base,
         x.motorista, x.placa, x.conjunto, _num(x.litros, 3), _num(x.taxa, 4), _num(x.frete, 2)
     ]));
     aoa.push([]);
-    aoa.push(["TOTAL", "", `${linhas.length} nota(s)`, "", "", "", "",
+    aoa.push(["TOTAL", "", `${linhas.length} nota(s)`, "", "", "", "", "",
               _num(linhas.reduce((s2, x) => s2 + x.litros, 0), 3), "",
               _num(linhas.reduce((s2, x) => s2 + x.frete, 0), 2)]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -811,12 +825,12 @@ function exportarFechamentoDoMes() {
         [`FRETE NOTA A NOTA DE ${nomeMes(mes)}`],
         [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga`],
         [],
-        ["Descarga", "Emissão", "Nota", "Empresa", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
+        ["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
     ];
-    notas.forEach(x => aoaNotas.push([formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa,
+    notas.forEach(x => aoaNotas.push([formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa, x.base,
         x.motorista, x.placa, x.conjunto, _num(x.litros, 3), _num(x.taxa, 4), _num(x.frete, 2)]));
     aoaNotas.push([]);
-    aoaNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "",
+    aoaNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "", "",
         _num(notas.reduce((s2, x) => s2 + x.litros, 0), 3), "", _num(notas.reduce((s2, x) => s2 + x.frete, 0), 2)]);
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaNotas), "Frete nota a nota");
 

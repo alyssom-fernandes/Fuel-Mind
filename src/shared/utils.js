@@ -855,13 +855,16 @@ function calcularFretesDoMes(opts) {
         const conjKey   = conjObj ? conjObj.id : null;
         const conjLabel = conjObj ? (conjObj.nome || `Conjunto ${placasPeriodo[0] || ""}`) : null;
 
-        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), conjunto: conjLabel };
-        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista, viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set() };
-        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,   viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set() };
+        // `taxas`: as taxas que as notas do grupo usaram de fato (24/09/2026).
+        // A coluna "Taxa (R$/L)" saía vazia para a placa que rodou para as
+        // duas empresas, mesmo com as duas cobrando o mesmo valor.
+        if (!porPlaca[placa])         porPlaca[placa]         = { nome: placa,     viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), taxas: new Set(), conjunto: conjLabel };
+        if (!porMotorista[motorista]) porMotorista[motorista] = { nome: motorista, viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), taxas: new Set() };
+        if (!porEmpresa[empresa])     porEmpresa[empresa]     = { nome: empresa,   viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), taxas: new Set() };
         if (conjKey && !porConjunto[conjKey]) {
             porConjunto[conjKey] = {
                 id: conjKey, nome: conjLabel, placas: placasPeriodo.slice(),
-                viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), porPlacaInterna: {}
+                viagens: 0, litros: 0, frete: 0, pagamento: 0, detalhes: {}, empresas: new Set(), taxas: new Set(), porPlacaInterna: {}
             };
         }
 
@@ -872,10 +875,14 @@ function calcularFretesDoMes(opts) {
         porPlaca[placa].empresas.add(empresa);
         porMotorista[motorista].empresas.add(empresa);
         porEmpresa[empresa].empresas.add(empresa);
+        porPlaca[placa].taxas.add(taxa);
+        porMotorista[motorista].taxas.add(taxa);
+        porEmpresa[empresa].taxas.add(taxa);
         if (conjKey) {
             const conj = porConjunto[conjKey];
             conj.viagens++;
             conj.empresas.add(empresa);
+            conj.taxas.add(taxa);
             if (!conj.porPlacaInterna[placa]) conj.porPlacaInterna[placa] = { viagens: 0, litros: 0, frete: 0, pagamento: 0 };
             conj.porPlacaInterna[placa].viagens++;
         }
