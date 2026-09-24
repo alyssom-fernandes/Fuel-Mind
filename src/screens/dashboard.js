@@ -235,7 +235,7 @@ function carregarDashboard() {
             ${htmlVariacao(compra.custo, compraAntK.custo, rotAnt, true)}
             ${compra.custoRecebido > 0 ? `<div class="kpi-base" title="Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebido(compra.metricas))}</div>` : ''}
         </div>
-        <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
+        <div class="kpi-card violeta kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
             <div class="kpi-valor">${fmtR(frete.total)}</div>
             <div class="kpi-label">Frete do Período</div>
             <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtFreteL(frete.porLitro)}/L` : ''}</div>

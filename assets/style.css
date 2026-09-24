@@ -74,6 +74,11 @@
     --info:            #5a9bf8;
     --info-solido:     #1c6f9c;   /* preenchimento com texto branco (5,5) */
     --info-light:      rgba(59,130,246,0.15);
+    /* A quinta cor dos cards (24/09/2026): o card de frete do Dashboard
+       repetia o vermelho do primeiro. Roxo de matiz 270, longe do azul
+       (215): 6,9 sobre o card e 5,5 sobre o fundo do ícone. */
+    --violeta:         #c084fc;
+    --violeta-light:   rgba(192,132,252,0.15);
     --thead-bg:        #0a0a0a;
     --thead-color:     #c4d0de;
     --row-hover:       #252525;
@@ -166,6 +171,8 @@
     --danger-light:    rgba(176,42,55,0.08);
     --info:            #1c6f9c;
     --info-light:      rgba(28,111,156,0.08);
+    --violeta:         #7e22ce;   /* 6,6 sobre o card e 5,8 sobre o fundo do ícone */
+    --violeta-light:   rgba(126,34,206,0.08);
     --thead-bg:        rgb(224, 224, 224);
     --thead-color:     #212529;
     --row-hover:       #f1f3f5;
@@ -495,6 +502,8 @@ body {
 .kpi-card.laranja::after { background: var(--warning); }
 .kpi-card.roxo::before   { background: var(--info); }
 .kpi-card.roxo::after    { background: var(--info); }
+.kpi-card.violeta::before { background: var(--violeta); }
+.kpi-card.violeta::after  { background: var(--violeta); }
 
 .kpi-icon {
     width: 42px; height: 42px;
@@ -510,6 +519,8 @@ body {
 .kpi-card.laranja .kpi-icon svg { color: var(--warning); }
 .kpi-card.roxo   .kpi-icon { background: var(--info-light); }
 .kpi-card.roxo   .kpi-icon svg { color: var(--info); }
+.kpi-card.violeta .kpi-icon { background: var(--violeta-light); }
+.kpi-card.violeta .kpi-icon svg { color: var(--violeta); }
 
 .kpi-valor {
     font-family: 'Syne', sans-serif;
@@ -816,15 +827,26 @@ ul li.inativo { opacity: 0.45; }
 /* A borda do hover seguia sempre a cor da marca, entao um cartao verde
    piscava vermelho ao passar o mouse. Agora cada variante usa a propria
    cor, a mesma do tracinho da esquerda e do icone. (21/09/2026) */
-.kpi-clicavel.verde:hover   { border-color: var(--success); }
-.kpi-clicavel.laranja:hover { border-color: var(--warning); }
-.kpi-clicavel.roxo:hover    { border-color: var(--info); }
+/* O contorno tem a espessura da faixa (24/09/2026, pedido do dono): era
+   a borda de 1 px pintada, e a faixa de 4 px da esquerda ficava mais
+   grossa que o resto do contorno. Agora são a borda mais 3 px de sombra
+   interna, 4 px em volta, e a faixa some no hover para não somar 5 px do
+   lado esquerdo. Sombra, e não borda mais grossa: nada se mexe no layout. */
+.kpi-clicavel { --cor-kpi: var(--primary); }
+.kpi-clicavel.verde   { --cor-kpi: var(--success); }
+.kpi-clicavel.laranja { --cor-kpi: var(--warning); }
+.kpi-clicavel.roxo    { --cor-kpi: var(--info); }
+.kpi-clicavel.violeta { --cor-kpi: var(--violeta); }
+.kpi-clicavel::before { transition: opacity var(--duration-fast) var(--ease-standard); }
 .kpi-clicavel:hover {
-    border-color: var(--primary);
+    border-color: var(--cor-kpi);
+    box-shadow: var(--shadow), inset 0 0 0 3px var(--cor-kpi);
     transform: translateY(-1px);
     transition: transform var(--duration-fast) var(--ease-standard),
-                border-color var(--duration-fast) var(--ease-standard);
+                border-color var(--duration-fast) var(--ease-standard),
+                box-shadow var(--duration-fast) var(--ease-standard);
 }
+.kpi-clicavel:hover::before { opacity: 0; }
 tr.linha-clicavel { cursor: pointer; }
 /* Linha escolhida pelas setas do teclado (18/09/2026). */
 tr.linha-teclado-ativa td { background: var(--surface-hover); box-shadow: inset 3px 0 0 var(--primary); }
