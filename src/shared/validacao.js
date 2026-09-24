@@ -39,7 +39,7 @@ let _validacao = { bloqueios: [], alertas: [] };
 let _tentouSalvar = false;
 
 const _CAMPOS_VALIDADOS = [
-    "dataNota", "dataDescarga", "numeroNota",
+    "dataNota", "dataDescarga", "numeroNota", "baseEntradaInput",
     "empresaInput", "motoristaInput", "placaInput"
 ];
 
@@ -232,6 +232,44 @@ function validarLancamento() {
         if (!empresa)   marcar("empresaInput",   "Informe a empresa.",             "bloqueio");
         if (!motorista) marcar("motoristaInput", "Informe o motorista.",           "bloqueio");
         if (!placa)     marcar("placaInput",     "Informe a placa.",               "bloqueio");
+    }
+
+    // ── Base do cadastro (decisão do dono, 23/09/2026) ──
+    // Bloqueio: antes a nota salvava com a base vazia ou com o nome cru do
+    // emitente de uma NF-e, fora do cadastro, e os relatórios por base
+    // ficavam com uma linha que ninguém cadastrou. A base tem de ser uma
+    // do cadastro, pelo nome exato, e ativa.
+    //
+    // A nota já gravada é a exceção: até 23/09 a base era opcional e o XML
+    // gravava o nome cru do emitente. Editar uma nota assim para corrigir o
+    // preço não pode obrigar a pessoa a adivinhar a base (nada se deduz sem
+    // prova, regra do dono): com a base que a nota já tinha, é alerta. Pela
+    // mesma razão, a base inativa passa só quando já era a da nota.
+    const baseTxt = val("baseEntradaInput");
+    const notaGravada = (typeof lancamentoEditandoId !== "undefined" && lancamentoEditandoId
+        && !(typeof isClonando !== "undefined" && isClonando))
+        ? ((db.lancamentos || []).find(l => l.id === lancamentoEditandoId) || null) : null;
+    const mesmaDaNota = !!notaGravada && (notaGravada.base || "") === baseTxt;
+    const baseCad = baseTxt ? (db.bases || []).find(b => b.nome === baseTxt) : null;
+    const inativa = nome => `A base "${nome}" está inativa. Reative em Cadastros para usar.`;
+    if (_tentouSalvar && !baseTxt) {
+        marcar("baseEntradaInput", mesmaDaNota
+            ? "Esta nota foi gravada sem base. Escolha a base quando souber qual é."
+            : "Informe a base.", mesmaDaNota ? "alerta" : "bloqueio");
+    } else if (baseTxt && baseCad && baseCad.ativo === false && !mesmaDaNota) {
+        marcar("baseEntradaInput", inativa(baseCad.nome), "bloqueio");
+    } else if (baseTxt && !baseCad) {
+        const parecida = typeof _cadastroPorNomeOuApelido === "function" ? _cadastroPorNomeOuApelido(db.bases, baseTxt) : null;
+        if (mesmaDaNota) {
+            marcar("baseEntradaInput", `"${baseTxt}" não é uma base cadastrada, e a nota já estava gravada assim. `
+                + `Escolha a base certa quando souber qual é.`, "alerta");
+        } else {
+            marcar("baseEntradaInput", !parecida
+                ? `"${baseTxt}" não é uma base cadastrada. Escolha uma da lista ou cadastre a nova por ela.`
+                : parecida.ativo === false ? inativa(parecida.nome)
+                : `A base está cadastrada como "${parecida.nome}". Escolha-a na lista.`,
+                "bloqueio");
+        }
     }
 
     // ── Empresa que não vira documento ──

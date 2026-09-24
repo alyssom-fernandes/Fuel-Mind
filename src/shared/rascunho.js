@@ -64,6 +64,9 @@ function _fmRascunhoCapturar() {
         isClonando: (typeof isClonando !== 'undefined' && isClonando) || false,
         chaveAcesso: (typeof _chaveAcessoAtual !== 'undefined' && _chaveAcessoAtual) || null,
         xmlEmpresaDestino: (typeof _xmlEmpresaDestino !== 'undefined' && _xmlEmpresaDestino) || null,
+        // O emitente da NF-e cuja base ficou para depois: o link "escolher a
+        // base" do banner, que o rascunho também guarda, depende dele.
+        xmlEmitente: (typeof _xmlEmitente !== 'undefined' && _xmlEmitente) || null,
         // Assinatura da nota em edição no momento da captura: se ela mudar
         // até o Continuar, alguém a alterou nesse meio tempo.
         assinaturaEdicao: _fmAssinaturaNota((typeof lancamentoEditandoId !== 'undefined' && lancamentoEditandoId) || null),
@@ -293,10 +296,14 @@ async function fmRascunhoRestaurar() {
     }));
     if (!r.itens || !r.itens.length) adicionarCombustivelNota();
 
+    // Sem banner no rascunho, o banner da tela sai: ele seria de outra nota,
+    // e o link dele ligaria o CNPJ dessa outra nota à base desta.
     const bx = document.getElementById('bannerXML');
     if (bx && r.bannerXML) { bx.innerHTML = r.bannerXML; bx.style.display = 'block'; }
+    else if (bx) { bx.innerHTML = ''; bx.style.display = 'none'; }
     _chaveAcessoAtual = r.chaveAcesso || null;
     if (typeof _xmlEmpresaDestino !== 'undefined') _xmlEmpresaDestino = r.xmlEmpresaDestino || null;
+    if (typeof _xmlEmitente !== 'undefined') _xmlEmitente = r.xmlEmitente || null;
 
     document.getElementById('bannerRascunho').style.display = 'none';
     _fmRascunhoPendente = null;

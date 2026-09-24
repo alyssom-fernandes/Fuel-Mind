@@ -24,16 +24,15 @@ let _chaveAcessoAtual = null;
  */
 let _xmlEmpresaDestino = null;
 
-/* Nome de empresa para comparar com o destinatário da NF-e: sem acento,
-   sem pontuação e sem as terminações societárias, que o cadastro às vezes
-   tem e o XML às vezes não. */
-function _nomeEmpresaComparavel(nome) {
-    return normalizarTexto(nome)
-        .replace(/[.,/\-]/g, " ")
-        .replace(/\b(ltda|me|epp|eireli|s a|sa|cia|companhia|comercio|com)\b/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
+/* `_nomeEmpresaComparavel` mora em base-nfe.js desde 23/09/2026: a base
+   da nota passou a usar a mesma regra. */
+
+/**
+ * Emitente da NF-e importada por XML, quando a base não foi resolvida na
+ * leitura: é dele que a pergunta "de qual base é esta nota?" precisa.
+ * `{ cnpj, xNome, xFant, xMun, uf }` ou null.
+ */
+let _xmlEmitente = null;
 
 /**
  * A empresa cadastrada que o destinatário da NF-e é, com segurança.
@@ -156,24 +155,30 @@ function importarXMLNFe(input) {
                 itensPossiveis.push({ nomeProduto: xProd, tipo: identificarCombustivel(xProd), qtd: qCom, valor: vUnCom, total: vProd });
             });
 
-            let baseParaPreencher = "";
-            if (xNomeEmit) {
-                // O nome inteiro da base, como palavras inteiras, dentro do
-                // emitente. Casar pela primeira palavra do emitente ligava
-                // "DISTRIBUIDORA RAIZEN" à primeira base com "distribuidora".
-                const emit = ` ${_nomeEmpresaComparavel(xNomeEmit)} `;
-                const baseCadastrada = (db.bases || []).find(b => {
-                    const nb = _nomeEmpresaComparavel(b.nome);
-                    return b.ativo !== false && nb && emit.includes(` ${nb} `);
-                });
-                baseParaPreencher = baseCadastrada?.nome || xNomeEmit;
-            }
+            // ── A BASE: pelo fornecedor e pela cidade do emitente (item 10,
+            // 23/09/2026). A regra mora em base-nfe.js. Antes, quando o nome
+            // não casava, a base recebia o nome cru do emitente, fora do
+            // cadastro; agora fica vazia e a tela pergunta.
+            const emitente = {
+                cnpj:  get("emit > CNPJ"),
+                xNome: xNomeEmit,
+                xFant: get("emit > xFant"),
+                xMun:  get("emit > enderEmit > xMun"),
+                uf:    get("emit > enderEmit > UF")
+            };
+            const temEmitente = !!(emitente.xNome || emitente.cnpj);
+            const resBase = temEmitente ? resolverBaseDaNFe(db.bases, emitente) : null;
+            const baseParaPreencher = resBase && resBase.base ? resBase.base.nome : "";
+            _xmlEmitente = temEmitente && !baseParaPreencher ? emitente : null;
 
             if (dataNota) document.getElementById("dataNota").value = dataNota;
             if (nNF)      document.getElementById("numeroNota").value = nNF;
 
             // ── usa setBase() para garantir sincronização dos três campos ──
+            // Base não resolvida fica VAZIA: a base herdada da nota anterior
+            // (a tela a mantém entre notas) seria a base errada, calada.
             if (baseParaPreencher) setBase(baseParaPreencher);
+            else if (temEmitente) setBase("");
 
             // A empresa ativa desabilita o campo na interface, mas `disabled`
             // não impede atribuição por script: até aqui o XML sobrescrevia a
@@ -250,25 +255,211 @@ function importarXMLNFe(input) {
                 naoCruzados.push(`Placa "${escapeHtml(placaTransp)}"`);
             const avisoNaoCruzados = naoCruzados.length > 0
                 ? `<br><small>Não encontrado(s) no cadastro: ${naoCruzados.join(", ")}</small>` : "";
+            // A base tem linha própria: ela muda de "não encontrada" para
+            // "escolhida" quando a pergunta é respondida.
+            const avisoBase = _xmlEmitente
+                ? `<br><small id="bannerXmlBase">Base não encontrada para o emitente "${escapeHtml(xNomeEmit || formatarCnpj(emitente.cnpj))}"`
+                    + `${emitente.xMun ? ` em ${escapeHtml(emitente.xMun)}` : ""}: `
+                    + `<a href="#" onclick="_perguntarBaseDaNFe(); return false;">escolher a base</a>.</small>`
+                : "";
             const itensSemTipo = itensPossiveis.filter(i => !i.tipo);
             const avisoTipos = itensSemTipo.length > 0
                 ? `<br><small>${itensSemTipo.length} produto(s) sem combustível identificado: ${itensSemTipo.map(i => `"${escapeHtml(i.nomeProduto)}"`).join(", ")}</small>` : "";
 
             const banner = document.getElementById("bannerXML");
             banner.style.display = "block";
-            banner.innerHTML = `XML importado. Campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoEmpresaDivergente}${avisoNaoCruzados}${avisoTipos}`;
+            banner.innerHTML = `XML importado. Campos pré-preenchidos: <strong>${camposPreenchidos.join(", ")}</strong>. Confira todos os dados antes de salvar.${avisoEmpresaDivergente}${avisoBase}${avisoNaoCruzados}${avisoTipos}`;
 
             // O XML preenche seis campos por script, e preenchimento por
             // script não dispara `change`. Sem esta chamada, uma nota com
             // data ou chave repetida vinda de arquivo ficaria muda até o
             // operador tocar em algum campo.
             if (typeof validarLancamento === 'function') validarLancamento();
+
+            // Base não resolvida: a pergunta vem na hora, com o formulário
+            // já preenchido atrás dela.
+            if (_xmlEmitente) {
+                input.value = "";
+                await _perguntarBaseDaNFe(resBase);
+            }
         } catch (err) {
             mostrarToast("Erro ao ler o XML da NF-e: " + err.message, "erro", 5000);
         }
         input.value = "";
     };
     reader.readAsText(file, "UTF-8");
+}
+
+/* ── DE QUAL BASE É ESTA NOTA? (item 10, 23/09/2026) ─────────────────
+   Quando nem fornecedor e cidade, nem um vínculo anterior, resolvem a
+   base, a tela pergunta (decisão do dono), com duas saídas:
+   - uma base que já existe: por exemplo, uma segunda unidade que o dono
+     juntou a outra da mesma cidade, ou um fornecedor que emite com outro
+     nome. O CNPJ do emitente fica guardado nela (`cnpjsNfe`), e a próxima
+     nota da mesma unidade já vem resolvida;
+   - uma base nova: nome "FORNECEDOR · CIDADE" sugerido e editável, com o
+     município e o CNPJ gravados junto.
+   "Agora não" deixa a base vazia, e a validação não deixa salvar sem ela.
+   O banner guarda um link para reabrir esta pergunta. */
+function _perguntarBaseDaNFe(res) {
+    const emit = _xmlEmitente;
+    if (!emit) {
+        mostrarToast("Os dados do emitente desta nota não estão mais na tela. Importe o XML de novo ou escolha a base na lista.", "aviso", 7000);
+        return Promise.resolve(null);
+    }
+    const r = res || resolverBaseDaNFe(db.bases, emit);
+    const ativas = (db.bases || []).filter(b => b && b.nome && b.ativo !== false)
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    const primeiras = r.candidatas.length ? r.candidatas : r.mesmoFornecedor;
+    // String nos ids: há ids antigos numéricos, e o valor do select é texto.
+    const ids = new Set(primeiras.map(b => String(b.id)));
+    const opcoes = primeiras.concat(ativas.filter(b => !ids.has(String(b.id))));
+    const ambigua = r.tipo === "ambigua";
+    const cnpj = _cnpjNormalizado(emit.cnpj);
+    const temCnpj = _cnpjValido(cnpj);
+    const onde = [emit.xMun, emit.uf].filter(Boolean).join("/");
+    const quem = `${emit.xNome || "Emitente sem nome"}${temCnpj ? ` (CNPJ ${formatarCnpj(cnpj)})` : ""}${onde ? `, em ${onde}` : ""}`;
+    const porque = r.motivo === "cnpjEmVarias" ? "O CNPJ deste emitente está ligado a mais de uma base."
+        : ambigua ? "Mais de uma base do cadastro bate com esse fornecedor e essa cidade."
+        : "Nenhuma base do cadastro bate com esse fornecedor e essa cidade.";
+
+    return new Promise(resolve => {
+        const anterior = document.activeElement;
+        const overlay = document.createElement("div");
+        overlay.className = "modal-overlay modal-overlay--dialogo";
+        overlay.innerHTML = `
+            <div class="modal modal--460" role="dialog" aria-modal="true" aria-labelledby="baseNfeTitulo">
+                <h3 id="baseNfeTitulo" class="dialogo-titulo dialogo-titulo--com-texto">De qual base é esta nota?</h3>
+                <p class="dialogo-texto mb-4">${escapeHtml(quem)}.<br>${escapeHtml(porque)}</p>
+                <label class="base-nfe-opcao">
+                    <input type="radio" name="baseNfeModo" value="existente"${opcoes.length ? "" : " disabled"}>
+                    <span>É uma base que já existe</span>
+                </label>
+                <select class="base-nfe-select" aria-label="Base que já existe"${opcoes.length ? "" : " disabled"}>
+                    ${opcoes.map(b => `<option value="${escapeHtml(String(b.id))}">${escapeHtml(b.nome)}</option>`).join("")}
+                </select>
+                <label class="base-nfe-opcao mt-3">
+                    <input type="radio" name="baseNfeModo" value="nova">
+                    <span>É uma base nova</span>
+                </label>
+                <input type="text" class="base-nfe-nome" aria-label="Nome da base nova" value="${escapeHtml(nomeSugeridoDaBase(emit))}">
+                <p class="dica mt-2">${temCnpj
+                    ? "A escolha fica guardada: a próxima nota desta unidade já vem com a base."
+                    : "Esta nota não trouxe o CNPJ do emitente: a tela não vai lembrar desta escolha na próxima nota."}</p>
+                <div class="fm-prompt-erro" role="alert" aria-live="assertive" style="display:none"></div>
+                <div class="modal-acoes mt-4">
+                    <button type="button" class="btn-secundario fm-cancel">Agora não</button>
+                    <button type="button" class="btn-primario fm-ok">Usar esta base</button>
+                </div>
+            </div>`;
+
+        const radios = overlay.querySelectorAll('input[name="baseNfeModo"]');
+        const select = overlay.querySelector(".base-nfe-select");
+        const nome   = overlay.querySelector(".base-nfe-nome");
+        const erro   = overlay.querySelector(".fm-prompt-erro");
+        const marcar = modo => radios.forEach(x => { x.checked = x.value === modo; });
+        marcar(ambigua && opcoes.length ? "existente" : "nova");
+        select.addEventListener("focus", () => marcar("existente"));
+        select.addEventListener("change", () => marcar("existente"));
+        nome.addEventListener("focus", () => marcar("nova"));
+        nome.addEventListener("input", () => { erro.style.display = "none"; });
+
+        // O foco volta para onde estava: sem isto ele caía no body, e o Enter
+        // que avança campo parava de funcionar no formulário.
+        const fechar = v => {
+            overlay.remove();
+            // Na importação, o foco anterior é o seletor de arquivo, que fica
+            // escondido: aí o foco vai para o campo Base.
+            const visivel = anterior && anterior !== document.body && document.body.contains(anterior) && anterior.offsetParent !== null;
+            const alvo = visivel ? anterior : document.getElementById("baseEntradaInput");
+            if (alvo && typeof alvo.focus === "function") alvo.focus();
+            resolve(v);
+        };
+        const falhar = t => { erro.textContent = t; erro.style.display = "block"; };
+        const confirmar = () => {
+            const modo = [...radios].find(x => x.checked)?.value;
+            let escolhida = null;
+            if (modo === "existente") {
+                escolhida = (db.bases || []).find(b => String(b.id) === select.value) || null;
+                if (!escolhida) return falhar("Escolha a base na lista.");
+                if (temCnpj) _vincularCnpjABase(escolhida, cnpj, emit);
+            } else {
+                const txt = nome.value.trim();
+                if (!txt) { nome.focus(); return falhar("Escreva o nome da base nova."); }
+                // Ativa ou inativa: pelo nome, por um apelido, ou pelo mesmo
+                // fornecedor na mesma cidade. Uma gêmea partiria o relatório
+                // por base em duas linhas para o mesmo lugar.
+                const ja = baseJaCadastradaDoEmitente(db.bases, emit, txt);
+                if (ja) {
+                    return falhar(ja.ativo === false
+                        ? `"${ja.nome}" já é esta base, mas está inativa. Reative em Cadastros para usar.`
+                        : `"${ja.nome}" já está cadastrada. Escolha-a em "É uma base que já existe".`);
+                }
+                escolhida = {
+                    id: gerarId(), nome: txt, ativo: true,
+                    municipio: onde,
+                    cnpjsNfe: temCnpj ? [cnpj] : [],
+                    logs: [fmLogNovo("Criado", `pela leitura da NF-e de ${emit.xNome || "emitente sem nome"}${temCnpj ? `, CNPJ ${formatarCnpj(cnpj)}` : ""}`)]
+                };
+                // O CNPJ é de uma base só: se estava ligado a outra, sai de lá.
+                if (temCnpj) _desligarCnpjDasBases(cnpj);
+                db.bases.push(escolhida);
+            }
+            salvarDB();
+            atualizarListas();
+            setBase(escolhida.nome);
+            _xmlEmitente = null;
+            const linha = document.getElementById("bannerXmlBase");
+            if (linha) linha.textContent = `Base escolhida para este emitente: ${escolhida.nome}.`;
+            if (typeof validarLancamento === "function") validarLancamento();
+            mostrarToast(modo === "existente" ? `Base ${escolhida.nome} na nota.` : `Base ${escolhida.nome} cadastrada e na nota.`, "sucesso", 4000);
+            fechar(escolhida);
+        };
+
+        overlay.querySelector(".fm-ok").onclick = confirmar;
+        overlay.querySelector(".fm-cancel").onclick = () => fechar(null);
+        // Fecha pelo fundo só quando o clique COMEÇOU no fundo: selecionar o
+        // nome sugerido arrastando e soltar fora do cartão fechava a pergunta.
+        let desceuNoFundo = false;
+        overlay.addEventListener("mousedown", e => { desceuNoFundo = e.target === overlay; });
+        overlay.addEventListener("click", e => { if (e.target === overlay && desceuNoFundo) fechar(null); });
+        overlay.addEventListener("keydown", e => {
+            if (e.key === "Escape") { e.preventDefault(); fechar(null); return; }
+            // Enter num botão é o clique do próprio botão: "Agora não" com o
+            // foco e Enter confirmava a escolha em vez de dispensar.
+            if (e.key === "Enter" && !["SELECT", "BUTTON"].includes(e.target.tagName)) { e.preventDefault(); confirmar(); return; }
+            // O Tab fica dentro da pergunta, sem ir para o formulário atrás dela.
+            if (e.key === "Tab") {
+                const focaveis = [...overlay.querySelectorAll("input:not([disabled]), select:not([disabled]), button")];
+                if (!focaveis.length) return;
+                const primeiro = focaveis[0], ultimo = focaveis[focaveis.length - 1];
+                if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+                else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+            }
+        });
+        document.body.appendChild(overlay);
+        setTimeout(() => (ambigua && opcoes.length ? select : nome).focus(), 40);
+    });
+}
+
+/** Tira um CNPJ de todas as bases que o tinham. */
+function _desligarCnpjDasBases(cnpj, exceto) {
+    (db.bases || []).forEach(b => {
+        if (b === exceto || !Array.isArray(b.cnpjsNfe) || !b.cnpjsNfe.includes(cnpj)) return;
+        b.cnpjsNfe = b.cnpjsNfe.filter(c => c !== cnpj);
+        if (!b.logs) b.logs = [];
+        b.logs.push(fmLogNovo("NF-e desligada", `CNPJ ${formatarCnpj(cnpj)}, que passou a ser de outra base`));
+    });
+}
+
+/** Liga o CNPJ do emitente à base escolhida, com log, e o tira de qualquer outra. */
+function _vincularCnpjABase(base, cnpj, emit) {
+    _desligarCnpjDasBases(cnpj, base);
+    if (!Array.isArray(base.cnpjsNfe)) base.cnpjsNfe = [];
+    if (base.cnpjsNfe.includes(cnpj)) return;
+    base.cnpjsNfe.push(cnpj);
+    if (!base.logs) base.logs = [];
+    base.logs.push(fmLogNovo("NF-e ligada", `CNPJ ${formatarCnpj(cnpj)} (${emit.xNome || "emitente sem nome"}${emit.xMun ? `, ${emit.xMun}` : ""})`));
 }
 
 /*=================================================
@@ -941,6 +1132,7 @@ function limparFormularioParcial() {
     // sem ela, mesmo que o contexto do lote continue.
     _chaveAcessoAtual = null;
     _xmlEmpresaDestino = null;
+    _xmlEmitente = null;
     alternarCampoDescarga(false);
     if (typeof limparValidacao === 'function') limparValidacao();
     limparFormularioSujo();
@@ -1380,6 +1572,7 @@ async function clonarLancamento(id) {
     // O clone é outra nota: herdar a chave do original faria o sistema
     // acusar duplicidade da própria cópia, e ela nem é a mesma NF-e.
     _chaveAcessoAtual = null;
+    _xmlEmitente = null;
     mostrarTela("lancamentos");
     if (typeof validarLancamento === 'function') setTimeout(validarLancamento, 0);
 }
@@ -1420,6 +1613,7 @@ function limparFormulario(opcoes) {
     if (marca) marca.style.display = "none";
     _chaveAcessoAtual = null;
     _xmlEmpresaDestino = null;
+    _xmlEmitente = null;
     // A empresa ativa volta ao campo, travado. Antes o campo ficava vazio e
     // cinza depois de Cancelar, e a próxima nota não salvava ("Informe a
     // empresa") sem sair da tela e voltar.

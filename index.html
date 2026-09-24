@@ -295,7 +295,7 @@
     </div>
     <div class="campo"><label for="numeroNota">Número da Nota</label><input id="numeroNota" placeholder="Ex: 001234" oninput="marcarFormularioSujo()"></div>
     <div class="campo">
-      <label for="baseEntradaInput">Base / Distribuidora</label>
+      <label for="baseEntradaInput">Base / Distribuidora <span class="campo-obrigatorio" title="Campo obrigatório">*</span></label>
       <input id="baseEntradaInput" placeholder="Digite para pesquisar" oninput="marcarFormularioSujo()">
       <input type="hidden" id="baseEntrada">
     </div>
@@ -1039,6 +1039,11 @@
       <p class="dica mt-1">Quanto do frete vai para o motorista que rodou a nota. Com 1% e taxa de R$ 0,10/L, dá R$ 1,00 por mil litros transportados.</p>
       <p class="dica mt-1">Não dá para mudar valor em dia de mês fechado: reabra o mês na tela de Fretes antes.</p>
     </div>
+    <div class="campo mt-3" id="modalCampoVinculosWrapper" style="display:none">
+      <span class="vigencias-titulo">Notas fiscais que esta base reconhece</span>
+      <div id="modalVinculosNfe" class="vigencias"></div>
+      <p class="dica mt-1">Ligações feitas ao responder "de qual base é esta nota?". Tire uma se a escolha estiver errada: a próxima nota daquele emitente deixa de vir para esta base por essa ligação. Ela ainda pode vir pelo fornecedor e pela cidade, se baterem com o nome da base.</p>
+    </div>
     <div class="campo mt-3" id="modalCampoPerdaWrapper" style="display:none">
       <label for="modalInputPerda">Perda tolerada (%)</label><input id="modalInputPerda" type="text" inputmode="decimal" autocomplete="off" class="fm-numero" placeholder="Ex: 0,30">
     </div>
@@ -1082,6 +1087,7 @@
 <script type="module" src="src/core/firebase.js"></script>
 <script src="src/shared/utils.js"></script>
 <script src="src/shared/mes-fechado.js"></script>
+<script src="src/shared/base-nfe.js"></script>
 <!-- O antigo app.js, em arquivos por responsabilidade (18/09/2026).
      Dividem o mesmo escopo global; a ordem importa só para o que roda na
      carga: erros primeiro, para registrar falha dos seguintes. -->

@@ -3914,3 +3914,9 @@ html { scroll-padding-top: calc(var(--faixa-demo-h) + var(--header-height) + 8px
     .vigencia-linha { grid-template-columns: minmax(0, 1fr) 96px 32px; }
     .vigencia-ate { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* ══ DE QUAL BASE É ESTA NOTA? (item 10, 23/09/2026) ════════════════ */
+.base-nfe-opcao { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text); cursor: pointer; margin-bottom: 6px; }
+.base-nfe-opcao input { width: auto; margin: 0; }
+.base-nfe-select, .base-nfe-nome { width: 100%; }
+.vinculo-nfe-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }

@@ -467,7 +467,10 @@ function fmComboboxAplicarLancamento() {
         rotulo: 'base',
         listaCadastro: 'bases',
         fonte: () => db.bases || [],
-        aoSelecionar: nome => setBase(nome)
+        // Revalida: a base é bloqueio desde 23/09/2026, e o aviso calculado
+        // quando o cadastro rápido tirou o foco do campo ficava na tela
+        // para uma base que acabou de passar a existir.
+        aoSelecionar: nome => { setBase(nome); if (typeof validarLancamento === 'function') validarLancamento(); }
     });
 
     fmComboboxInit({

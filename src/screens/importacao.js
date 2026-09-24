@@ -40,7 +40,9 @@ const CAMPOS_IMPORTACAO = [
     { id: "dataNota",      label: "Data da nota",            obrigatorio: true  },
     { id: "dataDescarga",  label: "Data da descarga",        obrigatorio: true  },
     { id: "numeroNota",    label: "Número da nota",          obrigatorio: true  },
-    { id: "base",          label: "Base (distribuidora)",    obrigatorio: false },
+    // Obrigatória desde 23/09/2026, como no lançamento: a base tem de ser
+    // uma do cadastro (decisão do dono).
+    { id: "base",          label: "Base (distribuidora)",    obrigatorio: true  },
     { id: "empresa",       label: "Empresa / fornecedor",    obrigatorio: false },
     { id: "motorista",     label: "Motorista",               obrigatorio: true  },
     { id: "placa",         label: "Placa do veículo",        obrigatorio: true  },
@@ -704,7 +706,8 @@ function importacaoProcessar() {
         const dataDescarga = importacaoNormalizarData(get("dataDescarga"));
         const numeroNota   = get("numeroNota").replace(/\./g,"").replace(/,/g,""); // remove pontos de milhar do NF
         const baseTxt      = get("base");
-        const base         = _cadastroPorNomeOuApelido(db.bases, baseTxt)?.nome || baseTxt;
+        const baseCad      = _cadastroPorNomeOuApelido(db.bases, baseTxt);
+        const base         = baseCad ? baseCad.nome : baseTxt;
         // Empresa pelo cadastro, sem acento e sem caixa: "TRANSPORTADORA X" é
         // o cadastro "Transportadora X". Empresa que não existe ou que quem importa
         // não acessa vira erro da linha. Antes a nota era aceita com um nome
@@ -734,6 +737,10 @@ function importacaoProcessar() {
         if (!motorista)   { erros.push(`Linha ${linhaNum}: Motorista vazio`); return; }
         if (!placa)       { erros.push(`Linha ${linhaNum}: Placa vazia`); return; }
         if (!combustivel) { erros.push(`Linha ${linhaNum}: Combustível vazio`); return; }
+        // A base tem de ser do cadastro, pelo nome ou por um apelido, como no
+        // lançamento (23/09/2026). Antes o nome da planilha entrava cru.
+        if (!baseTxt)     { erros.push(`Linha ${linhaNum}: Base vazia`); return; }
+        if (!baseCad)     { erros.push(`Linha ${linhaNum}: base "${baseTxt}" não está cadastrada (cadastre antes ou corrija a planilha)`); return; }
         if (!empresaCad) {
             erros.push(empresaTxt
                 ? `Linha ${linhaNum}: empresa "${empresaTxt}" não está cadastrada (cadastre antes ou corrija a planilha)`

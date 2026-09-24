@@ -249,6 +249,37 @@ window.resolverConjuntoPorPlaca = function(placa, data) {
 // ========== MODAL DE EDIÇÃO ==========
 let modalContexto = null;
 
+/* Os CNPJs de NF-e ligados à base em edição, como aparecem no modal, e os
+   que a pessoa clicou para tirar. `null` quando o modal não é de base.
+   Ao salvar sai só o que foi clicado: uma ligação que outra pessoa fez com
+   o modal aberto chega pela sincronização e não pode sair junto. */
+let _vinculosEmEdicao = null;
+let _vinculosTirados = new Set();
+
+function _renderVinculosNfe() {
+    const wrapper = document.getElementById("modalCampoVinculosWrapper");
+    const alvo = document.getElementById("modalVinculosNfe");
+    if (!wrapper || !alvo) return;
+    const item = modalContexto && modalContexto.lista === "bases"
+        ? (db.bases || []).find(b => String(b.id) === String(modalContexto.id)) : null;
+    const tinha = item && Array.isArray(item.cnpjsNfe) && item.cnpjsNfe.length;
+    if (!_vinculosEmEdicao || !tinha) { wrapper.style.display = "none"; alvo.innerHTML = ""; return; }
+    wrapper.style.display = "flex";
+    alvo.innerHTML = _vinculosEmEdicao.length
+        ? _vinculosEmEdicao.map((c, i) => `<div class="vinculo-nfe-linha">
+            <span>CNPJ ${escapeHtml(formatarCnpj(c))}</span>
+            <button type="button" class="btn-icone btn-icone--excluir" title="Tirar esta ligação" aria-label="Tirar a ligação com o CNPJ ${escapeHtml(formatarCnpj(c))}" onclick="_tirarVinculoNfe(${i})">✕</button>
+        </div>`).join("")
+        : `<span class="vigencia-inicio">Nenhuma: ao salvar, as ligações saem.</span>`;
+}
+
+function _tirarVinculoNfe(i) {
+    if (!_vinculosEmEdicao || !_vinculosEmEdicao[i]) return;
+    _vinculosTirados.add(_vinculosEmEdicao[i]);
+    _vinculosEmEdicao.splice(i, 1);
+    _renderVinculosNfe();
+}
+
 function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, municipioAtual = '') {
     modalContexto = { lista, id };
     document.getElementById("modalTitulo").textContent = titulo;
@@ -278,6 +309,13 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
     }
 
     const item = db[lista].find(i => String(i.id) === String(id));
+
+    // As notas fiscais que a base reconhece por escolha anterior (item 10,
+    // 23/09/2026). Só aparece quando há alguma: ninguém cadastra isto.
+    _vinculosEmEdicao = lista === "bases" && item && Array.isArray(item.cnpjsNfe) ? item.cnpjsNfe.slice() : null;
+    _vinculosTirados = new Set();
+    _renderVinculosNfe();
+
     const logsDiv = document.getElementById("modalLogs");
     if (logsDiv) {
         /* Recolhido, com a contagem no título. Antes vinha aberto e crescia
@@ -295,6 +333,7 @@ function abrirModal(titulo, label, valorAtual, lista, id, perdaAtual = null, mun
 function fecharModal() {
     document.getElementById("modalOverlay").style.display = "none";
     modalContexto = null;
+    _vinculosEmEdicao = null;
 }
 
 /* ── CADASTRO RÁPIDO, SEM SAIR DO LANÇAMENTO ────────────────────────
@@ -328,6 +367,8 @@ function abrirModalCadastroRapido(lista, valorInicial, aoConcluir) {
     if (wm) wm.style.display = "none";
     const wp = document.getElementById("modalCampoPerdaWrapper");
     if (wp) wp.style.display = "none";
+    _vinculosEmEdicao = null;
+    _renderVinculosNfe();
     const logs = document.getElementById("modalLogs");
     if (logs) logs.innerHTML = "";
 
@@ -460,6 +501,15 @@ function confirmarEdicao() {
             item.logs.push(fmLogNovo("Perda alterada", `de ${perdaAntiga}% para ${perdaInput}%`));
         }
         item.perda = isNaN(perdaInput) ? 0 : perdaInput;
+    }
+
+    if (lista === "bases" && _vinculosTirados.size && Array.isArray(item.cnpjsNfe)) {
+        const tirados = item.cnpjsNfe.filter(c => _vinculosTirados.has(c));
+        if (tirados.length) {
+            item.cnpjsNfe = item.cnpjsNfe.filter(c => !_vinculosTirados.has(c));
+            if (!item.logs) item.logs = [];
+            item.logs.push(fmLogNovo("NF-e desligada", tirados.map(c => `CNPJ ${formatarCnpj(c)}`).join(", ")));
+        }
     }
 
     const nomeNovo = item.nome;
