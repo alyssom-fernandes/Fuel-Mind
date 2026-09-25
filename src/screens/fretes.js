@@ -684,33 +684,18 @@ function abrirFreteNotaANota() {
     if (typeof _modalAcessivel === "function") _modalAcessivel(modal, () => modal.remove());
 }
 
-function exportarFreteNotaANota() {
-    if (adiarAteBibliotecas(["xlsx"], () => exportarFreteNotaANota())) return;
-    if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
-    const linhas = _freteNotaANota(dadosFretesAtual.mes);
-    if (!linhas.length) return mostrarToast("Nenhuma nota descarregada neste mês.", "aviso", 4000);
-    const aoa = [
-        [`FRETE NOTA A NOTA DE ${nomeMes(dadosFretesAtual.mes)}`],
-        [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${formatarData(_hojeISO())}`],
-        [],
-        ["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
-    ];
-    linhas.forEach(x => aoa.push([
-        formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa, x.base,
-        x.motorista, x.placa, x.conjunto, _num(x.litros, 3), _num(x.taxa, 4), _num(x.frete, 2)
-    ]));
-    aoa.push([]);
-    aoa.push(["TOTAL", "", `${linhas.length} nota(s)`, "", "", "", "", "",
-              _num(linhas.reduce((s2, x) => s2 + x.litros, 0), 3), "",
-              _num(linhas.reduce((s2, x) => s2 + x.frete, 0), 2)]);
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Frete nota a nota");
-    XLSX.writeFile(wb, `frete-nota-a-nota-${dadosFretesAtual.mes}.xlsx`);
-}
-
 /*=================================================
-  EXPORTAÇÕES
+  EXPORTAÇÕES EM EXCEL
+
+  No padrão dos PDFs desde 25/09/2026 (pedido do dono), montadas por
+  `_planilhaPadrao` (planilha-padrao.js): a faixa com o título, a data de
+  geração, os cartões, e as seções com cabeçalho, linhas e TOTAL. O Excel
+  guarda as colunas que o PDF tirou por falta de largura (a emissão, o
+  conjunto e a taxa no nota a nota, o conjunto por placa).
+
+  Os nomes seguem a decisão do dono de 25/09/2026: "aluguel" no que se
+  paga pelos veículos só nos documentos chamados "Fechamento" (o PDF e o
+  "Fechamento em Excel"); nas outras planilhas, "frete", como na tela.
 =================================================*/
 
 /* Número de verdade na célula: `toFixed` devolve string, e a planilha de
@@ -719,18 +704,56 @@ function _num(v, casas) {
     return Number((Number(v) || 0).toFixed(casas));
 }
 
-/* Linha de fechamento de uma seção do resumo de fretes. `colunas` é 6 nas
-   seções com a coluna Conjunto e 5 nas outras. */
-function _totalSecao(lista, colunas) {
-    const viagens = lista.reduce((s, x) => s + (x.viagens || 0), 0);
-    const litros  = lista.reduce((s, x) => s + (x.litros  || 0), 0);
-    const frete   = lista.reduce((s, x) => s + (x.frete   || 0), 0);
-    return colunas === 6
-        ? ["TOTAL", "", viagens, _num(litros, 3), "", _num(frete, 2)]
-        : ["TOTAL", viagens, _num(litros, 3), "", _num(frete, 2)];
+/** A taxa do grupo na planilha: número, ou "várias" quando o grupo mistura
+ *  taxas diferentes, como no PDF. */
+function _taxaGrupoXl(grupo) {
+    const t = _taxaGrupoNum(grupo);
+    if (t !== "") return t;
+    return grupo && grupo.taxas instanceof Set && grupo.taxas.size > 1 ? "várias" : "";
+}
+
+/** A seção nota a nota. `nomeValor`: "Frete" na planilha da tela,
+ *  "Aluguel" no fechamento. */
+function _secaoNotaANotaXl(linhas, nomeValor) {
+    return {
+        titulo: "Nota a nota",
+        cabecalho: ["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros", "Taxa (R$/L)", nomeValor],
+        formatos:  [null, null, null, null, null, null, null, null, "litros", "taxa", "reais"],
+        linhas: linhas.map(x => [
+            formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa, x.base || "",
+            x.motorista, x.placa, x.conjunto || "—", _num(x.litros, 3), x.taxa > 0 ? _num(x.taxa, 4) : "—", _num(x.frete, 2)
+        ]),
+        // A contagem na coluna do motorista, como no PDF.
+        total: ["TOTAL", "", "", "", "", `${linhas.length} nota(s)`, "", "",
+                _num(linhas.reduce((s, x) => s + x.litros, 0), 3), "", _num(linhas.reduce((s, x) => s + x.frete, 0), 2)]
+    };
+}
+
+function exportarFreteNotaANota() {
+    if (adiarAteBibliotecas(["xlsx"], () => exportarFreteNotaANota())) return;
+    if (!dadosFretesAtual || !dadosFretesAtual.mes) return;
+    const mes = dadosFretesAtual.mes;
+    const linhas = _freteNotaANota(mes);
+    if (!linhas.length) return mostrarToast("Nenhuma nota descarregada neste mês.", "aviso", 4000);
+    const ws = _planilhaPadrao({
+        titulo: `Frete nota a nota - ${_pdfMesAno(mes)}`,
+        subtitulo: `${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga`,
+        geradoEm: _pdfGeradoEm(),
+        cartoes: [
+            { rotulo: "Frete do mês (Veículos)", valor: _num(linhas.reduce((s, x) => s + x.frete, 0), 2), f: "reais" },
+            { rotulo: "Litros (Carregados)",     valor: _num(linhas.reduce((s, x) => s + x.litros, 0), 3), f: "litrosRedondo" },
+            { rotulo: "Notas (Descarregadas)",   valor: linhas.length, f: "inteiro" }
+        ],
+        secoes: [_secaoNotaANotaXl(linhas, "Frete")]
+    });
+    _gravarPlanilhaPadrao([{ nome: "Frete nota a nota", ws }], `frete-nota-a-nota-${mes}.xlsx`);
 }
 
 // ========== EXPORTAÇÃO EXCEL ==========
+/* O resumo de fretes, como o PDF dele: as seções na ordem do fechamento
+   (empresa, conjunto, motorista e placa), a linha do grupo com fundo e o
+   nome e o frete em negrito, e embaixo, sem fundo, o detalhe: as placas do
+   conjunto e os litros por combustível (em cinza). */
 function exportarFretesExcel() {
     if (adiarAteBibliotecas(["xlsx"], () => exportarFretesExcel())) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
@@ -738,130 +761,197 @@ function exportarFretesExcel() {
         return;
     }
     const d = dadosFretesAtual;
-    const mesLabel = nomeMes(d.mes);
-    const linhas = [];
-
-    linhas.push([`RESUMO DE FRETES DE ${mesLabel}`]);
-    linhas.push([`Notas: ${d.totalNotas}`, `Litros: ${fmtL(d.totalLitros)}`, `Frete total: ${fmtR(d.totalFrete)}`]);
-    linhas.push([]);
-
-    linhas.push(["POR PLACA"]);
-    linhas.push(["Placa", "Conjunto", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
-    d.porPlaca.forEach(p => {
-        linhas.push([p.nome, p.conjunto || "—", p.viagens, _num(p.litros, 3), _taxaGrupoNum(p), _num(p.frete, 2)]);
-        Object.entries(p.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", _num(det.litros, 3), "", _num(det.frete, 2)]);
+    const soma = (lista, campo) => lista.reduce((s, x) => s + (x[campo] || 0), 0);
+    const subLinhas = (item, antes, depois) => Object.entries(item.detalhes || {}).map(([tipo, det]) => ({
+        c: [`   · ${tipo}`, ...antes, _num(det.litros, 3), "", _num(det.frete, 2), ...depois(det)], estilo: "sub"
+    }));
+    const grupo = (lista, opcoes) => {
+        const { conjunto, pagamento } = opcoes || {};
+        const linhas = [];
+        lista.forEach(item => {
+            const meio = conjunto ? [item.conjunto || "—", item.viagens] : [item.viagens];
+            const c = [item.nome, ...meio, _num(item.litros, 3), _taxaGrupoXl(item), _num(item.frete, 2)];
+            if (pagamento) c.push(_num(item.pagamento, 2));
+            linhas.push({ c, estilo: "principal", negrito: [0, meio.length + 3] });
+            linhas.push(...subLinhas(item, conjunto ? ["", ""] : [""], det => pagamento ? [_num(det.pagamento, 2)] : []));
         });
-    });
-    linhas.push(_totalSecao(d.porPlaca, 6));
-    linhas.push([]);
+        const total = ["TOTAL", ...(conjunto ? ["", soma(lista, "viagens")] : [soma(lista, "viagens")]),
+                       _num(soma(lista, "litros"), 3), "", _num(soma(lista, "frete"), 2)];
+        if (pagamento) total.push(_num(soma(lista, "pagamento"), 2));
+        return { linhas, total: lista.length ? total : null };
+    };
 
-    linhas.push(["POR CONJUNTO"]);
-    linhas.push(["Conjunto", "", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
+    const empresas = grupo(d.porEmpresa);
+    const motoristas = grupo(d.porMotorista, { pagamento: true });
+    const placas = grupo(d.porPlaca, { conjunto: true });
+    const linhasConj = [];
     d.porConjunto.forEach(c => {
-        linhas.push([c.nome, "", c.viagens, _num(c.litros, 3), _taxaGrupoNum(c), _num(c.frete, 2)]);
-        Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
-            linhas.push([`  ↳ ${placa}`, "", det.viagens, _num(det.litros, 3), "", _num(det.frete, 2)]);
+        linhasConj.push({ c: [c.nome, c.viagens, _num(c.litros, 3), _taxaGrupoXl(c), _num(c.frete, 2)], estilo: "principal", negrito: [0, 4] });
+        Object.entries(c.porPlacaInterna || {}).forEach(([placa, det]) => {
+            linhasConj.push({ c: [`   ${placa}`, det.viagens, _num(det.litros, 3), "", _num(det.frete, 2)], estilo: "detalhe" });
         });
-        Object.entries(c.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", "", _num(det.litros, 3), "", _num(det.frete, 2)]);
-        });
+        linhasConj.push(...subLinhas(c, [""], () => []).map(l => ({ c: l.c.map((v, i) => i === 0 ? `      ${String(v).trim()}` : v), estilo: "sub" })));
     });
-    linhas.push(_totalSecao(d.porConjunto, 6));
-    linhas.push([]);
+    const foraFrete = d.totalFrete - soma(d.porConjunto, "frete");
+    const numeros = ["inteiro", "litros", "taxa", "reais"];
 
-    linhas.push(["POR MOTORISTA"]);
-    linhas.push(["Motorista", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)", "A pagar (R$)"]);
-    d.porMotorista.forEach(m => {
-        linhas.push([m.nome, m.viagens, _num(m.litros, 3), _taxaGrupoNum(m), _num(m.frete, 2), _num(m.pagamento, 2)]);
-        Object.entries(m.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", _num(det.litros, 3), "", _num(det.frete, 2), _num(det.pagamento, 2)]);
-        });
+    const ws = _planilhaPadrao({
+        titulo: `Resumo de fretes - ${_pdfMesAno(d.mes)}`,
+        subtitulo: `${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga`,
+        geradoEm: _pdfGeradoEm(),
+        cartoes: [
+            { rotulo: "Frete do mês (Veículos)", valor: _num(d.totalFrete, 2), f: "reais" },
+            { rotulo: "Litros (Carregados)",     valor: _num(d.totalLitros, 3), f: "litrosRedondo" },
+            { rotulo: "A pagar (Motoristas)",    valor: _num(d.totalPagamento || 0, 2), f: "reais" },
+            { rotulo: "Notas (Descarregadas)",   valor: d.totalNotas, f: "inteiro" }
+        ],
+        secoes: [
+            { titulo: "Por empresa", cabecalho: ["Empresa", "Viagens", "Litros", "Taxa (R$/L)", "Frete"],
+              formatos: [null, ...numeros], linhas: empresas.linhas, total: empresas.total },
+            { titulo: "Por conjunto", cabecalho: ["Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Frete"],
+              formatos: [null, ...numeros], linhas: linhasConj,
+              total: d.porConjunto.length ? ["TOTAL", soma(d.porConjunto, "viagens"), _num(soma(d.porConjunto, "litros"), 3), "", _num(soma(d.porConjunto, "frete"), 2)] : null,
+              // As notas que não estavam em conjunto nenhum, como no PDF.
+              nota: Math.abs(foraFrete) > 0.005
+                  ? `Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - soma(d.porConjunto, "litros"))} e ${fmtR(foraFrete)} de placas que não estavam em nenhum conjunto na data da descarga.`
+                  : null },
+            { titulo: "Por motorista", cabecalho: ["Motorista", "Viagens", "Litros", "Taxa (R$/L)", "Frete", "A pagar"],
+              formatos: [null, ...numeros, "reais"], linhas: motoristas.linhas, total: motoristas.total },
+            { titulo: "Por placa", cabecalho: ["Placa", "Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Frete"],
+              formatos: [null, null, ...numeros], linhas: placas.linhas, total: placas.total }
+        // Seção sem linha fica de fora, como no PDF (um mês sem conjunto
+        // deixava "Por conjunto" só com o cabeçalho).
+        ].filter(s => s.linhas.length)
     });
-    linhas.push(_totalSecao(d.porMotorista, 5));
-    linhas.push([]);
-
-    linhas.push(["POR EMPRESA"]);
-    linhas.push(["Empresa", "Viagens", "Litros (L)", "Taxa (R$/L)", "Frete (R$)"]);
-    d.porEmpresa.forEach(e => {
-        linhas.push([e.nome, e.viagens, _num(e.litros, 3), _taxaGrupoNum(e), _num(e.frete, 2)]);
-        Object.entries(e.detalhes).forEach(([tipo, det]) => {
-            linhas.push([`  ↳ ${tipo}`, "", _num(det.litros, 3), "", _num(det.frete, 2)]);
-        });
-    });
-    linhas.push(_totalSecao(d.porEmpresa, 5));
-
-    if (_so_linhas_fretes) return linhas;
-    const ws = XLSX.utils.aoa_to_sheet(linhas);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Fretes");
-    XLSX.writeFile(wb, `fretes-${d.mes}.xlsx`);
+    _gravarPlanilhaPadrao([{ nome: "Resumo de fretes", ws }], `fretes-${d.mes}.xlsx`);
 }
 
 /* ── FECHAMENTO DO MÊS, NUM ARQUIVO SÓ (18/09/2026) ────────────────
-   O que a pesquisa de relatórios achou de mais elogiado, e que dá para
-   fazer sem servidor: o "pacote pronto": tudo o que fecha o mês num
-   clique, em vez de três exportações separadas. Um Excel com três abas:
-   o resumo de fretes (por placa, conjunto, motorista e empresa), o frete
-   nota a nota e as notas do mês pela emissão. Um arquivo só também evita
-   o navegador bloquear vários downloads seguidos. */
-let _so_linhas_fretes = false;
+   O "pacote pronto": tudo o que fecha o mês num clique, num Excel com três
+   abas. Um arquivo só também evita o navegador bloquear vários downloads
+   seguidos.
 
+   Desde 25/09/2026 a primeira aba é o fechamento do PDF, com as mesmas
+   seções e os mesmos nomes ("Aluguel" nos veículos, "A pagar" nos
+   motoristas); antes ela repetia o resumo de fretes da tela. As outras
+   duas: o nota a nota (com "Aluguel") e as notas do mês pela emissão.
+   Continua sendo o recorte da tela: a empresa ativa, ou todas. */
 function exportarFechamentoDoMes() {
     if (adiarAteBibliotecas(["xlsx"], () => exportarFechamentoDoMes())) return;
     if (!dadosFretesAtual || !dadosFretesAtual.mes) return mostrarToast("Escolha o mês primeiro.", "aviso", 4000);
-    const mes = dadosFretesAtual.mes;
-    const wb = XLSX.utils.book_new();
+    const d = dadosFretesAtual;
+    const mes = d.mes;
+    const titulo = `Fechamento de Aluguel de Veículos e Frete - ${_pdfMesAno(mes)}`;
+    const quem = empresaFiltroGlobal || "Todas as empresas";
+    const geradoEm = _pdfGeradoEm();
+    const empresas = d.empresasDoMes || [];
+    const soma = (lista, campo) => lista.reduce((s, x) => s + (x[campo] || 0), 0);
+    const daEmpresa = (g, nome) => (g.porEmpresa || {})[nome];
 
-    // 1) Resumo de fretes: as mesmas linhas do Excel de Fretes
-    _so_linhas_fretes = true;
-    let resumo;
-    try { resumo = exportarFretesExcel(); } finally { _so_linhas_fretes = false; }
-    if (Array.isArray(resumo)) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo de fretes");
+    // 1) O fechamento, como o PDF
+    const secoes = [{
+        titulo: "Por empresa",
+        cabecalho: ["Empresa", "Notas", "Litros", "Taxa (R$/L)", "Aluguel (Veículos)", "A pagar (Motoristas)"],
+        formatos: [null, "inteiro", "litros", "taxa", "reais", "reais"],
+        linhas: d.porEmpresa.map(e => [e.nome, e.viagens, _num(e.litros, 3), _taxaGrupoXl(e), _num(e.frete, 2), _num(e.pagamento || 0, 2)]),
+        total: ["TOTAL", d.totalNotas, _num(d.totalLitros, 3), "", _num(d.totalFrete, 2), _num(d.totalPagamento || 0, 2)]
+    }];
+    if (d.porConjunto.length) {
+        const cab = ["Conjunto", "Placas"], fmt = [null, null], grupos = [];
+        [...empresas, "Total"].forEach((nome, k) => {
+            grupos.push({ texto: nome, col: 2 + k * 2, span: 2 });
+            cab.push("Litros", "Aluguel"); fmt.push("litros", "reais");
+        });
+        const linhas = d.porConjunto.map(c => {
+            const l = [c.nome, (c.placas || []).join(" · ")];
+            empresas.forEach(nome => { const e = daEmpresa(c, nome); l.push(e ? _num(e.litros, 3) : "—", e ? _num(e.frete, 2) : "—"); });
+            l.push(_num(c.litros, 3), _num(c.frete, 2));
+            return l;
+        });
+        const total = ["TOTAL", `${d.porConjunto.length} conjunto(s)`];
+        empresas.forEach(nome => {
+            total.push(_num(d.porConjunto.reduce((s, c) => s + ((daEmpresa(c, nome) || {}).litros || 0), 0), 3),
+                       _num(d.porConjunto.reduce((s, c) => s + ((daEmpresa(c, nome) || {}).frete || 0), 0), 2));
+        });
+        total.push(_num(soma(d.porConjunto, "litros"), 3), _num(soma(d.porConjunto, "frete"), 2));
+        const fora = d.totalFrete - soma(d.porConjunto, "frete");
+        secoes.push({
+            titulo: "Por conjunto", cabecalho: cab, formatos: fmt, grupos, mesclarCabecalho: [0, 1], linhas, total,
+            nota: Math.abs(fora) > 0.005
+                ? `Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - soma(d.porConjunto, "litros"))} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`
+                : null
+        });
+    }
+    secoes.push({
+        titulo: "Por motorista",
+        cabecalho: ["Motorista", "Viagens", ...empresas, "Litros", "A pagar"],
+        formatos: [null, "inteiro", ...empresas.map(() => "litros"), "litros", "reais"],
+        linhas: d.porMotorista.map(m => [m.nome, m.viagens,
+            ...empresas.map(nome => { const e = daEmpresa(m, nome); return e ? _num(e.litros, 3) : "—"; }),
+            _num(m.litros, 3), _num(m.pagamento || 0, 2)]),
+        total: ["TOTAL", d.totalNotas,
+            ...empresas.map(nome => _num(d.porMotorista.reduce((s, m) => s + ((daEmpresa(m, nome) || {}).litros || 0), 0), 3)),
+            _num(d.totalLitros, 3), _num(d.totalPagamento || 0, 2)]
+    }, {
+        titulo: "Por placa",
+        cabecalho: ["Placa", "Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Aluguel"],
+        formatos: [null, null, "inteiro", "litros", "taxa", "reais"],
+        linhas: d.porPlaca.map(p => [p.nome, p.conjunto || "—", p.viagens, _num(p.litros, 3), _taxaGrupoXl(p), _num(p.frete, 2)]),
+        total: ["TOTAL", "", d.totalNotas, _num(d.totalLitros, 3), "", _num(d.totalFrete, 2)]
+    });
+    const wsFechamento = _planilhaPadrao({
+        titulo, subtitulo: `${quem} · pela data da descarga`, geradoEm,
+        cartoes: [
+            { rotulo: "Aluguel do mês (Veículos)", valor: _num(d.totalFrete, 2), f: "reais" },
+            { rotulo: "Litros (Carregados)",       valor: _num(d.totalLitros, 3), f: "litrosRedondo" },
+            { rotulo: "Frete do mês (Motoristas)", valor: _num(d.totalPagamento || 0, 2), f: "reais" },
+            { rotulo: "Notas (Descarregadas)",     valor: d.totalNotas, f: "inteiro" }
+        ],
+        secoes
+    });
 
-    // 2) Frete nota a nota
-    const notas = _freteNotaANota(mes);
-    const aoaNotas = [
-        [`FRETE NOTA A NOTA DE ${nomeMes(mes)}`],
-        [`${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga`],
-        [],
-        ["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros (carga)", "Taxa (R$/L)", "Frete (R$)"]
-    ];
-    notas.forEach(x => aoaNotas.push([formatarData(x.descarga), formatarData(x.emissao), x.nota, x.empresa, x.base,
-        x.motorista, x.placa, x.conjunto, _num(x.litros, 3), _num(x.taxa, 4), _num(x.frete, 2)]));
-    aoaNotas.push([]);
-    aoaNotas.push(["TOTAL", "", `${notas.length} nota(s)`, "", "", "", "", "",
-        _num(notas.reduce((s2, x) => s2 + x.litros, 0), 3), "", _num(notas.reduce((s2, x) => s2 + x.frete, 0), 2)]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaNotas), "Frete nota a nota");
+    // 2) O nota a nota, com "Aluguel"
+    const wsNotas = _planilhaPadrao({
+        titulo, subtitulo: `Nota a nota · ${quem} · pela data da descarga`, geradoEm,
+        secoes: [_secaoNotaANotaXl(_freteNotaANota(mes), "Aluguel")]
+    });
 
-    // 3) Notas do mês pela emissão (a base do gasto e do preço)
+    // 3) As notas do mês pela emissão (a base do gasto e do preço)
     const doMes = db.lancamentos.filter(l => lancamentoAtivo(l)
         && (!empresaFiltroGlobal || l.empresa === empresaFiltroGlobal)
         && dataEmissaoDe(l).startsWith(mes))
         .sort((a, b) => dataEmissaoDe(a).localeCompare(dataEmissaoDe(b)));
     const m = metricasPreco(doMes.flatMap(l => l.itens || []));
-    const aoaEntradas = [
-        [`NOTAS DE ENTRADA DE ${nomeMes(mes)}, pela data de emissão`],
-        [`Preço médio de compra: ${fmtRL(m.precoCompra)}/L sobre ${fmtL3(m.litrosNota)} faturados`],
-        [],
-        ["Emissão", "Descarga", "Nota", "Base", "Empresa", "Motorista", "Placa", "Litros (carga)", "Litros descarregados", "Total (R$)"]
-    ];
-    doMes.forEach(l => aoaEntradas.push([
-        formatarData(dataEmissaoDe(l)), formatarData(dataDescargaDe(l)), l.numeroNota || "", l.base || "",
-        l.empresa || "", l.motorista || "", l.placa || "",
-        _num((l.itens || []).reduce((s2, i) => s2 + (Number(i.qtd) || 0), 0), 3),
-        _num((l.itens || []).reduce((s2, i) => s2 + _litrosItem(i), 0), 3),
-        _num(l.total || 0, 2)
-    ]));
-    aoaEntradas.push([]);
-    aoaEntradas.push(["TOTAL", "", `${doMes.length} nota(s)`, "", "", "", "",
-        _num(m.litrosNota, 3),
-        _num(doMes.reduce((s2, l) => s2 + (l.itens || []).reduce((ss, i) => ss + _litrosItem(i), 0), 0), 3),
-        _num(doMes.reduce((s2, l) => s2 + (l.total || 0), 0), 2)]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaEntradas), "Notas do mês");
+    const carga = l => (l.itens || []).reduce((s, i) => s + (Number(i.qtd) || 0), 0);
+    const descarregado = l => (l.itens || []).reduce((s, i) => s + _litrosItem(i), 0);
+    const totalNotasMes = doMes.reduce((s, l) => s + (l.total || 0), 0);
+    const wsEntradas = _planilhaPadrao({
+        titulo, subtitulo: `Notas do mês · ${quem} · pela data de emissão`, geradoEm,
+        cartoes: [
+            { rotulo: "Total das notas",        valor: _num(totalNotasMes, 2), f: "reais" },
+            { rotulo: "Litros (Carregados)",    valor: _num(m.litrosNota, 3), f: "litrosRedondo" },
+            { rotulo: "Preço médio de compra",  valor: _num(m.precoCompra, 3), f: "preco" },
+            { rotulo: "Notas",                  valor: doMes.length, f: "inteiro" }
+        ],
+        secoes: [{
+            titulo: "Notas do mês",
+            cabecalho: ["Emissão", "Descarga", "Nota", "Base", "Empresa", "Motorista", "Placa", "Litros (carga)", "Litros descarregados", "Total"],
+            formatos: [null, null, null, null, null, null, null, "litros", "litros", "reais"],
+            linhas: doMes.map(l => [
+                formatarData(dataEmissaoDe(l)), formatarData(dataDescargaDe(l)), l.numeroNota || "", l.base || "",
+                l.empresa || "", l.motorista || "", l.placa || "", _num(carga(l), 3), _num(descarregado(l), 3), _num(l.total || 0, 2)
+            ]),
+            total: ["TOTAL", "", "", "", "", `${doMes.length} nota(s)`, "",
+                    _num(m.litrosNota, 3), _num(doMes.reduce((s, l) => s + descarregado(l), 0), 3), _num(totalNotasMes, 2)]
+        }]
+    });
 
-    XLSX.writeFile(wb, `fechamento-${mes}${empresaFiltroGlobal ? "-" + normalizarTexto(empresaFiltroGlobal).replace(/\s+/g, "-") : ""}.xlsx`);
-    mostrarToast(`Fechamento de ${nomeMes(mes)} gerado: resumo de fretes, frete nota a nota e notas do mês, num arquivo só.`, "sucesso", 5000);
+    _gravarPlanilhaPadrao([
+        { nome: "Fechamento", ws: wsFechamento },
+        { nome: "Nota a nota", ws: wsNotas },
+        { nome: "Notas do mês", ws: wsEntradas }
+    ], `fechamento-${mes}${empresaFiltroGlobal ? "-" + normalizarTexto(empresaFiltroGlobal).replace(/\s+/g, "-") : ""}.xlsx`);
+    mostrarToast(`Fechamento de ${_pdfMesAno(mes)} gerado: o fechamento, o nota a nota e as notas do mês, num arquivo só.`, "sucesso", 5000);
 }
 
 // ========== EXPORTAÇÃO PDF ==========

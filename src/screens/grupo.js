@@ -232,26 +232,34 @@ function exportarGrupoExcel() {
     if (!empresas.length) return mostrarToast("Nenhuma empresa para exportar.", "aviso", 4000);
     const linhas = empresas.map(e => _grupoTotais(e, _grupoPeriodo.inicio, _grupoPeriodo.fim))
         .sort((a, b) => b.frete - a.frete);
-    const aoa = [
-        ["COMPARAÇÃO ENTRE EMPRESAS DO GRUPO"],
-        [`De ${formatarData(_grupoPeriodo.inicio)} a ${formatarData(_grupoPeriodo.fim)} · litros e frete pela descarga, gasto e preço pela emissão`],
-        [],
-        ["Empresa", "Notas (descarga)", "Litros descarregados", "Gasto (emissão)",
-         "Preço médio/L (faturado)", "Frete (descarga)", "Frete/L"]
-    ];
-    linhas.forEach(x => aoa.push([
-        x.empresa, x.notasDescarga, Number(x.litros.toFixed(3)), Number(x.gasto.toFixed(2)),
-        Number(x.precoCompra.toFixed(4)), Number(x.frete.toFixed(2)), Number(x.fretePorLitro.toFixed(2))
-    ]));
     const soma = linhas.reduce((a, x) => ({
         notas: a.notas + x.notasDescarga, litros: a.litros + x.litros,
         gasto: a.gasto + x.gasto, frete: a.frete + x.frete
     }), { notas: 0, litros: 0, gasto: 0, frete: 0 });
-    aoa.push([]);
-    aoa.push(["TOTAL", soma.notas, Number(soma.litros.toFixed(3)), Number(soma.gasto.toFixed(2)), "",
-              Number(soma.frete.toFixed(2)), ""]);
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Grupo");
-    XLSX.writeFile(wb, `grupo-${_grupoPeriodo.inicio}-a-${_grupoPeriodo.fim}.xlsx`);
+    // No padrão dos PDFs desde 25/09/2026 (pedido do dono): a faixa, os
+    // cartões com os totais do grupo e a tabela com o TOTAL.
+    const ws = _planilhaPadrao({
+        titulo: "Comparação entre empresas do grupo",
+        subtitulo: `De ${formatarData(_grupoPeriodo.inicio)} a ${formatarData(_grupoPeriodo.fim)} · litros e frete pela descarga, gasto e preço pela emissão`,
+        geradoEm: _pdfGeradoEm(),
+        cartoes: [
+            { rotulo: "Frete (descarga)",     valor: Number(soma.frete.toFixed(2)), f: "reais" },
+            { rotulo: "Litros descarregados", valor: Number(soma.litros.toFixed(3)), f: "litrosRedondo" },
+            { rotulo: "Gasto (emissão)",      valor: Number(soma.gasto.toFixed(2)), f: "reais" },
+            { rotulo: "Notas (descarga)",     valor: soma.notas, f: "inteiro" }
+        ],
+        secoes: [{
+            titulo: "Por empresa",
+            cabecalho: ["Empresa", "Notas (descarga)", "Litros descarregados", "Gasto (emissão)",
+                        "Preço médio/L (faturado)", "Frete (descarga)", "Frete/L"],
+            formatos: [null, "inteiro", "litros", "reais", "preco", "reais", "taxa"],
+            linhas: linhas.map(x => [
+                x.empresa, x.notasDescarga, Number(x.litros.toFixed(3)), Number(x.gasto.toFixed(2)),
+                Number(x.precoCompra.toFixed(4)), Number(x.frete.toFixed(2)), Number(x.fretePorLitro.toFixed(2))
+            ]),
+            total: ["TOTAL", soma.notas, Number(soma.litros.toFixed(3)), Number(soma.gasto.toFixed(2)), "",
+                    Number(soma.frete.toFixed(2)), ""]
+        }]
+    });
+    _gravarPlanilhaPadrao([{ nome: "Grupo", ws }], `grupo-${_grupoPeriodo.inicio}-a-${_grupoPeriodo.fim}.xlsx`);
 }

@@ -394,7 +394,7 @@
   <div class="barra-exportacao" id="fretesBarraExportacao">
     <span class="exportacao-titulo">Exportar:</span>
     <button class="btn-export btn-pdf" onclick="abrirFechamentoPDF()" title="O fechamento completo em PDF: resumo do mês, por empresa, por conjunto, por motorista, por placa e nota a nota. Você escolhe quais empresas entram.">Fechamento em PDF</button>
-    <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: resumo de fretes, frete nota a nota e as notas do mês pela emissão.">Fechamento em Excel</button>
+    <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: o fechamento (por empresa, conjunto, motorista e placa), o nota a nota e as notas do mês pela emissão.">Fechamento em Excel</button>
     <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma, para anexar na resposta a um transportador.">Nota a nota</button>
     <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
     <button class="btn-export btn-pdf" onclick="exportarFretesPDF()">PDF</button>
@@ -1097,6 +1097,7 @@
 <script src="src/shared/validacao.js"></script>
 <script src="src/screens/lancamentos.js"></script>
 <script src="src/shared/pdf-padrao.js"></script>
+<script src="src/shared/planilha-padrao.js"></script>
 <script src="src/screens/relatorios.js"></script>
 <script src="src/screens/analitico.js"></script>
 <script src="src/screens/dashboard.js"></script>

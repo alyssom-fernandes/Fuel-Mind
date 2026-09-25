@@ -977,7 +977,18 @@ function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
    Chart.js continua no <head>: o Dashboard, que é a tela de entrada,
    usa gráfico. */
 const _BIBLIOTECAS = {
-    xlsx:      { src: "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
+    /* `xlsx-js-style` no lugar do SheetJS gratuito desde 25/09/2026 (pedido
+       do dono: as planilhas no padrão dos PDFs, com cores e negrito). É o
+       mesmo `XLSX`, com a mesma interface para ler e gravar, e grava o
+       estilo de cada célula, que a versão gratuita ignorava. Não há no
+       cdnjs; vem do jsDelivr.
+       Antes dele, as tabelas de página de código (`cpexcel`), que o arquivo
+       antigo trazia embutidas e este não traz: sem elas, um .xls de Excel 95
+       (a importação e a conferência aceitam .xls) teria "€", aspas curvas e
+       travessões lidos como caractere de controle (revisão de 25/09/2026). */
+    cpexcel:   { src: "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/cpexcel.js",
+                 pronta: () => typeof cptable !== "undefined" },
+    xlsx:      { src: "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js", antes: "cpexcel",
                  pronta: () => typeof window !== "undefined" && !!window.XLSX },
     jspdf:     { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF) },
@@ -998,6 +1009,13 @@ function garantirBiblioteca(nome) {
     if (!b) return Promise.reject(new Error("Biblioteca desconhecida: " + nome));
     if (b.pronta()) return Promise.resolve();
     if (_bibliotecaPromessa[nome]) return _bibliotecaPromessa[nome];
+    // `antes`: a que precisa estar carregada primeiro (as tabelas de página
+    // de código, antes da planilha).
+    if (b.antes && !_BIBLIOTECAS[b.antes].pronta()) {
+        return (_bibliotecaPromessa[nome] = garantirBiblioteca(b.antes)
+            .then(() => { delete _bibliotecaPromessa[nome]; return garantirBiblioteca(nome); })
+            .catch(e => { delete _bibliotecaPromessa[nome]; throw e; }));
+    }
     _bibliotecaPromessa[nome] = new Promise((resolve, reject) => {
         const el = document.createElement("script");
         el.src = b.src;
@@ -1034,8 +1052,12 @@ function _formatoPlanilhaPorCabecalho(h, valor) {
     return "";
 }
 
+/* A aba montada por `_planilhaPadrao` (planilha-padrao.js) já traz os
+   formatos, e com o "R$" e o "L" do PDF: aqui ela só ganha as larguras,
+   contando esses símbolos. */
 function ajustarPlanilha(ws) {
     if (!ws || !ws["!ref"] || typeof XLSX === "undefined") return;
+    const padrao = !!ws["!padrao"];
     const faixa = XLSX.utils.decode_range(ws["!ref"]);
     const larguras = [];
     let cabecalho = [];
@@ -1052,13 +1074,23 @@ function ajustarPlanilha(ws) {
             // Título de uma célula só (primeira coluna, linha sem mais nada)
             // não alarga a coluna: ele transborda para as vizinhas.
             if (i === 0 && preenchidas.length === 1 && cel.t === "s") return;
-            if (cel.t === "n" && !ehCabecalho) {
+            if (cel.t === "n" && !ehCabecalho && !(padrao && cel.z)) {
                 cel.z = _formatoPlanilhaPorCabecalho(cabecalho[i] || "", cel.v) || cel.z;
             }
-            const texto = cel.t === "n"
-                ? cel.v.toLocaleString("pt-BR", { minimumFractionDigits: cel.z && cel.z.includes(".000") ? 3 : (cel.z ? 2 : 0) })
+            // As casas que o formato mostra: os "0" depois do ponto são fixos,
+            // os "#" aparecem quando há.
+            const decimais = (cel.z && cel.z.includes(".")) ? cel.z.split(".")[1].match(/^[0#]*/)[0] : "";
+            const casas = (decimais.match(/0/g) || []).length;
+            let texto = cel.t === "n"
+                ? cel.v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: decimais.length })
                 : String(cel.v);
-            larguras[i] = Math.max(larguras[i] || 8, Math.min(texto.length + 2, 48));
+            if (cel.t === "n" && cel.z && cel.z.includes('"R$"')) texto = "R$ " + texto;
+            if (cel.t === "n" && cel.z && cel.z.includes('"L"')) texto += " L";
+            // Letra maior ou em negrito ocupa mais: o valor dos cartões (12,
+            // negrito) saía "####" numa coluna medida para a letra 10.
+            const fonte = (cel.s && cel.s.font) || {};
+            const escala = (fonte.sz ? fonte.sz / 10 : 1) * (fonte.bold ? 1.1 : 1);
+            larguras[i] = Math.max(larguras[i] || 8, Math.min(Math.ceil(texto.length * escala) + 2, 48));
         });
     }
     ws["!cols"] = larguras.map(w => ({ wch: w || 8 }));

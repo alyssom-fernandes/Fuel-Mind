@@ -906,37 +906,46 @@ function exportarExcel(contexto) {
     const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
+    /* No padrão do PDF de entradas desde 25/09/2026 (pedido do dono): a
+       faixa com o período e a empresa, os cartões e a tabela com o TOTAL.
+       Continua com todas as colunas e a de combustíveis: as opções do
+       Sistema são do PDF. */
+    const litrosDe = l => l.itens.reduce((s, i) => s + _litrosItem(i), 0);
     const linhas = dados.map(l => {
-        const totalLitros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
-        const combustiveis = l.itens.map(i => `${i.tipo}: ${_litrosItem(i).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} L`).join(" | ");
+        const combustiveis = l.itens.map(i => `${i.tipo}: ${_fmtLitrosFrete(_litrosItem(i))}`).join(" | ");
         return [
             formatarData(l.dataNota),
             l.dataDescarga ? formatarData(l.dataDescarga) : "",
             l.numeroNota, l.base || "", l.empresa || "", l.motorista || "", l.placa || "",
             // Número, não texto: `toFixed` devolve string e a planilha do
             // contador não somava nem ordenava a coluna (17/09/2026).
-            combustiveis, Number(totalLitros.toFixed(3)), Number((l.total || 0).toFixed(2))
+            combustiveis, Number(litrosDe(l).toFixed(3)), Number((l.total || 0).toFixed(2))
         ];
     });
-    // Linha de fechamento dentro da própria tabela: quem confere a planilha
-    // não precisa somar a coluna à mão.
-    const somaLitros = dados.reduce((s2, l) => s2 + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
-    const somaTotal  = dados.reduce((s2, l) => s2 + (l.total || 0), 0);
-    linhas.push([]);
-    linhas.push(["TOTAL", "", `${dados.length} nota(s)`, "", "", "", "", "",
-                 Number(somaLitros.toFixed(3)), Number(somaTotal.toFixed(2))]);
-    linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
-    // Cabeçalho do período, como no PDF: sem ele, a planilha não dizia de
-    // que intervalo nem de que data eram as notas (rodada 11).
-    linhas.unshift(
-        [`Relatório de ${_descricaoPeriodoRelatorio()}`],
-        [`${empresaFiltroGlobal ? empresaFiltroGlobal + " · " : ""}Gerado em ${formatarData(_hojeISO())}`],
-        []
-    );
-    const ws = XLSX.utils.aoa_to_sheet(linhas);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
-    XLSX.writeFile(wb, _nomeArquivoRelatorio(contexto, 'xlsx'));
+    const somaLitros = dados.reduce((s, l) => s + litrosDe(l), 0);
+    const somaTotal  = dados.reduce((s, l) => s + (l.total || 0), 0);
+    const periodo = _descricaoPeriodoRelatorio();
+    const ws = _planilhaPadrao({
+        titulo: "Relatório de Entradas de Combustível",
+        subtitulo: `${periodo.charAt(0).toUpperCase()}${periodo.slice(1)} · ${empresaFiltroGlobal || "Todas as empresas"}`,
+        geradoEm: _pdfGeradoEm(),
+        cartoes: [
+            { rotulo: "Total das notas", valor: Number(somaTotal.toFixed(2)), f: "reais" },
+            { rotulo: "Litros",          valor: Number(somaLitros.toFixed(3)), f: "litrosRedondo" },
+            { rotulo: "Lançamentos",     valor: dados.length, f: "inteiro" }
+        ],
+        secoes: [{
+            titulo: "Lançamentos",
+            cabecalho: ["Emissão", "Descarga", "Nota", "Base", "Empresa", "Motorista", "Placa", "Combustíveis", "Litros", "Total"],
+            formatos:  [null, null, null, null, null, null, null, null, "litros", "reais"],
+            linhas,
+            // Linha de fechamento dentro da própria tabela: quem confere a
+            // planilha não precisa somar a coluna à mão.
+            total: ["TOTAL", "", "", "", "", `${dados.length} lançamento(s)`, "", "",
+                    Number(somaLitros.toFixed(3)), Number(somaTotal.toFixed(2))]
+        }]
+    });
+    _gravarPlanilhaPadrao([{ nome: "Entradas", ws }], _nomeArquivoRelatorio(contexto, 'xlsx'));
 }
 
 /* ── UM CABEÇALHO SÓ PARA OS TRÊS PDFs (18/09/2026) ─────────────────

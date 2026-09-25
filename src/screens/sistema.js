@@ -1192,13 +1192,31 @@ function _autoAlternarNotasDoDia(tr, data, comb) {
 
 function _autoExportarExcel(comb) {
     if (adiarAteBibliotecas(["xlsx"], () => _autoExportarExcel(comb))) return;
-    const wb = XLSX.utils.book_new();
-    const rows = [
-        ['Data','Entrada AutoSystem (L)','Entrada Sistema (L)','Diferença (L)','Observação'],
-        ..._autoMontarLinhas(comb).map(l => [formatarData(l.data), l.entrada, l.sistemaVal, l.diff, l.soNoSistema ? 'Só no sistema' : ''])
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'AutoSystem');
-    XLSX.writeFile(wb, `conferencia-autosystem-${_hojeISO()}.xlsx`);
+    const linhas = _autoMontarLinhas(comb);
+    const soma = campo => linhas.reduce((s, l) => s + (l[campo] || 0), 0);
+    const datas = linhas.map(l => l.data);
+    // No padrão dos PDFs desde 25/09/2026 (pedido do dono): a faixa com o
+    // combustível, a empresa e o período, os cartões e o TOTAL, que a
+    // planilha não tinha (a tela tinha).
+    const ws = _planilhaPadrao({
+        titulo: "Conferência com o AutoSystem",
+        subtitulo: [comb, empresaFiltroGlobal || "", datas.length ? `de ${formatarData(datas[0])} a ${formatarData(datas[datas.length - 1])}` : "",
+                    "pela data da descarga"].filter(Boolean).join(" · "),
+        geradoEm: _pdfGeradoEm(),
+        cartoes: [
+            { rotulo: "Entrada AutoSystem", valor: Number(soma("entrada").toFixed(3)), f: "litros" },
+            { rotulo: "Entrada no sistema", valor: Number(soma("sistemaVal").toFixed(3)), f: "litros" },
+            { rotulo: "Diferença",          valor: Number(soma("diff").toFixed(3)), f: "litros" }
+        ],
+        secoes: [{
+            titulo: "Por dia",
+            cabecalho: ["Data", "Entrada AutoSystem", "Entrada no sistema", "Diferença", "Observação"],
+            formatos: [null, "litros", "litros", "litros", null],
+            linhas: linhas.map(l => [formatarData(l.data), l.entrada, l.sistemaVal, l.diff, l.soNoSistema ? "Só no sistema" : ""]),
+            total: ["TOTAL", Number(soma("entrada").toFixed(3)), Number(soma("sistemaVal").toFixed(3)), Number(soma("diff").toFixed(3)), ""]
+        }]
+    });
+    _gravarPlanilhaPadrao([{ nome: "AutoSystem", ws }], `conferencia-autosystem-${_hojeISO()}.xlsx`);
     mostrarToast('Excel exportado!', 'sucesso');
 }
 
