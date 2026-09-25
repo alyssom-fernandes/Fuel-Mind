@@ -11,9 +11,14 @@
   que vale é hierarquia visual: o número do mês grande na frente, cada
   corte numa seção, o total sempre no mesmo lugar.
 
-  Paisagem, e não retrato: com duas empresas a tabela por conjunto tem oito
-  colunas, e o nota a nota tem dez. Em retrato elas quebram e a leitura se
-  perde.
+  Retrato desde 24/09/2026 (pedido do dono), e não mais paisagem: a folha
+  deitada deixava um terço da largura em branco nas tabelas estreitas, e um
+  mês cheio dava 7 páginas. O que impedia o retrato era o nota a nota, com
+  onze colunas: saíram Emissão, Conjunto e Taxa (a taxa e o conjunto de
+  cada placa estão em "Por placa"), e as colunas curtas passaram a ter a
+  largura do conteúdo, o que deixa ao Motorista espaço para o nome inteiro.
+  A margem é quase zero: o documento é feito para ler em PDF, e quem
+  imprimir ajusta a impressão.
 
   A quebra por empresa vem de `grupo.porEmpresa`, que o motor passou a
   acumular junto com o resto: é ela que permite pôr POSTO numa coluna e TRR
@@ -55,16 +60,22 @@ function _fechCartao(doc, estilo, x, y, largura, rotulo, valor, apoio, destaque)
    o topo do bloco, a barra cobre exatamente o título (e a linha de apoio,
    quando há), e o texto fica colado nela. Devolve onde a tabela começa. */
 const _FECH_TITULO_ALT = { so: 7.2, comApoio: 11 };
-/* Margem de cima das páginas seguintes e a de baixo, onde a tabela para. */
-const _FECH_TOPO = 10, _FECH_PE = 12;
+/* As margens do fechamento, quase zeradas (24/09/2026, pedido do dono: o
+   documento é para ler em PDF). Os lados e o topo das páginas seguintes
+   ficam a 2 mm da borda, o bastante para a linha da tabela não encostar
+   nela. Embaixo, o rodapé fica com a linha do texto a 2,5 mm do pé e a
+   tabela para a 5,5 mm, logo acima dele. Os outros PDFs seguem com os
+   8 mm de `_PDF_MARGEM`. */
+const _FECH_MARGEM = 2;
+const _FECH_TOPO = 2, _FECH_PE = 5.5, _FECH_RODAPE = 2.5;
 
 function _fechTitulo(doc, estilo, texto, y, apoio) {
-    const xTexto = _PDF_MARGEM + 2.2 + 2.8;
+    const xTexto = _FECH_MARGEM + 2.2 + 2.8;
     const base = y + 3.4;                    // linha de base do título, letra 10,5
     const baseApoio = base + 3.9;            // linha de base do apoio, letra 7,5
     const fimBarra = (apoio ? baseApoio : base) + 0.7;
     doc.setFillColor(...estilo.cor);
-    doc.rect(_PDF_MARGEM, y, 2.2, fimBarra - y, "F");
+    doc.rect(_FECH_MARGEM, y, 2.2, fimBarra - y, "F");
     doc.setFont(estilo.fonte, "bold");
     doc.setFontSize(10.5);
     doc.setTextColor(...estilo.cor);
@@ -108,9 +119,9 @@ function _fechTabela(doc, estilo, opcoes) {
         bodyStyles: { fontSize: fonte },
         alternateRowStyles: { fillColor: _fechClaro(estilo.cor, 0.965) },
         styles: { font: estilo.fonte, cellPadding: folga, lineColor: [225, 225, 225], lineWidth: 0.1 },
-        // Em cima e embaixo, a margem da página e não a do autoTable (14 mm):
-        // 12 mm embaixo deixam o rodapé, que fica a 8 mm do pé, livre.
-        margin: { left: _PDF_MARGEM, right: _PDF_MARGEM, top: _FECH_TOPO, bottom: _FECH_PE },
+        // Em cima e embaixo, a margem do fechamento e não a do autoTable
+        // (14 mm): embaixo, a tabela para logo acima do rodapé.
+        margin: { left: _FECH_MARGEM, right: _FECH_MARGEM, top: _FECH_TOPO, bottom: _FECH_PE },
         didParseCell: d => {
             if (d.section === "head") {
                 const h = (alinhamentos[d.column.index] || {}).halign;
@@ -144,6 +155,78 @@ function _fechEspaco(doc, y, comApoio, linhasCabecalho) {
     if (y + precisa <= doc.internal.pageSize.height - _FECH_PE) return y;
     doc.addPage();
     return _FECH_TOPO;
+}
+
+/* A largura mínima de cada coluna para o corpo não quebrar linha: o maior
+   texto dela mais a folga da célula (e 0,4 mm de sobra, para o
+   arredondamento não quebrar o que cabe justo). A linha de TOTAL sai em
+   negrito e mede em negrito. Com `porPalavra`, o cabeçalho mede pela maior
+   palavra, porque ele pode ir para duas linhas ("Taxa" em cima de
+   "(R$/L)") e o corpo não; sem ele, mede inteiro, numa linha (24/09/2026). */
+function _fechLargurasMinimas(doc, estilo, cabecalho, linhas, fonte, porPalavra) {
+    const folga = 2 * +(fonte * 0.24).toFixed(2) + 0.4;
+    const medir = (texto, negrito) => {
+        doc.setFont(estilo.fonte, negrito ? "bold" : "normal");
+        return doc.getTextWidth(String(texto));
+    };
+    doc.setFontSize(fonte);
+    const larguras = cabecalho.map((rotulo, j) => {
+        const partes = porPalavra ? String(rotulo).split(" ") : [String(rotulo)];
+        let maior = Math.max(...partes.map(p => medir(p, true)));
+        linhas.forEach(l => { maior = Math.max(maior, medir(l[j], String(l[0]).startsWith("TOTAL"))); });
+        return maior + folga;
+    });
+    doc.setFont(estilo.fonte, "normal");
+    return larguras;
+}
+
+/* Larguras de coluna que cabem em `largura` (25/09/2026, pedido do dono:
+   o fechamento tem de se adaptar a meses com mais notas, placas e
+   empresas). As colunas de número nunca quebram linha; a coluna `flex`, a
+   do texto longo (motorista, placas, conjunto), fica com a sobra. Tenta em
+   ordem:
+     1. a letra de sempre, com o cabeçalho numa linha;
+     2. a mesma letra, com o cabeçalho podendo ir para duas;
+     3. e 4. as mesmas duas com a letra 7, a do nota a nota.
+   Fica com a primeira em que o texto longo cabe, TOLERANDO algumas linhas
+   quebradas (duas, ou 5% da tabela): um nome comprido quebra só a linha
+   dele, em vez de diminuir a letra da tabela inteira. A letra só desce
+   quando o problema é da tabela toda (três empresas espremem as placas de
+   todos os conjuntos, por exemplo). Se nenhuma tentativa ficar dentro da
+   tolerância, devolve a que quebra menos linhas; `quebras` e `tolera` vão
+   junto, para quem chama decidir. Devolve null quando nem o cabeçalho da
+   coluna `flex` cabe na sobra. Sem `flex`, todas as colunas têm de caber
+   sem quebrar, e a sobra se divide por igual. */
+function _fechEncaixar(doc, estilo, cabecalho, linhas, largura, flex, fontes) {
+    fontes = fontes || [7.5, 7];
+    const tolera = Math.max(2, Math.ceil(linhas.length * 0.05));
+    let melhor = null;
+    for (const fonte of fontes) {
+        for (const porPalavra of [false, true]) {
+            const min = _fechLargurasMinimas(doc, estilo, cabecalho, linhas, fonte, porPalavra);
+            const soma = min.reduce((s, w) => s + w, 0);
+            if (flex == null) {
+                if (soma > largura) continue;
+                const extra = (largura - soma) / min.length;
+                return { fonte, larguras: min.map(w => w + extra), quebras: 0, tolera };
+            }
+            const resto = largura - (soma - min[flex]);
+            const cabFlex = _fechLargurasMinimas(doc, estilo, [cabecalho[flex]], [], fonte, true)[0];
+            if (resto < cabFlex) continue;
+            // Quantas linhas teriam o texto longo quebrado com essa sobra.
+            const folga = 2 * +(fonte * 0.24).toFixed(2) + 0.4;
+            doc.setFontSize(fonte);
+            const quebras = linhas.filter(l => {
+                doc.setFont(estilo.fonte, String(l[0]).startsWith("TOTAL") ? "bold" : "normal");
+                return doc.getTextWidth(String(l[flex])) + folga > resto;
+            }).length;
+            doc.setFont(estilo.fonte, "normal");
+            const tentativa = { fonte, larguras: min.map((w, j) => j === flex ? resto : w), quebras, tolera };
+            if (quebras <= tolera) return tentativa;
+            if (!melhor || quebras < melhor.quebras) melhor = tentativa;
+        }
+    }
+    return melhor;
 }
 
 /** O mês inteiro calculado na abertura do modal, reaproveitado na
@@ -236,7 +319,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: "landscape" });
+    const doc = new jsPDF({ orientation: "portrait" });
 
     /* Recalcula só com as empresas escolhidas, em vez de filtrar os totais
        depois: o frete, o pagamento e a composição dos conjuntos têm de ser
@@ -282,11 +365,11 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         `${rotuloEmpresas} · gerado em ${geradoEm}`, true);
 
     // Os rótulos dos cartões são os do dono (24/09/2026).
-    const larg = (W - _PDF_MARGEM * 2 - 12) / 4;
-    _fechCartao(doc, estilo, _PDF_MARGEM,                  y, larg, "Frete do mês (Veículos)",   fmtR(d.totalFrete),     "", true);
-    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4),     y, larg, "Litros (Carregados)",       fmtL(d.totalLitros),    "");
-    _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 2, y, larg, "Frete do mês (Motoristas)", fmtR(d.totalPagamento), "");
-    y = _fechCartao(doc, estilo, _PDF_MARGEM + (larg + 4) * 3, y, larg, "Notas (Descarregadas)", String(d.totalNotas),   "") + 6;
+    const larg = (W - _FECH_MARGEM * 2 - 12) / 4;
+    _fechCartao(doc, estilo, _FECH_MARGEM,                  y, larg, "Frete do mês (Veículos)",   fmtR(d.totalFrete),     "", true);
+    _fechCartao(doc, estilo, _FECH_MARGEM + (larg + 4),     y, larg, "Litros (Carregados)",       fmtL(d.totalLitros),    "");
+    _fechCartao(doc, estilo, _FECH_MARGEM + (larg + 4) * 2, y, larg, "Frete do mês (Motoristas)", fmtR(d.totalPagamento), "");
+    y = _fechCartao(doc, estilo, _FECH_MARGEM + (larg + 4) * 3, y, larg, "Notas (Descarregadas)", String(d.totalNotas),   "") + 6;
 
     // ── Por empresa ────────────────────────────────────────────────
     y = _fechTitulo(doc, estilo, "Por empresa", y);
@@ -334,9 +417,27 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         linhaTotal.push(_fmtLitrosFrete(somaConj.litros), fmtR(somaConj.frete));
         corpo.push(linhaTotal);
 
-        const estilos = { 0: { halign: "left", cellWidth: 22 }, 1: { halign: "left", cellWidth: 58 } };
-        for (let i = 2; i < 2 + (empresas.length + 1) * 2; i++) estilos[i] = { halign: "right" };
-        y = _fechTabela(doc, estilo, { head: [cabTopo, cabBase], body: corpo, startY: y, columnStyles: estilos }) + 7;
+        // As larguras de sempre (Conjunto 22 mm, Placas 58, os números com o
+        // resto) quando o mês cabe nelas sem quebrar linha. Com mais
+        // empresas, ou nomes de conjunto compridos, os números quebravam em
+        // duas linhas ("R$" em cima do valor) em todas as linhas: aí cada
+        // coluna passa a ter a largura do conteúdo, e as Placas ficam com a
+        // sobra (25/09/2026).
+        const util = W - 2 * _FECH_MARGEM;
+        const cabColunas = ["Conjunto", "Placas", ...cabBase];
+        const min = _fechLargurasMinimas(doc, estilo, cabColunas, corpo, 7.5, false);
+        const cabeNoDeSempre = min[0] <= 22 && min[1] <= 58
+            && min.slice(2).reduce((s, w) => s + w, 0) <= util - 22 - 58;
+        const encaixe = cabeNoDeSempre ? null : _fechEncaixar(doc, estilo, cabColunas, corpo, util, 1);
+        const estilos = {};
+        if (encaixe) {
+            encaixe.larguras.forEach((w, i) => { estilos[i] = { halign: i < 2 ? "left" : "right", cellWidth: w }; });
+        } else {
+            estilos[0] = { halign: "left", cellWidth: 22 }; estilos[1] = { halign: "left", cellWidth: 58 };
+            for (let i = 2; i < cabColunas.length; i++) estilos[i] = { halign: "right" };
+        }
+        y = _fechTabela(doc, estilo, { head: [cabTopo, cabBase], body: corpo, startY: y, columnStyles: estilos,
+                                       fonte: encaixe ? encaixe.fonte : 7.5 }) + 7;
 
         // As notas que não estavam em conjunto nenhum: o total por conjunto
         // não fecha com o do mês sem esta linha, e omitir isso faria o
@@ -344,7 +445,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         const fora = d.totalFrete - somaConj.frete;
         if (Math.abs(fora) > 0.005) {
             doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
-            doc.text(`Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - somaConj.litros)} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`, _PDF_MARGEM, y);
+            doc.text(`Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - somaConj.litros)} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`, _FECH_MARGEM, y);
             doc.setTextColor(0, 0, 0);
             y += 6;
         }
@@ -370,66 +471,125 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     });
     totalMot.push(_fmtLitrosFrete(d.totalLitros), fmtR(d.totalFrete), fmtR(d.totalPagamento));
     corpoMot.push(totalMot);
-    const estMot = { 0: { halign: "left", cellWidth: 62 } };
-    for (let i = 1; i < 2 + empresas.length + 3; i++) estMot[i] = { halign: "right" };
+    // Os números com a largura do conteúdo e o nome com o resto, como no
+    // nota a nota (24/09/2026, pedido do dono). Com o nome fixo em 62 mm, da
+    // folha deitada, os nomes longos quebravam em duas linhas enquanto as
+    // colunas de número sobravam. Com três empresas ou mais, o nome da
+    // empresa no cabeçalho pode ir para duas linhas, e a letra desce para 7
+    // se ainda faltar espaço (25/09/2026).
+    const cabMot = ["Motorista", "Viagens", ...empresas, "Litros", "Frete", "A pagar"];
+    const encMot = _fechEncaixar(doc, estilo, cabMot, corpoMot, W - 2 * _FECH_MARGEM, 0);
+    const estMot = {};
+    cabMot.forEach((_, i) => {
+        estMot[i] = { halign: i === 0 ? "left" : "right",
+                      cellWidth: encMot ? encMot.larguras[i] : (i === 0 ? "auto" : "wrap") };
+    });
     y = _fechTabela(doc, estilo, {
-        head: [["Motorista", "Viagens", ...empresas, "Litros", "Frete", "A pagar"]],
-        body: corpoMot, startY: y, columnStyles: estMot
+        head: [cabMot], body: corpoMot, startY: y, columnStyles: estMot, fonte: encMot ? encMot.fonte : 7.5
     }) + 7;
 
     // ── Por placa ──────────────────────────────────────────────────
-    y = _fechEspaco(doc, y, false);
-    y = _fechTitulo(doc, estilo, "Por placa", y);
+    // Em duas metades lado a lado quando cabe (24/09/2026, pedido do dono):
+    // são seis colunas estreitas, e a tabela inteira ocupava a largura da
+    // folha com os números espalhados e a altura de uma linha por placa.
+    // As metades têm as mesmas larguras de coluna, para lerem como uma
+    // tabela só: a primeira vai até o meio da lista e a segunda termina no
+    // TOTAL. Num mês grande o total ("R$ 1.032.000,00") alarga as colunas,
+    // e a letra desce para 7 antes de desistir das metades; um nome de
+    // conjunto comprido quebra só a linha dele (25/09/2026). Se nem assim
+    // couber, com muitas linhas quebrando, ou se forem poucas placas (menos
+    // de 10, e a economia seria de poucas linhas), sai a tabela inteira,
+    // como antes.
+    const cabPlaca = ["Placa", "Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
     const corpoPlaca = d.porPlaca.map(p => [p.nome, p.conjunto || "—", p.viagens, _fmtLitrosFrete(p.litros), _fmtTaxaGrupo(p), fmtR(p.frete)]);
-    corpoPlaca.push(["TOTAL", "", d.totalNotas, _fmtLitrosFrete(d.totalLitros), "", fmtR(d.totalFrete)]);
-    y = _fechTabela(doc, estilo, {
-        head: [["Placa", "Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Frete"]],
-        body: corpoPlaca, startY: y,
-        columnStyles: { 0: { halign: "left", cellWidth: 26 }, 1: { halign: "left", cellWidth: 30 },
-                        2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } }
-    }) + 7;
+    const totalPlaca = ["TOTAL", "", d.totalNotas, _fmtLitrosFrete(d.totalLitros), "", fmtR(d.totalFrete)];
+    const alinPlaca = ["left", "left", "right", "right", "right", "right"];
+    const vao = 3;
+    const metade = (W - 2 * _FECH_MARGEM - vao) / 2;
+    const encPlaca = corpoPlaca.length >= 10
+        ? _fechEncaixar(doc, estilo, cabPlaca, [...corpoPlaca, totalPlaca], metade, 1) : null;
+    if (encPlaca && encPlaca.quebras <= encPlaca.tolera) {
+        const estilos = {};
+        encPlaca.larguras.forEach((w, j) => { estilos[j] = { halign: alinPlaca[j], cellWidth: w }; });
+        const meio = Math.ceil((corpoPlaca.length + 1) / 2);
+        const pe = { top: _FECH_TOPO, bottom: _FECH_PE };
+        y = _fechEspaco(doc, y, false, 2);
+        y = _fechTitulo(doc, estilo, "Por placa", y);
+        const pagina = doc.internal.getCurrentPageInfo().pageNumber;
+        const fimEsq = _fechTabela(doc, estilo, {
+            head: [cabPlaca], body: corpoPlaca.slice(0, meio), startY: y, columnStyles: estilos, fonte: encPlaca.fonte,
+            margin: Object.assign({ left: _FECH_MARGEM, right: W - _FECH_MARGEM - metade }, pe)
+        });
+        const pagEsq = doc.internal.getCurrentPageInfo().pageNumber;
+        // A segunda metade começa na mesma página e altura da primeira. Se
+        // precisar de página nova, o autoTable passa para a que a primeira
+        // já abriu, em vez de criar outra no fim.
+        doc.setPage(pagina);
+        const fimDir = _fechTabela(doc, estilo, {
+            head: [cabPlaca], body: [...corpoPlaca.slice(meio), totalPlaca], startY: y, columnStyles: estilos, fonte: encPlaca.fonte,
+            margin: Object.assign({ left: _FECH_MARGEM + metade + vao, right: _FECH_MARGEM }, pe)
+        });
+        const pagDir = doc.internal.getCurrentPageInfo().pageNumber;
+        // O documento continua de onde a mais comprida das duas terminou.
+        if (pagEsq > pagDir || (pagEsq === pagDir && fimEsq > fimDir)) { doc.setPage(pagEsq); y = fimEsq + 7; }
+        else y = fimDir + 7;
+    } else {
+        // Inteira: Placa e Conjunto com 26 e 30 mm, ou mais, se o nome pedir
+        // (um conjunto "SCANIA 12 / RANDON" quebrava em 30 mm).
+        const minTab = _fechLargurasMinimas(doc, estilo, cabPlaca, [...corpoPlaca, totalPlaca], 7.5, false);
+        y = _fechEspaco(doc, y, false);
+        y = _fechTitulo(doc, estilo, "Por placa", y);
+        y = _fechTabela(doc, estilo, {
+            head: [cabPlaca], body: [...corpoPlaca, totalPlaca], startY: y,
+            columnStyles: { 0: { halign: "left", cellWidth: Math.max(26, minTab[0]) }, 1: { halign: "left", cellWidth: Math.max(30, minTab[1]) },
+                            2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } }
+        }) + 7;
+    }
 
     // ── Nota a nota ────────────────────────────────────────────────
     // Das empresas escolhidas no modal, e não da ativa na tela: o PDF das
     // duas empresas saía com as notas de uma só (24/09/2026). Continua logo
     // abaixo da seção anterior quando cabe: a página própria deixava meia
     // página em branco antes dela. A base entrou a pedido do dono.
+    //
+    // Sem Emissão, Conjunto e Taxa desde 24/09/2026, para caber em retrato
+    // (pedido do dono). O conjunto e a taxa de cada placa estão em "Por
+    // placa"; a tela e as planilhas continuam com as onze colunas.
     const notas = _freteNotaANota(d.mes, [...escolhidas]);
     if (notas.length) {
         y = _fechEspaco(doc, y, true);
         y = _fechTitulo(doc, estilo, "Nota a nota", y,
             `${notas.length} nota(s) descarregada(s) em ${mesLabel}, na ordem da descarga.`);
         const corpoNotas = notas.map(n => [
-            formatarData(n.descarga), formatarData(n.emissao), n.nota, n.empresa, n.base || "",
-            n.motorista, n.placa, n.conjunto || "—",
-            _fmtLitrosFrete(n.litros), n.taxa > 0 ? fmtFreteL(n.taxa) : "—", fmtR(n.frete)
+            formatarData(n.descarga), n.nota, n.empresa, n.base || "",
+            n.motorista, n.placa, _fmtLitrosFrete(n.litros), fmtR(n.frete)
         ]);
         // A contagem na coluna do Motorista, que é a larga: na do número da
         // nota, "119 nota(s)" quebrava em duas linhas.
-        corpoNotas.push(["TOTAL", "", "", "", "", `${notas.length} nota(s)`, "", "",
-            _fmtLitrosFrete(notas.reduce((s, n) => s + n.litros, 0)), "",
+        corpoNotas.push(["TOTAL", "", "", "", `${notas.length} nota(s)`, "",
+            _fmtLitrosFrete(notas.reduce((s, n) => s + n.litros, 0)),
             fmtR(notas.reduce((s, n) => s + n.frete, 0))]);
-        // Larguras fixas, e o que sobra para o Motorista (24/09/2026). Soltas,
-        // a tabela dava 25 e 30 mm às colunas de número e 33 mm ao nome, e
-        // "CARLOS ALBERTO GONÇALVES DOS SANTOS" quebrava em duas linhas: com
-        // a Base, mais da metade das notas ocupava altura dobrada. Letra 7,
-        // a pedido do dono, e as larguras na mesma proporção dela.
-        const fonteNotas = 7;
-        const w = mm => +(mm * fonteNotas / 7.5).toFixed(1);
+        // As colunas curtas com a largura do conteúdo ("wrap": o maior texto
+        // do mês, cabeçalho incluído, sem quebrar linha) e o Motorista com o
+        // resto. Com as larguras fixas da folha deitada, em retrato o nome
+        // ficava com 46 mm e mais da metade das notas quebrava em duas
+        // linhas; medidas pelo conteúdo, sobram uns 69 mm, e o nome mais
+        // longo do teste ("RICARDO RODRIGUES GONÇALVES DOS SANTOS") pede 63.
+        // Uma base de nome maior alarga a própria coluna em vez de quebrar.
+        // Letra 7, a pedido do dono.
+        const curta = halign => ({ halign, cellWidth: "wrap" });
         _fechTabela(doc, estilo, {
-            fonte: fonteNotas,
-            head: [["Descarga", "Emissão", "Nota", "Empresa", "Base", "Motorista", "Placa", "Conjunto", "Litros", "Taxa", "Frete"]],
+            fonte: 7,
+            head: [["Descarga", "Nota", "Empresa", "Base", "Motorista", "Placa", "Litros", "Frete"]],
             body: corpoNotas, startY: y,
-            columnStyles: { 0: { halign: "left", cellWidth: w(17) }, 1: { halign: "left", cellWidth: w(17) },
-                            2: { halign: "left", cellWidth: w(17) }, 3: { halign: "left", cellWidth: w(26) },
-                            4: { halign: "left", cellWidth: w(38) }, 5: { halign: "left", cellWidth: "auto" },
-                            6: { halign: "left", cellWidth: w(17) }, 7: { halign: "left", cellWidth: w(16) },
-                            8: { halign: "right", cellWidth: w(20) }, 9: { halign: "right", cellWidth: w(14) },
-                            10: { halign: "right", cellWidth: w(24) } }
+            columnStyles: { 0: curta("left"), 1: curta("left"), 2: curta("left"), 3: curta("left"),
+                            4: { halign: "left", cellWidth: "auto" },
+                            5: curta("left"), 6: curta("right"), 7: curta("right") }
         });
     }
 
-    _pdfRodapes(doc, estilo, `Fechamento de ${mesLabel} · ${rotuloEmpresas}`);
+    _pdfRodapes(doc, estilo, `Fechamento de ${mesLabel} · ${rotuloEmpresas}`,
+        { margem: _FECH_MARGEM, distancia: _FECH_RODAPE });
     _pdfEntregar(doc, `fechamento-${d.mes}.pdf`);
     mostrarToast("Fechamento gerado.", "sucesso", 3000);
 }

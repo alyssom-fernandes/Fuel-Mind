@@ -1352,20 +1352,26 @@ function _pdfCabecalho(doc, estilo, titulo, subtitulo, compacto) {
     return alt + (compacto ? 5 : 6);
 }
 
-/** Rodapé com o texto configurado e "Página X de Y", em todas as páginas. */
-function _pdfRodapes(doc, estilo, textoEsquerda) {
+/** Rodapé com o texto configurado e "Página X de Y", em todas as páginas.
+ *  `pe` (opcional): `margem` dos lados e `distancia` da linha do texto até o
+ *  pé da folha. Sem ele, 8 mm e 8 mm, como sempre foi. O fechamento, que
+ *  é feito para ler em PDF e não para imprimir, usa quase sem margem
+ *  (24/09/2026, pedido do dono). */
+function _pdfRodapes(doc, estilo, textoEsquerda, pe) {
     const W = doc.internal.pageSize.width, H = doc.internal.pageSize.height;
+    const margem = (pe && pe.margem != null) ? pe.margem : _PDF_MARGEM;
+    const linha = H - ((pe && pe.distancia != null) ? pe.distancia : 8);
     const total = doc.internal.getNumberOfPages();
     for (let p = 1; p <= total; p++) {
         doc.setPage(p);
         /* A marca abre o rodapé de TODAS as páginas, e não o cabeçalho da
            primeira: quem recebe uma folha solta de um fechamento de quatro
            páginas continua sabendo de onde ela veio. */
-        const fimMarca = _pdfMarca(doc, _PDF_MARGEM, H - 8, 7);
+        const fimMarca = _pdfMarca(doc, margem, linha, 7);
         doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
         const esquerda = [textoEsquerda, estilo.cfg.rodapeTexto].filter(Boolean).join("  ·  ");
-        if (esquerda) doc.text("·  " + esquerda, fimMarca + 3, H - 8);
-        doc.text(`Página ${p} de ${total}`, W - _PDF_MARGEM, H - 8, { align: "right" });
+        if (esquerda) doc.text("·  " + esquerda, fimMarca + 3, linha);
+        doc.text(`Página ${p} de ${total}`, W - margem, linha, { align: "right" });
     }
 }
 
