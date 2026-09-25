@@ -1356,7 +1356,8 @@ function _pdfCabecalho(doc, estilo, titulo, subtitulo, compacto) {
  *  `pe` (opcional): `margem` dos lados e `distancia` da linha do texto até o
  *  pé da folha. Sem ele, 8 mm e 8 mm, como sempre foi. O fechamento, que
  *  é feito para ler em PDF e não para imprimir, usa quase sem margem
- *  (24/09/2026, pedido do dono). */
+ *  (24/09/2026, pedido do dono). `pe.direita` vai antes do número da
+ *  página: o fechamento põe ali quando foi gerado (25/09/2026). */
 function _pdfRodapes(doc, estilo, textoEsquerda, pe) {
     const W = doc.internal.pageSize.width, H = doc.internal.pageSize.height;
     const margem = (pe && pe.margem != null) ? pe.margem : _PDF_MARGEM;
@@ -1369,9 +1370,17 @@ function _pdfRodapes(doc, estilo, textoEsquerda, pe) {
            páginas continua sabendo de onde ela veio. */
         const fimMarca = _pdfMarca(doc, margem, linha, 7);
         doc.setFont(estilo.fonte, "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120);
-        const esquerda = [textoEsquerda, estilo.cfg.rodapeTexto].filter(Boolean).join("  ·  ");
+        const direita = [pe && pe.direita, `Página ${p} de ${total}`].filter(Boolean).join("  ·  ");
+        doc.text(direita, W - margem, linha, { align: "right" });
+        // O da esquerda encurta com reticências se fosse encostar no da
+        // direita (muitas empresas no mesmo documento, por exemplo).
+        const limite = W - margem - doc.getTextWidth(direita) - 4 - (fimMarca + 3);
+        let esquerda = [textoEsquerda, estilo.cfg.rodapeTexto].filter(Boolean).join("  ·  ");
+        if (esquerda && doc.getTextWidth("·  " + esquerda) > limite) {
+            while (esquerda.length > 1 && doc.getTextWidth("·  " + esquerda + "…") > limite) esquerda = esquerda.slice(0, -1);
+            esquerda = esquerda.trimEnd() + "…";
+        }
         if (esquerda) doc.text("·  " + esquerda, fimMarca + 3, linha);
-        doc.text(`Página ${p} de ${total}`, W - margem, linha, { align: "right" });
     }
 }
 

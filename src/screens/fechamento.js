@@ -358,15 +358,26 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         ? (empresas.join(" · ") || "Todas as empresas")
         : `Somente ${empresas.join(" · ")}`;
     // Com a hora: no mesmo dia pode sair mais de uma versão, e a hora diz
-    // qual é a última (pedido do dono, 24/09/2026).
+    // qual é a última (pedido do dono, 24/09/2026). Desde 25/09/2026 ela
+    // sai no rodapé de todas as páginas, e não no título: uma folha solta
+    // continua dizendo de quando é.
     const agora = new Date();
     const geradoEm = `${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-    let y = _pdfCabecalho(doc, estilo, `Fechamento de frete - ${mesLabel}`,
-        `${rotuloEmpresas} · gerado em ${geradoEm}`, true);
+    /* ALUGUEL, e não frete, no que se paga pelos veículos (25/09/2026,
+       pedido do dono): o contrato com a locadora é de LOCAÇÃO de veículos,
+       sem condutor, cobrada por litro transportado, e as planilhas dele já
+       diziam aluguel. A troca é só neste documento, que vai para fora; a
+       tela de Fretes e o resto do sistema seguem com "frete". O que vai
+       para os motoristas continua "Frete do mês (Motoristas)" no cartão e
+       "A pagar" nas tabelas, como na tela, para o mesmo valor não ter dois
+       nomes; na tabela por empresa, onde os dois aparecem lado a lado, os
+       parênteses dizem de quem é cada um. */
+    let y = _pdfCabecalho(doc, estilo, `Fechamento de Aluguel de Veículos e Frete - ${mesLabel}`,
+        rotuloEmpresas, true);
 
-    // Os rótulos dos cartões são os do dono (24/09/2026).
+    // Os rótulos dos cartões são os do dono (24 e 25/09/2026).
     const larg = (W - _FECH_MARGEM * 2 - 12) / 4;
-    _fechCartao(doc, estilo, _FECH_MARGEM,                  y, larg, "Frete do mês (Veículos)",   fmtR(d.totalFrete),     "", true);
+    _fechCartao(doc, estilo, _FECH_MARGEM,                  y, larg, "Aluguel do mês (Veículos)", fmtR(d.totalFrete),     "", true);
     _fechCartao(doc, estilo, _FECH_MARGEM + (larg + 4),     y, larg, "Litros (Carregados)",       fmtL(d.totalLitros),    "");
     _fechCartao(doc, estilo, _FECH_MARGEM + (larg + 4) * 2, y, larg, "Frete do mês (Motoristas)", fmtR(d.totalPagamento), "");
     y = _fechCartao(doc, estilo, _FECH_MARGEM + (larg + 4) * 3, y, larg, "Notas (Descarregadas)", String(d.totalNotas),   "") + 6;
@@ -378,24 +389,25 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     ]);
     corpoEmpresas.push(["TOTAL", d.totalNotas, _fmtLitrosFrete(d.totalLitros), "", fmtR(d.totalFrete), fmtR(d.totalPagamento)]);
     y = _fechTabela(doc, estilo, {
-        head: [["Empresa", "Notas", "Litros", "Taxa (R$/L)", "Frete", "A pagar"]],
+        head: [["Empresa", "Notas", "Litros", "Taxa (R$/L)", "Aluguel (Veículos)", "A pagar (Motoristas)"]],
         body: corpoEmpresas, startY: y,
         columnStyles: { 0: { halign: "left", cellWidth: 70 }, 1: { halign: "right" }, 2: { halign: "right" },
                         3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } }
     }) + 7;
 
     // ── Por conjunto: o coração do fechamento ──────────────────────
-    // Uma coluna de litros e uma de frete POR EMPRESA, que é como o dono
-    // entrega hoje, mais o total do conjunto.
+    // Uma coluna de litros e uma de aluguel POR EMPRESA, que é como o dono
+    // entrega hoje, mais o total do conjunto. Sem a linha de apoio desde
+    // 25/09/2026 (pedido do dono), como as outras seções: o que ela dizia
+    // (volume e aluguel por empresa) o cabeçalho já mostra.
     if (d.porConjunto.length) {
-        y = _fechEspaco(doc, y, true, 2);
-        y = _fechTitulo(doc, estilo, "Por conjunto", y,
-            "Cavalo e reboques que rodaram juntos na data da descarga. Volume e frete separados por empresa.");
+        y = _fechEspaco(doc, y, false, 2);
+        y = _fechTitulo(doc, estilo, "Por conjunto", y);
         const cabTopo = [{ content: "Conjunto", rowSpan: 2 }, { content: "Placas", rowSpan: 2 }];
         const cabBase = [];
-        empresas.forEach(nome => { cabTopo.push({ content: nome, colSpan: 2, styles: { halign: "center", __proprio: true } }); cabBase.push("Litros", "Frete"); });
+        empresas.forEach(nome => { cabTopo.push({ content: nome, colSpan: 2, styles: { halign: "center", __proprio: true } }); cabBase.push("Litros", "Aluguel"); });
         cabTopo.push({ content: "Total", colSpan: 2, styles: { halign: "center", __proprio: true } });
-        cabBase.push("Litros", "Frete");
+        cabBase.push("Litros", "Aluguel");
 
         const corpo = d.porConjunto.map(c => {
             const linha = [c.nome, (c.placas || []).join(" · ")];
@@ -452,15 +464,19 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     }
 
     // ── Por motorista, com o que cada um recebe ────────────────────
-    y = _fechEspaco(doc, y, true);
-    y = _fechTitulo(doc, estilo, "Por motorista", y, "A coluna 'A pagar' é o percentual do frete definido em cada empresa.");
+    // Sem a coluna do aluguel desde 25/09/2026 (pedido do dono): o foco
+    // aqui é o motorista, e o aluguel já está nas outras tabelas. Sem a
+    // linha de apoio também: a proporção entre o aluguel e o "A pagar" se
+    // vê lado a lado na tabela por empresa.
+    y = _fechEspaco(doc, y, false);
+    y = _fechTitulo(doc, estilo, "Por motorista", y);
     const corpoMot = d.porMotorista.map(m => {
         const linha = [m.nome, m.viagens];
         empresas.forEach(nome => {
             const e = (m.porEmpresa || {})[nome];
             linha.push(e ? _fmtLitrosFrete(e.litros) : "—");
         });
-        linha.push(_fmtLitrosFrete(m.litros), fmtR(m.frete), fmtR(m.pagamento || 0));
+        linha.push(_fmtLitrosFrete(m.litros), fmtR(m.pagamento || 0));
         return linha;
     });
     const totalMot = ["TOTAL", d.totalNotas];
@@ -469,7 +485,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         d.porMotorista.forEach(m => { const e = (m.porEmpresa || {})[nome]; if (e) l += e.litros; });
         totalMot.push(_fmtLitrosFrete(l));
     });
-    totalMot.push(_fmtLitrosFrete(d.totalLitros), fmtR(d.totalFrete), fmtR(d.totalPagamento));
+    totalMot.push(_fmtLitrosFrete(d.totalLitros), fmtR(d.totalPagamento));
     corpoMot.push(totalMot);
     // Os números com a largura do conteúdo e o nome com o resto, como no
     // nota a nota (24/09/2026, pedido do dono). Com o nome fixo em 62 mm, da
@@ -477,7 +493,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     // colunas de número sobravam. Com três empresas ou mais, o nome da
     // empresa no cabeçalho pode ir para duas linhas, e a letra desce para 7
     // se ainda faltar espaço (25/09/2026).
-    const cabMot = ["Motorista", "Viagens", ...empresas, "Litros", "Frete", "A pagar"];
+    const cabMot = ["Motorista", "Viagens", ...empresas, "Litros", "A pagar"];
     const encMot = _fechEncaixar(doc, estilo, cabMot, corpoMot, W - 2 * _FECH_MARGEM, 0);
     const estMot = {};
     cabMot.forEach((_, i) => {
@@ -500,7 +516,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     // couber, com muitas linhas quebrando, ou se forem poucas placas (menos
     // de 10, e a economia seria de poucas linhas), sai a tabela inteira,
     // como antes.
-    const cabPlaca = ["Placa", "Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
+    const cabPlaca = ["Placa", "Conjunto", "Viagens", "Litros", "Taxa (R$/L)", "Aluguel"];
     const corpoPlaca = d.porPlaca.map(p => [p.nome, p.conjunto || "—", p.viagens, _fmtLitrosFrete(p.litros), _fmtTaxaGrupo(p), fmtR(p.frete)]);
     const totalPlaca = ["TOTAL", "", d.totalNotas, _fmtLitrosFrete(d.totalLitros), "", fmtR(d.totalFrete)];
     const alinPlaca = ["left", "left", "right", "right", "right", "right"];
@@ -557,9 +573,10 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     // placa"; a tela e as planilhas continuam com as onze colunas.
     const notas = _freteNotaANota(d.mes, [...escolhidas]);
     if (notas.length) {
-        y = _fechEspaco(doc, y, true);
-        y = _fechTitulo(doc, estilo, "Nota a nota", y,
-            `${notas.length} nota(s) descarregada(s) em ${mesLabel}, na ordem da descarga.`);
+        // Sem a linha de apoio desde 25/09/2026 (pedido do dono): a contagem
+        // está no cartão e no TOTAL, e a ordem se vê na coluna Descarga.
+        y = _fechEspaco(doc, y, false);
+        y = _fechTitulo(doc, estilo, "Nota a nota", y);
         const corpoNotas = notas.map(n => [
             formatarData(n.descarga), n.nota, n.empresa, n.base || "",
             n.motorista, n.placa, _fmtLitrosFrete(n.litros), fmtR(n.frete)
@@ -580,7 +597,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         const curta = halign => ({ halign, cellWidth: "wrap" });
         _fechTabela(doc, estilo, {
             fonte: 7,
-            head: [["Descarga", "Nota", "Empresa", "Base", "Motorista", "Placa", "Litros", "Frete"]],
+            head: [["Descarga", "Nota", "Empresa", "Base", "Motorista", "Placa", "Litros", "Aluguel"]],
             body: corpoNotas, startY: y,
             columnStyles: { 0: curta("left"), 1: curta("left"), 2: curta("left"), 3: curta("left"),
                             4: { halign: "left", cellWidth: "auto" },
@@ -589,7 +606,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
     }
 
     _pdfRodapes(doc, estilo, `Fechamento de ${mesLabel} · ${rotuloEmpresas}`,
-        { margem: _FECH_MARGEM, distancia: _FECH_RODAPE });
+        { margem: _FECH_MARGEM, distancia: _FECH_RODAPE, direita: `Gerado em ${geradoEm}` });
     _pdfEntregar(doc, `fechamento-${d.mes}.pdf`);
     mostrarToast("Fechamento gerado.", "sucesso", 3000);
 }
