@@ -785,10 +785,11 @@ async function executarCorrecaoMassa() {
 
 /* ========================================
    CONFIGURAÇÕES DE PDF: EXPANDIDO
-   Campos: titulo, logo (base64), orientacao, fonte,
-           corDestaque, margemEsq, margemDir, margemTopo, margemRodape,
-           mostrarBase, mostrarEmpresa, mostrarMotorista, mostrarPlaca,
-           quebrarPorMes, rodapeTexto
+   Campos lidos: mostrarBase, mostrarEmpresa, mostrarMotorista,
+           mostrarPlaca e quebrarPorMes. Título, logo, fonte, cor,
+           margens e rodapé saíram em 21/09/2026, e a orientação em
+           25/09/2026: todos os PDFs são em pé, no padrão do fechamento.
+           O que já estava gravado fica no documento sem ser lido.
 ======================================== */
 
 /* A logo no PDF saiu em 21/09/2026, a pedido do dono. Com ela saíram
@@ -801,7 +802,6 @@ async function salvarConfigPDF() {
     if (!exigirPapel("admin", "Salvar as configurações de PDF")) return;
     db.configRelatorio = Object.assign({}, db.configRelatorio || {});
 
-    db.configRelatorio.orientacao       = document.getElementById('pdfOrientacao')?.value || 'landscape';
     db.configRelatorio.mostrarBase      = document.getElementById('pdfMostrarBase')?.checked ?? true;
     db.configRelatorio.mostrarEmpresa   = document.getElementById('pdfMostrarEmpresa')?.checked ?? true;
     db.configRelatorio.mostrarMotorista = document.getElementById('pdfMostrarMotorista')?.checked ?? true;
@@ -813,7 +813,6 @@ async function salvarConfigPDF() {
 
 function carregarConfiguracoesTela() {
     const cfg = Object.assign({
-        orientacao: "landscape",
         mostrarBase: true, mostrarEmpresa: true, mostrarMotorista: true, mostrarPlaca: true,
         quebrarPorMes: false
     }, db.configRelatorio || {});
@@ -825,7 +824,6 @@ function carregarConfiguracoesTela() {
         else el.value = val;
     };
 
-    f('pdfOrientacao',       cfg.orientacao);
     f('pdfMostrarBase',      cfg.mostrarBase);
     f('pdfMostrarEmpresa',   cfg.mostrarEmpresa);
     f('pdfMostrarMotorista', cfg.mostrarMotorista);

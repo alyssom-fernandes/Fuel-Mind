@@ -865,6 +865,17 @@ function exportarFechamentoDoMes() {
 }
 
 // ========== EXPORTAÇÃO PDF ==========
+/* O resumo de fretes do mês, no padrão do fechamento desde 25/09/2026
+   (pedido do dono: "o mesmo padrão de design do fechamento aplicado em
+   todos os relatórios do site"): folha em pé, faixa compacta, cartões com
+   os totais, tabelas com a linha de TOTAL e a data de geração no rodapé de
+   todas as páginas. As seções na ordem do fechamento: empresa, conjunto,
+   motorista e placa.
+
+   Aqui o valor dos veículos continua "frete", como na tela: "aluguel" é
+   só no fechamento, que vai para fora (decisão do dono, 25/09/2026). O que
+   vai para os motoristas é "A pagar", no cartão e na tabela, para não
+   haver dois "frete" lado a lado. */
 function exportarFretesPDF() {
     if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFretesPDF())) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
@@ -873,100 +884,115 @@ function exportarFretesPDF() {
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: "portrait" });
     const d = dadosFretesAtual;
-    const mesLabel = nomeMes(d.mes);
-    // Mesma faixa, cor, logo e numeração de página dos outros PDFs
-    // (18/09/2026). Antes este saía com texto solto e cor fixa.
-    const estilo = typeof _pdfEstilo === "function" ? _pdfEstilo() : null;
-    const cor = estilo ? estilo.cor : [26, 58, 92];
-    let yCab = 28;
-    if (estilo) {
-        yCab = _pdfCabecalho(doc, estilo, `Resumo de fretes de ${mesLabel}`,
-            `${empresaFiltroGlobal || "Todas as empresas"} · pela data da descarga · gerado em ${new Date().toLocaleDateString("pt-BR")}`);
-    }
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Notas: ${d.totalNotas}  |  Litros (carga): ${fmtL3(d.totalLitros)}  |  Frete total: ${fmtR(d.totalFrete)}`, _PDF_MARGEM, yCab);
+    const mesLabel = _pdfMesAno(d.mes);
+    const estilo = _pdfEstilo();
+    const W = doc.internal.pageSize.width;
+    const empresaTxt = empresaFiltroGlobal || "Todas as empresas";
+    let y = _pdfCabecalho(doc, estilo, `Resumo de fretes - ${mesLabel}`, `${empresaTxt} · pela data da descarga`, true);
 
-    const cabecalho = ["Nome", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
-    // Só a tabela de motoristas tem a coluna do pagamento: ela é a folha que
-    // vai virar pagamento, e repetir o número nas outras três só somaria
-    // ruído a uma página que já é densa (22/09/2026).
-    const cabecalhoMotorista = [...cabecalho, "A pagar"];
+    // Os totais do mês nos cartões. Eram uma linha de texto ("Notas: 33 |
+    // Litros (carga): 617.000,000 L | ..."), com os litros em três casas.
+    y = _pdfCartoes(doc, estilo, y, [
+        { rotulo: "Frete do mês (Veículos)", valor: fmtR(d.totalFrete), destaque: true },
+        // O cartão arredonda os litros, como no fechamento; as tabelas
+        // trazem as casas quando há fração.
+        { rotulo: "Litros (Carregados)",     valor: fmtL(d.totalLitros) },
+        { rotulo: "A pagar (Motoristas)",    valor: fmtR(d.totalPagamento || 0) },
+        { rotulo: "Notas (Descarregadas)",   valor: String(d.totalNotas) }
+    ]) + 6;
 
-    // Números em português ("158.500 L", "R$ 42.140,00"): com `toFixed` o
-    // PDF saía "158500.000" e "R$ 42140.00". E as sublinhas usam "·": o
-    // "↳" não existe na fonte padrão do PDF e virava lixo (18/09/2026).
-    const sub = { fontSize: 7.5, textColor: [90, 90, 90] };
-    const montarCorpo = (lista, comPagamento = false) => {
+    /* A linha de cada grupo com fundo claro e o nome e o frete em negrito;
+       embaixo dela, sem fundo e em cinza, o detalhe (as placas do conjunto
+       e os litros por combustível). As sublinhas usam "·": o "↳" não existe
+       na fonte padrão do PDF e virava lixo (18/09/2026). */
+    const principal = { fillColor: _pdfClaro(estilo.cor, 0.965) };
+    const forte = Object.assign({ fontStyle: "bold" }, principal);
+    const branco = { fillColor: [255, 255, 255] };
+    const sub = { fontSize: 7, textColor: [110, 110, 110], fillColor: [255, 255, 255] };
+    const cel = (content, styles) => ({ content, styles });
+    const traco = v => v > 0 ? fmtR(v) : "—";
+
+    const linhasDetalhe = (item, recuo, comPagamento) => Object.entries(item.detalhes || {}).map(([tipo, det]) => {
+        const l = [cel(`${recuo}· ${tipo}`, sub), cel("", sub), cel(_fmtLitrosFrete(det.litros), sub), cel("", sub), cel(traco(det.frete), sub)];
+        if (comPagamento) l.push(cel(traco(det.pagamento), sub));
+        return l;
+    });
+    const linhaTotal = (lista, comPagamento) => {
+        const soma = campo => lista.reduce((s, i) => s + (i[campo] || 0), 0);
+        const l = ["TOTAL", soma("viagens"), _fmtLitrosFrete(soma("litros")), "", fmtR(soma("frete"))];
+        if (comPagamento) l.push(fmtR(soma("pagamento")));
+        return l;
+    };
+    const montarCorpo = (lista, comPagamento) => {
         const rows = [];
         lista.forEach(item => {
-            const linha = [{ content: item.nome, styles: { fontStyle: "bold" } }, item.viagens, _fmtLitrosFrete(item.litros), _taxaGrupoMoeda(item), { content: fmtR(item.frete), styles: { fontStyle: "bold" } }];
-            if (comPagamento) linha.push(item.pagamento > 0 ? fmtR(item.pagamento) : "—");
-            rows.push(linha);
-            Object.entries(item.detalhes).forEach(([tipo, det]) => {
-                const sublinha = [
-                    { content: `   · ${tipo}`, styles: sub }, "",
-                    { content: _fmtLitrosFrete(det.litros), styles: sub },
-                    "",
-                    { content: det.frete > 0 ? fmtR(det.frete) : "—", styles: sub }
-                ];
-                if (comPagamento) sublinha.push({ content: det.pagamento > 0 ? fmtR(det.pagamento) : "—", styles: sub });
-                rows.push(sublinha);
-            });
+            const l = [cel(item.nome, forte), cel(item.viagens, principal), cel(_fmtLitrosFrete(item.litros), principal),
+                       cel(_taxaGrupoMoeda(item), principal), cel(fmtR(item.frete), forte)];
+            if (comPagamento) l.push(cel(traco(item.pagamento), principal));
+            rows.push(l, ...linhasDetalhe(item, "   ", comPagamento));
         });
+        if (lista.length) rows.push(linhaTotal(lista, comPagamento));
         return rows;
     };
-
-    const montarCorpoConjuntos = (lista) => {
+    const montarCorpoConjuntos = lista => {
         const rows = [];
         lista.forEach(c => {
-            rows.push([{ content: c.nome, styles: { fontStyle: "bold" } }, c.viagens, _fmtLitrosFrete(c.litros), _taxaGrupoMoeda(c), { content: fmtR(c.frete), styles: { fontStyle: "bold" } }]);
-            Object.entries(c.porPlacaInterna).forEach(([placa, det]) => {
-                rows.push([`   ${placa}`, det.viagens, _fmtLitrosFrete(det.litros), "", det.frete > 0 ? fmtR(det.frete) : "—"]);
+            rows.push([cel(c.nome, forte), cel(c.viagens, principal), cel(_fmtLitrosFrete(c.litros), principal),
+                       cel(_taxaGrupoMoeda(c), principal), cel(fmtR(c.frete), forte)]);
+            Object.entries(c.porPlacaInterna || {}).forEach(([placa, det]) => {
+                rows.push([cel(`   ${placa}`, branco), cel(det.viagens, branco), cel(_fmtLitrosFrete(det.litros), branco),
+                           cel("", branco), cel(traco(det.frete), branco)]);
             });
-            Object.entries(c.detalhes).forEach(([tipo, det]) => {
-                rows.push([{ content: `      · ${tipo}`, styles: sub }, "", { content: _fmtLitrosFrete(det.litros), styles: sub }, "", { content: det.frete > 0 ? fmtR(det.frete) : "—", styles: sub }]);
-            });
+            rows.push(...linhasDetalhe(c, "      ", false));
         });
+        if (lista.length) rows.push(linhaTotal(lista, false));
         return rows;
     };
 
-    let startY = yCab + 4;
-
     const secoes = [
-        { titulo: "Por conjunto",   corpo: montarCorpoConjuntos(d.porConjunto) },
-        { titulo: "Por placa",      corpo: montarCorpo(d.porPlaca) },
-        { titulo: "Por motorista",  corpo: montarCorpo(d.porMotorista, true), cabecalho: cabecalhoMotorista },
-        { titulo: "Por empresa",    corpo: montarCorpo(d.porEmpresa) }
-    ];
+        { titulo: "Por empresa",   rotulo: "Empresa",   corpo: montarCorpo(d.porEmpresa, false) },
+        { titulo: "Por conjunto",  rotulo: "Conjunto",  corpo: montarCorpoConjuntos(d.porConjunto), conjuntos: true },
+        { titulo: "Por motorista", rotulo: "Motorista", corpo: montarCorpo(d.porMotorista, true), comPagamento: true },
+        { titulo: "Por placa",     rotulo: "Placa",     corpo: montarCorpo(d.porPlaca, false) }
+    ].filter(s => s.corpo.length);
+
+    /* As colunas de número com a largura do conteúdo e o nome com a sobra,
+       medidas juntas nas tabelas de cinco colunas: assim elas ficam
+       alinhadas umas com as outras na página. A de motoristas, que tem o
+       "A pagar", mede à parte. */
+    const util = W - 2 * _PDF_MARGEM;
+    const cab5 = ["Motorista", "Viagens", "Litros", "Taxa (R$/L)", "Frete"];
+    const cab6 = [...cab5, "A pagar"];
+    const enc5 = _pdfEncaixar(doc, estilo, cab5, secoes.filter(s => !s.comPagamento).flatMap(s => s.corpo), util, 0);
+    const enc6 = _pdfEncaixar(doc, estilo, cab6, secoes.filter(s => s.comPagamento).flatMap(s => s.corpo), util, 0);
 
     secoes.forEach(s => {
-        if (!s.corpo || s.corpo.length === 0) return;
-        doc.setFontSize(11);
-        doc.setTextColor(...cor);
-        doc.text(s.titulo, _PDF_MARGEM, startY + 4);
-
-        doc.autoTable({
-            head: [s.cabecalho || cabecalho],
-            body: s.corpo,
-            startY: startY + 7,
-            theme: "grid",
-            headStyles: { fillColor: cor },
-            margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
-            styles: { fontSize: 8 },
-            // Larguras fixas nas colunas de número: as quatro tabelas ficam
-            // alinhadas umas com as outras na página.
-            columnStyles: { 1: { halign: "right", cellWidth: 20 }, 2: { halign: "right", cellWidth: 32 }, 3: { halign: "right", cellWidth: 28 }, 4: { halign: "right", cellWidth: 34 }, 5: { halign: "right", cellWidth: 26 } },
-            didParseCell: function(data) { if (data.section === "head" && data.column.index >= 1) data.cell.styles.halign = "right"; },
-            didDrawPage: function(data) { data.settings.margin.top = 10; }
+        const enc = s.comPagamento ? enc6 : enc5;
+        const cab = [s.rotulo, ...(s.comPagamento ? cab6 : cab5).slice(1)];
+        const estilos = {};
+        cab.forEach((_, i) => {
+            estilos[i] = { halign: i === 0 ? "left" : "right",
+                           cellWidth: enc ? enc.larguras[i] : (i === 0 ? "auto" : "wrap") };
         });
+        y = _pdfEspaco(doc, y, false);
+        y = _pdfTitulo(doc, estilo, s.titulo, y);
+        y = _pdfTabela(doc, estilo, { head: [cab], body: s.corpo, startY: y, columnStyles: estilos,
+                                      fonte: enc ? enc.fonte : 7.5 }) + 7;
 
-        startY = doc.lastAutoTable.finalY + 10;
+        // As notas que não estavam em conjunto nenhum, como no fechamento:
+        // sem esta linha o total por conjunto não fecha com o do mês.
+        if (s.conjuntos) {
+            const soma = campo => d.porConjunto.reduce((t, c) => t + (c[campo] || 0), 0);
+            const fora = d.totalFrete - soma("frete");
+            if (Math.abs(fora) > 0.005) {
+                y = _pdfNota(doc, estilo, `Fora de conjunto: ${_fmtLitrosFrete(d.totalLitros - soma("litros"))} e ${fmtR(fora)} de placas que não estavam em nenhum conjunto na data da descarga.`, y);
+            }
+        }
     });
 
-    if (estilo) _pdfRodapes(doc, estilo, `Fretes de ${mesLabel}`);
+    _pdfRodapes(doc, estilo, `Resumo de fretes de ${mesLabel} · ${empresaTxt}`, { direita: `Gerado em ${_pdfGeradoEm()}` });
     _pdfEntregar(doc, `fretes-${d.mes}.pdf`);
 }
 

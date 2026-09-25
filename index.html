@@ -775,19 +775,10 @@
       </div>
 
       <div class="campo mb-4">
-        <label>Página</label>
+        <label>Meses</label>
         <div class="form-linha form-linha--opcoes">
-          <label><input type="checkbox" id="pdfQuebrarPorMes"> Quebrar página por mês</label>
+          <label><input type="checkbox" id="pdfQuebrarPorMes"> Separar por mês, com o total de cada um</label>
         </div>
-      </div>
-
-      <div class="campo mb-4">
-        <label for="pdfOrientacao">Orientação</label>
-        <select id="pdfOrientacao">
-          <option value="landscape" selected>Paisagem</option>
-          <option value="portrait">Retrato</option>
-        </select>
-        <span class="dica dica--nota">Paisagem cabe mais colunas.</span>
       </div>
 
       <button class="btn-secundario" data-papel="admin" onclick="salvarConfigPDF()">Salvar configurações de PDF</button>
@@ -1105,6 +1096,7 @@
 <script src="src/shared/rascunho.js"></script>
 <script src="src/shared/validacao.js"></script>
 <script src="src/screens/lancamentos.js"></script>
+<script src="src/shared/pdf-padrao.js"></script>
 <script src="src/screens/relatorios.js"></script>
 <script src="src/screens/analitico.js"></script>
 <script src="src/screens/dashboard.js"></script>

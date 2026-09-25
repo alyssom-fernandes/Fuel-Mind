@@ -947,8 +947,9 @@ function exportarExcel(contexto) {
    os três pegam a mesma cor, a mesma logo e o mesmo rodapé daqui. */
 /* Cor, fonte e título do PDF deixaram de ser configuráveis em 21/09/2026,
    a pedido do dono: a aparência do documento passa a ser uma só. O que
-   continua configurável em Sistema são as COLUNAS e a orientação. Sem
-   logo, a faixa do cabeçalho é a variante centrada. */
+   continua configurável em Sistema são as COLUNAS do PDF de entradas (a
+   orientação saiu em 25/09/2026: todos os PDFs são em pé, no padrão do
+   fechamento). Sem logo, a faixa do cabeçalho é a variante centrada. */
 /* A COR DA FAIXA DOS PDFS: vinho fechado, e não o vermelho da tela
    (22/09/2026, segunda revisão).
 
@@ -965,17 +966,8 @@ function exportarExcel(contexto) {
 const _PDF_COR   = [92, 22, 32];     // #5c1620, vinho fechado
 const _PDF_FONTE = "helvetica";
 
-/* A MARGEM LATERAL DOS QUATRO PDFS, em milímetros.
-
-   Era 14 e passou a 8, escolha do dono, para caber mais conteúdo na
-   página. Em A4 retrato isso leva a área útil de 182 para 194 mm, e em
-   paisagem de 269 para 281: o fechamento, que é paisagem e chega a oito
-   colunas quando duas empresas entram, é quem mais ganha.
-
-   8 mm ainda fica acima dos cerca de 5 mm que a maioria das impressoras
-   não alcança. Estava num número solto em quatro arquivos; agora é uma
-   constante, para os quatro documentos não divergirem. */
-const _PDF_MARGEM = 8;
+/* A margem dos PDFs (`_PDF_MARGEM` e as de cima e de baixo) está em
+   src/shared/pdf-padrao.js desde 25/09/2026, com o resto do padrão. */
 /* ── A MARCA NO RODAPÉ, E NÃO UMA LOGO NO CABEÇALHO (22/09/2026) ───
    A logo do Fuel Mind saiu dos PDFs. Ela era SVG, o jsPDF só aceita
    bitmap, e por isso havia aqui um canvas que a rasterizava, um cache
@@ -1337,7 +1329,7 @@ function _pdfEstilo() {
 /** Faixa de cabeçalho com logo, título e subtítulo. Devolve o Y livre. */
 /* `compacto` (24/09/2026, pedido do dono para o fechamento): a faixa com
    a mesma folga em cima e embaixo do texto, sem o espaço vazio acima do
-   título. Os outros PDFs seguem com a faixa de 22 mm. */
+   título. Desde 25/09/2026 os quatro PDFs usam a compacta. */
 function _pdfCabecalho(doc, estilo, titulo, subtitulo, compacto) {
     const W = doc.internal.pageSize.width;
     const alt = compacto ? 16 : 22;
@@ -1354,14 +1346,14 @@ function _pdfCabecalho(doc, estilo, titulo, subtitulo, compacto) {
 
 /** Rodapé com o texto configurado e "Página X de Y", em todas as páginas.
  *  `pe` (opcional): `margem` dos lados e `distancia` da linha do texto até o
- *  pé da folha. Sem ele, 8 mm e 8 mm, como sempre foi. O fechamento, que
- *  é feito para ler em PDF e não para imprimir, usa quase sem margem
- *  (24/09/2026, pedido do dono). `pe.direita` vai antes do número da
- *  página: o fechamento põe ali quando foi gerado (25/09/2026). */
+ *  pé da folha; sem eles, as do padrão (src/shared/pdf-padrao.js), quase
+ *  sem margem, porque os PDFs são feitos para ler na tela (24/09/2026,
+ *  pedido do dono). `pe.direita` vai antes do número da página: todos os
+ *  PDFs põem ali quando foram gerados (25/09/2026). */
 function _pdfRodapes(doc, estilo, textoEsquerda, pe) {
     const W = doc.internal.pageSize.width, H = doc.internal.pageSize.height;
     const margem = (pe && pe.margem != null) ? pe.margem : _PDF_MARGEM;
-    const linha = H - ((pe && pe.distancia != null) ? pe.distancia : 8);
+    const linha = H - ((pe && pe.distancia != null) ? pe.distancia : _PDF_RODAPE);
     const total = doc.internal.getNumberOfPages();
     for (let p = 1; p <= total; p++) {
         doc.setPage(p);
@@ -1384,16 +1376,18 @@ function _pdfRodapes(doc, estilo, textoEsquerda, pe) {
     }
 }
 
-// ========== PDF EXPANDIDO ==========
+// ========== PDF DE ENTRADAS ==========
 /**
- * Exporta os dados filtrados para PDF usando jsPDF + autoTable.
- * Configurações visuais lidas de `db.configRelatorio` (margens, fonte,
- * cor de destaque, logo por empresa, quebra por mês, etc.).
+ * Exporta para PDF os lançamentos filtrados na tela de Relatórios, no
+ * padrão do fechamento (25/09/2026, pedido do dono: "o mesmo padrão de
+ * design do fechamento aplicado em todos os relatórios do site"): folha em
+ * pé, faixa compacta, cartões com os totais, a tabela com a linha de TOTAL
+ * e a data de geração no rodapé de todas as páginas.
  *
- * A logo da empresa ativa é resolvida na ordem:
- *   1. `db.configRelatorio.logos[empresaFiltroGlobal].url` (base64 reduzido)
- *   2. `db.configRelatorio.logo` (base64 legado)
- *   3. Sem logo
+ * Da configuração salva em Sistema só vêm as COLUNAS e a separação por
+ * mês. Título, cor, fonte, margens, rodapé e logo deixaram de ser
+ * configuráveis em 21/09/2026, e a orientação em 25/09/2026; uma
+ * configuração antiga que ainda tenha esses campos é ignorada de propósito.
  *
  * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  * @returns {Promise<void>}
@@ -1403,22 +1397,8 @@ async function exportarPDF(contexto) {
     const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
-    /* Da configuração salva só vêm as COLUNAS e a orientação. Título, cor,
-       fonte, margens, rodapé e logo deixaram de ser configuráveis em
-       21/09/2026: são fixos aqui, e uma configuração antiga que ainda tenha
-       esses campos é ignorada de propósito. */
     const salvo = db.configRelatorio || {};
     const cfg = {
-        titulo: "Controle de Entradas de Combustível",
-        logo: null,
-        fonte: _PDF_FONTE,
-        corDestaque: "#1a3a5c",
-        margemEsq: _PDF_MARGEM,
-        margemDir: _PDF_MARGEM,
-        margemTopo: 14,
-        margemRodape: 10,
-        rodapeTexto: "",
-        orientacao:      salvo.orientacao      ?? "landscape",
         mostrarBase:     salvo.mostrarBase     ?? true,
         mostrarEmpresa:  salvo.mostrarEmpresa  ?? true,
         mostrarMotorista:salvo.mostrarMotorista?? true,
@@ -1426,231 +1406,108 @@ async function exportarPDF(contexto) {
         quebrarPorMes:   salvo.quebrarPorMes   ?? false
     };
 
-    function hexRgb(hex) {
-        const h = hex.replace('#','');
-        const r = parseInt(h.slice(0,2),16);
-        const g = parseInt(h.slice(2,4),16);
-        const b = parseInt(h.slice(4,6),16);
-        return [r, g, b];
-    }
-    const corRGB = hexRgb(cfg.corDestaque || '#1a3a5c');
-
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: cfg.orientacao, unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const W = doc.internal.pageSize.width;
-    const H = doc.internal.pageSize.height;
-    const mL = cfg.margemEsq;
-    const mR = cfg.margemDir;
-    const mRod = cfg.margemRodape;
+    const estilo = _pdfEstilo();
+    const geradoEm = _pdfGeradoEm();
 
-    // ── Função para desenhar cabeçalho numa nova página ──
-    function desenharCabecalho(tituloSecao) {
-        const altCab = cfg.logo ? 28 : 22;
-        doc.setFillColor(...corRGB);
-        doc.rect(0, 0, W, altCab, 'F');
-        doc.setTextColor(255, 255, 255);
-
-        // Logo (se existir)
-        if (cfg.logo) {
-            try {
-                // Detecta formato da imagem pelo início do base64
-                const match = cfg.logo.match(/^data:image\/(\w+);base64,/);
-                const fmt   = match ? match[1].toUpperCase() : 'JPEG';
-                const base64 = cfg.logo.split(',')[1] || cfg.logo;
-                doc.addImage(base64, fmt, mL, 3, 22, 22);
-            } catch(e) { /* ignora logo inválido */ }
-        }
-
-        const textX = cfg.logo ? mL + 26 : W / 2;
-        const textAlign = cfg.logo ? 'left' : 'center';
-
-        doc.setFontSize(14);
-        doc.setFont(cfg.fonte, 'bold');
-        doc.text(cfg.titulo, textX, cfg.logo ? 13 : 11, { align: textAlign });
-        doc.setFontSize(9);
-        doc.setFont(cfg.fonte, 'normal');
-        const sub = `${tituloSecao} · Gerado em: ${new Date().toLocaleDateString("pt-BR")}`;
-        doc.text(sub, textX, cfg.logo ? 22 : 19, { align: textAlign });
-
-        return altCab + 4;
-    }
-
-    // ── Função para desenhar rodapé ──
-    function desenharRodape(pageNum, totalPages) {
-        doc.setFontSize(7.5);
-        doc.setTextColor(120, 120, 120);
-        if (cfg.rodapeTexto) {
-            doc.text(cfg.rodapeTexto, mL, H - mRod);
-        }
-        doc.text(`Página ${pageNum} de ${totalPages}`, W - mR, H - mRod, { align: 'right' });
-    }
-
-    // O cabeçalho diz o período e de que data ele é. Antes dizia só
+    // O cabeçalho diz o período e de que empresa ele é. Antes dizia só
     // "Relatório — Gerado em", e quem recebia o PDF (o contador) não sabia
-    // se aquilo era o mês inteiro, parte dele ou tudo (rodada 11).
-    // "Relatório" e não "Histórico": a TELA mudou de nome em 22/09/2026, o
-    // documento não. Quem recebe o PDF recebe um relatório de lançamentos.
-    // Havia aqui um ramo por contexto que nenhum chamador alcançava.
-    const tituloCtx = `Relatório de ${_descricaoPeriodoRelatorio()}`;
+    // se aquilo era o mês inteiro, parte dele ou tudo (rodada 11). A tela
+    // filtra pela empresa ativa, e o subtítulo diz qual é.
+    const periodo = _descricaoPeriodoRelatorio();
+    const empresaTxt = empresaFiltroGlobal || "Todas as empresas";
+    let y = _pdfCabecalho(doc, estilo, "Relatório de Entradas de Combustível",
+        `${periodo.charAt(0).toUpperCase()}${periodo.slice(1)} · ${empresaTxt}`, true);
 
-    // ── Monta colunas dinamicamente ──
-    const head = ["Data Nota", "Data Desc.", "Nota"];
-    if (cfg.mostrarBase)      head.push("Base");
-    if (cfg.mostrarEmpresa)   head.push("Empresa");
-    if (cfg.mostrarMotorista) head.push("Motorista");
-    if (cfg.mostrarPlaca)     head.push("Placa");
-    head.push("Litros (L)", "Total (R$)");
+    // Os totais do período nos cartões, antes de qualquer tabela. Eles
+    // também fecham a conta quando o documento sai separado por mês: antes
+    // havia uma linha "TOTAL DO PERÍODO" no fim para isso (18/09/2026).
+    const litrosDe = l => l.itens.reduce((s, i) => s + _litrosItem(i), 0);
+    const totalGeral  = dados.reduce((s, l) => s + (l.total || 0), 0);
+    const totalLitros = dados.reduce((s, l) => s + litrosDe(l), 0);
+    y = _pdfCartoes(doc, estilo, y, [
+        { rotulo: "Total das notas", valor: fmtR(totalGeral), destaque: true },
+        // O cartão arredonda os litros, como no fechamento; a tabela
+        // traz as casas quando há fração.
+        { rotulo: "Litros",          valor: fmtL(totalLitros) },
+        { rotulo: "Lançamentos",     valor: String(dados.length) }
+    ]) + 6;
 
-    function buildRow(l) {
-        const litros = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
+    // ── As colunas, conforme o Sistema ──
+    // Os nomes do nota a nota do fechamento ("Emissão", "Descarga"), e os
+    // litros no formato dele: "12.000 L", com casas só quando há fração.
+    const cab = ["Emissão", "Descarga", "Nota"];
+    if (cfg.mostrarBase)      cab.push("Base");
+    if (cfg.mostrarEmpresa)   cab.push("Empresa");
+    if (cfg.mostrarMotorista) cab.push("Motorista");
+    if (cfg.mostrarPlaca)     cab.push("Placa");
+    cab.push("Litros", "Total");
+    const iLitros = cab.length - 2;
+    // O texto longo, que fica com a sobra da largura: o motorista, ou a
+    // coluna de texto que houver quando ele está desligado.
+    const flex = ["Motorista", "Base", "Empresa", "Nota"].map(n => cab.indexOf(n)).find(i => i >= 0);
+
+    function linhaDe(l) {
         const row = [formatarData(l.dataNota), l.dataDescarga ? formatarData(l.dataDescarga) : "", l.numeroNota];
         if (cfg.mostrarBase)      row.push(l.base || "");
         if (cfg.mostrarEmpresa)   row.push(l.empresa || "");
         if (cfg.mostrarMotorista) row.push(l.motorista || "");
         if (cfg.mostrarPlaca)     row.push(l.placa || "");
-        row.push(
-            litros.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
-            `R$ ${l.total.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        );
+        row.push(_fmtLitrosFrete(litrosDe(l)), fmtR(l.total || 0));
         return row;
     }
+    // A contagem vai na coluna larga, como no nota a nota: na do número da
+    // nota ela quebrava em duas linhas.
+    function linhaTotal(lans) {
+        const t = cab.map(() => "");
+        t[0] = "TOTAL";
+        t[flex] = `${lans.length} lançamento(s)`;
+        t[iLitros] = _fmtLitrosFrete(lans.reduce((s, l) => s + litrosDe(l), 0));
+        t[iLitros + 1] = fmtR(lans.reduce((s, l) => s + (l.total || 0), 0));
+        return t;
+    }
 
-    const colStyles = {
-        [head.length - 2]: { halign: 'right' },
-        [head.length - 1]: { halign: 'right' }
-    };
-    // O cabeçalho das duas colunas de número acompanha os valores, à
-    // direita; antes ficava à esquerda, longe do número (18/09/2026).
-    const alinharCabecalhoNumeros = data => {
-        if ((data.section === 'head' || data.section === 'foot') && data.column.index >= head.length - 2) {
-            data.cell.styles.halign = 'right';
-        }
-    };
-    // Linha de total no fim da tabela, só na última página: o total estava
-    // só no alto da primeira página, e quem lia o fim do PDF não o via.
-    const fmtLitrosPdf = v => v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-    const fmtReaisPdf  = v => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const linhaTotal = (rotulo, litros, total) => [[
-        { content: rotulo, colSpan: head.length - 2 },
-        fmtLitrosPdf(litros),
-        fmtReaisPdf(total)
-    ]];
-    const estiloTotal = { fillColor: [236, 239, 243], textColor: [30, 30, 30], fontStyle: 'bold', fontSize: 8.5 };
-
-    const totalGeral  = dados.reduce((s, l) => s + (l.total || 0), 0);
-    const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
-
-    if (!cfg.quebrarPorMes) {
-        // ── Modo normal: uma única tabela ──
-        let startY = desenharCabecalho(tituloCtx);
-
-        doc.setTextColor(...corRGB);
-        doc.setFontSize(9);
-        doc.setFont(cfg.fonte, 'bold');
-        doc.text(`Registros: ${dados.length}`, mL, startY);
-        doc.text(`Litros: ${totalLitros.toLocaleString("pt-BR", {minimumFractionDigits:3,maximumFractionDigits:3})} L`, mL + 50, startY);
-        doc.text(`Total: R$ ${totalGeral.toLocaleString("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2})}`, mL + 120, startY);
-        startY += 6;
-
-        doc.autoTable({
-            head: [head],
-            body: dados.map(buildRow),
-            foot: linhaTotal(`Total: ${dados.length} lançamento(s)`, totalLitros, totalGeral),
-            showFoot: 'lastPage',
-            startY,
-            theme: 'striped',
-            headStyles: { fillColor: corRGB, fontSize: 9, font: cfg.fonte },
-            bodyStyles: { fontSize: 8, font: cfg.fonte },
-            footStyles: { ...estiloTotal, font: cfg.fonte },
-            columnStyles: colStyles,
-            didParseCell: alinharCabecalhoNumeros,
-            margin: { left: mL, right: mR, bottom: mRod + 8 },
-            didDrawPage: (data) => {
-                desenharRodape(doc.internal.getCurrentPageInfo().pageNumber, '?');
-            }
-        });
-
-    } else {
-        // ── Modo quebrar por mês ──
-        // Agrupa pela mesma data que filtrou: a emissão. Agrupar pela descarga
-        // abria, no PDF de agosto, uma seção de setembro com a nota emitida
-        // em 30/08 e descarregada em 01/09.
-        const _dataRef = dataEmissaoDe;
+    // ── As seções: uma só, ou uma por mês ──
+    // Separado por mês, agrupa pela mesma data que filtrou: a emissão.
+    // Agrupar pela descarga abria, no PDF de agosto, uma seção de setembro
+    // com a nota emitida em 30/08 e descarregada em 01/09. As seções vêm
+    // uma atrás da outra, e não uma página por mês (25/09/2026).
+    let grupos = [{ titulo: "Lançamentos", lans: dados }];
+    if (cfg.quebrarPorMes) {
         const porMes = {};
         dados.forEach(l => {
-            const mes = _dataRef(l).slice(0, 7);
-            if (!porMes[mes]) porMes[mes] = [];
-            porMes[mes].push(l);
+            const mes = dataEmissaoDe(l).slice(0, 7);
+            (porMes[mes] = porMes[mes] || []).push(l);
         });
-
-        const meses = Object.keys(porMes).sort();
-        let primeiraSecao = true;
-
-        meses.forEach(mes => {
-            const lans = porMes[mes];
-            if (!primeiraSecao) doc.addPage();
-            primeiraSecao = false;
-
-            let startY = desenharCabecalho(`${tituloCtx}, ${nomeMes(mes)}, pela emissão`);
-            const subTotLitros = lans.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
-            const subTotGeral  = lans.reduce((s, l) => s + (l.total || 0), 0);
-
-            doc.setTextColor(...corRGB);
-            doc.setFontSize(9);
-            doc.setFont(cfg.fonte, 'bold');
-            doc.text(`${nomeMes(mes)}: ${lans.length} lançamento(s)`, mL, startY);
-            doc.text(`Litros: ${subTotLitros.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L`, mL + 70, startY);
-            doc.text(`Total: R$ ${subTotGeral.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`, mL + 140, startY);
-            startY += 5;
-
-            doc.autoTable({
-                head: [head],
-                body: lans.map(buildRow),
-                foot: linhaTotal(`Total de ${nomeMes(mes)}: ${lans.length} lançamento(s)`, subTotLitros, subTotGeral),
-                showFoot: 'lastPage',
-                startY,
-                theme: 'striped',
-                headStyles: { fillColor: corRGB, fontSize: 9, font: cfg.fonte },
-                bodyStyles: { fontSize: 8, font: cfg.fonte },
-                footStyles: { ...estiloTotal, font: cfg.fonte },
-                columnStyles: colStyles,
-                didParseCell: alinharCabecalhoNumeros,
-                margin: { left: mL, right: mR, bottom: mRod + 8 },
-                didDrawPage: (data) => {
-                    desenharRodape(doc.internal.getCurrentPageInfo().pageNumber, '?');
-                }
-            });
-        });
-
-        // Total do período inteiro: com a quebra por mês, cada seção tinha
-        // o seu subtotal e o documento não fechava conta nenhuma (18/09/2026).
-        if (meses.length > 1) {
-            let y = doc.lastAutoTable.finalY + 10;
-            if (y > H - mRod - 20) { doc.addPage(); y = desenharCabecalho(`${tituloCtx}, total do período`); }
-            doc.setTextColor(...corRGB);
-            doc.setFontSize(10);
-            doc.setFont(cfg.fonte, 'bold');
-            doc.text(`TOTAL DO PERÍODO: ${dados.length} lançamento(s)`, mL, y);
-            doc.text(`Litros: ${totalLitros.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L`, mL + 90, y);
-            doc.text(`Total: R$ ${totalGeral.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`, mL + 170, y);
-        }
+        // O título diz qual data define o mês (25/09/2026, revisão): com o
+        // filtro só de descarga, a nota emitida em 30/08 e descarregada em
+        // 01/09 cai em "agosto", e o documento precisa dizer por quê.
+        grupos = Object.keys(porMes).sort().map(mes => ({ titulo: `Emissão em ${_pdfMesAno(mes)}`, lans: porMes[mes] }));
     }
 
-    // Atualiza rodapé com total de páginas correto
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= totalPages; p++) {
-        doc.setPage(p);
-        doc.setFontSize(7.5);
-        doc.setTextColor(120, 120, 120);
-        // Limpa área do rodapé e redesenha com total real
-        doc.setFillColor(255, 255, 255);
-        doc.rect(0, H - mRod - 4, W, mRod + 4, 'F');
-        if (cfg.rodapeTexto) {
-            doc.text(cfg.rodapeTexto, mL, H - mRod);
-        }
-        doc.text(`Página ${p} de ${totalPages}`, W - mR, H - mRod, { align: 'right' });
-    }
+    // As mesmas larguras em todas as seções, medidas em todas as linhas:
+    // separado por mês, as tabelas ficam alinhadas umas com as outras.
+    // Letra 7, a do nota a nota, que é o mesmo tipo de lista.
+    const todas = grupos.flatMap(g => [...g.lans.map(linhaDe), linhaTotal(g.lans)]);
+    const enc = _pdfEncaixar(doc, estilo, cab, todas, W - 2 * _PDF_MARGEM, flex, [7]);
+    const estilos = {};
+    cab.forEach((_, i) => {
+        estilos[i] = { halign: i >= iLitros ? "right" : "left",
+                       cellWidth: enc ? enc.larguras[i] : (i === flex ? "auto" : "wrap") };
+    });
 
+    grupos.forEach(g => {
+        y = _pdfEspaco(doc, y, false);
+        y = _pdfTitulo(doc, estilo, g.titulo, y);
+        y = _pdfTabela(doc, estilo, {
+            head: [cab], body: [...g.lans.map(linhaDe), linhaTotal(g.lans)], startY: y,
+            columnStyles: estilos, fonte: enc ? enc.fonte : 7
+        }) + 7;
+    });
+
+    _pdfRodapes(doc, estilo, `Relatório de entradas · ${periodo} · ${empresaTxt}`, { direita: `Gerado em ${geradoEm}` });
     _pdfEntregar(doc, _nomeArquivoRelatorio(contexto, 'pdf'));
     mostrarToast('PDF gerado com sucesso!', 'sucesso', 3000);
 }
@@ -1878,10 +1735,6 @@ function _executarRelatorioMensal() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.width;
     const estiloPdf = _pdfEstilo();
-    // A cor de destaque vem da configuração do PDF, como no de entradas.
-    const azul = estiloPdf.cor;
-    const azulClaro = estiloPdf.cor.map(v => Math.min(255, Math.round(v + (255 - v) * 0.25)));
-    const cinza = [120, 120, 120];
 
     const [ano, m] = mes.split('-').map(Number);
     const mesAnterior = m === 1 ? `${ano-1}-12` : `${ano}-${String(m-1).padStart(2,'0')}`;
@@ -1898,7 +1751,6 @@ function _executarRelatorioMensal() {
     // emitida.
     const lansMes      = lancamentosFiltrados.filter(l => dataEmissaoDe(l).startsWith(mes));
     const lansAnterior = lancamentosFiltrados.filter(l => dataEmissaoDe(l).startsWith(mesAnterior));
-    const combustiveis = db.combustiveis.filter(c => c.ativo !== false);
 
     const totalNotas  = lansMes.length;
     const totalLitros = lansMes.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
@@ -1909,112 +1761,100 @@ function _executarRelatorioMensal() {
     const totLitrosAnt = lansAnterior.reduce((s,l) => s + l.itens.reduce((ss,i) => ss+_litrosItem(i),0), 0);
     const totGastoAnt  = lansAnterior.reduce((s,l) => s + (l.total || 0), 0);
 
-    // Mesma faixa, cor e logo dos outros PDFs (18/09/2026).
-    let y = _pdfCabecalho(doc, estiloPdf, `${empresa} · Relatório Mensal de Entradas`,
-        `Período: ${nomeMes(mes)}, pela data de emissão  |  Gerado em: ${new Date().toLocaleDateString('pt-BR')}`) + 2;
-    doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.text('RESUMO EXECUTIVO', 14, y); y += 6;
-    doc.setDrawColor(...azul); doc.line(14, y, W-14, y); y += 5;
+    // No padrão do fechamento desde 25/09/2026 (pedido do dono): a faixa
+    // compacta, os números em cartões, as tabelas com a linha de TOTAL e a
+    // data de geração no rodapé de todas as páginas. O mês como "09/2026".
+    const mesLabel = _pdfMesAno(mes);
+    const litrosDe = l => l.itens.reduce((s, i) => s + _litrosItem(i), 0);
+    let y = _pdfCabecalho(doc, estiloPdf, `Relatório Mensal de Entradas - ${mesLabel}`,
+        `${empresa} · pela data de emissão`, true);
 
-    const kpis = [
-        { label: 'Total de Notas',      valor: String(totalNotas) },
-        { label: 'Total de Litros',     valor: totalLitros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L' },
-        { label: 'Total Gasto',         valor: 'R$ ' + totalGasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) },
+    // A variação contra o mês anterior vai no próprio cartão, na linha de
+    // apoio; antes era uma linha de texto solta abaixo deles. O gasto vem
+    // primeiro e em destaque, como o valor principal do fechamento.
+    const variacao = (atual, anterior) => anterior > 0
+        ? `${atual >= anterior ? '+' : ''}${fmtPct((atual - anterior) / anterior * 100)} vs. ${_pdfMesAno(mesAnterior)}`
+        : "";
+    y = _pdfCartoes(doc, estiloPdf, y, [
+        { rotulo: 'Total gasto',     valor: fmtR(totalGasto),              apoio: variacao(totalGasto, totGastoAnt), destaque: true },
+        // O cartão arredonda os litros, como no fechamento.
+        { rotulo: 'Litros',          valor: fmtL(totalLitros),             apoio: variacao(totalLitros, totLitrosAnt) },
         // Rótulo curto: "Preço médio de compra / L" passava da borda do cartão.
-        { label: 'Preço médio / L', valor: fmtRL(custoMedio) },
-    ];
-    const colW = (W - 28) / 4;
-    kpis.forEach((k, i) => {
-        const x = 14 + i * colW;
-        doc.setFillColor(245,247,250);
-        doc.roundedRect(x, y, colW-3, 18, 2, 2, 'F');
-        doc.setTextColor(...cinza); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-        doc.text(k.label.toUpperCase(), x+4, y+6);
-        doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text(k.valor, x+4, y+14);
-    });
-    y += 24;
+        { rotulo: 'Preço médio / L', valor: fmtRL(custoMedio) },
+        { rotulo: 'Notas',           valor: String(totalNotas) }
+    ]) + 6;
 
-    if (totGastoAnt > 0 || totLitrosAnt > 0) {
-        const varGasto  = totGastoAnt  > 0 ? ((totalGasto-totGastoAnt)/totGastoAnt*100)   : null;
-        const varLitros = totLitrosAnt > 0 ? ((totalLitros-totLitrosAnt)/totLitrosAnt*100) : null;
-        doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...cinza);
-        const partes = [];
-        if (varGasto  !== null) partes.push(`Gasto: ${varGasto>=0?'+':''}${fmtPct(varGasto)} vs. ${nomeMes(mesAnterior)}`);
-        if (varLitros !== null) partes.push(`Litros: ${varLitros>=0?'+':''}${fmtPct(varLitros)} vs. ${nomeMes(mesAnterior)}`);
-        doc.text('Variação: ' + partes.join('   |   '), 14, y); y += 8;
+    // ── Por combustível ──
+    // Todos os combustíveis que tiveram nota no mês, na ordem do cadastro,
+    // inclusive o desativado depois (25/09/2026, revisão). Só os ativos, como
+    // antes, escondia litros e gasto que os cartões contam.
+    const ordem = (db.combustiveis || []).map(c => c.nome);
+    const posicao = t => { const i = ordem.indexOf(t); return i < 0 ? ordem.length : i; };
+    const tiposMes = [...new Set(lansMes.flatMap(l => (l.itens || []).map(i => i.tipo)))]
+        .sort((a, b) => posicao(a) - posicao(b) || String(a).localeCompare(String(b)));
+    const porComb = tiposMes.map(tipo => {
+        const itens     = lansMes.flatMap(l => (l.itens || []).filter(i => i.tipo === tipo));
+        const itensAnt  = lansAnterior.flatMap(l => (l.itens || []).filter(i => i.tipo === tipo));
+        const mComb     = metricasPreco(itens);
+        return {
+            nome: tipo || '(sem combustível)',
+            notas:     lansMes.filter(l => (l.itens || []).some(i => i.tipo === tipo)).length,
+            litros:    itens.reduce((s, i) => s + _litrosItem(i), 0),
+            litrosAnt: itensAnt.reduce((s, i) => s + _litrosItem(i), 0),
+            gasto:     mComb.gasto,
+            preco:     mComb.precoCompra
+        };
+    });
+    const varLitros = (a, b) => b > 0 ? `${a >= b ? '+' : ''}${fmtPct((a - b) / b * 100)}` : '—';
+    if (porComb.length) {
+        const corpoComb = porComb.map(r => [
+            r.nome, String(r.notas), _fmtLitrosFrete(r.litros), fmtRL(r.preco), fmtR(r.gasto), varLitros(r.litros, r.litrosAnt)
+        ]);
+        // O TOTAL são os números dos cartões, para a página não se
+        // contradizer: as notas contam uma vez cada (a nota com dois
+        // combustíveis aparece nas duas linhas), e a variação é a do mês
+        // inteiro, inclusive o combustível que só houve no mês anterior.
+        corpoComb.push([
+            'TOTAL', String(totalNotas), _fmtLitrosFrete(totalLitros), fmtRL(custoMedio),
+            fmtR(totalGasto), varLitros(totalLitros, totLitrosAnt)
+        ]);
+        y = _pdfEspaco(doc, y, false);
+        y = _pdfTitulo(doc, estiloPdf, 'Por combustível', y);
+        // Como a tabela por empresa do fechamento: o nome com 70 mm e os
+        // números repartindo o resto.
+        y = _pdfTabela(doc, estiloPdf, {
+            head: [['Combustível', 'Notas', 'Litros', 'Preço médio/L', 'Total gasto', 'Var. litros']],
+            body: corpoComb, startY: y,
+            columnStyles: { 0: { halign: 'left', cellWidth: 70 }, 1: { halign: 'right' }, 2: { halign: 'right' },
+                            3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } }
+        }) + 7;
     }
 
-    doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.text('DETALHAMENTO POR COMBUSTÍVEL', 14, y); y += 4;
-
-    const combRows = combustiveis.map(c => {
-        const itens    = lansMes.flatMap(l => l.itens.filter(i => i.tipo===c.nome));
-        const litros   = itens.reduce((s,i) => s+_litrosItem(i),0);
-        const mComb    = metricasPreco(itens);
-        const gasto    = mComb.gasto;
-        const custo    = mComb.precoCompra;
-        const notas    = lansMes.filter(l=>l.itens.some(i=>i.tipo===c.nome)).length;
-        const itensAnt = lansAnterior.flatMap(l => l.itens.filter(i => i.tipo===c.nome));
-        const litrosAnt= itensAnt.reduce((s,i) => s+_litrosItem(i),0);
-        const varL     = litrosAnt > 0 ? ((litros-litrosAnt)/litrosAnt*100) : null;
-        return [
-            c.nome, String(notas),
-            litros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' L',
-            fmtRL(custo),
-            'R$ ' + gasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
-            varL !== null ? `${varL>=0?'+':''}${fmtPct(varL)}` : '—',
-        ];
-    }).filter(r => r[1] !== '0');
-
-    doc.autoTable({
-        head: [['Combustível','Notas','Litros','Preço Médio/L','Total Gasto','Var. Litros']],
-        body: combRows, startY: y + 2, theme: 'grid',
-        headStyles: { fillColor: azul, fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8.5 },
-        columnStyles: { 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',fontStyle:'bold'}, 5:{halign:'right'} },
-        // Cabeçalho das colunas de número à direita, sobre os valores.
-        didParseCell: d => { if (d.section === 'head' && d.column.index >= 1) d.cell.styles.halign = 'right'; },
-        margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
-        didDrawPage: d => { d.settings.margin.top = 14; },
-    });
-    y = doc.lastAutoTable.finalY + 10;
-
+    // ── Lançamentos do período ──
+    // Como o nota a nota do fechamento: letra 7, as colunas curtas com a
+    // largura do conteúdo, o motorista com a sobra e a linha de TOTAL no
+    // fim (antes era um rodapé da tabela, só na última página).
     if (lansMes.length > 0) {
-        doc.setTextColor(...azul); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text('LANÇAMENTOS DO PERÍODO', 14, y); y += 2;
-        const sorted = [...lansMes].sort((a,b) => dataEmissaoDe(a).localeCompare(dataEmissaoDe(b)));
-        doc.autoTable({
-            head: [['Emissão','NF','Base','Empresa','Motorista','Placa','Litros','Total']],
-            body: sorted.map(l => {
-                const litros = l.itens.reduce((s,i) => s+_litrosItem(i), 0);
-                return [
-                    formatarData(dataEmissaoDe(l)), l.numeroNota,
-                    l.base||'—', l.empresa||'—', l.motorista||'—', l.placa||'—',
-                    litros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}),
-                    'R$ '+l.total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
-                ];
-            }),
-            foot: [[
-                {content:'TOTAL', colSpan:6, styles:{fontStyle:'bold',halign:'right'}},
-                totalLitros.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}),
-                {content:'R$ '+totalGasto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}), styles:{fontStyle:'bold'}},
-            ]],
-            // O total só no fim: repetido no pé de cada página, parecia o
-            // total daquela página (18/09/2026).
-            showFoot: 'lastPage',
-            startY: y + 2, theme: 'striped',
-            headStyles: { fillColor: azulClaro, fontSize: 7.5 },
-            bodyStyles: { fontSize: 7.5 },
-            footStyles: { fillColor: [235,240,248], textColor: azul, fontSize: 8 },
-            columnStyles: { 6:{halign:'right'}, 7:{halign:'right',fontStyle:'bold'} },
-            didParseCell: d => { if ((d.section === 'head' || d.section === 'foot') && d.column.index >= 6) d.cell.styles.halign = 'right'; },
-            margin: { left: _PDF_MARGEM, right: _PDF_MARGEM },
-            didDrawPage: d => { d.settings.margin.top = 14; },
+        const sorted = [...lansMes].sort((a, b) => dataEmissaoDe(a).localeCompare(dataEmissaoDe(b)));
+        const cabL = ['Emissão', 'Nota', 'Base', 'Empresa', 'Motorista', 'Placa', 'Litros', 'Total'];
+        const corpoL = sorted.map(l => [
+            formatarData(dataEmissaoDe(l)), l.numeroNota,
+            l.base || '—', l.empresa || '—', l.motorista || '—', l.placa || '—',
+            _fmtLitrosFrete(litrosDe(l)), fmtR(l.total || 0)
+        ]);
+        corpoL.push(['TOTAL', '', '', '', `${lansMes.length} nota(s)`, '', _fmtLitrosFrete(totalLitros), fmtR(totalGasto)]);
+        const encL = _pdfEncaixar(doc, estiloPdf, cabL, corpoL, W - 2 * _PDF_MARGEM, 4, [7]);
+        const estL = {};
+        cabL.forEach((_, i) => {
+            estL[i] = { halign: i >= 6 ? 'right' : 'left',
+                        cellWidth: encL ? encL.larguras[i] : (i === 4 ? 'auto' : 'wrap') };
         });
+        y = _pdfEspaco(doc, y, false);
+        y = _pdfTitulo(doc, estiloPdf, 'Lançamentos do período', y);
+        _pdfTabela(doc, estiloPdf, { head: [cabL], body: corpoL, startY: y, columnStyles: estL, fonte: encL ? encL.fonte : 7 });
     }
 
-    _pdfRodapes(doc, estiloPdf, `${empresa} · ${nomeMes(mes)}`);
+    _pdfRodapes(doc, estiloPdf, `Relatório mensal de ${mesLabel} · ${empresa}`, { direita: `Gerado em ${_pdfGeradoEm()}` });
 
     _pdfEntregar(doc, `relatorio-mensal-${mes}.pdf`);
     mostrarToast('Relatório mensal gerado com sucesso!', 'sucesso', 4000);
