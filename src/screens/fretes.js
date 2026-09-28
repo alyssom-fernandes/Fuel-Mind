@@ -268,8 +268,8 @@ function renderFreteResumo() {
     const porLitroAnt = ant.totalLitros > 0 ? ant.totalFrete / ant.totalLitros : 0;
 
     const avisos = [
-        d.semTaxa ? `${d.semTaxa} nota(s) com empresa que não está no cadastro: entraram sem taxa (R$ 0,00). Corrija a empresa dessas notas.` : '',
-        d.taxaZero ? `${d.taxaZero} nota(s) de ${(d.empresasTaxaZero || []).join(', ')}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.` : '',
+        d.semTaxa ? `${plural(d.semTaxa, "nota com empresa que não está no cadastro: entrou", "notas com empresa que não está no cadastro: entraram")} sem taxa (R$ 0,00). Corrija a empresa ${d.semTaxa === 1 ? "dela" : "delas"}.` : '',
+        d.taxaZero ? `${plural(d.taxaZero, "nota")} de ${(d.empresasTaxaZero || []).join(', ')}: a empresa está cadastrada com taxa de frete zerada, então o frete saiu R$ 0,00. Informe a taxa em Cadastros › Empresas.` : '',
     ].filter(Boolean);
 
     resumo.innerHTML = `
@@ -329,11 +329,10 @@ function linhasDetalhes(detalhes, colunasNome = 2, comPagamento = false) {
     `).join("");
 }
 
-/** Litros nas tabelas de frete: sem as três casas quando o número é
- *  inteiro ("158.500 L"); com fração, as três da NF-e. */
+/** Litros nas tabelas de frete: a regra de `fmtL3` ("158.500 L" inteiro,
+ *  três casas com fração). */
 function _fmtLitrosFrete(v) {
-    const n = Number(v) || 0;
-    return fmtL(n, Math.abs(n - Math.round(n)) < 0.0005 ? 0 : 3);
+    return fmtL3(v);
 }
 
 function renderAbaPlacas() {
@@ -664,13 +663,13 @@ function abrirFreteNotaANota() {
                     <td class="celula-texto-longo" title="${escapeHtml(x.motorista)}">${escapeHtml(x.motorista)}</td>
                     <td>${escapeHtml(x.placa)}</td>
                     <td class="celula-texto-longo" title="${escapeHtml(x.conjunto)}">${escapeHtml(x.conjunto) || "—"}</td>
-                    <td class="celula-num">${fmtL(x.litros, Number.isInteger(x.litros) ? 0 : 3)}</td>
+                    <td class="celula-num">${fmtL3(x.litros)}</td>
                     <td class="celula-num">${x.taxa > 0 ? fmtFreteL(x.taxa) : "—"}</td>
                     <td class="celula-num"><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
-                    <td colspan="7"><strong>Total: ${linhas.length} nota(s)</strong></td>
-                    <td class="celula-num"><strong>${fmtL(totalLitros, Number.isInteger(totalLitros) ? 0 : 3)}</strong></td>
+                    <td colspan="7"><strong>Total: ${plural(linhas.length, "nota")}</strong></td>
+                    <td class="celula-num"><strong>${fmtL3(totalLitros)}</strong></td>
                     <td></td>
                     <td class="celula-num"><strong>${fmtR(totalFrete)}</strong></td>
                 </tr></tfoot>
@@ -724,7 +723,7 @@ function _secaoNotaANotaXl(linhas, nomeValor) {
             x.motorista, x.placa, x.conjunto || "—", _num(x.litros, 3), x.taxa > 0 ? _num(x.taxa, 4) : "—", _num(x.frete, 2)
         ]),
         // A contagem na coluna do motorista, como no PDF.
-        total: ["TOTAL", "", "", "", "", `${linhas.length} nota(s)`, "", "",
+        total: ["TOTAL", "", "", "", "", plural(linhas.length, "nota"), "", "",
                 _num(linhas.reduce((s, x) => s + x.litros, 0), 3), "", _num(linhas.reduce((s, x) => s + x.frete, 0), 2)]
     };
 }
@@ -868,7 +867,7 @@ function exportarFechamentoDoMes() {
             l.push(_num(c.litros, 3), _num(c.frete, 2));
             return l;
         });
-        const total = ["TOTAL", `${d.porConjunto.length} conjunto(s)`];
+        const total = ["TOTAL", plural(d.porConjunto.length, "conjunto")];
         empresas.forEach(nome => {
             total.push(_num(d.porConjunto.reduce((s, c) => s + ((daEmpresa(c, nome) || {}).litros || 0), 0), 3),
                        _num(d.porConjunto.reduce((s, c) => s + ((daEmpresa(c, nome) || {}).frete || 0), 0), 2));
@@ -941,7 +940,7 @@ function exportarFechamentoDoMes() {
                 formatarData(dataEmissaoDe(l)), formatarData(dataDescargaDe(l)), l.numeroNota || "", l.base || "",
                 l.empresa || "", l.motorista || "", l.placa || "", _num(carga(l), 3), _num(descarregado(l), 3), _num(l.total || 0, 2)
             ]),
-            total: ["TOTAL", "", "", "", "", `${doMes.length} nota(s)`, "",
+            total: ["TOTAL", "", "", "", "", plural(doMes.length, "nota"), "",
                     _num(m.litrosNota, 3), _num(doMes.reduce((s, l) => s + descarregado(l), 0), 3), _num(totalNotasMes, 2)]
         }]
     });

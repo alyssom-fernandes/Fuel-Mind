@@ -121,8 +121,8 @@ const _CENTRAL_ITENS = [
         telaRotulo: "Histórico",
         base: "emissao",
         formatos: [
-            { rotulo: "Excel", classe: "btn-xlsx", fn: "exportarExcel",  arg: "relatorio" },
             { rotulo: "PDF",   classe: "btn-pdf",  fn: "exportarPDF",    arg: "relatorio" },
+            { rotulo: "Excel", classe: "btn-xlsx", fn: "exportarExcel",  arg: "relatorio" },
             { rotulo: "CSV",   classe: "btn-csv",  fn: "exportarCSV",    arg: "relatorio" }
         ]
     },

@@ -124,7 +124,7 @@ async function migrarIndiceUsernames() {
 
     if (!await fmConfirm({
         titulo: "Reconstruir índice de @usuarios?",
-        msg: `${comUsername.length} usuário(s) serão regravados no índice público de login.
+        msg: `${plural(comUsername.length, "usuário será regravado", "usuários serão regravados")} no índice público de login.
 
 O índice guarda apenas o e-mail associado a cada @, e é o que permite entrar sem digitar o e-mail completo.`,
         confirmTxt: "Reconstruir",
@@ -148,8 +148,8 @@ O índice guarda apenas o e-mail associado a cada @, e é o que permite entrar s
     }
     mostrarToast(
         (falhas === 0 && conflitos === 0)
-            ? `Índice reconstruído: ${ok} usuário(s).`
-            : `Índice reconstruído: ${ok} ok, ${falhas} falha(s), ${conflitos} @ que já pertencem a outra conta e ficaram como estavam.`,
+            ? `Índice reconstruído: ${plural(ok, "usuário")}.`
+            : `Índice reconstruído: ${ok} ok, ${plural(falhas, "falha")}, ${conflitos === 1 ? "1 @ que já pertence a outra conta e ficou como estava" : `${conflitos} @ que já pertencem a outra conta e ficaram como estavam`}.`,
         (falhas === 0 && conflitos === 0) ? "sucesso" : "aviso",
         8000
     );

@@ -240,7 +240,7 @@ function carregarDashboard() {
             <div class="kpi-label">Frete do Período</div>
             <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtFreteL(frete.porLitro)}/L` : ''}</div>
             ${htmlVariacao(frete.total, freteAnt.total, rotAnt, true)}
-            ${frete.semTaxa ? `<div class="kpi-base kpi-base--alerta">${frete.semTaxa} nota(s) sem taxa</div>` : ''}
+            ${frete.semTaxa ? `<div class="kpi-base kpi-base--alerta">${plural(frete.semTaxa, "nota")} sem taxa</div>` : ''}
         </div>
     `;
 
@@ -271,7 +271,7 @@ function carregarDashboard() {
                 <td>${escapeHtml(l.base) || '—'}</td>
                 <td>${escapeHtml(l.motorista) || '—'}</td>
                 <td>${escapeHtml(l.placa) || '—'}</td>
-                <td class="celula-num">${fmtL(totalLitros)}</td>
+                <td class="celula-num">${fmtL3(totalLitros)}</td>
                 <td class="celula-num">${fmtR(l.total)}</td>
                 <td class="no-print celula-acoes">
                     <button class="btn-icone" aria-label="Abrir o detalhe da nota ${escapeHtml(l.numeroNota)}" title="Abrir o detalhe"
@@ -483,7 +483,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
     // solto, título curto, o detalhe embaixo e as duas ações à direita.
     const rotuloTipo = { preco: "Preço", volume: "Volume", data: "Data" };
     const iconeAbrir = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
-    el.innerHTML = `<p class="dica alertas-resumo">${alertas.length} alerta(s) no período: ${escapeHtml(resumoTipos)}.</p>` + visiveis.map(a => {
+    el.innerHTML = `<p class="dica alertas-resumo">${plural(alertas.length, "alerta")} no período: ${escapeHtml(resumoTipos)}.</p>` + visiveis.map(a => {
         const { tipo, titulo, msg, chave, id, confirmarLabel } = a;
         return `
         <div class="alerta-item alerta-item--${tipo}">
@@ -500,7 +500,7 @@ function _renderAlertas(lancDescarga, lancEmissao) {
             </button>
         </div>`;
     }).join('') + (escondidos > 0
-        ? `<button class="btn-secundario alertas-mais" onclick="dashAlternarAlertas(true)">Mostrar os outros ${escondidos} alerta(s)</button>`
+        ? `<button class="btn-secundario alertas-mais" onclick="dashAlternarAlertas(true)">${escondidos === 1 ? "Mostrar o outro alerta" : `Mostrar os outros ${escondidos} alertas`}</button>`
         : (mostrarTodos && alertas.length > LIMITE
             ? `<button class="btn-secundario alertas-mais" onclick="dashAlternarAlertas(false)">Mostrar só os ${LIMITE} primeiros</button>`
             : ""));
@@ -609,7 +609,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
                     <td>${formatarData(dataDescargaDe(l))}</td>
                     <td>${escapeHtml(l.numeroNota)}</td>
                     <td>${escapeHtml(l.motorista) || '—'}</td>
-                    <td class="celula-num">${fmtL(qtd, Number.isInteger(qtd) ? 0 : 3)}</td>
+                    <td class="celula-num">${fmtL3(qtd)}</td>
                     <td class="celula-num">${fmtRL(item.valor)}</td>
                     <td class="celula-num">${fmtR(item.total ?? item.qtd * item.valor)}</td>
                 </tr>`;

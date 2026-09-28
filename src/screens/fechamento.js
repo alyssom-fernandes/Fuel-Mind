@@ -84,7 +84,7 @@ function abrirFechamentoPDF() {
         return `<label class="fm-escolha">
             <input type="checkbox" class="fechamento-empresa" value="${escapeHtml(nome)}" checked>
             <span><strong>${escapeHtml(nome)}</strong>
-            <em class="dica">${e ? `${e.viagens} nota(s) · ${_fmtLitrosFrete(e.litros)} · ${fmtR(e.frete)}` : "sem notas"}</em></span>
+            <em class="dica">${e ? `${plural(e.viagens, "nota")} · ${_fmtLitrosFrete(e.litros)} · ${fmtR(e.frete)}` : "sem notas"}</em></span>
         </label>`;
     }).join("");
     document.getElementById("fechamentoSubtitulo").textContent =
@@ -218,7 +218,7 @@ function exportarFechamentoPDF(empresasEscolhidas) {
         });
         const somaConj = { litros: 0, frete: 0 };
         d.porConjunto.forEach(c => { somaConj.litros += c.litros; somaConj.frete += c.frete; });
-        const linhaTotal = ["TOTAL", `${d.porConjunto.length} conjunto(s)`];
+        const linhaTotal = ["TOTAL", plural(d.porConjunto.length, "conjunto")];
         empresas.forEach(nome => {
             let l = 0, f = 0;
             d.porConjunto.forEach(c => { const e = (c.porEmpresa || {})[nome]; if (e) { l += e.litros; f += e.frete; } });
@@ -377,8 +377,8 @@ function exportarFechamentoPDF(empresasEscolhidas) {
             n.motorista, n.placa, _fmtLitrosFrete(n.litros), fmtR(n.frete)
         ]);
         // A contagem na coluna do Motorista, que é a larga: na do número da
-        // nota, "119 nota(s)" quebrava em duas linhas.
-        corpoNotas.push(["TOTAL", "", "", "", `${notas.length} nota(s)`, "",
+        // nota, "119 notas" quebrava em duas linhas.
+        corpoNotas.push(["TOTAL", "", "", "", plural(notas.length, "nota"), "",
             _fmtLitrosFrete(notas.reduce((s, n) => s + n.litros, 0)),
             fmtR(notas.reduce((s, n) => s + n.frete, 0))]);
         // As colunas curtas com a largura do conteúdo ("wrap": o maior texto

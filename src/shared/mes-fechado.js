@@ -393,7 +393,7 @@ function _travaRevisarPendentes() {
     if (!desfeitas.length && !cadastrosDesfeitos) return 0;
     console.error("[mês fechado] Alterações pendentes desfeitas:", desfeitas.map(d => d.id), cadastrosDesfeitos ? "e cadastros" : "");
     const partes = [];
-    if (desfeitas.length) partes.push(`${desfeitas.length} nota(s)`);
+    if (desfeitas.length) partes.push(plural(desfeitas.length, "nota"));
     if (cadastrosDesfeitos) partes.push("taxas, % do motorista ou conjuntos");
     mostrarToast(`Alterações feitas neste navegador em ${partes.join(" e ")} foram desfeitas: `
         + `mexiam num mês que outra pessoa fechou nesse meio tempo. Confira o que está gravado.`, "erro", 12000);

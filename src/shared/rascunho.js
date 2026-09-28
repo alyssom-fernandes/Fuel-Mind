@@ -201,7 +201,7 @@ function fmRascunhoVerificar() {
     const resumo = [
         r.campos.numeroNota ? `nota ${r.campos.numeroNota}` : null,
         r.campos.motorista  || null,
-        r.itens.length ? `${r.itens.length} combustível(is)` : null
+        r.itens.length ? plural(r.itens.length, "combustível", "combustíveis") : null
     ].filter(Boolean).join(' · ');
 
     let aviso = '';

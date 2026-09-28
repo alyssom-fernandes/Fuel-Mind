@@ -241,7 +241,7 @@ function importarXMLNFe(input) {
             const camposPreenchidos = [
                 dataNota ? "Data" : null, nNF ? "Nº Nota" : null,
                 baseParaPreencher ? "Base" : null,
-                itensPossiveis.length > 0 ? `${itensPossiveis.length} item(ns)` : null
+                itensPossiveis.length > 0 ? plural(itensPossiveis.length, "item", "itens") : null
             ].filter(Boolean);
 
             // O aviso sai do resultado real do casamento, e não de um segundo
@@ -254,7 +254,7 @@ function importarXMLNFe(input) {
             if (placaTransp && !veiculoCadastrado)
                 naoCruzados.push(`Placa "${escapeHtml(placaTransp)}"`);
             const avisoNaoCruzados = naoCruzados.length > 0
-                ? `<br><small>Não encontrado(s) no cadastro: ${naoCruzados.join(", ")}</small>` : "";
+                ? `<br><small>${naoCruzados.length === 1 ? "Não encontrado" : "Não encontrados"} no cadastro: ${naoCruzados.join(", ")}</small>` : "";
             // A base tem linha própria: ela muda de "não encontrada" para
             // "escolhida" quando a pergunta é respondida.
             const avisoBase = _xmlEmitente
@@ -264,7 +264,7 @@ function importarXMLNFe(input) {
                 : "";
             const itensSemTipo = itensPossiveis.filter(i => !i.tipo);
             const avisoTipos = itensSemTipo.length > 0
-                ? `<br><small>${itensSemTipo.length} produto(s) sem combustível identificado: ${itensSemTipo.map(i => `"${escapeHtml(i.nomeProduto)}"`).join(", ")}</small>` : "";
+                ? `<br><small>${plural(itensSemTipo.length, "produto")} sem combustível identificado: ${itensSemTipo.map(i => `"${escapeHtml(i.nomeProduto)}"`).join(", ")}</small>` : "";
 
             const banner = document.getElementById("bannerXML");
             banner.style.display = "block";
@@ -895,7 +895,7 @@ async function _salvarOuAtualizar(modo) {
             + `Data da nota: ${formatarData(dataNota)}${dataDescarga ? `   Descarga: ${formatarData(dataDescarga)}` : ""}\n`
             + `Nota: ${numeroNota || "—"}\n`
             + `Motorista: ${motorista}   Placa: ${placa}\n`
-            + `${itens.length} combustível(is), ${fmtL3(litros)}\n`
+            + `${plural(itens.length, "combustível", "combustíveis")}, ${fmtL3(litros)}\n`
             + `Total: ${fmtR(total)}`;
         if (!await fmConfirm({
             titulo: alertas.length ? "Confirmar apesar dos alertas" : "Confirmar lançamento",
@@ -1489,7 +1489,7 @@ async function editarLancamento(id) {
            faria parecer que a edição os apagou, mas ela agora diz a
            verdade: eles continuam lá e a edição não os toca. */
         if (l.anexos && l.anexos.length > 0)
-            bannerHtml += `<br><small>Esta nota tem ${l.anexos.length} anexo(s) de um formato que saiu do sistema. Eles continuam guardados e esta edição não mexe neles.</small>`;
+            bannerHtml += `<br><small>Esta nota tem ${l.anexos.length === 1 ? "1 anexo de um formato que saiu do sistema. Ele continua guardado e esta edição não mexe nele." : `${l.anexos.length} anexos de um formato que saiu do sistema. Eles continuam guardados e esta edição não mexe neles.`}</small>`;
         banner.innerHTML = bannerHtml;
         document.getElementById("tituloLancamentos").textContent  = "Editando lançamento";
         _aplicarMarcadorSujo();   // trocar o texto do título apagava o marcador

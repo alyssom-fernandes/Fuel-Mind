@@ -257,7 +257,7 @@ function importacaoLerArquivo(input) {
             if (resultado) resultado.style.display = "none";
             if (etapas)    etapas.style.display    = "block";
 
-            mostrarToast(`"${file.name}" lido: ${importacaoLinhas.length - 1} linha(s) de dados`, "info");
+            mostrarToast(`"${file.name}" lido: ${plural(importacaoLinhas.length - 1, "linha")} de dados`, "info");
 
         } catch(err) {
             mostrarToast("Erro ao ler o arquivo: " + err.message, "erro", 5000);
@@ -552,7 +552,7 @@ function importacaoRenderizarEtapa1() {
 
     preview.innerHTML = `
         <p class="dica mb-2">
-            <strong>${importacaoLinhas.length - 1}</strong> linha(s) encontradas em
+            <strong>${importacaoLinhas.length - 1}</strong> ${importacaoLinhas.length - 1 === 1 ? "linha encontrada" : "linhas encontradas"} em
             <strong>${escapeHtml(importacaoArquivoNome)}</strong>.
             Abaixo, uma amostra das primeiras linhas:
         </p>
@@ -637,7 +637,7 @@ function importacaoRenderizarEtapa2(cabecalho) {
 
     const qtdMapeados = Object.keys(autoMap).length;
     if (qtdMapeados > 0) {
-        mostrarToast(`${qtdMapeados} coluna(s) mapeadas automaticamente, confira`, "info", 4000);
+        mostrarToast(`${plural(qtdMapeados, "coluna mapeada", "colunas mapeadas")} automaticamente, confira`, "info", 4000);
     }
 }
 
@@ -899,21 +899,21 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
         <div class="resumo-cards">
             <div class="resumo-card verde">
                 <div class="resumo-valor">${novas.length}</div>
-                <div class="resumo-label">Nota(s) para importar</div>
+                <div class="resumo-label">Notas para importar</div>
             </div>
             <div class="resumo-card cinza">
                 <div class="resumo-valor">${novas.reduce((s,n) => s + n.itens.length, 0)}</div>
-                <div class="resumo-label">Item(ns) de combustível</div>
+                <div class="resumo-label">Itens de combustível</div>
             </div>
             ${duplicatas.length > 0 ? `
             <div class="resumo-card cinza">
                 <div class="resumo-valor">${duplicatas.length}</div>
-                <div class="resumo-label">Nota(s) duplicada(s)</div>
+                <div class="resumo-label">Notas duplicadas</div>
             </div>` : ""}
             ${erros.length > 0 ? `
             <div class="resumo-card vermelho">
                 <div class="resumo-valor">${erros.length}</div>
-                <div class="resumo-label">Erro(s) de validação</div>
+                <div class="resumo-label">Erros de validação</div>
             </div>` : ""}
         </div>
 
@@ -929,7 +929,7 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
 
         ${duplicatas.length > 0 ? `
         <details class="detalhes-resumo mt-3" open>
-            <summary>${duplicatas.length} nota(s) já existem no sistema, escolha o que fazer</summary>
+            <summary>${plural(duplicatas.length, "nota já existe", "notas já existem")} no sistema, escolha o que fazer</summary>
             <div class="linha-acoes linha-acoes--apertada mt-3 mb-2">
                 <button class="btn-secundario btn-pequeno" onclick="importacaoSelecionarTodasDuplicatas(true)">Marcar todas para reimportar</button>
                 <button class="btn-secundario btn-pequeno" onclick="importacaoSelecionarTodasDuplicatas(false)">Desmarcar todas (ignorar)</button>
@@ -950,7 +950,7 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                             <td>${formatarData(n.dataNota)}</td>
                             <td>${escapeHtml(n.motorista)}</td>
                             <td>${escapeHtml(n.placa)}</td>
-                            <td>${n.itens.length} item(ns)</td>
+                            <td>${plural(n.itens.length, "item", "itens")}</td>
                             <td>${fmtR(n.total)}</td>
                         </tr>`).join("")}
                     </tbody>
@@ -985,10 +985,10 @@ function importacaoMostrarResumo(novas, duplicatas, erros) {
                             <td>${escapeHtml(n.numeroNota)}</td>
                             <td>${escapeHtml(n.motorista)}</td>
                             <td>${escapeHtml(n.placa)}</td>
-                            <td>${n.itens.length} item(ns)</td>
+                            <td>${plural(n.itens.length, "item", "itens")}</td>
                             <td>${fmtR(n.total)}</td>
                         </tr>`).join("")}
-                        ${novas.length > 50 ? `<tr><td colspan="6" class="celula-centro rotulo-suave">... e mais ${novas.length - 50} nota(s)</td></tr>` : ""}
+                        ${novas.length > 50 ? `<tr><td colspan="6" class="celula-centro rotulo-suave">... e mais ${plural(novas.length - 50, "nota")}</td></tr>` : ""}
                     </tbody>
                 </table>
             </div>
@@ -1117,7 +1117,7 @@ async function importacaoConfirmar() {
     if (_travaBarrar(fotoTrava, "Importar")) return;
     atualizarListas();
     // A mensagem de conclusão diz a verdade sobre a nuvem.
-    const confirmado = await _salvarEConfirmar(`${todasParaSalvar.length} nota(s) importada(s)`);
+    const confirmado = await _salvarEConfirmar(plural(todasParaSalvar.length, "nota importada", "notas importadas"));
     _importacaoNovasPendentes      = [];
     _importacaoDuplicatasPendentes = [];
 
@@ -1130,10 +1130,10 @@ async function importacaoConfirmar() {
             <div class="importacao-sucesso">
                 
                 <h3>${confirmado ? "Importação concluída!" : "Importação feita neste navegador, aguardando a nuvem"}</h3>
-                <p><strong>${totalImportado}</strong> nota(s) importadas com sucesso.</p>
-                ${dupSelecionadas.length > 0 ? `<p><strong>${dupSelecionadas.length}</strong> nota(s) reimportadas (as anteriores ficaram registradas como excluídas).</p>` : ""}
+                <p><strong>${totalImportado}</strong> ${totalImportado === 1 ? "nota importada" : "notas importadas"} com sucesso.</p>
+                ${dupSelecionadas.length > 0 ? `<p><strong>${dupSelecionadas.length}</strong> ${dupSelecionadas.length === 1 ? "nota reimportada (a anterior ficou registrada como excluída)" : "notas reimportadas (as anteriores ficaram registradas como excluídas)"}.</p>` : ""}
                 ${confirmado ? "" : `<p class="texto-aviso">Não feche a aba até a pílula de sincronização sumir.</p>`}
-                <p><strong>${totalItens}</strong> item(ns) de combustível registrados.</p>
+                <p><strong>${totalItens}</strong> ${totalItens === 1 ? "item de combustível registrado" : "itens de combustível registrados"}.</p>
                 <div class="linha-acoes linha-acoes--centro mt-4">
 
                     <button class="btn-primario" onclick="mostrarTela('relatorios')"> Ver no histórico</button>

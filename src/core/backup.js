@@ -126,13 +126,13 @@ function _resumoRestauracao(dados) {
     const nomeDe = id => (db.empresas || []).find(e => e.id === id)?.nome
         || (dados.empresas || []).find(e => e.id === id)?.nome || id;
     const linhas = Object.keys(noArquivo).map(id =>
-        `• ${nomeDe(id)}: hoje ${hoje[id] || 0} → depois ${noArquivo[id]} lançamento(s)`);
+        `• ${nomeDe(id)}: hoje ${hoje[id] || 0} → depois ${plural(noArquivo[id], "lançamento")}`);
     const intocadas = [...permitidos].filter(id => !noArquivo[id] && hoje[id])
-        .map(id => `• ${nomeDe(id)}: fica como está (${hoje[id]} lançamento(s)), pois o arquivo não tem notas dela`);
+        .map(id => `• ${nomeDe(id)}: fica como está (${plural(hoje[id], "lançamento")}), pois o arquivo não tem notas dela`);
     return [
         linhas.length ? linhas.join("\n") : "O arquivo não tem lançamentos de empresas que você acessa.",
         intocadas.length ? "\n" + intocadas.join("\n") : "",
-        fora ? `\n${fora} lançamento(s) do arquivo são de empresas fora do cadastro ou do seu acesso e ficam de fora.` : "",
+        fora ? `\n${plural(fora, "lançamento do arquivo é de empresa fora do cadastro ou do seu acesso e fica de fora.", "lançamentos do arquivo são de empresas fora do cadastro ou do seu acesso e ficam de fora.")}` : "",
         "\nOs cadastros do arquivo entram por cima dos atuais; os que só existem hoje continuam."
     ].join("\n");
 }

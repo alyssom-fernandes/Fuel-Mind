@@ -431,7 +431,7 @@ async function carregarDB() {
 
         if (reaplicadas) {
             mostrarToast(
-                `${reaplicadas} lançamento(s) alterado(s) neste navegador não tinham `
+                `${plural(reaplicadas, "lançamento alterado neste navegador não tinha", "lançamentos alterados neste navegador não tinham")} `
                 + `chegado à nuvem. Enviando agora.`, "aviso", 7000);
         }
         _ligarListenerTempoReal();

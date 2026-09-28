@@ -114,12 +114,12 @@ function carregarGrupo() {
             <div class="kpi-card verde">
                 <div class="kpi-valor">${fmtL(soma.litros)}</div>
                 <div class="kpi-label">Litros Descarregados</div>
-                <div class="kpi-base">pela data da descarga · ${soma.notasDescarga} nota(s)</div>
+                <div class="kpi-base">pela data da descarga · ${plural(soma.notasDescarga, "nota")}</div>
             </div>
             <div class="kpi-card laranja">
                 <div class="kpi-valor">${fmtR(soma.gasto)}</div>
                 <div class="kpi-label">Gasto em Compras</div>
-                <div class="kpi-base">pela data de emissão · ${soma.notasEmissao} nota(s)</div>
+                <div class="kpi-base">pela data de emissão · ${plural(soma.notasEmissao, "nota")}</div>
             </div>
             <div class="kpi-card roxo">
                 <div class="kpi-valor">${fmtR(soma.frete)}</div>
@@ -147,7 +147,7 @@ function carregarGrupo() {
                     title="Trocar a empresa ativa e abrir o Dashboard dela">
                     <td><strong>${escapeHtml(x.empresa)}</strong>${x.semTaxa ? ` <em class="tag-perda tag-perda--perigo">${x.semTaxa} sem taxa</em>` : ""}</td>
                     <td>${x.notasDescarga}</td>
-                    <td>${fmtL(x.litros, Number.isInteger(Math.round(x.litros * 1000) / 1000) ? 0 : 3)}</td>
+                    <td>${fmtL3(x.litros)}</td>
                     <td>${fmtR(x.gasto)}</td>
                     <td>${x.precoCompra > 0 ? fmtRL(x.precoCompra) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
@@ -157,7 +157,7 @@ function carregarGrupo() {
             <tfoot><tr>
                 <td><strong>Total</strong></td>
                 <td><strong>${soma.notasDescarga}</strong></td>
-                <td><strong>${fmtL(soma.litros, Number.isInteger(Math.round(soma.litros * 1000) / 1000) ? 0 : 3)}</strong></td>
+                <td><strong>${fmtL3(soma.litros)}</strong></td>
                 <td><strong>${fmtR(soma.gasto)}</strong></td>
                 <td><strong>${soma.litrosFaturados > 0 ? fmtRL(soma.gasto / soma.litrosFaturados) : "—"}</strong></td>
                 <td><strong>${fmtR(soma.frete)}</strong></td>

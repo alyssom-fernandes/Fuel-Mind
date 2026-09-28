@@ -394,7 +394,7 @@ body {
     border: 1px solid var(--border);
     color: var(--text-muted);
     cursor: pointer;
-    font-family: 'DM Sans', inherit;
+    font-family: inherit;
     font-size: 0.82rem; font-weight: 500;
     transition: all 0.18s;
     min-width: 140px;
@@ -663,7 +663,7 @@ input, select, textarea {
     border-radius: var(--radius); font-size: 0.9rem; width: 100%;
     background: var(--surface-alt); color: var(--text);
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-    font-family: 'DM Sans', inherit;
+    font-family: inherit;
     -webkit-appearance: none; appearance: none; line-height: 1.4;
 }
 input:focus, select:focus, textarea:focus {
@@ -700,7 +700,7 @@ a:hover { color: var(--primary-hover); }
 button {
     padding: 9px 18px; border: none; border-radius: var(--radius);
     cursor: pointer; font-size: 0.875rem; font-weight: 600;
-    font-family: 'DM Sans', inherit; letter-spacing: 0.01em;
+    font-family: inherit; letter-spacing: 0.01em;
     transition: all 0.2s ease; white-space: nowrap;
     display: inline-flex; align-items: center; gap: 7px;
 }
@@ -740,6 +740,17 @@ button {
     margin-bottom: 16px;
 }
 .exportacao-titulo { font-weight: 700; font-size: 0.65rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
+/* Um grupo por documento, separado do seguinte por um fio (28/09/2026). */
+.exportacao-grupo { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.exportacao-grupo + .exportacao-grupo { border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px; }
+@media (max-width: 768px) {
+    .exportacao-grupo { width: 100%; }
+    .exportacao-grupo .exportacao-titulo { flex-basis: 100%; }
+    .exportacao-grupo + .exportacao-grupo {
+        border-left: 0; padding-left: 0; margin-left: 0;
+        border-top: 1px solid var(--border); padding-top: 8px;
+    }
+}
 .btn-export { padding: 5px 12px; border-radius: var(--radius); font-size: 0.75rem; font-weight: 700; border: 1px solid var(--border); background: var(--surface-alt); color: var(--text-muted); transition: all 0.15s; letter-spacing: 0.02em; }
 .btn-export:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-strong); }
 .btn-xlsx  { color: var(--success) !important; }
@@ -879,6 +890,18 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 
 /* ══ FILTROS ═════════════════════════════════ */
 .filtros { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; padding: 18px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+/* O botão que recolhe os filtros do Histórico só existe no celular. */
+.filtros-alternar { display: none; }
+@media (max-width: 768px) {
+    .filtros-alternar {
+        display: flex; width: 100%; justify-content: space-between; align-items: center;
+        margin-bottom: var(--space-3);
+    }
+    .filtros-alternar svg { width: 16px; height: 16px; transition: transform 0.15s; }
+    .filtros-alternar[aria-expanded="true"] svg { transform: rotate(180deg); }
+    .filtros-alternar-qtd { color: var(--primary-texto); font-weight: 700; }
+    #relatorios .filtros:not(.filtros-abertos) { display: none; }
+}
 .filtros-acoes { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
 .resumo { background: var(--surface); border: 1px solid var(--border-light); border-left: 4px solid var(--primary); border-radius: var(--radius); padding: 11px 16px; margin-bottom: 14px; font-size: 0.875rem; color: var(--text-muted); display: none; }
 .filtros-rapidos-sep { font-size: 0.7rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; align-self: center; white-space: nowrap; }
@@ -2409,8 +2432,6 @@ button.confirmado-local::after {
 .linha-metrica { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); align-items: center; }
 .btn-metrica.ativo { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-/* Conferência e importação */
-.input-arquivo { display: block; margin-top: var(--space-2); }
 
 /* Sistema */
 .campo--restaurar { max-width: 360px; }
@@ -3006,7 +3027,7 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .btn-arquivo {
     display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap;
     padding: 9px 18px; border-radius: var(--radius);
-    font-size: 0.875rem; font-weight: 600; font-family: 'DM Sans', inherit; letter-spacing: 0.01em;
+    font-size: 0.875rem; font-weight: 600; font-family: inherit; letter-spacing: 0.01em;
     text-transform: none; margin: 0;
 }
 .input-arquivo-oculto {
@@ -3014,6 +3035,22 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
 .input-arquivo-oculto:focus-visible + *, .btn-arquivo:has(+ .input-arquivo-oculto:focus-visible) { outline: 2px solid var(--foco); outline-offset: 2px; }
+/* Os outros campos de arquivo (Conferências, backup, importação de planilha
+   e de cadastros) saíam com o botão cru do navegador, "Escolher Arquivo" e
+   um "Nenhum ar…vo escolhido" cortado (vistoria de 28/09/2026). Agora têm o
+   mesmo botão da faixa do XML, com o nome do arquivo ao lado. */
+.arquivo-escolha {
+    position: relative; display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-top: var(--space-2);
+}
+.arquivo-escolha .input-arquivo-oculto { left: 0; top: 0; }
+/* Dentro de `.campo`, a regra dos rótulos (caixa alta, letra miúda, cinza)
+   pegava o botão, que também é um `label`. */
+.arquivo-escolha .btn-arquivo {
+    font-size: 0.875rem; font-weight: 600; letter-spacing: 0.01em;
+    text-transform: none; color: var(--text);
+}
+.arquivo-nome { font-size: 0.82rem; color: var(--text-muted); overflow-wrap: anywhere; }
 
 .lanc-painel {
     background: var(--surface); border: 1px solid var(--border-light);
@@ -3037,7 +3074,9 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 @media (min-width: 1100px) {
     .kpi-container--fretes { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
 }
-.kpi-container--fretes .kpi-card:first-child .kpi-valor { color: var(--primary-mid); }
+/* O frete do mês fica em destaque pelo tamanho do cartão, não pela cor: em
+   vermelho ele lia como alerta, que é o que o vermelho quer dizer no resto
+   do sistema (vistoria de 28/09/2026). */
 
 /* Títulos de seção legíveis: eram 0,66rem, maiúsculas e cinza-claro, e o
    olho não achava onde começava cada bloco. Agora seguem o título das
@@ -3258,7 +3297,7 @@ input[type="file"]::file-selector-button {
     margin-right: var(--space-3); padding: 8px 16px; cursor: pointer;
     border: 1px solid var(--border); border-radius: var(--radius);
     background: var(--surface-alt); color: var(--text);
-    font-family: 'DM Sans', inherit; font-size: 0.82rem; font-weight: 600;
+    font-family: inherit; font-size: 0.82rem; font-weight: 600;
     transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
 input[type="file"]::file-selector-button:hover { background: var(--surface-hover); border-color: var(--border-strong); }

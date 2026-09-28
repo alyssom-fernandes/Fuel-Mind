@@ -392,14 +392,27 @@
   <p class="dica">Pela data da descarga, com a taxa que valia em cada mês. Clique numa barra ou numa linha para abrir aquele mês.</p>
   <div id="freteHistoricoContainer" class="mb-6"></div>
   <div class="barra-exportacao" id="fretesBarraExportacao">
-    <span class="exportacao-titulo">Exportar:</span>
-    <button class="btn-export btn-pdf" onclick="abrirFechamentoPDF()" title="O fechamento completo em PDF: resumo do mês, por empresa, por conjunto, por motorista, por placa e nota a nota. Você escolhe quais empresas entram.">Fechamento em PDF</button>
-    <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: o fechamento (por empresa, conjunto, motorista e placa), o nota a nota e as notas do mês pela emissão.">Fechamento em Excel</button>
-    <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma, para anexar na resposta a um transportador.">Nota a nota</button>
-    <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()">Excel</button>
-    <button class="btn-export btn-pdf" onclick="exportarFretesPDF()">PDF</button>
-    <button class="btn-export btn-csv" onclick="exportarFretesCSV()">CSV</button>
-    <button class="btn-export btn-print" onclick="imprimirFretes()">Imprimir</button>
+    <!-- Um grupo por documento, com o nome dele, e os formatos na ordem da
+         central de Relatórios (PDF, Excel, CSV). Eram sete botões soltos, e
+         "Excel" ficava ao lado de "Fechamento em Excel" sem dizer de quê
+         (vistoria de 28/09/2026). -->
+    <div class="exportacao-grupo">
+      <span class="exportacao-titulo">Fechamento</span>
+      <button class="btn-export btn-pdf" onclick="abrirFechamentoPDF()" title="O fechamento completo em PDF: resumo do mês, por empresa, por conjunto, por motorista, por placa e nota a nota. Você escolhe quais empresas entram.">PDF</button>
+      <button class="btn-export btn-xlsx" onclick="exportarFechamentoDoMes()" title="Um Excel com três abas: o fechamento (por empresa, conjunto, motorista e placa), o nota a nota e as notas do mês pela emissão.">Excel</button>
+    </div>
+    <div class="exportacao-grupo">
+      <span class="exportacao-titulo">Resumo de fretes</span>
+      <button class="btn-export btn-pdf" onclick="exportarFretesPDF()" title="Resumo de fretes do mês em PDF">PDF</button>
+      <button class="btn-export btn-xlsx" onclick="exportarFretesExcel()" title="Resumo de fretes do mês em Excel">Excel</button>
+      <button class="btn-export btn-csv" onclick="exportarFretesCSV()" title="Resumo de fretes do mês em CSV">CSV</button>
+      <button class="btn-export btn-print" onclick="imprimirFretes()" title="Imprime o resumo de fretes do mês">Imprimir</button>
+    </div>
+    <div class="exportacao-grupo">
+      <span class="exportacao-titulo">Nota a nota</span>
+      <button class="btn-export btn-xlsx" onclick="exportarFreteNotaANota()" title="Nota a nota do mês em Excel">Excel</button>
+      <button class="btn-export" onclick="abrirFreteNotaANota()" title="Lista nota a nota do mês, com litros, taxa e frete de cada uma, para anexar na resposta a um transportador.">Ver a lista</button>
+    </div>
   </div>
   <div class="analitico-abas mt-4" id="fretesAbas">
     <button class="aba-btn ativa" onclick="trocarAbaFretes('placas', this)">Por placa</button>
@@ -452,7 +465,15 @@
      citam; 22/09/2026 mudou o rótulo, não a chave) -->
 <div id="relatorios" class="tela">
   <h2 id="tituloRelatorios">Histórico de lançamentos</h2>
-  <div class="filtros">
+  <!-- Celular: os filtros recolhidos atrás deste botão (vistoria de
+       28/09/2026). Eram dez campos, uma tela e meia, antes da primeira nota.
+       No computador o botão não aparece e os filtros ficam sempre abertos. -->
+  <button type="button" class="btn-secundario filtros-alternar" id="relFiltrosAlternar"
+          aria-expanded="false" aria-controls="relFiltros" onclick="relatorioAlternarFiltros()">
+    <span>Filtros<span class="filtros-alternar-qtd" id="relFiltrosQtd"></span></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6,9 12,15 18,9"/></svg>
+  </button>
+  <div class="filtros" id="relFiltros">
       <div class="campo"><label for="filtroDataInicio" title="A emissão é a data da compra: é dela que sai o valor da nota.">Emissão de</label><input type="date" id="filtroDataInicio" onchange="carregarRelatorio()"></div>
       <div class="campo"><label for="filtroDataFim" title="A emissão é a data da compra: é dela que sai o valor da nota.">Emissão até</label><input type="date" id="filtroDataFim" onchange="carregarRelatorio()"></div>
       <!-- Os dois campos de descarga entraram em 22/09/2026, a pedido do dono:
@@ -499,21 +520,29 @@
 
     <div id="resumoRelatorio" class="resumo"></div>
     <div id="barraExportacaoRelatorio" class="barra-exportacao" style="display:none">
-      <span class="exportacao-titulo">Exportar:</span>
-      <button class="btn-export btn-pdf" onclick="gerarRelatorioMensalPDF()" title="PDF de um mês fechado: KPIs, comparação com o mês anterior, detalhamento por combustível e a lista das notas.">Mensal (PDF)</button>
-      <button class="btn-export btn-xlsx" onclick="exportarExcel('relatorio')">Excel</button>
-      <button class="btn-export btn-pdf" onclick="exportarPDF('relatorio')">PDF</button>
-      <button class="btn-export btn-csv" onclick="exportarCSV('relatorio')">CSV</button>
-      <button class="btn-export btn-print" onclick="imprimirRelatorio()">Imprimir</button>
-      <button class="btn-export btn-wpp" onclick="compartilharWhatsApp()">WhatsApp</button>
-      <button class="btn-export btn-email" onclick="compartilharEmail()">E-mail</button>
-      <span class="sep-vertical"></span>
-      <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes')" title="Aplica filtro deste mês e exporta PDF">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Este mês
-      </button>
-      <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes_anterior')" title="Aplica filtro do mês anterior e exporta PDF">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Mês anterior
-      </button>
+      <!-- Um grupo por documento, como em Fretes (vistoria de 28/09/2026):
+           "Mensal (PDF)" e "PDF" ficavam lado a lado sem dizer a diferença. -->
+      <div class="exportacao-grupo">
+        <span class="exportacao-titulo">Esta lista</span>
+        <button class="btn-export btn-pdf" onclick="exportarPDF('relatorio')" title="As notas filtradas nesta tela, em PDF">PDF</button>
+        <button class="btn-export btn-xlsx" onclick="exportarExcel('relatorio')" title="As notas filtradas nesta tela, em Excel">Excel</button>
+        <button class="btn-export btn-csv" onclick="exportarCSV('relatorio')" title="As notas filtradas nesta tela, em CSV">CSV</button>
+        <button class="btn-export btn-print" onclick="imprimirRelatorio()" title="Imprime as notas filtradas nesta tela">Imprimir</button>
+      </div>
+      <div class="exportacao-grupo">
+        <span class="exportacao-titulo">Relatório mensal</span>
+        <button class="btn-export btn-pdf" onclick="gerarRelatorioMensalPDF()" title="PDF de um mês fechado: KPIs, comparação com o mês anterior, detalhamento por combustível e a lista das notas.">PDF</button>
+      </div>
+      <div class="exportacao-grupo">
+        <span class="exportacao-titulo">Enviar</span>
+        <button class="btn-export btn-wpp" onclick="compartilharWhatsApp()" title="O resumo das notas filtradas pelo WhatsApp">WhatsApp</button>
+        <button class="btn-export btn-email" onclick="compartilharEmail()" title="O resumo das notas filtradas por e-mail">E-mail</button>
+      </div>
+      <div class="exportacao-grupo">
+        <span class="exportacao-titulo">PDF rápido</span>
+        <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes')" title="Filtra este mês e baixa a lista em PDF">Este mês</button>
+        <button class="btn-filtro-rapido" onclick="exportarPeriodoRapido('mes_anterior')" title="Filtra o mês anterior e baixa a lista em PDF">Mês anterior</button>
+      </div>
     </div>
     <div class="tabela-container">
       <table id="tabelaRelatorioEl">
@@ -659,8 +688,11 @@
       </ol>
       <div class="campo mt-4">
         <label for="confArquivoAutosystem">Relatório do AutoSystem</label>
-        <input type="file" id="confArquivoAutosystem" accept=".xlsx,.xls,.csv" class="input-arquivo"
-               onchange="autosystemLerArquivo(this)">
+        <div class="arquivo-escolha">
+          <input type="file" id="confArquivoAutosystem" class="input-arquivo-oculto" accept=".xlsx,.xls,.csv" onchange="arquivoMostrarNome(this); autosystemLerArquivo(this)">
+          <label class="btn-secundario btn-arquivo" for="confArquivoAutosystem">Escolher arquivo</label>
+          <span class="arquivo-nome" aria-live="polite">Nenhum arquivo escolhido</span>
+        </div>
       </div>
       <div id="_confAutoResultado" class="mt-5"></div>
     </div>
@@ -692,7 +724,11 @@
         <button class="btn-primario" onclick="baixarBackup()">Baixar backup (.json)</button>
         <div class="campo campo--restaurar mt-3" data-papel="supremo">
           <label for="inputBackup">Restaurar a partir de backup (.json)</label>
-          <input type="file" id="inputBackup" accept=".json" onchange="restaurarBackup(this)">
+          <div class="arquivo-escolha">
+          <input type="file" id="inputBackup" class="input-arquivo-oculto" accept=".json" onchange="arquivoMostrarNome(this); restaurarBackup(this)">
+          <label class="btn-secundario btn-arquivo" for="inputBackup">Escolher arquivo</label>
+          <span class="arquivo-nome" aria-live="polite">Nenhum arquivo escolhido</span>
+        </div>
         </div>
       </div>
     </div>
@@ -739,7 +775,11 @@
     </div>
     <div class="sistema-secao mb-5">
       <h3>2. Selecionar arquivo</h3>
-      <input type="file" id="importacaoArquivo" aria-label="Arquivo de planilha para importar" accept=".xlsx,.xls,.csv" onchange="importacaoLerArquivo(this)" class="input-arquivo">
+      <div class="arquivo-escolha">
+          <input type="file" id="importacaoArquivo" class="input-arquivo-oculto" aria-label="Arquivo de planilha para importar" accept=".xlsx,.xls,.csv" onchange="arquivoMostrarNome(this); importacaoLerArquivo(this)">
+          <label class="btn-secundario btn-arquivo" for="importacaoArquivo">Escolher arquivo</label>
+          <span class="arquivo-nome" aria-live="polite">Nenhum arquivo escolhido</span>
+        </div>
       <p class="dica mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
     </div>
     <div id="importacaoEtapas" style="display:none">
@@ -897,7 +937,11 @@
     <h3>Importar cadastros de uma planilha</h3>
     <p class="dica">Cadastra veículos, motoristas, conjuntos e bases de uma vez. Nada é gravado antes de você conferir a prévia e confirmar, e o que já existe não é alterado.</p>
     <div class="form-linha">
-      <input type="file" id="cadImportarArquivo" aria-label="Planilha de cadastros" accept=".xlsx,.xls" onchange="cadImportarLerArquivo(this)" class="input-arquivo">
+      <div class="arquivo-escolha">
+          <input type="file" id="cadImportarArquivo" class="input-arquivo-oculto" aria-label="Planilha de cadastros" accept=".xlsx,.xls" onchange="arquivoMostrarNome(this); cadImportarLerArquivo(this)">
+          <label class="btn-secundario btn-arquivo" for="cadImportarArquivo">Escolher arquivo</label>
+          <span class="arquivo-nome" aria-live="polite">Nenhum arquivo escolhido</span>
+        </div>
     </div>
     <details class="mt-3">
       <summary class="rel-chip">Como a planilha precisa estar</summary>

@@ -1020,3 +1020,10 @@ function recalcularTela(telaId, fn) {
     // pode ficar esperando por isso.
     setTimeout(rodar, 50);
 }
+
+/** Campo de arquivo com o botão do sistema: mostra ao lado o nome do
+ *  arquivo escolhido, que o botão cru do navegador mostrava sozinho. */
+function arquivoMostrarNome(input) {
+    const alvo = input.parentElement && input.parentElement.querySelector('.arquivo-nome');
+    if (alvo) alvo.textContent = (input.files && input.files[0] && input.files[0].name) || 'Nenhum arquivo escolhido';
+}

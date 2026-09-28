@@ -696,7 +696,7 @@ function renderAbaEvolucaoPrecos(dados) {
 
     const colors = getChartColors();
     const datasets = [];
-    const combustiveis = Object.keys(precosPorComb).sort();
+    const combustiveis = Object.keys(precosPorComb).sort(compararCombustiveis);
 
     /* A MÉDIA GERAL entra como mais uma linha (22/09/2026), e com ela a
        aba "Comparativo" deixou de ter razão de existir: ela era este mesmo

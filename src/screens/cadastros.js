@@ -571,8 +571,8 @@ function confirmarEdicao() {
 
     if (propagados > 0 || conjuntosTocados > 0) {
         const partes = [];
-        if (propagados > 0)       partes.push(`${propagados} lançamento(s)`);
-        if (conjuntosTocados > 0) partes.push(`${conjuntosTocados} conjunto(s)`);
+        if (propagados > 0)       partes.push(plural(propagados, "lançamento"));
+        if (conjuntosTocados > 0) partes.push(plural(conjuntosTocados, "conjunto"));
         mostrarToast(`Renomeado e atualizado em ${partes.join(" e ")}.`, "sucesso", 5000);
     }
 }
@@ -667,7 +667,7 @@ async function converterTodasPlacasMercosul() {
     }
 
     const lista = paraConverter.map(p => `  ${p.antiga}  →  ${p.nova}`).join("\n");
-    if (!await fmConfirm({ titulo: `Converter ${paraConverter.length} placa(s) para Mercosul?`, msg: `${lista}`, confirmTxt: "Converter", tipo: "aviso" })) return;
+    if (!await fmConfirm({ titulo: `Converter ${plural(paraConverter.length, "placa")} para Mercosul?`, msg: `${lista}`, confirmTxt: "Converter", tipo: "aviso" })) return;
 
     let propagados = 0;
     const fotoTrava = _travaFoto();
@@ -698,7 +698,7 @@ async function converterTodasPlacasMercosul() {
     if (_travaBarrar(fotoTrava, "Converter placas")) return;
     salvarDB();
     atualizarListas();
-    mostrarToast(`${paraConverter.length} placa(s) convertida(s) para Mercosul.${propagados > 0 ? ` ${propagados} lançamento(s) atualizado(s).` : ""}`, "sucesso", 6000);
+    mostrarToast(`${plural(paraConverter.length, "placa convertida", "placas convertidas")} para Mercosul.${propagados > 0 ? ` ${plural(propagados, "lançamento atualizado", "lançamentos atualizados")}.` : ""}`, "sucesso", 6000);
 }
 
 // ========== EMPRESAS (com município) ==========

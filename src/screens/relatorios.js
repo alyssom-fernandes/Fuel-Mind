@@ -197,7 +197,32 @@ function _textoBuscavel(l) {
     return txt;
 }
 
+/** Celular: abre e fecha a caixa de filtros do Histórico. */
+function relatorioAlternarFiltros() {
+    const caixa = document.getElementById("relFiltros");
+    const botao = document.getElementById("relFiltrosAlternar");
+    if (!caixa || !botao) return;
+    const abrir = !caixa.classList.contains("filtros-abertos");
+    caixa.classList.toggle("filtros-abertos", abrir);
+    botao.setAttribute("aria-expanded", String(abrir));
+}
+
+/** Quantos filtros estão em uso, no botão que os recolhe no celular: com a
+ *  caixa fechada, é o único sinal de que a lista está filtrada. */
+function _relatorioContarFiltros() {
+    const alvo = document.getElementById("relFiltrosQtd");
+    if (!alvo) return;
+    const tem = id => !!(document.getElementById(id)?.value || "").trim();
+    // Cada par de datas é um filtro só: "Este mês" preenche os dois campos.
+    let n = ["filtroMotorista", "filtroPlaca", "filtroCombustivel", "filtroNota", "filtroBase", "filtroBusca"].filter(tem).length;
+    if (tem("filtroDataInicio") || tem("filtroDataFim")) n++;
+    if (tem("filtroDescargaInicio") || tem("filtroDescargaFim")) n++;
+    if (document.getElementById("filtroMostrarInativos")?.checked) n++;
+    alvo.textContent = n ? ` · ${n} em uso` : "";
+}
+
 function _aplicarFiltroRelatorio() {
+    _relatorioContarFiltros();
     const dataInicio  = document.getElementById("filtroDataInicio").value;
     const dataFim     = document.getElementById("filtroDataFim").value;
     const descIni     = document.getElementById("filtroDescargaInicio")?.value || "";
@@ -377,11 +402,11 @@ function _aplicarFiltroRelatorio() {
         const precoMedio = mPreco.precoCompra;
 
         // Cards por combustível
-        const cardsComb = Object.entries(porComb).map(([comb, d]) => {
+        const cardsComb = Object.entries(ordenarPorCombustivel(porComb)).map(([comb, d]) => {
             const pm = d.litrosNota > 0 ? d.total / d.litrosNota : 0;
             return `<div class="rel-card">
                 <div class="rel-card-titulo">${escapeHtml(comb)}</div>
-                <div class="rel-card-valor">${fmtL3(d.litros)}</div>
+                <div class="rel-card-valor">${fmtL(d.litros)}</div>
                 <div class="rel-card-linha">${fmtR(d.total)}</div>
                 <div class="rel-card-linha rel-card-linha--fraca">${fmtRL(pm)}/L</div>
             </div>`;
@@ -414,12 +439,12 @@ function _aplicarFiltroRelatorio() {
                 </div>
                 <div class="rel-kpi">
                     <span class="rel-kpi-rotulo">Litros</span>
-                    <strong class="rel-kpi-valor">${fmtL3(totalLitros)}</strong>
+                    <strong class="rel-kpi-valor">${fmtL(totalLitros)}</strong>
                 </div>
                 ${precoMedio > 0 ? `<div class="rel-kpi" title="${escapeHtml(explicacaoPrecoCompra(mPreco))}">
                     <span class="rel-kpi-rotulo">Preço médio de compra</span>
                     <strong class="rel-kpi-valor">${fmtRL(precoMedio)}/L</strong>
-                    <span class="rel-kpi-nota">sobre ${fmtL3(mPreco.litrosNota)} faturados</span>
+                    <span class="rel-kpi-nota">sobre ${fmtL(mPreco.litrosNota)} faturados</span>
                 </div>` : ''}
             </div>
             ${_chipsResumoRelatorio({ temPeriodo, temDescarga }, emitidasDescarregadasFora, descarregadasEmitidasFora, mPreco)}
@@ -538,13 +563,11 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
     const fim          = Math.min(inicio + ITENS_POR_PAGINA, total);
     const fatia        = dados.slice(inicio, fim);
 
-    // Litros com TRÊS casas, como em todo o resto do sistema. Esta linha
-    // declarava um `fmtL` local, sombreando o de utils.js, e arredondava
-    // para inteiro (só aqui). A mesma nota lia 3.501 nesta tabela e
-    // 3.500,700 no resumo acima dela, no detalhe que abre embaixo, no
-    // Excel, no CSV e na impressão. É a tela onde o operador confere
-    // antes de exportar, e era a única que mostrava outro número.
-    const fmtL = n => Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    // Litros pela regra de `fmtL3`: a fração da NF-e aparece inteira
+    // ("3.500,700"), e o número redondo sai sem ",000". Esta linha já
+    // declarou um `fmtL` local que arredondava para inteiro (só aqui), e a
+    // mesma nota lia 3.501 nesta tabela e 3.500,700 no detalhe embaixo.
+    const fmtL = n => fmtL3(n).replace(/ L$/, "");
     const idInlineAberto = _detalheInlineAberto.contexto === contexto ? _detalheInlineAberto.id : null;
 
     tbody.innerHTML = fatia.flatMap(l => {
@@ -941,7 +964,7 @@ function exportarExcel(contexto) {
             linhas,
             // Linha de fechamento dentro da própria tabela: quem confere a
             // planilha não precisa somar a coluna à mão.
-            total: ["TOTAL", "", "", "", "", `${dados.length} lançamento(s)`, "", "",
+            total: ["TOTAL", "", "", "", "", plural(dados.length, "lançamento"), "", "",
                     Number(somaLitros.toFixed(3)), Number(somaTotal.toFixed(2))]
         }]
     });
@@ -1488,7 +1511,7 @@ async function exportarPDF(contexto, opcoes) {
     function linhaTotal(lans) {
         const t = cab.map(() => "");
         t[0] = "TOTAL";
-        t[flex] = `${lans.length} lançamento(s)`;
+        t[flex] = plural(lans.length, "lançamento");
         t[iLitros] = _fmtLitrosFrete(lans.reduce((s, l) => s + litrosDe(l), 0));
         t[iLitros + 1] = fmtR(lans.reduce((s, l) => s + (l.total || 0), 0));
         return t;
@@ -1565,7 +1588,7 @@ function exportarCSV(contexto) {
     const somaLitrosCsv = dados.reduce((s2, l) => s2 + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
     const somaTotalCsv  = dados.reduce((s2, l) => s2 + (l.total || 0), 0);
     linhas.push([]);
-    linhas.push(["TOTAL", "", `${dados.length} nota(s)`, "", "", "", "", "",
+    linhas.push(["TOTAL", "", plural(dados.length, "nota"), "", "", "", "", "",
                  somaLitrosCsv.toFixed(3).replace('.', ','), somaTotalCsv.toFixed(2).replace('.', ',')]);
     linhas.unshift(["Data Nota","Data Descarga","Nota","Base","Empresa","Motorista","Placa","Combustíveis","Total Litros (L)","Total (R$)"]);
     linhas.unshift(
@@ -1602,11 +1625,11 @@ function compartilharWhatsApp(contexto) {
     // cinco notas do alto da tabela: `slice(-5)` mandava as cinco do fim,
     // que na ordem padrão são as mais antigas (18/09/2026).
     let mensagem = `⛽ *Controle de Combustível*${empresaFiltroGlobal ? ` · ${empresaFiltroGlobal}` : ""}\n`
-        + `📅 ${_descricaoPeriodoRelatorio()}\n📋 ${lista.length} nota(s) · ${fmtL(totalLitros)}\n💰 Total: ${fmtR(totalGeral)}\n\n`;
+        + `📅 ${_descricaoPeriodoRelatorio()}\n📋 ${plural(lista.length, "nota")} · ${fmtL(totalLitros)}\n💰 Total: ${fmtR(totalGeral)}\n\n`;
     lista.slice(0, 5).forEach(l => {
         mensagem += `• ${formatarData(l.dataNota)} | ${l.numeroNota} | ${l.motorista || "—"} | ${fmtR(l.total)}\n`;
     });
-    if (lista.length > 5) mensagem += `\n... e mais ${lista.length - 5} nota(s).`;
+    if (lista.length > 5) mensagem += `\n... e mais ${plural(lista.length - 5, "nota")}.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, "_blank");
 }
 
@@ -1632,7 +1655,7 @@ function compartilharEmail(contexto) {
                     + `${_descricaoPeriodoRelatorio()}\nData: ${dataHoje}\n`
                     + `Registros: ${lista.length}\nTotal: ${fmtR(totalGeral)}\n\n${"=".repeat(60)}\n\n`;
     const rodape = n => n > 0
-        ? `\n(+ ${n} nota(s) não cabem num e-mail. O total acima considera todas as `
+        ? `\n(+ ${plural(n, "nota não cabe", "notas não cabem")} num e-mail. O total acima considera todas as `
           + `${lista.length}. Para a lista completa, use Excel, PDF ou CSV.)\n`
         : "";
     const montarURL = c => `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(c)}`;
@@ -1830,7 +1853,7 @@ function _executarRelatorioMensal() {
             l.base || '—', l.empresa || '—', l.motorista || '—', l.placa || '—',
             _fmtLitrosFrete(litrosDe(l)), fmtR(l.total || 0)
         ]);
-        corpoL.push(['TOTAL', '', '', '', `${lansMes.length} nota(s)`, '', _fmtLitrosFrete(totalLitros), fmtR(totalGasto)]);
+        corpoL.push(['TOTAL', '', '', '', plural(lansMes.length, "nota"), '', _fmtLitrosFrete(totalLitros), fmtR(totalGasto)]);
         const encL = _pdfEncaixar(doc, estiloPdf, cabL, corpoL, W - 2 * _PDF_MARGEM, 4, [7]);
         const estL = {};
         cabL.forEach((_, i) => {

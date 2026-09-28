@@ -145,7 +145,7 @@ function metricasPreco(itens) {
 /** Texto curto que explica a conta, para o `title` de um número na tela. */
 function explicacaoPrecoCompra(m) {
     return `Preço médio de compra: valor das notas ÷ litros faturados nelas.\n`
-         + `${fmtR(m.gasto)} ÷ ${fmtL3(m.litrosNota)} · ${m.itensTotal} item(ns)`;
+         + `${fmtR(m.gasto)} ÷ ${fmtL3(m.litrosNota)} · ${plural(m.itensTotal, "item", "itens")}`;
 }
 
 /** Frase do custo por litro recebido, ou vazio quando ninguém mediu. */
@@ -154,7 +154,7 @@ function textoCustoRecebido(m) {
     // Os dois números do MESMO grupo: o que foi faturado e o que chegou.
     // A diferença entre eles é o efeito da perda de trânsito, e só existe
     // onde alguém mediu.
-    return `nos ${m.itensMedidos} de ${m.itensTotal} item(ns) com descarga informada: `
+    return `em ${m.itensMedidos} de ${plural(m.itensTotal, "item", "itens")} com descarga informada: `
          + `${fmtRL(m.custoRecebido)}/L recebido contra ${fmtRL(m.precoCompraMedido)}/L faturado`;
 }
 
@@ -457,7 +457,26 @@ function fmtL(v, decimais = 0) {
     return Number(v).toLocaleString("pt-BR", { minimumFractionDigits:decimais, maximumFractionDigits:decimais }) + " L";
 }
 
-function fmtL3(v) { return fmtL(v, 3); }
+/* Litros nas tabelas e nos textos: sem casas quando o número é inteiro
+   ("28.500 L"); com fração, as três da NF-e ("28.964,977 L"). É a regra do
+   fechamento, que Fretes já seguia; o Histórico escrevia "28.500,000 L" e o
+   Dashboard arredondava, e a mesma carga lia diferente em cada tela
+   (vistoria de 28/09/2026). Nos cartões de destaque o número vai
+   arredondado, com `fmtL(v)`. */
+/* Quantidade com a palavra no número certo: "1 nota", "34 notas". Os
+   textos escreviam "nota(s)", "item(ns)", "alerta(s)" (vistoria de
+   28/09/2026). Sem o plural, vale o singular com "s". Quando a frase tem
+   verbo ou adjetivo que concorda, as duas formas vão inteiras:
+   `plural(n, "nota importada", "notas importadas")`. */
+function plural(n, singular, formaPlural) {
+    const num = Number(n) || 0;
+    return `${num.toLocaleString("pt-BR")} ${num === 1 ? singular : (formaPlural || singular + "s")}`;
+}
+
+function fmtL3(v) {
+    const n = Number(v) || 0;
+    return fmtL(n, Math.abs(n - Math.round(n)) < 0.0005 ? 0 : 3);
+}
 
 /* Eixo de gráfico: "R$ 4,5 mi", "600 mil L". O valor inteiro com centavos
    ("R$ 4.500.000,00") ocupava metade da largura do gráfico (18/09/2026).
@@ -902,6 +921,11 @@ function calcularFretesDoMes(opts) {
     });
 
     const porNome = obj => Object.values(obj).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    // Os combustíveis de cada grupo na ordem do cadastro: na ordem em que
+    // apareciam nas notas, cada placa listava os seus num arranjo próprio,
+    // e a tela, o PDF e as planilhas herdavam isso (vistoria de 28/09/2026).
+    [porPlaca, porMotorista, porEmpresa, porConjunto].forEach(grupos =>
+        Object.values(grupos).forEach(g => { g.detalhes = ordenarPorCombustivel(g.detalhes); }));
     return {
         mes,
         totalNotas: lancamentosMes.length,
@@ -943,6 +967,25 @@ function corDoCombustivel(nome) {
         idx = [...String(nome)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
     }
     return PALETA_COMBUSTIVEIS[idx % PALETA_COMBUSTIVEIS.length];
+}
+
+/* ── UMA ORDEM DE COMBUSTÍVEL, EM TODA TELA (28/09/2026) ────────────
+   Mesma ideia da cor: a ordem do cadastro de combustíveis, que é a das
+   abas do Dashboard. O Histórico listava S500, S10, Etanol, Gasolina, e
+   em Fretes cada placa tinha uma ordem própria. Nome fora do cadastro vai
+   para o fim, em ordem alfabética. */
+function compararCombustiveis(a, b) {
+    const lista = (typeof db !== "undefined" && db && db.combustiveis) ? db.combustiveis : [];
+    const pos = nome => { const i = lista.findIndex(c => c.nome === nome); return i === -1 ? Infinity : i; };
+    const pa = pos(a), pb = pos(b);
+    if (pa === pb) return String(a).localeCompare(String(b), "pt-BR");
+    return pa < pb ? -1 : 1;
+}
+
+/** O mesmo objeto `{ combustível: valor }`, com as chaves na ordem de
+ *  `compararCombustiveis`. */
+function ordenarPorCombustivel(obj) {
+    return Object.fromEntries(Object.entries(obj || {}).sort(([a], [b]) => compararCombustiveis(a, b)));
 }
 
 /* ── COMPARAÇÃO COM O PERÍODO ANTERIOR, NO PRÓPRIO NÚMERO ───────────

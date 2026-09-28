@@ -133,7 +133,7 @@ async function migrarParaIsolamentoPorEmpresa() {
             ? `\n… e mais ${conferencia.orfaos.length - 8}.` : "";
         await fmConfirm({
             titulo: "Migração interrompida",
-            msg: `${conferencia.orfaos.length} lançamento(s) não apontam para uma empresa cadastrada. `
+            msg: `${plural(conferencia.orfaos.length, "lançamento não aponta", "lançamentos não apontam")} para uma empresa cadastrada. `
                + `Corrija cada um antes de migrar: o destino dele depende da empresa.\n\n${amostra}${resto}`,
             confirmTxt: "Entendi",
             cancelTxt: "Fechar",
@@ -152,12 +152,12 @@ async function migrarParaIsolamentoPorEmpresa() {
     });
 
     const resumo = empresas
-        .map(e => `• ${e.nome}: ${porEmpresa[e.id].length} lançamento(s)`)
+        .map(e => `• ${e.nome}: ${plural(porEmpresa[e.id].length, "lançamento")}`)
         .join("\n");
 
     if (!await fmConfirm({
         titulo: "Migrar para isolamento por empresa?",
-        msg: `${lancamentos.length} lançamento(s) serão repartidos em ${empresas.length} documento(s):\n\n${resumo}\n\n`
+        msg: `${plural(lancamentos.length, "lançamento será repartido", "lançamentos serão repartidos")} em ${plural(empresas.length, "documento")}:\n\n${resumo}\n\n`
            + `Os cadastros vão para um documento compartilhado. O documento antigo NÃO será apagado.`,
         confirmTxt: "Migrar",
         tipo: "info"
@@ -196,7 +196,7 @@ async function migrarParaIsolamentoPorEmpresa() {
 
         await fmConfirm({
             titulo: "Migração concluída",
-            msg: `${empresas.length} documento(s) de lançamentos criados e ${perfisAtualizados} perfil(is) atualizado(s).\n\n`
+            msg: `${plural(empresas.length, "documento de lançamentos criado", "documentos de lançamentos criados")} e ${plural(perfisAtualizados, "perfil atualizado", "perfis atualizados")}.\n\n`
                + `Próximo passo: publicar as regras por empresa. Recarregue a página para o app passar a usar o layout novo.`,
             confirmTxt: "Recarregar agora",
             cancelTxt: "Depois",
@@ -240,7 +240,7 @@ async function conferirMigracao() {
 
     await fmConfirm({
         titulo: bate ? "Conferência bateu" : "Faltam lançamentos nos documentos novos",
-        msg: `Documento antigo: ${totalAntigo} lançamento(s)\n`
+        msg: `Documento antigo: ${plural(totalAntigo, "lançamento")}\n`
            + `Somando os novos: ${totalNovo}\n\n${linhas.join("\n")}\n\n`
            + (bate ? (totalNovo > totalAntigo
                       ? "Os documentos novos têm mais notas que o antigo, o que é normal depois de dias de uso."
@@ -719,7 +719,7 @@ function atualizarPreviewCorrecao() {
     if (!antigo) { preview.textContent = 'Escolha o valor que está errado.'; return; }
     if (antigo === select.value) { preview.textContent = 'O valor correto é igual ao errado: nada a trocar.'; return; }
     const { notas } = _alcanceCorrecao(antigo, select.value);
-    preview.textContent = `${notas} lançamento(s) serão atualizados`;
+    preview.textContent = `${plural(notas, "lançamento será atualizado", "lançamentos serão atualizados")}`;
 }
 
 function fecharModalCorrecaoMassa() {
@@ -749,7 +749,7 @@ async function executarCorrecaoMassa() {
         : '';
     fecharModalCorrecaoMassa();
     if (!await fmConfirm({
-        titulo: `Trocar ${rotulo.toLowerCase()} em ${notas} lançamento(s)?`,
+        titulo: `Trocar ${rotulo.toLowerCase()} em ${plural(notas, "lançamento")}?`,
         msg: `"${antigo}" → "${novo}"\n\n${detalhe}${aviso}`,
         confirmTxt: 'Trocar', cancelTxt: 'Cancelar', tipo: 'perigo'
     })) return;
@@ -780,7 +780,7 @@ async function executarCorrecaoMassa() {
     if (_travaBarrar(foto, 'Correção em massa')) return;
     atualizarListas();
     _rerenderTelaAtual();
-    await _salvarEConfirmar(`${count} lançamento(s) do histórico atualizados com ${rotulo.toLowerCase()} = "${novo}"`);
+    await _salvarEConfirmar(`${plural(count, "lançamento do histórico atualizado", "lançamentos do histórico atualizados")} com ${rotulo.toLowerCase()} = "${novo}"`);
 }
 
 /* ========================================
@@ -1060,8 +1060,8 @@ function _autosystemRenderizarConferencia() {
         <div class="conf-origem">
             Lendo a data da coluna <strong>${escapeHtml(_autoColunas.data || '?')}</strong>
             e os litros da coluna <strong>${escapeHtml(_autoColunas.entrada || '?')}</strong>
-            do arquivo: ${_autoLinhasDados.length} dia(s).
-            ${_autoIgnoradas ? `<strong class="texto-aviso">${_autoIgnoradas} linha(s) com data ilegível ficaram de fora.</strong>` : ''}
+            do arquivo: ${plural(_autoLinhasDados.length, "dia")}.
+            ${_autoIgnoradas ? `<strong class="texto-aviso">${plural(_autoIgnoradas, "linha com data ilegível ficou", "linhas com data ilegível ficaram")} de fora.</strong>` : ''}
         </div>
         <div id="_autoTabelaContainer"></div>`;
 
@@ -1182,7 +1182,7 @@ function _autoAlternarNotasDoDia(tr, data, comb) {
     const nova = document.createElement("tr");
     nova.className = "linha-notas-dia";
     nova.innerHTML = `<td colspan="4" class="celula-notas-dia">
-        <div class="notas-dia-titulo">${notas.length} nota(s) de ${escapeHtml(comb)} descarregada(s) em ${formatarData(data)}</div>
+        <div class="notas-dia-titulo">${plural(notas.length, "nota")} de ${escapeHtml(comb)} ${notas.length === 1 ? "descarregada" : "descarregadas"} em ${formatarData(data)}</div>
         <table class="largura-total tabela-notas-dia"><thead><tr><th>Nota</th>
 <th>Placa</th><th>Motorista</th><th class="celula-num">Carga</th><th class="celula-num">Descarga</th><th></th></tr></thead>
         <tbody>${linhas || '<tr><td colspan="6">Nenhuma nota.</td></tr>'}</tbody></table>
