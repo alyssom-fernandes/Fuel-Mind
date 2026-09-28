@@ -12,7 +12,7 @@ data resets every day.
 ![Vanilla JS](https://img.shields.io/badge/JavaScript-vanilla-f7df1e?style=flat-square&logo=javascript&logoColor=black)
 ![No build](https://img.shields.io/badge/build_step-none-success?style=flat-square)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-101_passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-102_passing-success?style=flat-square)
 ![pt-BR](https://img.shields.io/badge/UI-Portuguese_(pt--BR)-blue?style=flat-square)
 
 > The interface is in Brazilian Portuguese because it is used daily by a

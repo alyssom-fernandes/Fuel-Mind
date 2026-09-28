@@ -150,7 +150,7 @@ function importacaoLerArquivo(input) {
 
     if (!["xlsx","xls","csv"].includes(ext)) {
         mostrarToast("Selecione um arquivo .xlsx, .xls ou .csv", "aviso", 4000);
-        input.value = "";
+        arquivoLimpar(input);
         return;
     }
 
@@ -230,7 +230,7 @@ function importacaoLerArquivo(input) {
 
             if (!linhas || linhas.length < 2) {
                 mostrarToast("O arquivo está vazio ou só tem cabeçalho.", "aviso", 4000);
-                input.value = "";
+                arquivoLimpar(input);
                 return;
             }
 
@@ -261,6 +261,7 @@ function importacaoLerArquivo(input) {
 
         } catch(err) {
             mostrarToast("Erro ao ler o arquivo: " + err.message, "erro", 5000);
+            arquivoLimpar(input);
         }
         input.value = "";
     };
@@ -1202,7 +1203,7 @@ function importacaoReiniciar() {
     const preview   = document.getElementById("importacaoPreview");
     const mapa      = document.getElementById("importacaoMapeamento");
 
-    if (arquivo)   arquivo.value           = "";
+    if (arquivo)   arquivoLimpar(arquivo);
     if (etapas)    etapas.style.display    = "none";
     if (resultado) resultado.style.display = "none";
     if (preview)   preview.innerHTML       = "";

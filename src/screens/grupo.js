@@ -147,7 +147,7 @@ function carregarGrupo() {
                     title="Trocar a empresa ativa e abrir o Dashboard dela">
                     <td><strong>${escapeHtml(x.empresa)}</strong>${x.semTaxa ? ` <em class="tag-perda tag-perda--perigo">${x.semTaxa} sem taxa</em>` : ""}</td>
                     <td>${x.notasDescarga}</td>
-                    <td>${fmtL3(x.litros)}</td>
+                    <td>${fmtL3Celula(x.litros)}</td>
                     <td>${fmtR(x.gasto)}</td>
                     <td>${x.precoCompra > 0 ? fmtRL(x.precoCompra) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
@@ -157,7 +157,7 @@ function carregarGrupo() {
             <tfoot><tr>
                 <td><strong>Total</strong></td>
                 <td><strong>${soma.notasDescarga}</strong></td>
-                <td><strong>${fmtL3(soma.litros)}</strong></td>
+                <td><strong>${fmtL3Celula(soma.litros)}</strong></td>
                 <td><strong>${fmtR(soma.gasto)}</strong></td>
                 <td><strong>${soma.litrosFaturados > 0 ? fmtRL(soma.gasto / soma.litrosFaturados) : "—"}</strong></td>
                 <td><strong>${fmtR(soma.frete)}</strong></td>

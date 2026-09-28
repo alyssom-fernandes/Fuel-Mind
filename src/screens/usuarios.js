@@ -149,7 +149,12 @@ O índice guarda apenas o e-mail associado a cada @, e é o que permite entrar s
     mostrarToast(
         (falhas === 0 && conflitos === 0)
             ? `Índice reconstruído: ${plural(ok, "usuário")}.`
-            : `Índice reconstruído: ${ok} ok, ${plural(falhas, "falha")}, ${conflitos === 1 ? "1 @ que já pertence a outra conta e ficou como estava" : `${conflitos} @ que já pertencem a outra conta e ficaram como estavam`}.`,
+            : `Índice reconstruído: ${[
+                  `${ok} ok`,
+                  falhas ? plural(falhas, "falha") : null,
+                  conflitos ? (conflitos === 1 ? "1 @ que já pertence a outra conta e ficou como estava"
+                                               : `${conflitos} @ que já pertencem a outra conta e ficaram como estavam`) : null
+              ].filter(Boolean).join(", ")}.`,
         (falhas === 0 && conflitos === 0) ? "sucesso" : "aviso",
         8000
     );

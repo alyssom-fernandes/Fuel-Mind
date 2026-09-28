@@ -154,7 +154,7 @@ function textoCustoRecebido(m) {
     // Os dois números do MESMO grupo: o que foi faturado e o que chegou.
     // A diferença entre eles é o efeito da perda de trânsito, e só existe
     // onde alguém mediu.
-    return `em ${m.itensMedidos} de ${plural(m.itensTotal, "item", "itens")} com descarga informada: `
+    return `em ${Number(m.itensMedidos).toLocaleString("pt-BR")} de ${plural(m.itensTotal, "item", "itens")} com descarga informada: `
          + `${fmtRL(m.custoRecebido)}/L recebido contra ${fmtRL(m.precoCompraMedido)}/L faturado`;
 }
 
@@ -457,12 +457,6 @@ function fmtL(v, decimais = 0) {
     return Number(v).toLocaleString("pt-BR", { minimumFractionDigits:decimais, maximumFractionDigits:decimais }) + " L";
 }
 
-/* Litros nas tabelas e nos textos: sem casas quando o número é inteiro
-   ("28.500 L"); com fração, as três da NF-e ("28.964,977 L"). É a regra do
-   fechamento, que Fretes já seguia; o Histórico escrevia "28.500,000 L" e o
-   Dashboard arredondava, e a mesma carga lia diferente em cada tela
-   (vistoria de 28/09/2026). Nos cartões de destaque o número vai
-   arredondado, com `fmtL(v)`. */
 /* Quantidade com a palavra no número certo: "1 nota", "34 notas". Os
    textos escreviam "nota(s)", "item(ns)", "alerta(s)" (vistoria de
    28/09/2026). Sem o plural, vale o singular com "s". Quando a frase tem
@@ -473,9 +467,30 @@ function plural(n, singular, formaPlural) {
     return `${num.toLocaleString("pt-BR")} ${num === 1 ? singular : (formaPlural || singular + "s")}`;
 }
 
+/* Litros nas tabelas e nos textos: sem casas quando o número é inteiro
+   ("28.500 L"); com fração, as três da NF-e ("28.964,977 L"). É a regra do
+   fechamento, que Fretes já seguia; o Histórico escrevia "28.500,000 L" e o
+   Dashboard arredondava, e a mesma carga lia diferente em cada tela
+   (vistoria de 28/09/2026). Nos cartões de destaque o número vai
+   arredondado, com `fmtL(v)`.
+   O arredondamento nas três casas vem ANTES da decisão: decidir pelo valor
+   cru escrevia "5.000,000 L" para 4.999,9995. O `|| 0` troca o -0 (resto
+   negativo de soma) por 0, que sairia "-0 L" (revisão de 28/09/2026). */
 function fmtL3(v) {
-    const n = Number(v) || 0;
-    return fmtL(n, Math.abs(n - Math.round(n)) < 0.0005 ? 0 : 3);
+    const n = Math.round((Number(v) || 0) * 1000) / 1000 || 0;
+    return fmtL(n, Number.isInteger(n) ? 0 : 3);
+}
+
+/* `fmtL3` para CÉLULA DE TABELA (devolve HTML). O número inteiro leva um
+   ",000" invisível: numa coluna alinhada à direita, "28.500" e
+   "28.964,977" ficavam com as unidades desencontradas (vistoria de
+   28/09/2026). O invisível ocupa o lugar mas não se lê nem se copia.
+   Textos, PDFs e planilhas continuam com `fmtL3`. */
+function fmtL3Celula(v, comUnidade = true) {
+    const texto = fmtL3(v).replace(/ L$/, "");
+    const n = Math.round((Number(v) || 0) * 1000) / 1000 || 0;
+    const casas = Number.isInteger(n) ? '<span class="casas-vazias" aria-hidden="true">,000</span>' : "";
+    return texto + casas + (comUnidade ? " L" : "");
 }
 
 /* Eixo de gráfico: "R$ 4,5 mi", "600 mil L". O valor inteiro com centavos

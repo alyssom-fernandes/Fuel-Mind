@@ -312,8 +312,21 @@ test("fmtL3: sem casas quando o número é inteiro, três quando há fração", 
     // Resto de soma em ponto flutuante não vira fração.
     assert.equal(fmtL3(0.1 + 0.2 + 999.7), "1.000 L");
     assert.equal(fmtL3(-0.5), "-0,500 L");
+    // Arredonda nas três casas antes de decidir: nada de "5.000,000 L".
+    assert.equal(fmtL3(4999.9995), "5.000 L");
+    // Resto negativo de soma não vira "-0 L".
+    assert.equal(fmtL3(0.3 - (0.1 + 0.2)), "0 L");
     // O cartão arredonda: é o `fmtL`, que continua sem casas.
     assert.equal(fmtL(5035324.707), "5.035.325 L");
+});
+
+test("fmtL3Celula: o inteiro leva ',000' invisível; o texto visível é o do fmtL3", () => {
+    assert.equal(fmtL3Celula(28500), '28.500<span class="casas-vazias" aria-hidden="true">,000</span> L');
+    assert.equal(fmtL3Celula(28964.977), "28.964,977 L");
+    assert.equal(fmtL3Celula(28500, false), '28.500<span class="casas-vazias" aria-hidden="true">,000</span>');
+    assert.equal(fmtL3Celula(28964.977, false), "28.964,977");
+    // O que se lê é o mesmo número do fmtL3.
+    assert.equal(fmtL3Celula(4999.9995).replace(/<[^>]+>,000<\/span>/, ""), fmtL3(4999.9995));
 });
 
 test("combustíveis na ordem do cadastro; fora dele, no fim e em ordem alfabética", () => {

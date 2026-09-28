@@ -567,7 +567,7 @@ function renderTabelaLancamentos(idTabela, dados, pagina = 1, contexto = "relato
     // ("3.500,700"), e o número redondo sai sem ",000". Esta linha já
     // declarou um `fmtL` local que arredondava para inteiro (só aqui), e a
     // mesma nota lia 3.501 nesta tabela e 3.500,700 no detalhe embaixo.
-    const fmtL = n => fmtL3(n).replace(/ L$/, "");
+    const fmtL = n => fmtL3Celula(n, false);
     const idInlineAberto = _detalheInlineAberto.contexto === contexto ? _detalheInlineAberto.id : null;
 
     tbody.innerHTML = fatia.flatMap(l => {
@@ -675,8 +675,8 @@ function _buildConteudoDetalhe(l) {
     let htmlItens = (l.itens || []).map(item => `
         <tr>
             <td data-rotulo="Tipo">${escapeHtml(item.tipo)}</td>
-            <td data-rotulo="Carga">${fmtL3(item.qtd)}</td>
-            <td data-rotulo="Descarga">${item.qtdDescargada ? fmtL3(item.qtdDescargada) : "—"}</td>
+            <td data-rotulo="Carga">${fmtL3Celula(item.qtd)}</td>
+            <td data-rotulo="Descarga">${item.qtdDescargada ? fmtL3Celula(item.qtdDescargada) : "—"}</td>
             <td data-rotulo="Valor unit.">${fmtRL(item.valor)}</td>
             <td data-rotulo="Total">${fmtR(item.total)}</td>
             <td data-rotulo="Perda">${calcularPerdaBadge(item.tipo, item.qtd, item.qtdDescargada) || "—"}</td>

@@ -126,7 +126,7 @@ function _resumoRestauracao(dados) {
     const nomeDe = id => (db.empresas || []).find(e => e.id === id)?.nome
         || (dados.empresas || []).find(e => e.id === id)?.nome || id;
     const linhas = Object.keys(noArquivo).map(id =>
-        `• ${nomeDe(id)}: hoje ${hoje[id] || 0} → depois ${plural(noArquivo[id], "lançamento")}`);
+        `• ${nomeDe(id)}: hoje ${(hoje[id] || 0).toLocaleString("pt-BR")} → depois ${plural(noArquivo[id], "lançamento")}`);
     const intocadas = [...permitidos].filter(id => !noArquivo[id] && hoje[id])
         .map(id => `• ${nomeDe(id)}: fica como está (${plural(hoje[id], "lançamento")}), pois o arquivo não tem notas dela`);
     return [
@@ -173,7 +173,10 @@ async function _salvarEConfirmar(rotulo) {
     }
     await salvarDB({ imediato: true });
     if (_cargaOk && !_pendentesSincronizacao) {
-        mostrarToast(`${rotulo} e gravado na nuvem.`, "sucesso", 5000);
+        // Frase à parte: "e gravado" só concordava com rótulo no masculino
+        // singular, e "34 notas importadas e gravado" saía errado (revisão
+        // de 28/09/2026).
+        mostrarToast(`${rotulo}. Tudo gravado na nuvem.`, "sucesso", 5000);
         return true;
     }
     mostrarToast(`${rotulo} neste navegador, mas a nuvem ainda não confirmou. `

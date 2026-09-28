@@ -271,7 +271,7 @@ function carregarDashboard() {
                 <td>${escapeHtml(l.base) || '—'}</td>
                 <td>${escapeHtml(l.motorista) || '—'}</td>
                 <td>${escapeHtml(l.placa) || '—'}</td>
-                <td class="celula-num">${fmtL3(totalLitros)}</td>
+                <td class="celula-num">${fmtL3Celula(totalLitros)}</td>
                 <td class="celula-num">${fmtR(l.total)}</td>
                 <td class="no-print celula-acoes">
                     <button class="btn-icone" aria-label="Abrir o detalhe da nota ${escapeHtml(l.numeroNota)}" title="Abrir o detalhe"
@@ -609,7 +609,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
                     <td>${formatarData(dataDescargaDe(l))}</td>
                     <td>${escapeHtml(l.numeroNota)}</td>
                     <td>${escapeHtml(l.motorista) || '—'}</td>
-                    <td class="celula-num">${fmtL3(qtd)}</td>
+                    <td class="celula-num">${fmtL3Celula(qtd)}</td>
                     <td class="celula-num">${fmtRL(item.valor)}</td>
                     <td class="celula-num">${fmtR(item.total ?? item.qtd * item.valor)}</td>
                 </tr>`;

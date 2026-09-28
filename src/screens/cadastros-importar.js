@@ -55,7 +55,7 @@ function cadImportarLerArquivo(input) {
     const arquivo = input && input.files && input.files[0];
     if (!arquivo) return;
     if (typeof exigirPapel === "function" && !exigirPapel("admin", "Importar cadastros")) {
-        input.value = "";
+        arquivoLimpar(input);
         return;
     }
     // A biblioteca de planilha só chega quando alguém precisa dela; aqui é
@@ -351,7 +351,7 @@ function cadImportarCancelar() {
     const alvo = document.getElementById("cadImportarResultado");
     if (alvo) { alvo.innerHTML = ""; alvo.style.display = "none"; }
     const input = document.getElementById("cadImportarArquivo");
-    if (input) input.value = "";
+    if (input) arquivoLimpar(input);
 }
 
 /*─────────────────────────────────────────────

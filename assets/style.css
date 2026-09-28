@@ -617,6 +617,10 @@ body {
     letter-spacing: 0; font-weight: 700;
 }
 .sistema-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; flex-direction: column; }
+/* Correções em massa: sete botões iguais em grade, não uma coluna de sete
+   linhas (vistoria de 28/09/2026). */
+.sistema-acoes--grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); align-items: stretch; }
+.sistema-acoes--grade > button { justify-content: center; }
 .zona-perigo { border-color: var(--danger); background: var(--danger-light); }
 
 .info-sistema { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
@@ -736,9 +740,11 @@ button {
     margin-bottom: 16px;
 }
 .exportacao-titulo { font-weight: 700; font-size: 0.65rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
-/* Um grupo por documento, separado do seguinte por um fio (28/09/2026). */
+/* Um grupo por documento (28/09/2026). A separação é o espaço e o nome de
+   cada grupo: com um fio à esquerda, o grupo que descia de linha (Histórico
+   a 1280 px) começava com um traço solto e recuado (revisão de 28/09/2026). */
+.barra-exportacao:has(.exportacao-grupo) { column-gap: 26px; row-gap: 10px; }
 .exportacao-grupo { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.exportacao-grupo + .exportacao-grupo { border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px; }
 @media (max-width: 768px) {
     .exportacao-grupo { width: 100%; }
     .exportacao-grupo .exportacao-titulo { flex-basis: 100%; }
@@ -889,7 +895,9 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 /* O botão que recolhe os filtros do Histórico só existe no celular. */
 .filtros-alternar { display: none; }
 @media (max-width: 768px) {
-    .filtros-alternar {
+    /* Com a classe do botão junto: a regra de tela de toque centraliza todo
+       `.btn-secundario`, vem depois no arquivo e empatava com esta. */
+    .btn-secundario.filtros-alternar {
         display: flex; width: 100%; justify-content: space-between; align-items: center;
         margin-bottom: var(--space-3);
     }
@@ -987,7 +995,9 @@ tr.linha-clicavel:hover td { background: var(--surface-hover); }
 .total-item { display: flex; flex-direction: column; gap: 2px; }
 .total-label { font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); }
 .total-valor { font-size: 1.1rem; font-weight: 700; color: var(--text); font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
-.total-destaque { color: var(--primary-mid); font-size: 1.2rem; }
+/* Destaque pelo tamanho, não pelo vermelho, que no sistema quer dizer
+   alerta (vistoria de 28/09/2026, como o frete do mês em Fretes). */
+.total-destaque { color: var(--text); font-size: 1.2rem; }
 .total-sep { color: var(--border-strong); font-size: 1.4rem; align-self: center; }
 
 /* ══ PAGINAÇÃO ═══════════════════════════════ */
@@ -2127,6 +2137,9 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
    alinhamento e as setas do tipo nativo. Número alinhado à direita é
    mais fácil de comparar de uma linha para a outra. */
 .fm-numero { text-align: right; font-variant-numeric: tabular-nums; }
+/* As casas ",000" do número inteiro nas tabelas: ocupam o lugar para as
+   unidades alinharem, mas não aparecem (`fmtL3Celula`). */
+.casas-vazias { visibility: hidden; }
 
 /* ══ QUANTIDADE DESCARREGADA, FORA DO CAMINHO ════════════════════════
    O campo só aparece quando a descarga foi diferente da carga, que é a
@@ -2141,6 +2154,18 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
    (18/09/2026). Sem aviso, a faixa não ocupa espaço. */
 .linha-combustivel > .badge-wrapper { order: 10; grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .linha-combustivel > .badge-wrapper:empty { display: none; }
+/* O nome de cada campo em cima dele (28/09/2026). O botão de tirar desce
+   para a altura dos campos, não do meio do conjunto nome + campo. */
+.campo-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin: 0; }
+/* A descarga continua escondida até a opção ser ligada: `.campo-item`, com
+   o mesmo peso e vindo depois, vencia o `display: none` dela. */
+.campo-item.celula-descarga { display: none; }
+.linha-combustivel.mostra-descarga .campo-item.celula-descarga { display: flex; }
+.campo-item-rotulo {
+    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.linha-combustivel > .btn-icone { align-self: end; margin-bottom: 4px; }
 @media (max-width: 640px) { .linha-combustivel > .btn-icone { justify-self: end; } }
 .linha-combustivel > .badge-wrapper .ref-preco,
 .linha-combustivel > .badge-wrapper .aviso-preco { max-width: none; }
@@ -2599,7 +2624,10 @@ button.confirmado-local::after {
 .tabela-fretes tr.linha-detalhe-frete--placa td { background: var(--surface) !important; }
 .celula-fraca { font-size: 0.78rem; color: var(--text-muted); }
 .grafico-wrapper--220 { height: 220px; }
-.modal--tabela { max-width: min(1000px, 96vw); }
+/* 1240 px: com 1000, a lista nota a nota (dez colunas) deixava a coluna do
+   frete, a que interessa, fora da janela num notebook de 1366 (vistoria
+   de 28/09/2026). Em tela menor a tabela continua rolando de lado. */
+.modal--tabela { max-width: min(1240px, 96vw); }
 .tabela-container--rolagem { max-height: 52vh; overflow: auto; }
 /* Frete nota a nota: uma nota por linha, números à direita em fonte de
    número; nomes longos com reticências (o nome inteiro no `title`). */
@@ -2608,6 +2636,24 @@ button.confirmado-local::after {
 .tabela-frete-notas .celula-texto-longo { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .tabela-frete-notas thead th { position: sticky; top: 0; z-index: 1; }
 .tabela-frete-notas tfoot td { position: sticky; bottom: 0; background: var(--surface-alt); }
+/* O rótulo do total ocupa as 7 colunas de texto no computador e as 3 que
+   sobram no celular: um colspan fixo desalinhava a linha. */
+.tabela-frete-notas .total-rotulo-estreito,
+.tabela-frete-notas .data-curta { display: none; }
+@media (max-width: 768px) {
+    .tabela-frete-notas .col-secundaria,
+    .tabela-frete-notas .total-rotulo-largo,
+    .tabela-frete-notas .data-longa { display: none; }
+    .tabela-frete-notas .total-rotulo-estreito { display: table-cell; }
+    /* A data sem o ano (o mês está no título) e células mais justas: com
+       cinco colunas, o frete ainda passava da tela a 375 px. */
+    .tabela-frete-notas .data-curta { display: inline; }
+    .modal--tabela { padding: 20px 14px; }
+    .tabela-frete-notas td, .tabela-frete-notas th { padding-left: 6px; padding-right: 6px; font-size: 0.78rem; }
+    .tabela-frete-notas td.celula-num { font-size: 0.74rem; }
+    .tabela-frete-notas .celula-texto-longo { max-width: 84px; }
+    .tabela-frete-notas th { white-space: normal; vertical-align: bottom; letter-spacing: 0.02em; }
+}
 
 /* Grupo e Analítico */
 .grafico-wrapper--240 { height: 240px; }
@@ -2693,7 +2739,9 @@ button.confirmado-local::after {
 .modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
 .modal-cabecalho h3 { margin: 0; }
 .modal-cabecalho--colado { margin-bottom: var(--space-1); }
-.cfg-campos input[type="number"] { text-align: right; font-family: 'JetBrains Mono', monospace; }
+/* A mesma letra do campo de R$ da mesma janela (`.fm-numero`): eram duas
+   letras diferentes lado a lado (vistoria de 28/09/2026). */
+.cfg-campos input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
 .modal-fechar { border: none; background: none; font-size: 1.2rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; color: var(--text-muted); line-height: 1; }
 .modal-fechar:hover, .modal-fechar:focus-visible { color: var(--text); }
 .modal-acoes--separadas { justify-content: space-between; }
@@ -2842,12 +2890,19 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
     transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
 .btn-empresa-toggle.selecionada { border-color: var(--primary); background: var(--primary-subtle); }
+/* Caixinha quadrada com o sinal de marcado: a bolinha redonda lia como
+   escolha única, e aqui se marcam várias (vistoria de 28/09/2026). */
 .emp-toggle-dot {
-    width: 14px; height: 14px; flex-shrink: 0; border-radius: 50%;
-    border: 2px solid var(--border); background: transparent;
+    width: 16px; height: 16px; flex-shrink: 0; border-radius: 4px;
+    border: 2px solid var(--border-strong); background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
     transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
 .btn-empresa-toggle.selecionada .emp-toggle-dot { border-color: var(--primary); background: var(--primary); }
+.btn-empresa-toggle.selecionada .emp-toggle-dot::after {
+    content: ""; width: 4px; height: 8px; margin-top: -2px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
 .modal-corpo input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Escolha de empresa, carregamento e conexão (app.js) */
@@ -3697,6 +3752,12 @@ input[type="checkbox"], input[type="radio"] {
    o diálogo que abre com o foco num botão grudado já abria rolado até o
    fim. */
 .modal { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+/* Barra de rolagem fina e sem setas nas janelas altas e nas tabelas que
+   rolam dentro delas: a padrão do Windows, cinza e com setas, cortava a
+   borda arredondada da janela (vistoria de 28/09/2026). */
+.modal, .modal .tabela-container--rolagem {
+    scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+}
 .modal .modal-cabecalho {
     position: sticky; top: -28px; z-index: 3;
     background: var(--surface-raised);
@@ -3784,7 +3845,7 @@ html { scroll-padding-top: calc(var(--faixa-demo-h) + var(--header-height) + 8px
    largura toda da tela para o formulário. */
 @media (min-width: 641px) and (max-width: 820px) {
     .linha-combustivel.mostra-descarga { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
-    .linha-combustivel.mostra-descarga > .tipo { grid-column: 1 / -1; }
+    .linha-combustivel.mostra-descarga > .campo-item--tipo { grid-column: 1 / -1; }
 }
 
 /* ── Login em janela baixa ──────────────────────────────────────────

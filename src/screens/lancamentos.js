@@ -254,7 +254,7 @@ function importarXMLNFe(input) {
             if (placaTransp && !veiculoCadastrado)
                 naoCruzados.push(`Placa "${escapeHtml(placaTransp)}"`);
             const avisoNaoCruzados = naoCruzados.length > 0
-                ? `<br><small>${naoCruzados.length === 1 ? "Não encontrado" : "Não encontrados"} no cadastro: ${naoCruzados.join(", ")}</small>` : "";
+                ? `<br><small>Sem cadastro: ${naoCruzados.join(", ")}</small>` : "";
             // A base tem linha própria: ela muda de "não encontrada" para
             // "escolhida" quando a pergunta é respondida.
             const avisoBase = _xmlEmitente
@@ -664,21 +664,28 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     const opcoesCombustiveis = db.combustiveis.map(c =>
         `<option value="${escapeHtml(c.nome)}" ${dadosIniciais?.tipo === c.nome ? "selected" : ""}>${escapeHtml(c.nome)}</option>`
     ).join("");
+    // Cada campo com o nome em cima (vistoria de 28/09/2026): o nome
+    // morava no placeholder, que some quando o campo tem valor, e a nota
+    // aberta para edição mostrava três números sem dizer qual era qual.
     div.innerHTML = `
+        <label class="campo-item campo-item--tipo"><span class="campo-item-rotulo">Combustível</span>
         <select class="tipo" onchange="atualizarBadgePerda(this); marcarFormularioSujo(); atualizarTotalizadorNota();">
             <option value="">-- Combustível --</option>${opcoesCombustiveis}
-        </select>
-        <input type="text" inputmode="decimal" autocomplete="off" class="qtd fm-numero" placeholder="Qtd carga (L)"
+        </select></label>
+        <label class="campo-item"><span class="campo-item-rotulo">Carga (L)</span>
+        <input type="text" inputmode="decimal" autocomplete="off" class="qtd fm-numero"
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtd, 3))}"
                oninput="atualizarTotalizadorNota(); marcarFormularioSujo();"
-               onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))">
-        <input type="text" inputmode="decimal" autocomplete="off" class="qtdDescargada fm-numero celula-descarga" placeholder="Qtd descarga (L)"
+               onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))"></label>
+        <label class="campo-item celula-descarga"><span class="campo-item-rotulo">Descarga (L)</span>
+        <input type="text" inputmode="decimal" autocomplete="off" class="qtdDescargada fm-numero"
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtdDescargada, 3))}"
                oninput="marcarFormularioSujo();"
-               onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))">
-        <input type="text" inputmode="decimal" autocomplete="off" class="valor fm-numero" placeholder="Valor unit. (R$)"
+               onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))"></label>
+        <label class="campo-item"><span class="campo-item-rotulo">Valor unit. (R$/L)</span>
+        <input type="text" inputmode="decimal" autocomplete="off" class="valor fm-numero"
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.valor, 4))}"
-               oninput="atualizarTotalizadorNota(); marcarFormularioSujo();">
+               oninput="atualizarTotalizadorNota(); marcarFormularioSujo();"></label>
         <div class="badge-wrapper"></div>
         <button class="btn-icone btn-icone--excluir" title="Tirar este combustível da nota" aria-label="Tirar este combustível da nota" onclick="this.parentElement.remove(); atualizarTotalizadorNota(); marcarFormularioSujo(); if (typeof validarLancamento === 'function') validarLancamento();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>`;
     container.appendChild(div);

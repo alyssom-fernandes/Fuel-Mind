@@ -44,6 +44,13 @@ document.addEventListener('keydown', (e) => {
     // sem colocar nada no lugar.
     if (comando && tecla === 'f' && telaVisivel('relatorios')) {
         e.preventDefault();
+        // Janela estreita: os filtros ficam recolhidos atrás do botão
+        // "Filtros", e o foco num campo escondido não ia a lugar nenhum,
+        // com o Ctrl+F do navegador já cancelado (revisão de 28/09/2026).
+        const caixa = document.getElementById('relFiltros');
+        if (caixa && caixa.offsetParent === null && typeof relatorioAlternarFiltros === 'function') {
+            relatorioAlternarFiltros();
+        }
         document.getElementById('filtroBusca')?.focus();
     }
     // Ctrl+N e Ctrl+T eram reservados pelo Chrome: o navegador abria janela ou

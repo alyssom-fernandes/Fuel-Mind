@@ -241,7 +241,7 @@ async function conferirMigracao() {
     await fmConfirm({
         titulo: bate ? "Conferência bateu" : "Faltam lançamentos nos documentos novos",
         msg: `Documento antigo: ${plural(totalAntigo, "lançamento")}\n`
-           + `Somando os novos: ${totalNovo}\n\n${linhas.join("\n")}\n\n`
+           + `Somando os novos: ${totalNovo.toLocaleString("pt-BR")}\n\n${linhas.join("\n")}\n\n`
            + (bate ? (totalNovo > totalAntigo
                       ? "Os documentos novos têm mais notas que o antigo, o que é normal depois de dias de uso."
                       : "Os números batem.")
@@ -279,7 +279,7 @@ function baixarBackup() {
 async function restaurarBackup(input) {
     const file = input.files[0];
     if (!file) return;
-    if (!exigirPapel("supremo", "Restaurar backup")) { input.value = ""; return; }
+    if (!exigirPapel("supremo", "Restaurar backup")) { arquivoLimpar(input); return; }
 
     try {
         const text = await new Promise((resolve, reject) => {
@@ -306,11 +306,11 @@ async function restaurarBackup(input) {
             confirmTxt: "Restaurar",
             cancelTxt: "Cancelar",
             tipo: "perigo"
-        })) { input.value = ""; return; }
+        })) { arquivoLimpar(input); return; }
 
         const foto = _travaFoto();
         _aplicarBackupNaMemoria(_mesclarComPadrao(dados));
-        if (_travaBarrar(foto, "Restaurar backup")) { input.value = ""; return; }
+        if (_travaBarrar(foto, "Restaurar backup")) { arquivoLimpar(input); return; }
         migrarDados();
         atualizarListas();
         if (typeof _reconciliarEmpresaAtiva === 'function') _reconciliarEmpresaAtiva();
@@ -321,7 +321,7 @@ async function restaurarBackup(input) {
     } catch (err) {
         mostrarToast("Erro ao restaurar backup: " + err.message, "erro", 6000);
     }
-    input.value = "";
+    arquivoLimpar(input);
 }
 
 /* ========== APAGAR TODOS OS DADOS ==========
@@ -862,7 +862,7 @@ function autosystemLerArquivo(input) {
     const file = input.files[0];
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
-    if (!['xlsx','xls','csv'].includes(ext)) { mostrarToast('Selecione um arquivo .xlsx, .xls ou .csv', 'aviso', 4000); input.value = ''; return; }
+    if (!['xlsx','xls','csv'].includes(ext)) { mostrarToast('Selecione um arquivo .xlsx, .xls ou .csv', 'aviso', 4000); arquivoLimpar(input); return; }
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -879,11 +879,11 @@ function autosystemLerArquivo(input) {
                 linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
             }
             linhas = linhas.filter(l => l.some(c => String(c||'').trim()));
-            if (linhas.length < 2) { mostrarToast('Arquivo vazio.', 'aviso', 4000); input.value = ''; return; }
+            if (linhas.length < 2) { mostrarToast('Arquivo vazio.', 'aviso', 4000); arquivoLimpar(input); return; }
             _autoLinhas = linhas;
             _autosystemDetectarEProcessar();
             mostrarToast(`"${file.name}" lido com sucesso`, 'sucesso');
-        } catch(err) { mostrarToast('Erro ao ler o arquivo: ' + err.message, 'erro', 5000); }
+        } catch(err) { mostrarToast('Erro ao ler o arquivo: ' + err.message, 'erro', 5000); arquivoLimpar(input); }
         input.value = '';
     };
     if (ext === 'csv') reader.readAsArrayBuffer(file);
@@ -1014,7 +1014,9 @@ function _autoMontarLinhas(comb) {
     return [...new Set(datas)].sort().map(data => {
         const entrada    = doArquivo.get(data) || 0;
         const sistemaVal = entradasSistema[data] || 0;
-        return { data, entrada, sistemaVal, diff: sistemaVal - entrada, soNoSistema: !doArquivo.has(data) };
+        // Diferença nas três casas: o resto de soma (0,1 + 0,2 contra 0,3)
+        // aparecia como "+0 L" ou "-0 L" num dia que confere.
+        return { data, entrada, sistemaVal, diff: Math.round((sistemaVal - entrada) * 1000) / 1000 || 0, soNoSistema: !doArquivo.has(data) };
     });
 }
 
@@ -1100,7 +1102,7 @@ function _autosystemAtualizarTabela() {
         totalSistemaEntradas += d.sistemaVal;
         return { ...d, temDiv };
     });
-    const diffTotal = totalSistemaEntradas - totalAutoEntradas;
+    const diffTotal = Math.round((totalSistemaEntradas - totalAutoEntradas) * 1000) / 1000 || 0;
 
     const resumo = `
         <div class="conf-resumo">
@@ -1137,16 +1139,16 @@ function _autosystemAtualizarTabela() {
                 <tr class="${l.sistemaVal > 0 ? 'linha-clicavel' : ''} ${l.temDiv ? 'linha-divergente' : (l.entrada===0 && l.sistemaVal===0 ? 'linha-apagada' : '')}"
                     ${l.sistemaVal > 0 ? `onclick="_autoAlternarNotasDoDia(this, '${escapeJsAttr(l.data)}', '${escapeJsAttr(comb)}')" title="Ver as notas deste dia"` : ''}>
                     <td><strong>${formatarData(l.data)}</strong>${l.soNoSistema ? ' <small class="texto-aviso">só no sistema</small>' : ''}${l.temDiv && l.sistemaVal > 0 ? ' <small class="rotulo-suave">▸ notas</small>' : ''}</td>
-                    <td>${l.entrada>0?fmtL3(l.entrada):'—'}</td>
-                    <td>${l.sistemaVal>0?fmtL3(l.sistemaVal):'—'}</td>
+                    <td>${l.entrada>0?fmtL3Celula(l.entrada):'—'}</td>
+                    <td>${l.sistemaVal>0?fmtL3Celula(l.sistemaVal):'—'}</td>
                     <td>${l.temDiv
                         ? `<span class="${l.diff>0 ? 'texto-ok' : 'texto-perigo'}">${l.diff>0?'+':''}${fmtL3(l.diff)}</span>`
                         : (l.entrada>0||l.sistemaVal>0)?'<span class="texto-ok">OK</span>':'—'
                     }</td>
                 </tr>`).join('')}
                 <tr class="linha-total">
-                    <td>Total</td><td>${fmtL3(totalAutoEntradas)}</td><td>${fmtL3(totalSistemaEntradas)}</td>
-                    <td class="${Math.abs(diffTotal)>1 ? 'texto-perigo' : 'texto-ok'}">${diffTotal>0?'+':''}${fmtL3(diffTotal)}</td>
+                    <td>Total</td><td>${fmtL3Celula(totalAutoEntradas)}</td><td>${fmtL3Celula(totalSistemaEntradas)}</td>
+                    <td class="${Math.abs(diffTotal)>1 ? 'texto-perigo' : 'texto-ok'}">${diffTotal>0?'+':''}${fmtL3Celula(diffTotal)}</td>
                 </tr>
             </tbody>
         </table></div>
@@ -1176,8 +1178,8 @@ function _autoAlternarNotasDoDia(tr, data, comb) {
             <td>${escapeHtml(l.numeroNota || "—")}</td>
             <td>${escapeHtml(l.placa || "—")}</td>
             <td>${escapeHtml(l.motorista || "—")}</td>
-            <td class="celula-num">${fmtL3(carga)}</td>
-            <td class="celula-num">${fmtL3(desc)}${desc !== carga ? "" : ' <small class="rotulo-suave">(= carga)</small>'}</td>
+            <td class="celula-num">${fmtL3Celula(carga)}</td>
+            <td class="celula-num">${fmtL3Celula(desc)}${desc !== carga ? "" : ' <small class="rotulo-suave">(= carga)</small>'}</td>
             <td class="celula-acoes"><button class="btn-icone" title="Abrir a nota para corrigir" aria-label="Abrir a nota ${escapeHtml(l.numeroNota || '')}" onclick="event.stopPropagation(); editarLancamento('${escapeJsAttr(l.id)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></td>
         </tr>`;
     }).join("");

@@ -321,7 +321,7 @@ function linhasDetalhes(detalhes, colunasNome = 2, comPagamento = false) {
     return Object.entries(detalhes).map(([tipo, d]) => `
         <tr class="linha-detalhe-frete">
             <td colspan="${colunasNome}" class="celula-recuada"><span class="frete-sub-cor" style="background:${corDoCombustivel(tipo)}"></span>${escapeHtml(tipo)}</td>
-            <td class="celula-num">${_fmtLitrosFrete(d.litros)}</td>
+            <td class="celula-num">${fmtL3Celula(d.litros)}</td>
             <td class="celula-num"></td>
             <td class="celula-num">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
             ${comPagamento ? `<td class="celula-num">${d.pagamento > 0 ? fmtR(d.pagamento) : "—"}</td>` : ""}
@@ -353,7 +353,7 @@ function renderAbaPlacas() {
             <td><strong>${escapeHtml(p.nome)}</strong></td>
             <td class="celula-fraca">${escapeHtml(p.conjunto) || "—"}</td>
             <td>${p.viagens}</td>
-            <td>${_fmtLitrosFrete(p.litros)}</td>
+            <td>${fmtL3Celula(p.litros)}</td>
             <td>${_fmtTaxaGrupo(p)}</td>
             <td><strong>${fmtR(p.frete)}</strong></td>
         </tr>
@@ -391,12 +391,12 @@ function renderAbaMotoristasFrete() {
             title="Ver as notas deste motorista no Histórico, pela data da descarga">
             <td><strong>${escapeHtml(m.nome)}</strong></td>
             <td>${m.viagens}</td>
-            <td>${_fmtLitrosFrete(m.litros)}</td>
+            <td>${fmtL3Celula(m.litros)}</td>
             <td>${_fmtTaxaGrupo(m)}</td>
             <td><strong>${fmtR(m.frete)}</strong></td>
             <td title="${escapeHtml(_explicacaoPagamento(m))}">${m.pagamento > 0 ? fmtR(m.pagamento) : "—"}</td>
         </tr>
-        ${linhasDetalhes(m.detalhes, 1, true)}
+        ${linhasDetalhes(m.detalhes, 2, true)}
     `).join("");
 }
 
@@ -416,7 +416,7 @@ function renderAbaEmpresasFrete() {
         <tr>
             <td><strong>${escapeHtml(e.nome)}</strong></td>
             <td>${e.viagens}</td>
-            <td>${_fmtLitrosFrete(e.litros)}</td>
+            <td>${fmtL3Celula(e.litros)}</td>
             <td>${_fmtTaxaGrupo(e)}</td>
             <td><strong>${fmtR(e.frete)}</strong></td>
         </tr>
@@ -446,7 +446,7 @@ function renderAbaConjuntosFretes() {
             <tr class="linha-detalhe-frete linha-detalhe-frete--placa">
                 <td class="celula-recuada"><span class="frete-sub-placa">${escapeHtml(placa)}</span></td>
                 <td class="celula-num">${d.viagens}</td>
-                <td class="celula-num">${_fmtLitrosFrete(d.litros)}</td>
+                <td class="celula-num">${fmtL3Celula(d.litros)}</td>
                 <td class="celula-num"></td>
                 <td class="celula-num">${d.frete > 0 ? fmtR(d.frete) : "—"}</td>
             </tr>
@@ -456,7 +456,7 @@ function renderAbaConjuntosFretes() {
             <tr>
                 <td><strong>${escapeHtml(c.nome)}</strong></td>
                 <td><strong>${c.viagens}</strong></td>
-                <td><strong>${_fmtLitrosFrete(c.litros)}</strong></td>
+                <td><strong>${fmtL3Celula(c.litros)}</strong></td>
                 <td>${_fmtTaxaGrupo(c)}</td>
                 <td><strong>${fmtR(c.frete)}</strong></td>
             </tr>
@@ -535,7 +535,7 @@ function renderFreteHistorico() {
             <table class="tabela-numeros"><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
             <tbody>${serie.map(x => `<tr class="linha-clicavel" onclick="_freteAbrirMes('${x.mes}')" title="Ver o detalhe deste mês">
                 <td><strong>${nomeMes(x.mes)}</strong></td>
-                <td>${_fmtLitrosFrete(x.litros)}</td>
+                <td>${fmtL3Celula(x.litros)}</td>
                 <td><strong>${fmtR(x.frete)}</strong></td>
                 <td>${x.porLitro > 0 ? fmtFreteL(x.porLitro) : "—"}</td>
             </tr>`).join("")}</tbody></table>
@@ -650,27 +650,31 @@ function abrirFreteNotaANota() {
             <div class="tabela-container tabela-container--rolagem">
                 <!-- Sem a coluna Empresa: a lista é sempre da empresa ativa, que
                      está no título (o Excel continua com ela). -->
+                <!-- "col-secundaria": no celular só ficam descarga, nota,
+                     motorista, litros e frete; com dez colunas, o frete ficava
+                     fora da tela (vistoria de 28/09/2026). -->
                 <table class="tabela-frete-notas"><thead><tr>
-                    <th>Descarga</th><th>Emissão</th><th>Nota</th><th>Base</th>
-                    <th>Motorista</th><th>Placa</th><th>Conjunto</th>
-                    <th class="celula-num">Litros (carga)</th><th class="celula-num">Taxa</th><th class="celula-num">Frete</th>
+                    <th><span class="data-longa">Descarga</span><span class="data-curta">Dia</span></th><th class="col-secundaria">Emissão</th><th>Nota</th><th class="col-secundaria">Base</th>
+                    <th>Motorista</th><th class="col-secundaria">Placa</th><th class="col-secundaria">Conjunto</th>
+                    <th class="celula-num">Litros (carga)</th><th class="celula-num col-secundaria">Taxa</th><th class="celula-num">Frete</th>
                 </tr></thead>
                 <tbody>${linhas.map(x => `<tr>
-                    <td>${formatarData(x.descarga)}</td>
-                    <td>${formatarData(x.emissao)}</td>
+                    <td><span class="data-longa">${formatarData(x.descarga)}</span><span class="data-curta">${formatarData(x.descarga).slice(0, 5)}</span></td>
+                    <td class="col-secundaria">${formatarData(x.emissao)}</td>
                     <td>${escapeHtml(x.nota)}</td>
-                    <td class="celula-texto-longo" title="${escapeHtml(x.base)}">${escapeHtml(x.base)}</td>
+                    <td class="celula-texto-longo col-secundaria" title="${escapeHtml(x.base)}">${escapeHtml(x.base)}</td>
                     <td class="celula-texto-longo" title="${escapeHtml(x.motorista)}">${escapeHtml(x.motorista)}</td>
-                    <td>${escapeHtml(x.placa)}</td>
-                    <td class="celula-texto-longo" title="${escapeHtml(x.conjunto)}">${escapeHtml(x.conjunto) || "—"}</td>
-                    <td class="celula-num">${fmtL3(x.litros)}</td>
-                    <td class="celula-num">${x.taxa > 0 ? fmtFreteL(x.taxa) : "—"}</td>
+                    <td class="col-secundaria">${escapeHtml(x.placa)}</td>
+                    <td class="celula-texto-longo col-secundaria" title="${escapeHtml(x.conjunto)}">${escapeHtml(x.conjunto) || "—"}</td>
+                    <td class="celula-num">${fmtL3Celula(x.litros)}</td>
+                    <td class="celula-num col-secundaria">${x.taxa > 0 ? fmtFreteL(x.taxa) : "—"}</td>
                     <td class="celula-num"><strong>${fmtR(x.frete)}</strong></td>
                 </tr>`).join("")}</tbody>
                 <tfoot><tr>
-                    <td colspan="7"><strong>Total: ${plural(linhas.length, "nota")}</strong></td>
-                    <td class="celula-num"><strong>${fmtL3(totalLitros)}</strong></td>
-                    <td></td>
+                    <td colspan="7" class="total-rotulo-largo"><strong>Total: ${plural(linhas.length, "nota")}</strong></td>
+                    <td colspan="3" class="total-rotulo-estreito"><strong>Total: ${plural(linhas.length, "nota")}</strong></td>
+                    <td class="celula-num"><strong>${fmtL3Celula(totalLitros)}</strong></td>
+                    <td class="col-secundaria"></td>
                     <td class="celula-num"><strong>${fmtR(totalFrete)}</strong></td>
                 </tr></tfoot>
                 </table>

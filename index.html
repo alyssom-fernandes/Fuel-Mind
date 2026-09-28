@@ -588,7 +588,7 @@
       </div>
     </div>
 
-    <p class="dica">Clique numa barra dos gráficos para abrir o Relatório já filtrado por aquele mês, motorista, veículo ou combustível.</p>
+    <p class="dica">Clique numa barra dos gráficos para abrir o Histórico já filtrado por aquele mês, motorista, veículo ou combustível.</p>
     <div id="analiticoPeriodoLabel" style="display:none"></div>
     <div id="kpiContainer" class="kpi-container"></div>
     <div class="analitico-abas" id="analiticoAbas">
@@ -807,7 +807,7 @@
       <div class="campo mb-4">
         <label>Colunas</label>
         <div class="form-linha form-linha--opcoes">
-          <label><input type="checkbox" id="pdfMostrarBase" checked> Mostrar coluna Base</label>
+          <label><input type="checkbox" id="pdfMostrarBase" checked> Mostrar base</label>
           <label><input type="checkbox" id="pdfMostrarEmpresa" checked> Mostrar empresa</label>
           <label><input type="checkbox" id="pdfMostrarMotorista" checked> Mostrar motorista</label>
           <label><input type="checkbox" id="pdfMostrarPlaca" checked> Mostrar placa</label>
@@ -831,7 +831,7 @@
     <div class="sistema-secao">
       <h3>Correções em massa</h3>
       <p class="sistema-descricao">Corrija campos em lote nos lançamentos. <span class="fm-so-nao-supremo">A correção em massa é só do usuário supremo; a verificação de datas é de todos.</span></p>
-      <div class="sistema-acoes">
+      <div class="sistema-acoes sistema-acoes--grade">
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('empresa')">Corrigir empresa</button>
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('motorista')">Corrigir motorista</button>
         <button class="btn-secundario" data-papel="supremo" onclick="corrigirCampoEmMassa('placa')">Corrigir placa</button>
@@ -898,7 +898,7 @@
   </div>
   <div id="cad-veiculos" class="aba-conteudo" style="display:none">
     <h3>Veículos</h3>
-    <div class="form-linha"><input id="placaVeiculo" aria-label="Placa do veículo" placeholder="Placa (ex: ABC-1234)"><button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button></div>
+    <div class="form-linha"><input id="placaVeiculo" aria-label="Placa do veículo" placeholder="Placa (ex.: ABC1D23)"><button class="btn-primario" onclick="salvarVeiculo()">Adicionar</button></div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosVeiculos" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaVeiculos"></ul>
   </div>
@@ -972,9 +972,11 @@
     <p class="modal-subtitulo" id="fechamentoSubtitulo"></p>
     <div id="fechamentoEmpresasLista" class="pilha"></div>
     <p class="dica mt-2">O documento traz o resumo do mês, o corte por empresa, por conjunto, por motorista, por placa e a lista nota a nota. Os valores aparecem separados por empresa e somados.</p>
-    <div class="linha-acoes mt-3">
+    <!-- A mesma barra de botões das outras janelas, à direita (vistoria de
+         28/09/2026); esta era a única com os botões à esquerda. -->
+    <div class="modal-acoes">
       <button class="btn-primario" onclick="confirmarFechamentoPDF()">Gerar PDF</button>
-      <button class="btn-secundario" onclick="fecharFechamentoModal()">Cancelar</button>
+      <button class="btn-cancelar" onclick="fecharFechamentoModal()">Cancelar</button>
     </div>
   </div>
 </div>

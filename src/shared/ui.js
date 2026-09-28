@@ -1027,3 +1027,14 @@ function arquivoMostrarNome(input) {
     const alvo = input.parentElement && input.parentElement.querySelector('.arquivo-nome');
     if (alvo) alvo.textContent = (input.files && input.files[0] && input.files[0].name) || 'Nenhum arquivo escolhido';
 }
+
+/** Esvazia o campo de arquivo e o nome ao lado. Limpar só o `value` (o
+ *  arquivo recusado, o "Nova importação", o "Cancelar") deixava o nome do
+ *  arquivo velho à vista, como se ele ainda estivesse carregado (revisão
+ *  de 28/09/2026). Depois de uma leitura que deu certo o nome fica: é ele
+ *  que diz qual arquivo está na tela. */
+function arquivoLimpar(input) {
+    if (!input) return;
+    input.value = "";
+    arquivoMostrarNome(input);
+}

@@ -1214,7 +1214,7 @@ function atualizarListas() {
                 <li class="${c.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(c.nome)}
-                        ${c.perda > 0 ? `<em class="tag-perda">Perda: ${c.perda}%</em>` : ""}
+                        ${c.perda > 0 ? `<em class="tag-perda">Perda: ${Number(c.perda).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</em>` : ""}
                         ${c.ativo !== false ? "" : '<em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">
