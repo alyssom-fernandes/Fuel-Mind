@@ -12,12 +12,28 @@ data resets every day.
 ![Vanilla JS](https://img.shields.io/badge/JavaScript-vanilla-f7df1e?style=flat-square&logo=javascript&logoColor=black)
 ![No build](https://img.shields.io/badge/build_step-none-success?style=flat-square)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-23_passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-97_passing-success?style=flat-square)
 ![pt-BR](https://img.shields.io/badge/UI-Portuguese_(pt--BR)-blue?style=flat-square)
 
 > The interface is in Brazilian Portuguese because it is used daily by a
 > real fuel operation. Code comments and commits are in Portuguese too;
 > this README and the file map below are in English.
+
+---
+
+## 📸 Screenshots
+
+Taken from the live demo, with its fictional data.
+
+| Dashboard, dark theme | Entry history with an invoice open, light theme |
+|---|---|
+| ![Dashboard](assets/screenshots/dashboard-escuro.png) | ![Entry history](assets/screenshots/relatorios-claro.png) |
+| **Analytics** | **Freight** |
+| ![Analytics](assets/screenshots/analitico-escuro.png) | ![Freight](assets/screenshots/fretes-claro.png) |
+
+| Monthly closing, generated as a PDF | On a phone |
+|---|---|
+| <img src="assets/screenshots/fechamento-pdf.png" alt="Monthly closing PDF" width="560"> | <img src="assets/screenshots/celular-dashboard.png" alt="Dashboard on a phone" width="260"> |
 
 ---
 

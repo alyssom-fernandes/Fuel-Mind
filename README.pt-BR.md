@@ -12,7 +12,23 @@ normal todo dia.
 ![JS puro](https://img.shields.io/badge/JavaScript-puro-f7df1e?style=flat-square&logo=javascript&logoColor=black)
 ![Sem build](https://img.shields.io/badge/etapa_de_build-nenhuma-success?style=flat-square)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
-![Testes](https://img.shields.io/badge/testes-23_passando-success?style=flat-square)
+![Testes](https://img.shields.io/badge/testes-97_passando-success?style=flat-square)
+
+---
+
+## 📸 Capturas de tela
+
+Tiradas da demonstração, com os dados fictícios dela.
+
+| Dashboard, tema escuro | Histórico com uma nota aberta, tema claro |
+|---|---|
+| ![Dashboard](assets/screenshots/dashboard-escuro.png) | ![Histórico](assets/screenshots/relatorios-claro.png) |
+| **Analítico** | **Fretes** |
+| ![Analítico](assets/screenshots/analitico-escuro.png) | ![Fretes](assets/screenshots/fretes-claro.png) |
+
+| Fechamento do mês, gerado em PDF | No celular |
+|---|---|
+| <img src="assets/screenshots/fechamento-pdf.png" alt="Fechamento em PDF" width="560"> | <img src="assets/screenshots/celular-dashboard.png" alt="Dashboard no celular" width="260"> |
 
 ---
 

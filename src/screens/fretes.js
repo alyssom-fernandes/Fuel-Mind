@@ -966,8 +966,8 @@ function exportarFechamentoDoMes() {
    só no fechamento, que vai para fora (decisão do dono, 25/09/2026). O que
    vai para os motoristas é "A pagar", no cartão e na tabela, para não
    haver dois "frete" lado a lado. */
-function exportarFretesPDF() {
-    if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFretesPDF())) return;
+function exportarFretesPDF(opcoes) {
+    if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarFretesPDF(opcoes))) return;
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
         mostrarToast("Não há dados para exportar.", "aviso", 4000);
         return;
@@ -1083,7 +1083,7 @@ function exportarFretesPDF() {
     });
 
     _pdfRodapes(doc, estilo, `Resumo de fretes de ${mesLabel} · ${empresaTxt}`, { direita: `Gerado em ${_pdfGeradoEm()}` });
-    _pdfEntregar(doc, `fretes-${d.mes}.pdf`);
+    _pdfEntregar(doc, `fretes-${d.mes}.pdf`, opcoes);
 }
 
 // ========== EXPORTAÇÃO CSV ==========
@@ -1168,85 +1168,13 @@ function exportarFretesCSV() {
 }
 
 // ========== IMPRESSÃO ==========
+/* O "Imprimir" da tela de Fretes imprime o resumo de fretes em PDF, no
+   padrão dos outros documentos (25/09/2026, pedido do dono). Antes montava
+   uma folha à parte, com outro desenho, só para o papel. */
 function imprimirFretes() {
     if (!dadosFretesAtual || dadosFretesAtual.totalNotas === 0) {
         mostrarToast("Não há dados para imprimir.", "aviso", 4000);
         return;
     }
-
-    const d = dadosFretesAtual;
-    const mesLabel = nomeMes(d.mes);
-    const dataHoje = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
-
-    document.getElementById("impressaoTitulo").textContent = `Fretes de ${mesLabel}`;
-    document.getElementById("impressaoData").textContent = `${empresaFiltroGlobal ? empresaFiltroGlobal + " | " : ""}Pela data da descarga | Impresso em: ${dataHoje} | ${d.totalNotas} nota(s) | ${fmtL(d.totalLitros)} | Frete total: ${fmtR(d.totalFrete)}`;
-
-    const montarTabela = (titulo, lista) => {
-        const linhas = lista.map(item => `
-            <tr>
-                <td><strong>${escapeHtml(item.nome)}</strong></td>
-                <td>${item.viagens}</td>
-                <td>${_fmtLitrosFrete(item.litros)}</td>
-                <td>${_taxaGrupoMoeda(item)}</td>
-                <td><strong>${fmtR(item.frete)}</strong></td>
-            </tr>
-            ${Object.entries(item.detalhes).map(([tipo, det]) => `
-                <tr class="imp-subitem">
-                    <td class="imp-recuo">· ${escapeHtml(tipo)}</td>
-                    <td></td>
-                    <td>${_fmtLitrosFrete(det.litros)}</td>
-                    <td></td>
-                    <td>${det.frete > 0 ? fmtR(det.frete) : "—"}</td>
-                </tr>
-            `).join("")}
-        `).join("");
-
-        return `
-            <h3 class="imp-titulo">${titulo}</h3>
-            <table class="imp-num-resto">
-                <thead><tr>
-                    <th>Nome</th><th>Viagens</th><th>Litros</th><th>Taxa (R$/L)</th><th>Frete (R$)</th>
-                </tr></thead>
-                <tbody>${linhas}</tbody>
-            </table>
-        `;
-    };
-
-    const montarTabelaConjuntos = () => {
-        if (!d.porConjunto || d.porConjunto.length === 0) return "";
-        const linhas = d.porConjunto.map(c => `
-            <tr class="imp-grupo">
-                <td><strong>${escapeHtml(c.nome)}</strong></td>
-                <td><strong>${c.viagens}</strong></td>
-                <td><strong>${_fmtLitrosFrete(c.litros)}</strong></td>
-                <td>${_taxaGrupoMoeda(c)}</td>
-                <td><strong>${fmtR(c.frete)}</strong></td>
-            </tr>
-            ${Object.entries(c.porPlacaInterna).map(([placa, det]) => `
-                <tr class="imp-subitem imp-subitem--escuro">
-                    <td class="imp-recuo">${escapeHtml(placa)}</td>
-
-                    <td>${det.viagens}</td>
-                    <td>${_fmtLitrosFrete(det.litros)}</td>
-                    <td></td>
-                    <td>${det.frete > 0 ? fmtR(det.frete) : "—"}</td>
-                </tr>
-            `).join("")}
-        `).join("");
-        return `
-            <h3 class="imp-titulo">Por conjunto</h3>
-            <table class="imp-num-resto">
-                <thead><tr><th>Conjunto / Placa</th><th>Viagens</th><th>Litros</th><th>Taxa</th><th>Frete (R$)</th></tr></thead>
-                <tbody>${linhas}</tbody>
-            </table>
-        `;
-    };
-
-    document.getElementById("impressaoConteudo").innerHTML =
-        montarTabelaConjuntos() +
-        montarTabela("Por placa",     d.porPlaca) +
-        montarTabela("Por motorista", d.porMotorista) +
-        montarTabela("Por empresa",   d.porEmpresa);
-
-    imprimirAreaDeImpressao();
+    exportarFretesPDF({ imprimir: true });
 }

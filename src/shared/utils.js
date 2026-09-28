@@ -501,13 +501,6 @@ function fmtPct(v, casas = 1) {
     return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
 }
 
-/** Imprime a folha montada em #areaImpressao (e não a tela aberta). */
-function imprimirAreaDeImpressao() {
-    document.body.classList.add("imprimindo");
-    window.addEventListener("afterprint", () => document.body.classList.remove("imprimindo"), { once: true });
-    window.print();
-}
-
 /* ══ NÚMERO EM PORTUGUÊS ═════════════════════════════════════════════
    Por que isto existe (tema 05 da pesquisa).
 

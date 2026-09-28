@@ -1076,7 +1076,12 @@ function _pdfArquivoCompartilhavel(doc, nomeArquivo) {
     }
 }
 
-function _pdfEntregar(doc, nomeArquivo) {
+/* `opcoes.imprimir` (25/09/2026): os botões "Imprimir" das telas de Fretes
+   e de Relatórios passaram a imprimir o PDF do padrão, e não mais uma folha
+   montada à parte. No computador a prévia abre e já chama a impressão, do
+   jeito que o botão "Imprimir" dela faria; no celular, onde o navegador não
+   imprime de dentro da prévia, ela abre com o Compartilhar e o Salvar. */
+function _pdfEntregar(doc, nomeArquivo, opcoes) {
     let url;
     try {
         url = doc.output("bloburl");
@@ -1178,6 +1183,17 @@ function _pdfEntregar(doc, nomeArquivo) {
 
     document.body.appendChild(modal);
     if (typeof _modalAcessivel === "function") _modalAcessivel(modal, fechar);
+
+    if (opcoes && opcoes.imprimir) {
+        if (botao("imprimir")) {
+            // A impressão espera o leitor de PDF terminar de abrir o
+            // documento: chamada antes, ela sai em branco.
+            const q = modal.querySelector(".pdf-previa");
+            q.addEventListener("load", () => setTimeout(() => botao("imprimir").click(), 400), { once: true });
+        } else {
+            mostrarToast("No celular, imprima pelo Compartilhar ou salve o PDF.", "info", 6000);
+        }
+    }
 
     if (desenhada) {
         caixa = modal.querySelector(".pdf-previa--paginas");
@@ -1401,8 +1417,8 @@ function _pdfRodapes(doc, estilo, textoEsquerda, pe) {
  * @param {'relatorio'} contexto - Rótulo usado no nome do arquivo
  * @returns {Promise<void>}
  */
-async function exportarPDF(contexto) {
-    if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarPDF(contexto))) return;
+async function exportarPDF(contexto, opcoes) {
+    if (adiarAteBibliotecas(["jspdf", "autotable"], () => exportarPDF(contexto, opcoes))) return;
     const dados = dadosRelatorioValidos;
     if (!dados || dados.length === 0) { mostrarToast("Não há dados para exportar.", "aviso", 4000); return; }
 
@@ -1517,8 +1533,8 @@ async function exportarPDF(contexto) {
     });
 
     _pdfRodapes(doc, estilo, `Relatório de entradas · ${periodo} · ${empresaTxt}`, { direita: `Gerado em ${geradoEm}` });
-    _pdfEntregar(doc, _nomeArquivoRelatorio(contexto, 'pdf'));
-    mostrarToast('PDF gerado com sucesso!', 'sucesso', 3000);
+    _pdfEntregar(doc, _nomeArquivoRelatorio(contexto, 'pdf'), opcoes);
+    if (!(opcoes && opcoes.imprimir)) mostrarToast('PDF gerado com sucesso!', 'sucesso', 3000);
 }
 
 // ========== CSV ==========
@@ -1568,49 +1584,12 @@ function exportarCSV(contexto) {
 }
 
 // ========== IMPRIMIR ==========
+/* O "Imprimir" da tela de Relatórios imprime o PDF de entradas, no padrão
+   dos outros documentos (25/09/2026, pedido do dono). Antes montava uma
+   folha à parte, com outro desenho, só para o papel. */
 function imprimirRelatorio() {
-    const dados  = dadosRelatorioValidos;
-    const titulo = "Relatório de Entradas";
-
-    if (!dados || dados.length === 0) { mostrarToast("Não há dados para imprimir.", "aviso", 4000); return; }
-
-    const totalGeral  = dados.reduce((s, l) => s + (l.total || 0), 0);
-    const totalLitros = dados.reduce((s, l) => s + l.itens.reduce((ss, i) => ss + _litrosItem(i), 0), 0);
-    const dataHoje    = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
-
-    document.getElementById("impressaoTitulo").textContent = titulo;
-    // O papel também precisa dizer de que período é (17/09/2026).
-    // A empresa vai no cabeçalho da folha, e não numa coluna repetida em
-    // todas as linhas, como na tela (18/09/2026).
-    document.getElementById("impressaoData").textContent   = `${empresaFiltroGlobal ? empresaFiltroGlobal + " | " : ""}${_descricaoPeriodoRelatorio()} | Impresso em: ${dataHoje} | ${dados.length} registros | Total: ${fmtR(totalGeral)} | Litros: ${fmtL3(totalLitros)}`;
-
-    document.getElementById("impressaoConteudo").innerHTML = `
-        <table class="imp-num-2">
-            <thead><tr>
-                <th>Emissão</th><th>Descarga</th><th>Nota</th><th>Base</th>
-                <th>Motorista</th><th>Placa</th><th>Litros</th><th>Total</th>
-            </tr></thead>
-            <tbody>
-                ${dados.map(l => {
-                    const tl = l.itens.reduce((s, i) => s + _litrosItem(i), 0);
-                    return `<tr>
-                        <td>${formatarData(l.dataNota)}</td>
-                        <td>${l.dataDescarga ? formatarData(l.dataDescarga) : ""}</td>
-                        <td>${escapeHtml(l.numeroNota)}</td><td>${escapeHtml(l.base) || ""}</td>
-                        <td>${escapeHtml(l.motorista) || ""}</td><td>${escapeHtml(l.placa) || ""}</td>
-                        <td>${tl.toLocaleString("pt-BR", {minimumFractionDigits:3,maximumFractionDigits:3})}</td>
-                        <td>R$ ${l.total.toLocaleString("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                    </tr>`;
-                }).join("")}
-            </tbody>
-            <tfoot><tr>
-                <td colspan="6"><strong>Total</strong></td>
-                <td><strong>${dados.reduce((s,l)=>s+l.itens.reduce((ss,i)=>ss+_litrosItem(i),0),0).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} L</strong></td>
-                <td><strong>${fmtR(totalGeral)}</strong></td>
-            </tr></tfoot>
-        </table>
-    `;
-    imprimirAreaDeImpressao();
+    if (!dadosRelatorioValidos || dadosRelatorioValidos.length === 0) { mostrarToast("Não há dados para imprimir.", "aviso", 4000); return; }
+    exportarPDF('relatorio', { imprimir: true });
 }
 
 // ========== WHATSAPP ==========

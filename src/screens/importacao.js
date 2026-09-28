@@ -1225,17 +1225,18 @@ function baixarModeloPlanilha() {
         "QUANTIDADE", "R$ UNIT", "VALOR NOTA", "OBSERVACOES"
     ];
 
+    // Exemplos fictícios (25/09/2026): os anteriores traziam placas,
+    // motoristas e a base da frota real, e este código vai para o
+    // repositório público.
     const exemplos = [
-        ["28/01/2026","02/02/2026","1252935","BMAD","RDR5H38","RICARDO X","DIESEL S-10","60000","5,234","314020,80",""],
-        ["29/01/2026","02/02/2026","1253151","BMAD","RDK5E85","REGINALDO","DIESEL S-500","60000","5,164","309820,80",""],
-        ["28/01/2026","02/02/2026","1252985","BMAD","NTV9A58","EVERALDO","DIESEL S-10","60000","5,234","314020,80","Carga extra"],
+        ["28/01/2026","02/02/2026","100231","BASE EXEMPLO","ABC1D23","JOÃO DA SILVA","DIESEL S-10","30000","5,234","157020,00",""],
+        ["29/01/2026","02/02/2026","100232","BASE EXEMPLO","DEF4G56","MARIA SOUZA","DIESEL S-500","30000","5,164","154920,00",""],
+        ["28/01/2026","02/02/2026","100233","BASE EXEMPLO","ABC1D23","JOÃO DA SILVA","DIESEL S-10","15000","5,234","78510,00","Carga extra"],
     ];
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([cabecalho, ...exemplos]);
-    ws["!cols"] = cabecalho.map(() => ({ wch: 20 }));
-
-    XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
-    XLSX.writeFile(wb, "modelo-importacao-fuelcontrol.xlsx");
+    // O cabeçalho continua na primeira linha, que é onde a importação o
+    // procura; do padrão das planilhas vêm as cores e a grade.
+    _gravarPlanilhaPadrao([{ nome: "Lançamentos", ws: _planilhaTabelaSimples([cabecalho, ...exemplos]) }],
+        "modelo-importacao-fuelcontrol.xlsx");
     mostrarToast("Modelo baixado!", "sucesso");
 }

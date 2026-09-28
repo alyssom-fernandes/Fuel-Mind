@@ -241,7 +241,8 @@ function _pdfLargurasMinimas(doc, estilo, cabecalho, linhas, fonte, porPalavra) 
      2. a mesma letra, com o cabeçalho podendo ir para duas;
      3. e 4. as mesmas duas com a letra seguinte.
    Fica com a primeira em que o texto longo cabe, TOLERANDO algumas linhas
-   quebradas (duas, ou 5% da tabela): um nome comprido quebra só a linha
+   quebradas (duas, ou 5% da tabela, e no máximo um terço das linhas): um
+   nome comprido quebra só a linha
    dele, em vez de diminuir a letra da tabela inteira. A letra só desce
    quando o problema é da tabela toda (três empresas espremem as placas de
    todos os conjuntos, por exemplo). Se nenhuma tentativa ficar dentro da
@@ -251,7 +252,10 @@ function _pdfLargurasMinimas(doc, estilo, cabecalho, linhas, fonte, porPalavra) 
    sem quebrar, e a sobra se divide por igual. */
 function _pdfEncaixar(doc, estilo, cabecalho, linhas, largura, flex, fontes) {
     fontes = fontes || [7.5, 7];
-    const tolera = Math.max(2, Math.ceil(linhas.length * 0.05));
+    // E nunca mais que um terço das linhas (25/09/2026): numa tabela de dois
+    // conjuntos, "duas linhas" é a tabela inteira, e as placas quebravam em
+    // todas as linhas em vez de a letra descer.
+    const tolera = Math.min(Math.max(2, Math.ceil(linhas.length * 0.05)), Math.floor(linhas.length / 3));
     let melhor = null;
     for (const fonte of fontes) {
         for (const porPalavra of [false, true]) {

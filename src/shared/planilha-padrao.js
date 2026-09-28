@@ -184,6 +184,30 @@ function _planilhaPadrao(m) {
     return ws;
 }
 
+/** Uma tabela sem faixa, com o cabeçalho na primeira linha: o modelo de
+ *  importação, que a importação lê pela primeira linha e que por isso não
+ *  pode ter título em cima. Leva do padrão o cabeçalho vinho, as linhas
+ *  alternadas, a grade e a letra (25/09/2026). */
+function _planilhaTabelaSimples(linhas) {
+    const P = _xlPaleta();
+    const ws = XLSX.utils.aoa_to_sheet(linhas);
+    const n = Math.max(...linhas.map(l => l.length));
+    const borda = { style: "thin", color: { rgb: P.grade } };
+    const grade = { top: borda, bottom: borda, left: borda, right: borda };
+    linhas.forEach((_, r) => {
+        for (let c = 0; c < n; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: "s", v: "" };
+            ws[ref].s = r === 0
+                ? { fill: { fgColor: { rgb: P.cor } }, font: { name: P.fonte, sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+                    border: grade, alignment: { vertical: "center" } }
+                : { fill: { fgColor: { rgb: r % 2 === 1 ? P.zebra : "FFFFFF" } }, font: { name: P.fonte, sz: 10 }, border: grade };
+        }
+    });
+    ws["!padrao"] = true;
+    return ws;
+}
+
 /** Um arquivo com as abas no padrão. `abas`: [{ nome, ws }]. */
 function _gravarPlanilhaPadrao(abas, nomeArquivo) {
     const wb = XLSX.utils.book_new();

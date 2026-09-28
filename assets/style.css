@@ -1062,21 +1062,15 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 @media print {
     .sidebar, .app-header, .filtros, .filtros-acoes, .barra-exportacao, .acoes-lancamento, .acoes-lista, .btn-excluir, .btn-editar, .btn-secundario, .btn-clonar, .painel-detalhes, .no-print { display: none !important; }
     .main-area { margin-left: 0 !important; }
-    /* A folha montada (Relatório, Fretes) só substitui a tela quando o
-       sistema pediu a impressão. No Ctrl+P de qualquer outra tela saía uma
-       folha em branco, ou o último relatório impresso (18/09/2026). */
-    body.imprimindo .tela { display: none !important; }
-    body.imprimindo .area-impressao { display: block !important; }
+    /* Os botões "Imprimir" de Fretes e de Relatórios imprimem o PDF do
+       padrão desde 25/09/2026; a folha montada à parte (#areaImpressao)
+       saiu. Isto aqui é só o Ctrl+P da tela aberta. */
     body { background: white; color: black; font-size: 11px; font-family: Arial, sans-serif; }
     table { border-collapse: collapse; width: 100%; font-size: 10px; }
     th, td { border: 1px solid #aaa; padding: 5px 8px; }
     thead tr { background: #1e2227 !important; color: white !important; }
     tr { page-break-inside: avoid; }
-    .impressao-cabecalho { text-align: center; margin-bottom: 18px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-    .impressao-cabecalho h1 { font-size: 15px; }
-    .impressao-cabecalho p  { font-size: 11px; color: #555; }
 }
-.area-impressao { display: none; }
 
 /* ══ RESPONSIVO ══════════════════════════════ */
 @media (max-width: 1024px) {
@@ -1899,25 +1893,6 @@ body.com-faixa-demo { padding-top: var(--faixa-demo-h); }
 
 @media print {
     .page-footer, #demoFaixa, #toastPilha, .modal-overlay { display: none !important; }
-    /* A folha é a mesma em qualquer tema: texto preto, cabeçalho cinza-claro.
-       Antes o cabeçalho herdava a cor do tema: texto escuro sobre a faixa
-       escura, ou cinza-claro no papel quando o tema era o escuro. */
-    .area-impressao, .area-impressao * { color: #111 !important; }
-    .area-impressao th {
-        background: #e9ecef !important; font-weight: 700; text-transform: none; letter-spacing: 0;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    }
-    .area-impressao thead tr { background: none !important; }
-    .area-impressao tbody tr, .area-impressao td { background: transparent !important; }
-    .area-impressao tr.imp-grupo td, .area-impressao tfoot td {
-        background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    }
-    .area-impressao .imp-subitem td { color: #555 !important; }
-    /* A linha da placa dentro de um conjunto e mais escura que a sublinha
-       do combustivel; sem esta regra o !important acima igualava as duas. */
-    .area-impressao .imp-subitem--escuro td { color: #333 !important; }
-    .imp-num-2 th:nth-last-child(-n+2), .imp-num-2 td:nth-last-child(-n+2),
-    .imp-num-resto th:nth-child(n+2), .imp-num-resto td:nth-child(n+2) { text-align: right; white-space: nowrap; }
 }
 
 /* Pilha de mensagens: o posicionamento saiu do .toast individual para o
@@ -2613,13 +2588,6 @@ button.confirmado-local::after {
 .tabela-frete-notas .celula-texto-longo { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .tabela-frete-notas thead th { position: sticky; top: 0; z-index: 1; }
 .tabela-frete-notas tfoot td { position: sticky; bottom: 0; background: var(--surface-alt); }
-
-/* Impressão dos Fretes: o conteúdo só aparece no papel */
-.imp-titulo { margin-top: 20px; }
-.area-impressao tr.imp-grupo { background: #f0f0f0; }   /* vence a listra da tabela */
-.imp-subitem { color: #666; font-size: 0.85em; }
-.imp-subitem--escuro { color: #444; }
-.imp-recuo { padding-left: 20px; }
 
 /* Grupo e Analítico */
 .grafico-wrapper--240 { height: 240px; }

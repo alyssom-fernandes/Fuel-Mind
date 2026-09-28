@@ -167,3 +167,23 @@ test("a nota abaixo da tabela abre página nova quando não cabe acima do rodap�
     assert.equal(doc.textos[0].y, _PDF_TOPO + 3);
     assert.equal(y, _PDF_TOPO + 3 + 6);
 });
+
+test("numa tabela pequena, todas as linhas quebrando não é tolerado: a letra desce", () => {
+    const doc = docFalso();
+    // Dois conjuntos e o TOTAL, com as placas longas: em 7,5 as placas
+    // quebrariam nas duas linhas de dados, que são a tabela inteira.
+    const cab = ["Placas", "A", "B"];
+    const linhas = [
+        ["RQA2B34 · RQB5C67 · RQC8D90", "R$ 65.875,00", "R$ 45.850,00"],
+        ["RQD1E23 · RQE4F56 · RQF7G89", "R$ 51.460,00", "R$ 61.950,00"],
+        ["TOTAL", "R$ 117.335,00", "R$ 107.800,00"]
+    ];
+    const larg = w => _pdfLargurasMinimas(doc, ESTILO, cab, linhas, w, true);
+    const fixas = f => { const m = larg(f); return m[1] + m[2]; };
+    // Uma largura em que as placas só cabem com a letra 7.
+    const largura = fixas(7) + larg(7)[0] + 0.5;
+    assert.ok(fixas(7.5) + larg(7.5)[0] > largura);
+    const r = _pdfEncaixar(doc, ESTILO, cab, linhas, largura, 0);
+    assert.equal(r.fonte, 7);
+    assert.equal(r.quebras, 0);
+});
