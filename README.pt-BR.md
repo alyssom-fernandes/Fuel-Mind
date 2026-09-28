@@ -12,7 +12,7 @@ normal todo dia.
 ![JS puro](https://img.shields.io/badge/JavaScript-puro-f7df1e?style=flat-square&logo=javascript&logoColor=black)
 ![Sem build](https://img.shields.io/badge/etapa_de_build-nenhuma-success?style=flat-square)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
-![Testes](https://img.shields.io/badge/testes-97_passando-success?style=flat-square)
+![Testes](https://img.shields.io/badge/testes-101_passando-success?style=flat-square)
 
 ---
 

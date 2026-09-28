@@ -238,3 +238,24 @@ test("a placa que rodou para duas empresas com a mesma taxa guarda uma taxa só"
     assert.deepEqual([...p1.taxas], [0.10]);
     assert.equal(p2.taxas.size, 2);
 });
+
+test("as sub-linhas de combustível saem na ordem do cadastro, não na das notas", () => {
+    // Vistoria de 28/09/2026: cada placa listava os combustíveis na ordem em
+    // que apareciam nas notas, e a tela, o PDF e as planilhas herdavam isso.
+    const antes = db.combustiveis;
+    db.combustiveis = [{ nome: "S10" }, { nome: "S500" }, { nome: "Gasolina" }, { nome: "Etanol" }];
+    try {
+        const r = calcularFretesDoMes({ mes: "2026-08", empresaDoLancamento: empresaDe, lancamentos: [
+            nota("1", "Aurora", "2026-08-02", "2026-08-02", [{ tipo: "Etanol", qtd: 1000 }, { tipo: "S500", qtd: 2000 }]),
+            nota("2", "Aurora", "2026-08-03", "2026-08-03", [{ tipo: "Gasolina", qtd: 3000 }, { tipo: "S10", qtd: 4000 }])
+        ] });
+        const esperado = ["S10", "S500", "Gasolina", "Etanol"];
+        ["porPlaca", "porMotorista", "porEmpresa"].forEach(g =>
+            assert.deepEqual(Object.keys(r[g][0].detalhes), esperado, g));
+        // A ordem não mexe nos números.
+        assert.equal(r.porPlaca[0].detalhes.S10.litros, 4000);
+        assert.equal(r.porPlaca[0].detalhes.Etanol.litros, 1000);
+    } finally {
+        db.combustiveis = antes;
+    }
+});

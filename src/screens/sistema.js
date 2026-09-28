@@ -500,8 +500,10 @@ function atualizarInfoSistema() {
         <div class="info-card"><div class="info-card-valor">${db.veiculos.length}</div><div class="info-card-label">Veículos</div></div>
         <div class="info-card"><div class="info-card-valor">${db.empresas.length}</div><div class="info-card-label">Empresas</div></div>
         <div class="info-card"><div class="info-card-valor">${db.combustiveis.length}</div><div class="info-card-label">Combustíveis</div></div>
-        <div class="info-card"><div class="info-card-valor">${tamanhoKB} KB</div><div class="info-card-label">Tamanho dos Dados</div></div>
-        <div class="info-card"><div class="info-card-valor">${o.pctFirestore}%</div><div class="info-card-label">Maior empresa, do limite de 1 MiB</div></div>
+        <div class="info-card"><div class="info-card-valor">${tamanhoKB} KB</div><div class="info-card-label">Tamanho dos dados</div></div>
+        <!-- "do limite de 1 MiB" era sigla técnica (vistoria de 28/09/2026); o
+             limite continua explicado no title, para quem passar o mouse. -->
+        <div class="info-card" title="Na nuvem, as notas de cada empresa ficam num documento com limite de 1 MB. Este é o quanto a empresa mais cheia já usa dele."><div class="info-card-valor">${o.pctFirestore}%</div><div class="info-card-label">Espaço usado na nuvem</div></div>
         <div class="info-card"><div class="info-card-valor">${o.pctNavegador}%</div><div class="info-card-label">Espaço usado no navegador</div></div>
     `;
     renderBackupsAuto();

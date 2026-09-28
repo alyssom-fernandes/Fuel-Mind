@@ -621,7 +621,7 @@ function _renderConteudoCombustivel(nomeComb, r, lancDescarga, anterior) {
         <!-- Rótulo em cima e número grande embaixo, como os cartões do topo
              da tela (18/09/2026: aqui o rótulo vinha embaixo, em outro desenho). -->
         <div class="dash-comb-kpis">
-            <div class="dash-comb-kpi">
+            <div class="dash-comb-kpi vermelho">
                 <div class="dash-comb-kpi-label">Notas descarregadas</div>
                 <div class="dash-comb-kpi-val">${r.notasDescarga}</div>
             </div>

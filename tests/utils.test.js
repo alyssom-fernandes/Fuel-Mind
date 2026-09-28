@@ -287,3 +287,47 @@ test("_cadastroPorNomeOuApelido: nome, apelido, e o que NÃO pode acontecer", ()
     assert.equal(_cadastroPorNomeOuApelido(ambiguo, "RICARDO"), null);
     assert.equal(_cadastroPorNomeOuApelido(ambiguo, "RICARDO RODRIGUES DA COSTA").nome, "RICARDO RODRIGUES DA COSTA");
 });
+
+/* ── VISTORIA DE ACABAMENTO (28/09/2026) ─────────────────────────────
+ *  Três regras de texto que aparecem em quase toda tela e documento: se
+ *  uma delas mudar calada, a mesma nota volta a ler diferente em cada
+ *  lugar, que foi o que a vistoria achou.
+ */
+test("plural: singular só no 1, e a forma plural inteira quando há concordância", () => {
+    assert.equal(plural(1, "nota"), "1 nota");
+    assert.equal(plural(34, "nota"), "34 notas");
+    assert.equal(plural(0, "nota"), "0 notas");
+    assert.equal(plural(1, "item", "itens"), "1 item");
+    assert.equal(plural(2, "item", "itens"), "2 itens");
+    assert.equal(plural(1, "nota importada", "notas importadas"), "1 nota importada");
+    assert.equal(plural(1234, "nota"), "1.234 notas");
+    assert.equal(plural(undefined, "nota"), "0 notas");
+});
+
+test("fmtL3: sem casas quando o número é inteiro, três quando há fração", () => {
+    assert.equal(fmtL3(28500), "28.500 L");
+    assert.equal(fmtL3(28964.977), "28.964,977 L");
+    assert.equal(fmtL3(3500.7), "3.500,700 L");
+    assert.equal(fmtL3(0), "0 L");
+    // Resto de soma em ponto flutuante não vira fração.
+    assert.equal(fmtL3(0.1 + 0.2 + 999.7), "1.000 L");
+    assert.equal(fmtL3(-0.5), "-0,500 L");
+    // O cartão arredonda: é o `fmtL`, que continua sem casas.
+    assert.equal(fmtL(5035324.707), "5.035.325 L");
+});
+
+test("combustíveis na ordem do cadastro; fora dele, no fim e em ordem alfabética", () => {
+    const antes = db.combustiveis;
+    db.combustiveis = [{ nome: "Diesel S10" }, { nome: "Diesel S500" }, { nome: "Gasolina" }, { nome: "Etanol" }];
+    try {
+        const nomes = ["Etanol", "Querosene", "Diesel S500", "Arla", "Gasolina", "Diesel S10"];
+        assert.deepEqual(nomes.slice().sort(compararCombustiveis),
+            ["Diesel S10", "Diesel S500", "Gasolina", "Etanol", "Arla", "Querosene"]);
+        const obj = ordenarPorCombustivel({ Etanol: 1, "Diesel S500": 2, "Diesel S10": 3 });
+        assert.deepEqual(Object.keys(obj), ["Diesel S10", "Diesel S500", "Etanol"]);
+        assert.deepEqual(obj, { Etanol: 1, "Diesel S500": 2, "Diesel S10": 3 });
+        assert.deepEqual(ordenarPorCombustivel(undefined), {});
+    } finally {
+        db.combustiveis = antes;
+    }
+});

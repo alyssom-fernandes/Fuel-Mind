@@ -677,10 +677,6 @@ select {
     padding-right: 34px; cursor: pointer;
 }
 textarea { resize: vertical; min-height: 80px; }
-input[type="file"] {
-    padding: 10px; cursor: pointer; font-size: 0.82rem;
-    background: var(--surface-alt); border-style: dashed; color: var(--text-muted);
-}
 input[type="month"], input[type="date"] { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
 input[type="checkbox"] { width: auto; padding: 0; cursor: pointer; accent-color: var(--primary); }
 
@@ -1192,6 +1188,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
     transition: transform 0.15s;
 }
 .dash-comb-kpi:hover { transform: translateY(-2px); }
+/* As mesmas cores dos cartões do topo: o de notas é o vermelho da marca,
+   e era o único sem cor, com a borda cinza (vistoria de 28/09/2026). */
+.dash-comb-kpi.vermelho { border-left-color: var(--primary); }
 .dash-comb-kpi.verde   { border-left-color: var(--success); }
 .dash-comb-kpi.laranja { border-left-color: var(--warning); }
 .dash-comb-kpi.roxo    { border-left-color: var(--info); }
@@ -3290,18 +3289,6 @@ tr.linha-total { font-weight: 700; border-top: 2px solid var(--border); }
 .btn-icone--inativar:hover { color: var(--warning); }
 #cadastros .filtro-lista { margin: var(--space-3) 0 var(--space-2); }
 
-/* Campo de arquivo: o botão do navegador vira um botão do sistema, em
-   Backup, Importar Planilha, Conferências e logo do PDF. */
-input[type="file"] { width: 100%; max-width: 440px; font-size: 0.8rem; color: var(--text-muted); font-family: inherit; max-width: 100%; padding: 0; background: none; border: none; }
-input[type="file"]::file-selector-button {
-    margin-right: var(--space-3); padding: 8px 16px; cursor: pointer;
-    border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface-alt); color: var(--text);
-    font-family: inherit; font-size: 0.82rem; font-weight: 600;
-    transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
-}
-input[type="file"]::file-selector-button:hover { background: var(--surface-hover); border-color: var(--border-strong); }
-
 /* Opções do PDF: a `.form-linha input` (flex:1; min-width:200px) esticava
    as caixas de marcar em traços de 200 px, e o rótulo herdava a caixa-alta
    do rótulo de campo. Caixa de marcar é caixa de marcar. */
@@ -3475,11 +3462,12 @@ input[type="checkbox"], input[type="radio"] {
     border-radius: var(--radius-lg); padding: 18px 20px;
     box-shadow: var(--shadow-sm);
 }
-/* A base de data subiu para o topo, ao lado do nome: ela qualifica o
-   documento, e no rodapé competia por atenção com os botões. */
+/* A base de data subiu para o topo: ela qualifica o documento, e no rodapé
+   competia por atenção com os botões. Fica sempre embaixo do nome: ao lado
+   dele, ela descia de linha só nos cartões de nome comprido, e os seis
+   cartões saíam com dois arranjos (vistoria de 28/09/2026). */
 .central-card-topo {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 10px; flex-wrap: wrap;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
 }
 .central-card-nome {
     margin: 0; font-family: 'Syne', sans-serif; font-size: 0.98rem;
@@ -3865,7 +3853,6 @@ html { scroll-padding-top: calc(var(--faixa-demo-h) + var(--header-height) + 8px
        a 320 de largura dão 125 por coluna. Na fonte do resto do site, com
        algarismos de largura igual, ela cabe e continua alinhada. */
     input[type="date"], input[type="month"] { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; }
-    input[type="file"]:not(.input-arquivo-oculto) { min-height: 40px; }
     .login-esqueci { min-height: 40px; }
     .login-ver-senha { width: 40px; height: 40px; }
     #demoFaixa button { min-height: 32px; }
