@@ -485,12 +485,15 @@ function fmtL3(v) {
    ",000" invisível: numa coluna alinhada à direita, "28.500" e
    "28.964,977" ficavam com as unidades desencontradas (vistoria de
    28/09/2026). O invisível ocupa o lugar mas não se lê nem se copia.
+   Com a unidade, ele vai DEPOIS do "L": antes dele deixava um buraco
+   ("563.500     L"), e em fonte de largura fixa " L,000" ocupa o mesmo
+   que ",977 L", então os algarismos continuam alinhados (30/09/2026).
    Textos, PDFs e planilhas continuam com `fmtL3`. */
 function fmtL3Celula(v, comUnidade = true) {
     const texto = fmtL3(v).replace(/ L$/, "");
     const n = Math.round((Number(v) || 0) * 1000) / 1000 || 0;
     const casas = Number.isInteger(n) ? '<span class="casas-vazias" aria-hidden="true">,000</span>' : "";
-    return texto + casas + (comUnidade ? " L" : "");
+    return texto + (comUnidade ? " L" : "") + casas;
 }
 
 /* Eixo de gráfico: "R$ 4,5 mi", "600 mil L". O valor inteiro com centavos

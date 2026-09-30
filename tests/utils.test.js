@@ -321,12 +321,13 @@ test("fmtL3: sem casas quando o número é inteiro, três quando há fração", 
 });
 
 test("fmtL3Celula: o inteiro leva ',000' invisível; o texto visível é o do fmtL3", () => {
-    assert.equal(fmtL3Celula(28500), '28.500<span class="casas-vazias" aria-hidden="true">,000</span> L');
+    assert.equal(fmtL3Celula(28500), '28.500 L<span class="casas-vazias" aria-hidden="true">,000</span>');
     assert.equal(fmtL3Celula(28964.977), "28.964,977 L");
     assert.equal(fmtL3Celula(28500, false), '28.500<span class="casas-vazias" aria-hidden="true">,000</span>');
     assert.equal(fmtL3Celula(28964.977, false), "28.964,977");
     // O que se lê é o mesmo número do fmtL3.
     assert.equal(fmtL3Celula(4999.9995).replace(/<[^>]+>,000<\/span>/, ""), fmtL3(4999.9995));
+    assert.equal(fmtL3Celula(28500).replace(/<[^>]+>,000<\/span>/, ""), fmtL3(28500));
 });
 
 test("combustíveis na ordem do cadastro; fora dele, no fim e em ordem alfabética", () => {
