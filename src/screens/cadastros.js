@@ -1184,6 +1184,8 @@ function atualizarListas() {
 
     // EMPRESAS
     const ulE = document.getElementById("listaEmpresas");
+    // Taxa de frete e % do motorista: só admin e supremo (30/09/2026).
+    const verTaxas = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
     if (ulE) {
         const showInat = document.getElementById("mostrarInativosEmpresas")?.checked;
         const lista = showInat ? db.empresas : db.empresas.filter(e => e.ativo !== false);
@@ -1192,8 +1194,8 @@ function atualizarListas() {
                 <li class="${e.ativo !== false ? "" : "inativo"}">
                     <span>
                         ${escapeHtml(e.nome)} ${e.municipio ? `- ${escapeHtml(e.municipio)}` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtFreteL(_taxaFreteDaEmpresaNaData(e, _hojeISO()))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
-                        ${_taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml("Fatia do frete que vai para o motorista que rodou a nota. Vigências:\n" + _vigResumo(e, "pct").split("; ").join("\n"))}">Motorista: ${fmtPct(_percentualMotoristaDaEmpresaNaData(e, _hojeISO()), 2)}${(e.pctHistorico || []).length > 1 ? ' · ' + e.pctHistorico.length + ' vigências' : ''}</em>` : ''}
+                        ${verTaxas && _taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml(_historicoTaxaTexto(e))}">Frete: ${fmtFreteL(_taxaFreteDaEmpresaNaData(e, _hojeISO()))}/L${(e.taxaHistorico || []).length > 1 ? ' · ' + (e.taxaHistorico.length) + ' vigências' : ''}</em>` : ''}
+                        ${verTaxas && _taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml("Fatia do frete que vai para o motorista que rodou a nota. Vigências:\n" + _vigResumo(e, "pct").split("; ").join("\n"))}">Motorista: ${fmtPct(_percentualMotoristaDaEmpresaNaData(e, _hojeISO()), 2)}${(e.pctHistorico || []).length > 1 ? ' · ' + e.pctHistorico.length + ' vigências' : ''}</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
                     <div class="acoes-lista">

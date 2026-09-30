@@ -413,7 +413,9 @@ function _aplicarFiltroRelatorio() {
         }).join('');
 
         // Top motoristas
-        const topMotHtml = topMotoristas.length ? `
+        // Litros por motorista: só admin e supremo (30/09/2026).
+        const podeVerMotoristas = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
+        const topMotHtml = (topMotoristas.length && podeVerMotoristas) ? `
             <div class="rel-card rel-card--lista">
                 <div class="rel-card-titulo">Top Motoristas</div>
                 ${topMotoristas.map(([nome, litros]) => `

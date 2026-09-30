@@ -118,12 +118,21 @@ test("_centralItens: todo item tem id único, nome e uma linha de explicação",
     });
 });
 
-test("_centralItens: o operador vê o mesmo que o supremo, e é de propósito", () => {
-    // Nenhum relatório de hoje exige papel. O dia em que um exigir, é esta
-    // asserção que vai cair, e é onde a regra tem de ser revista.
-    const operador = _centralItens({ papel: "" }).map(i => i.id);
+test("_centralItens: os documentos de frete são só de admin e supremo", () => {
+    // Decisão do dono em 30/09/2026: o operador não vê frete nem pagamento
+    // por motorista. O resto da central continua igual para todos.
+    const DE_FRETE = ["fechamento", "resumo-fretes", "nota-a-nota"];
+    const operador = _centralItens({ papel: "usuario" }).map(i => i.id);
+    const admin    = _centralItens({ papel: "admin" }).map(i => i.id);
     const supremo  = _centralItens({ papel: "supremo" }).map(i => i.id);
-    assert.deepEqual(operador, supremo);
+    assert.deepEqual(admin, supremo);
+    DE_FRETE.forEach(id => {
+        assert.ok(supremo.includes(id), `${id} sumiu até do supremo`);
+        assert.ok(!operador.includes(id), `${id} aparece para o operador`);
+    });
+    assert.deepEqual(operador, supremo.filter(id => !DE_FRETE.includes(id)));
+    // Sem papel conhecido, vale o mais restrito.
+    assert.deepEqual(_centralItens({ papel: "" }).map(i => i.id), operador);
 });
 
 test("central: cada tela citada existe no index.html", () => {

@@ -454,6 +454,17 @@ function aplicarPermissoesDaTela() {
         const btn = document.querySelector('#sistemaAbas .aba-btn[data-aba="importar"]');
         trocarAbaSistema('importar', btn);
     }
+    // O mesmo no Analítico: as abas por motorista e por veículo somem para o
+    // operador (30/09/2026); se uma delas era a aberta, volta para a Mensal.
+    const abaAnalitico = document.querySelector('#analiticoAbas .aba-btn.ativa');
+    if (abaAnalitico && abaAnalitico.classList.contains('fm-sem-permissao') && typeof trocarAba === 'function') {
+        trocarAba('mensal', document.querySelector('#analiticoAbas .aba-btn[data-aba="mensal"]'));
+    }
+    // E quem estava em Fretes sai dela.
+    if (!ehAdminOuSupremoAtual() && document.getElementById('fretes')?.style.display === 'block'
+        && typeof mostrarTela === 'function') {
+        mostrarTela('dashboard');
+    }
 }
 
 /** Recusa uma ação na hora, com o motivo, quando o papel não permite. */

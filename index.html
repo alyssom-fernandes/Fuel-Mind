@@ -145,7 +145,7 @@
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
         <span class="sidebar-item-label">Analítico</span>
       </button>
-      <button class="sidebar-item" id="nav-fretes" onclick="mostrarTela('fretes')">
+      <button class="sidebar-item" id="nav-fretes" data-papel="admin" onclick="mostrarTela('fretes')">
         <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
         <span class="sidebar-item-label">Fretes</span>
       </button>
@@ -593,8 +593,11 @@
     <div id="kpiContainer" class="kpi-container"></div>
     <div class="analitico-abas" id="analiticoAbas">
       <button class="aba-btn ativa" data-aba="mensal" onclick="trocarAba('mensal', this)">Mensal</button>
-      <button class="aba-btn" data-aba="motoristas" onclick="trocarAba('motoristas', this)">Por motorista</button>
-      <button class="aba-btn" data-aba="veiculos" onclick="trocarAba('veiculos', this)">Por veículo</button>
+      <!-- Carga por motorista e por placa: só admin e supremo (30/09/2026,
+           pedido do dono; o operador às vezes é estagiário e conta aos
+           motoristas). O mesmo vale para o anel "Por motorista" abaixo. -->
+      <button class="aba-btn" data-aba="motoristas" data-papel="admin" onclick="trocarAba('motoristas', this)">Por motorista</button>
+      <button class="aba-btn" data-aba="veiculos" data-papel="admin" onclick="trocarAba('veiculos', this)">Por veículo</button>
       <button class="aba-btn" data-aba="combustivel" onclick="trocarAba('combustivel', this)">Por combustível</button>
       <button class="aba-btn" data-aba="distribuicao" onclick="trocarAba('distribuicao', this)">Distribuição</button>
       <button class="aba-btn" data-aba="evolucaoPrecos" onclick="trocarAba('evolucaoPrecos', this)">Preços</button>
@@ -645,6 +648,7 @@
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('pizzaCombustivel')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
+      <div data-papel="admin">
       <h4 class="mt-5">Por motorista <small class="titulo-nota">· os 5 maiores</small></h4>
       <div class="distribuicao-cartao">
         <div class="distribuicao-grafico"><canvas id="graficoPizzaMotoristas"></canvas>
@@ -654,6 +658,7 @@
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('pizzaMotorista')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
+      </div>
     </div>
     <!-- A aba "Comparativo" foi absorvida aqui em 22/09/2026. Ela era o
          MESMO grafico desta: uma linha de preco por litro ao longo dos
@@ -882,11 +887,11 @@
     <div class="form-linha">
       <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" class="flex-2">
       <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município, UF" title="Ex.: São Paulo, SP" class="flex-1">
-      <input id="taxaFreteEmpresa" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="Frete R$/L">
-      <input id="pctMotoristaEmpresa" aria-label="Pagamento ao motorista em percentual do frete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="% motorista">
+      <input id="taxaFreteEmpresa" data-papel="admin" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="Frete R$/L">
+      <input id="pctMotoristaEmpresa" data-papel="admin" aria-label="Pagamento ao motorista em percentual do frete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="% motorista">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
-    <p class="dica dica--colada">A taxa de frete é o valor pago por litro transportado para a empresa. O percentual do motorista é a fatia desse frete que vai para quem rodou a nota; em branco, vale 1%. Os dois podem ser ajustados depois em Editar.</p>
+    <p class="dica dica--colada" data-papel="admin">A taxa de frete é o valor pago por litro transportado para a empresa. O percentual do motorista é a fatia desse frete que vai para quem rodou a nota; em branco, vale 1%. Os dois podem ser ajustados depois em Editar.</p>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaEmpresas"></ul>
   </div>
@@ -1058,6 +1063,10 @@
     <div class="campo"><label for="modalInput" id="modalLabel">Nome</label><input id="modalInput" placeholder=""></div>
     <div class="campo mt-3" id="modalCampoMunicipioWrapper" style="display:none">
       <label for="modalInputMunicipio">Município/UF</label><input id="modalInputMunicipio" type="text" placeholder="Ex: São Paulo, SP">
+      <!-- Taxa e % do motorista: só admin e supremo veem e mudam (30/09/2026).
+           Escondidas, as vigências continuam preenchidas e relidas ao salvar,
+           então o operador edita nome e município sem mexer nelas. -->
+      <div data-papel="admin">
       <span class="vigencias-titulo mt-3">Taxa de frete (R$/litro)</span>
       <div id="modalVigTaxa" class="vigencias"></div>
       <p class="dica mt-1">Valor pago por litro transportado para esta empresa. Cada linha vale a partir da data dela até a véspera da linha seguinte.</p>
@@ -1065,6 +1074,7 @@
       <div id="modalVigPct" class="vigencias"></div>
       <p class="dica mt-1">Quanto do frete vai para o motorista que rodou a nota. Com 1% e taxa de R$ 0,10/L, dá R$ 1,00 por mil litros transportados.</p>
       <p class="dica mt-1">Não dá para mudar valor em dia de mês fechado: reabra o mês na tela de Fretes antes.</p>
+      </div>
     </div>
     <div class="campo mt-3" id="modalCampoVinculosWrapper" style="display:none">
       <span class="vigencias-titulo">Notas fiscais que esta base reconhece</span>

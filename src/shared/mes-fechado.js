@@ -274,9 +274,16 @@ function _travaRestaurar(foto) {
     _OBJETOS_COMPARTILHADO.forEach(c => { if (copia[c] !== undefined) db[c] = copia[c]; });
 }
 
+/** Como destravar um mês fechado, dito para quem lê: reabrir é de admin
+ *  (na tela de Fretes, que desde 30/09/2026 o operador nem vê). */
+function textoReabrirMes() {
+    const admin = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
+    return admin ? "reabra o mês na tela de Fretes" : "peça a um administrador para reabrir o mês";
+}
+
 function _travaMensagem(acao, violacoes) {
     return `${acao}: isto alteraria um mês fechado. Onde: ${descreverViolacoesMes(violacoes, db.empresas)}. `
-         + `Nada foi alterado. Para mudar, reabra o mês na tela de Fretes.`;
+         + `Nada foi alterado. Para mudar, ${textoReabrirMes()}.`;
 }
 
 /**
@@ -426,7 +433,7 @@ function barrarNotaDeMesFechado(l, acao) {
     const reg = mesFechadoDaNota(l);
     if (!reg) return false;
     mostrarToast(`${acao}: a nota é de ${_nomeMesLongo(reg.mes)}, mês fechado da empresa ${l.empresa}. `
-        + `Para alterar, reabra o mês na tela de Fretes.`, "aviso", 8000);
+        + `Para alterar, ${textoReabrirMes()}.`, "aviso", 8000);
     return true;
 }
 

@@ -64,6 +64,7 @@ let _centralMes = "";
 const _CENTRAL_ITENS = [
     {
         id: "fechamento",
+        papel: "admin",
         nome: "Fechamento do mês",
         linha: "O documento completo do mês em uma peça só: os números em cartões, por empresa, por conjunto, por motorista, por placa e a lista nota a nota. Você escolhe quais empresas entram.",
         tela: "fretes",
@@ -76,6 +77,7 @@ const _CENTRAL_ITENS = [
     },
     {
         id: "resumo-fretes",
+        papel: "admin",
         nome: "Resumo de fretes",
         linha: "Litros e frete do mês somados por placa, por motorista, por empresa e por conjunto, com a taxa que valia em cada data.",
         tela: "fretes",
@@ -89,6 +91,7 @@ const _CENTRAL_ITENS = [
     },
     {
         id: "nota-a-nota",
+        papel: "admin",
         nome: "Frete nota a nota",
         linha: "Nota, data, litros, taxa e frete de cada viagem do mês. É esta lista que responde a um transportador que questiona um valor.",
         tela: "fretes",
@@ -139,9 +142,11 @@ const _CENTRAL_ITENS = [
     }
 ];
 
-/* A lista que este perfil vê. Hoje nenhum item exige papel, e a função
-   existe assim mesmo: ela é o único lugar onde um item futuro de admin
-   entraria, e o teste já cobre a regra. Pura de propósito, sem DOM. */
+/* A lista que este perfil vê. Os três documentos de frete (fechamento,
+   resumo e nota a nota) são só de admin e supremo desde 30/09/2026, a
+   pedido do dono: eles mostram o frete e o pagamento de cada motorista, e
+   o operador (às vezes estagiário) não deve ver quanto cada um ganha.
+   Pura de propósito, sem DOM. */
 function _centralItens(ctx) {
     const papel = (ctx && ctx.papel) || "";
     const permite = (minimo) => {
@@ -328,7 +333,10 @@ function _centralPreparar(item, mes) {
  * @param {string} [formato] - rótulo do formato, como no cartão
  */
 async function centralExecutar(id, formato) {
-    const item = _CENTRAL_ITENS.find(i => i.id === id);
+    const papel = typeof papelAtual === "function" ? papelAtual() : "";
+    // Pela lista do papel, não pela lista inteira: um item escondido não
+    // pode ser executado por quem chamar a função direto.
+    const item = _centralItens({ papel }).find(i => i.id === id);
     if (!item) return;
 
     /* O MÊS É LIDO AQUI, na primeira linha, antes de qualquer `await`, e é

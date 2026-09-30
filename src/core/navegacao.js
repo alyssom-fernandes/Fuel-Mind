@@ -215,7 +215,17 @@ async function confirmarSaidaFormulario() {
  * @param {string} id - ID do elemento HTML da tela destino
  * @returns {Promise<void>}
  */
+/* Telas só de admin e supremo. Fretes mostra o frete e o pagamento de
+   cada motorista, e o dono não quer isso à vista do operador (30/09/2026).
+   O menu some pelo `data-papel`; esta trava cobre quem chegar por atalho,
+   link ou cartão clicável. */
+const _TELAS_SO_ADMIN = ["fretes"];
+
 async function mostrarTela(id) {
+    if (_TELAS_SO_ADMIN.includes(id) && typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) {
+        if (typeof mostrarToast === "function") mostrarToast("Fretes: só administradores podem ver esta tela.", "aviso", 5000);
+        id = "dashboard";
+    }
     const telaAtual = document.querySelector(".tela[style*='block']");
     if (telaAtual?.id === "lancamentos" && id !== "lancamentos") {
         if (!await confirmarSaidaFormulario()) return;

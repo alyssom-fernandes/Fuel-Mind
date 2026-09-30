@@ -328,7 +328,7 @@ function validarLancamento() {
         if (regNovo) {
             marcar("dataDescarga",
                 `O mês de ${_nomeMesLongo(regNovo.mes)} está fechado na empresa ${empresa}: nota com descarga nele não entra. `
-                + `Para lançar, reabra o mês na tela de Fretes.`, "bloqueio");
+                + `Para lançar, ${textoReabrirMes()}.`, "bloqueio");
         }
         const original = (typeof lancamentoEditandoId !== "undefined" && lancamentoEditandoId
             && !(typeof isClonando !== "undefined" && isClonando))
@@ -337,7 +337,7 @@ function validarLancamento() {
         if (regOriginal && (!regNovo || regOriginal.id !== regNovo.id)) {
             marcar(null,
                 `Esta nota é de ${_nomeMesLongo(regOriginal.mes)}, mês fechado da empresa ${original.empresa}, e não pode ser alterada. `
-                + `Para alterar, reabra o mês na tela de Fretes.`, "bloqueio");
+                + `Para alterar, ${textoReabrirMes()}.`, "bloqueio");
         }
     }
 

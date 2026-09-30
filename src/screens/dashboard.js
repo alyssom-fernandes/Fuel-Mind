@@ -209,14 +209,20 @@ function carregarDashboard() {
     const compraAntK   = _totaisCompra(emisAnt);
     const freteAnt     = _freteDoPeriodo(descAnt);
 
+    // Os cartões que abrem Fretes só são clicáveis para admin e supremo:
+    // a tela é deles desde 30/09/2026 (o operador cairia no aviso).
+    const podeFretes = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
+    const abreFretes = titulo => podeFretes
+        ? ` kpi-clicavel" onclick="mostrarTela('fretes')" title="${titulo}`
+        : `"`;
     document.getElementById("kpiDashboard").innerHTML = `
-        <div class="kpi-card kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre Fretes, que também conta pela data da descarga.">
+        <div class="kpi-card${abreFretes("Abre Fretes, que também conta pela data da descarga.")}">
             <div class="kpi-valor">${totalNotas}</div>
             <div class="kpi-label">Notas Descarregadas</div>
             <div class="kpi-base">pela data da descarga</div>
             ${htmlVariacao(totalNotas, descAnt.length, rotAnt, false)}
         </div>
-        <div class="kpi-card verde kpi-clicavel" onclick="mostrarTela('fretes')" title="Abre Fretes, que também conta pela data da descarga.">
+        <div class="kpi-card verde${abreFretes("Abre Fretes, que também conta pela data da descarga.")}">
             <div class="kpi-valor">${fmtL(totalLitros)}</div>
             <div class="kpi-label">Litros Descarregados</div>
             <div class="kpi-base">pela data da descarga</div>
@@ -235,7 +241,7 @@ function carregarDashboard() {
             ${htmlVariacao(compra.custo, compraAntK.custo, rotAnt, true)}
             ${compra.custoRecebido > 0 ? `<div class="kpi-base" title="Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebido(compra.metricas))}</div>` : ''}
         </div>
-        <div class="kpi-card violeta kpi-clicavel" onclick="mostrarTela('fretes')" title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.">
+        <div class="kpi-card violeta${abreFretes("Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.")}"${podeFretes ? "" : ` title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga."`}>
             <div class="kpi-valor">${fmtR(frete.total)}</div>
             <div class="kpi-label">Frete do Período</div>
             <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtFreteL(frete.porLitro)}/L` : ''}</div>
