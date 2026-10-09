@@ -180,6 +180,28 @@ test("conjunto: nova composição que vale em julho é recusada; a partir de ago
     assert.deepEqual(violacoesMesFechado(antes, emAgosto), []);
 });
 
+test("conjunto de uma placa só: a nota da placa entra nele e não fica fora de conjunto", () => {
+    const sozinha = {
+        id: "c9", nome: "Provisória", composicaoAtual: ["QWE1R23"], ativo: true,
+        historico: [{ placas: ["QWE1R23"], vigenciaDe: "2026-09-01", vigenciaAte: null }]
+    };
+    const lista = [clone(CONJ), sozinha];
+    assert.equal(_resolverConjuntoNaLista(lista, "QWE-1R23", "2026-09-29").conj.id, "c9");
+    // Antes da vigência a placa ainda não tinha conjunto.
+    assert.equal(_resolverConjuntoNaLista(lista, "QWE1R23", "2026-08-31"), null);
+
+    const r = calcularFretesDoMes({
+        mes: "2026-09",
+        lancamentos: [nota("s1", "Fabiandra", "2026-09-29", { placa: "QWE1R23" })],
+        empresaDoLancamento: () => FAB,
+        resolverConjunto: (p, d) => _resolverConjuntoNaLista(lista, p, d)
+    });
+    assert.deepEqual(r.porConjunto.map(c => c.nome), ["Provisória"]);
+    assert.equal(r.porConjunto[0].viagens, 1);
+    // "Fora de conjunto" é o total menos a soma dos conjuntos: aqui, zero.
+    assert.equal(r.totalLitros - r.porConjunto[0].litros, 0);
+});
+
 test("reabrir e fechar, sozinhos, não mudam nada", () => {
     const antes = estadoBase();
     const reaberto = clone(antes);

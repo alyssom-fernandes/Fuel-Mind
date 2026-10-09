@@ -1073,8 +1073,10 @@ async function salvarConjunto() {
     const inputs = document.querySelectorAll("#conjuntoPlacasList input[type=text]");
     const placas = Array.from(inputs).map(i => i.value.trim().toUpperCase().replace(/[-\s]/g, "")).filter(Boolean);
 
-    if (placas.length < 2) {
-        mostrarToast("Um conjunto precisa ter pelo menos 2 placas.", "erro", 4000);
+    // Uma placa sozinha também forma conjunto (placa provisória, cavalo
+    // sem carreta): sem ela num conjunto, a nota cai em "Fora de conjunto".
+    if (placas.length === 0) {
+        mostrarToast("Um conjunto precisa ter pelo menos uma placa.", "erro", 4000);
         return;
     }
 

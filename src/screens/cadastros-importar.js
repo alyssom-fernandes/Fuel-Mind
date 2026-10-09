@@ -234,8 +234,8 @@ function _cadImpLerConjuntos(wb, plano) {
             item.situacao = "erro"; item.motivo = "conjunto repetido dentro da própria planilha";
         } else if (db.conjuntosVeiculos.some(c => normalizarTexto(c.nome || "") === chave)) {
             item.situacao = "existe";
-        } else if (placas.length < 2) {
-            item.situacao = "erro"; item.motivo = "um conjunto precisa de pelo menos duas placas";
+        } else if (placas.length === 0) {
+            item.situacao = "erro"; item.motivo = "um conjunto precisa de pelo menos uma placa";
         } else if (repetida.length) {
             item.situacao = "erro"; item.motivo = `a placa ${repetida[0]} aparece duas vezes na mesma linha`;
         } else if (faltando.length) {
