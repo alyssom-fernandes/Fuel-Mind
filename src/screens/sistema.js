@@ -866,7 +866,7 @@ let _autoLinhas = [];
 let _autoCombustivel = '';
 
 function autosystemLerArquivo(input) {
-    if (adiarAteBibliotecas(["xlsx"], () => autosystemLerArquivo(input))) return;
+    if (adiarAteBibliotecas(["leitor"], () => autosystemLerArquivo(input))) return;
     const file = input.files[0];
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
@@ -879,12 +879,12 @@ function autosystemLerArquivo(input) {
                 // Mesma leitura da importação: codificação do Excel e aspas.
                 linhas = importacaoLerCSV(_decodificarTexto(e.target.result));
             } else {
-                const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: false, raw: true });
+                const wb = XLSX_LEITOR.read(e.target.result, { type: 'binary', cellDates: false, raw: true });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 // raw:true preserva valores numéricos (litros) sem converter para data.
                 // A conversão de serial de data é feita em _autosystemDetectarEProcessar,
                 // apenas na coluna de data identificada pelo cabeçalho.
-                linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+                linhas = XLSX_LEITOR.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
             }
             linhas = linhas.filter(l => l.some(c => String(c||'').trim()));
             if (linhas.length < 2) { mostrarToast('Arquivo vazio.', 'aviso', 4000); arquivoLimpar(input); return; }

@@ -60,12 +60,12 @@ function cadImportarLerArquivo(input) {
     }
     // A biblioteca de planilha só chega quando alguém precisa dela; aqui é
     // um desses momentos.
-    if (adiarAteBibliotecas(["xlsx"], () => cadImportarLerArquivo(input))) return;
+    if (adiarAteBibliotecas(["leitor"], () => cadImportarLerArquivo(input))) return;
 
     const leitor = new FileReader();
     leitor.onload = e => {
         try {
-            const wb = XLSX.read(e.target.result, { type: "binary", cellDates: false, cellText: false });
+            const wb = XLSX_LEITOR.read(e.target.result, { type: "binary", cellDates: false, cellText: false });
             _cadImpPlano = _cadImpMontarPlano(wb);
             _cadImpRenderizarPrevia();
         } catch (erro) {
@@ -86,7 +86,7 @@ function _cadImpAba(wb, chave) {
 
 /** A aba como matriz de texto, já sem as linhas totalmente vazias. */
 function _cadImpLinhas(ws) {
-    const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+    const linhas = XLSX_LEITOR.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
     return linhas.filter(l => l.some(c => String(c == null ? "" : c).trim() !== ""));
 }
 

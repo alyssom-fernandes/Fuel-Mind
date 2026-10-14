@@ -132,11 +132,12 @@ Taken from the demo, with its fictional data.
 | Data and login | Firebase Firestore (real time) and Firebase Authentication |
 | Charts | Chart.js 4 |
 | PDF | jsPDF and jsPDF-AutoTable |
-| Excel | xlsx-js-style (SheetJS with cell styles) |
+| Excel | xlsx-js-style to write (SheetJS with cell styles), SheetJS 0.20.3 to read imported files |
 | Hosting | Firebase Hosting |
 
 The PDF and Excel libraries are loaded from a CDN only when a document is
-generated.
+generated or a spreadsheet is imported, and every CDN file is checked
+against a fixed hash (Subresource Integrity) before it runs.
 
 Some decisions behind it:
 

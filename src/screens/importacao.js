@@ -141,7 +141,7 @@ function _detectarFormato(cabecalho) {
   LEITURA DO ARQUIVO
 ─────────────────────────────────────────────*/
 function importacaoLerArquivo(input) {
-    if (adiarAteBibliotecas(["xlsx"], () => importacaoLerArquivo(input))) return;
+    if (adiarAteBibliotecas(["leitor"], () => importacaoLerArquivo(input))) return;
     const file = input.files[0];
     if (!file) return;
 
@@ -167,7 +167,7 @@ function importacaoLerArquivo(input) {
                 // Lê as células formatadas (raw:false) e, à parte, os valores crus; evita
                 // que o XLSX interprete e inverta DD/MM em datas com dia <= 12.
                 // Datas Excel (serial numérico) são convertidas manualmente no normalizador.
-                const workbook = XLSX.read(e.target.result, { type: "binary", cellDates: false, cellText: false });
+                const workbook = XLSX_LEITOR.read(e.target.result, { type: "binary", cellDates: false, cellText: false });
                 const aba = workbook.Sheets[workbook.SheetNames[0]];
 
                 // Converte seriais numéricos de data (40000-60000) para "DD/MM/YYYY"
@@ -182,12 +182,12 @@ function importacaoLerArquivo(input) {
                            String(d.getUTCMonth()+1).padStart(2,"0") + "/" +
                            d.getUTCFullYear();
                 };
-                const range = XLSX.utils.decode_range(aba["!ref"] || "A1");
+                const range = XLSX_LEITOR.utils.decode_range(aba["!ref"] || "A1");
 
                 // Identifica quais colunas são de data pelo cabeçalho (linha 0)
                 const _colunasData = new Set();
                 for (let C = range.s.c; C <= range.e.c; C++) {
-                    const addrCab = XLSX.utils.encode_cell({ r: range.s.r, c: C });
+                    const addrCab = XLSX_LEITOR.utils.encode_cell({ r: range.s.r, c: C });
                     const cabCell = aba[addrCab];
                     if (!cabCell) continue;
                     const cabNorm = String(cabCell.v || "").toLowerCase()
@@ -207,7 +207,7 @@ function importacaoLerArquivo(input) {
 
                 for (let R = range.s.r + 1; R <= range.e.r; R++) {
                     for (const C of _colunasData) {
-                        const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                        const addr = XLSX_LEITOR.utils.encode_cell({ r: R, c: C });
                         const cell = aba[addr];
                         if (!cell) continue;
                         if (cell.t === "n" && cell.v > 40000 && cell.v < 60000) {
@@ -219,8 +219,8 @@ function importacaoLerArquivo(input) {
                     }
                 }
 
-                linhas = XLSX.utils.sheet_to_json(aba, { header: 1, defval: "", raw: false });
-                linhasRaw = XLSX.utils.sheet_to_json(aba, { header: 1, defval: "", raw: true });
+                linhas = XLSX_LEITOR.utils.sheet_to_json(aba, { header: 1, defval: "", raw: false });
+                linhasRaw = XLSX_LEITOR.utils.sheet_to_json(aba, { header: 1, defval: "", raw: true });
             }
 
             // Remove linhas completamente vazias (as duas matrizes juntas)

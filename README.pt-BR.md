@@ -135,11 +135,12 @@ Capturadas da demonstração, com os dados fictícios dela.
 | Dados e login | Firebase Firestore (tempo real) e Firebase Authentication |
 | Gráficos | Chart.js 4 |
 | PDF | jsPDF e jsPDF-AutoTable |
-| Excel | xlsx-js-style (SheetJS com estilo nas células) |
+| Excel | xlsx-js-style para gravar (SheetJS com estilo nas células), SheetJS 0.20.3 para ler as planilhas importadas |
 | Hospedagem | Firebase Hosting |
 
 As bibliotecas de PDF e Excel são carregadas de uma CDN só quando um
-documento é gerado.
+documento é gerado ou uma planilha é importada, e todo arquivo de CDN é
+conferido contra um hash fixo (Subresource Integrity) antes de rodar.
 
 Algumas decisões por trás dele:
 

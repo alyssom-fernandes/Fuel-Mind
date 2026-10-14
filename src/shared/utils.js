@@ -1090,13 +1090,31 @@ const _BIBLIOTECAS = {
     xlsx:      { src: "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js", antes: "cpexcel",
                  sri: "sha384-OUW9euuUyxyHcAhTqbhI+Iyb8LMssXt/cpz0yXhs9UWG2/R/uaWdakx/4cfww7Vb",
                  pronta: () => typeof window !== "undefined" && !!window.XLSX },
-    jspdf:     { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
-                 sri: "sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk",
+    /* jsPDF 4.2.1 e autotable 5.0.8 desde 14/10/2026: a 2.5.1 tinha 12 avisos
+       de segurança (corrigidos até a 4.2.1). As versões 3 e 4 só mudaram fora
+       do navegador (Internet Explorer e arquivos no Node), e o autotable 5
+       continua se ligando sozinho ao jsPDF no navegador. Os quatro PDFs foram
+       comparados texto a texto, com a posição, antes e depois da troca. */
+    jspdf:     { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js",
+                 sri: "sha384-qovJwSBbRDPP5cEjCp8S0UP66wrvnjaa60XMOGzTNanrThcrGfXfnZkvgY8N1KT3",
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF) },
-    autotable: { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
-                 sri: "sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3",
+    autotable: { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js",
+                 sri: "sha384-5jk55M0XWoAw7LyhlXJe19ErOr3doBAPzxw9vahPFbvolqWa2yDk4fhHa2zuYeOa",
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF
                                 && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) },
+    /* Ler planilha que vem de fora (14/10/2026): importação de notas, de
+       frota e o relatório do AutoSystem. O xlsx-js-style parou na SheetJS
+       0.18.5, que tem dois avisos de segurança justamente na leitura de
+       arquivo (CVE-2023-30533, CVE-2024-22363), e não há versão nova dele.
+       A leitura passa a ser da SheetJS oficial 0.20.3, carregada como módulo
+       à parte (`window.XLSX_LEITOR`), sem tocar no `XLSX` que grava as
+       planilhas do sistema. As tabelas de página de código vêm junto, para o
+       .xls antigo. O hash é conferido pela própria `fetch` (`integrity`). */
+    leitor:    { modulo: "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs",
+                 sri: "sha384-Z4EKe5a5DXkOl0inZS9gbLhWC3oWGsUGEe39GJ62+77NMKyfNjPWtP1Ilgb1Jzzy",
+                 codepages: "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/cpexcel.full.mjs",
+                 codepagesSri: "sha384-yW0j2Fpua5M/vvlVon8waQT+4ramFY1MSpb9ikwKHsC12ehRMlcIDwDbC5YXFf1K",
+                 pronta: () => typeof window !== "undefined" && !!window.XLSX_LEITOR },
     // Só para a prévia de PDF em celular e tablet, que não têm leitor de PDF
     // dentro da página (ver _pdfEntregar). A 3.11 é a última versão com
     // script comum; da 4 em diante ela só vem como módulo.
@@ -1118,6 +1136,15 @@ function garantirBiblioteca(nome) {
         return (_bibliotecaPromessa[nome] = garantirBiblioteca(b.antes)
             .then(() => { delete _bibliotecaPromessa[nome]; return garantirBiblioteca(nome); })
             .catch(e => { delete _bibliotecaPromessa[nome]; throw e; }));
+    }
+    if (b.modulo) {
+        _bibliotecaPromessa[nome] = _importarModuloConferido(b.modulo, b.sri)
+            .then(async mod => {
+                mod.set_cptable(await _importarModuloConferido(b.codepages, b.codepagesSri));
+                window.XLSX_LEITOR = mod;
+            })
+            .catch(e => { delete _bibliotecaPromessa[nome]; throw e; });
+        return _bibliotecaPromessa[nome];
     }
     _bibliotecaPromessa[nome] = new Promise((resolve, reject) => {
         const el = document.createElement("script");
@@ -1217,6 +1244,17 @@ function _prepararGravacaoPlanilha() {
 }
 
 /** Em sequência: o plugin de tabela precisa do jsPDF antes dele. */
+/* Módulo de outro endereço, só se for exatamente o arquivo esperado: a
+   `fetch` com `integrity` recusa qualquer outro conteúdo, e o módulo roda a
+   partir de uma cópia local (blob), sem criar variável global. */
+async function _importarModuloConferido(url, sri) {
+    const resp = await fetch(url, { integrity: sri, mode: "cors", credentials: "omit" });
+    if (!resp.ok) throw new Error("Falha ao carregar " + url);
+    const endereco = URL.createObjectURL(new Blob([await resp.text()], { type: "text/javascript" }));
+    try { return await import(endereco); }
+    finally { URL.revokeObjectURL(endereco); }
+}
+
 function garantirBibliotecas(nomes) {
     return (nomes || []).reduce((p, n) => p.then(() => garantirBiblioteca(n)), Promise.resolve());
 }
@@ -1228,7 +1266,7 @@ function adiarAteBibliotecas(nomes, acao) {
     if ((nomes || []).every(n => _BIBLIOTECAS[n] && _BIBLIOTECAS[n].pronta())) return false;
     mostrarToast("Preparando o arquivo…", "info", 1800);
     garantirBibliotecas(nomes).then(acao).catch(() =>
-        mostrarToast("Não consegui carregar a biblioteca de exportação. Confira a internet e tente de novo.", "erro", 7000));
+        mostrarToast("Não consegui carregar a biblioteca de planilha ou PDF. Confira a internet e tente de novo.", "erro", 7000));
     return true;
 }
 
