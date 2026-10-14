@@ -35,6 +35,12 @@ window.addEventListener("firebaseReady", () => {
         // Saída em curso: quem manda é o `fazerLogout`, não este evento.
         if (_saindo) return;
         if (user) {
+            // Demonstração aberta: a conta de verdade guardada no navegador
+            // não entra por cima. Entrava, e a pessoa ficava com o perfil
+            // real e a gravação da demo (só no navegador), achando que lançava
+            // na nuvem (13/10/2026). Ela entra depois do "Sair da demo", que
+            // recarrega a página.
+            if (typeof demoAtivo === "function" && demoAtivo()) return;
             if (_authJaProcessado && window._usuarioAtual?.uid === user.uid) return;
             _authJaProcessado = true;
 
@@ -388,7 +394,7 @@ async function _mostrarSelecaoEmpresa(perfil) {
         <button class="btn-empresa-troca" onclick="confirmarSelecaoEmpresa('${escapeJsAttr(emp)}')">
             <span>${escapeHtml(emp)}${emp === ultima
                 ? ' <small class="empresa-ultima">· última usada</small>' : ''}</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-seta"><polyline points="9,18 15,12 9,6"/></svg>
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-seta"><polyline points="9,18 15,12 9,6"/></svg>
         </button>`).join("");
 
     overlay.style.display = "flex";
@@ -722,8 +728,8 @@ function abrirTrocarEmpresa() {
                 onclick="selecionarEmpresaModal('${escapeJsAttr(emp)}')">
             <span>${escapeHtml(emp)}${emp === empresaFiltroNome ? ' <small class="empresa-ultima">· atual</small>' : ''}</span>
             ${emp === empresaFiltroNome
-                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icone-check"><polyline points="20,6 9,17 4,12"/></svg>'
-                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-seta"><polyline points="9,18 15,12 9,6"/></svg>'}
+                ? '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icone-check"><polyline points="20,6 9,17 4,12"/></svg>'
+                : '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-seta"><polyline points="9,18 15,12 9,6"/></svg>'}
         </button>`).join("");
     modal.style.display = "flex";
 }

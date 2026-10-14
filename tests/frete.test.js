@@ -53,6 +53,24 @@ test("frete conta pela DESCARGA, sobre a CARGA da nota, com a taxa da data", () 
     assert.equal(r.totalFrete.toFixed(2), (10000 * 0.28 + 5000 * 0.30).toFixed(2));
 });
 
+test("ateDia conta só as descargas até aquele dia do mês", () => {
+    // Para comparar o mês em andamento com o anterior no mesmo intervalo
+    // (13/10/2026): até o dia 13, a nota do dia 20 fica de fora.
+    const lancs = [
+        nota("1", "Aurora", "2026-08-01", "2026-08-13", [{ tipo: "S10", qtd: 1000 }]),
+        nota("2", "Aurora", "2026-08-14", "2026-08-20", [{ tipo: "S10", qtd: 2000 }])
+    ];
+    const ate13 = calcularFretesDoMes({ lancamentos: lancs, mes: "2026-08", ateDia: 13, empresaDoLancamento: empresaDe });
+    assert.equal(ate13.totalNotas, 1);
+    assert.equal(ate13.totalLitros, 1000);
+    // Sem ateDia, o mês inteiro, como sempre foi.
+    const inteiro = calcularFretesDoMes({ lancamentos: lancs, mes: "2026-08", empresaDoLancamento: empresaDe });
+    assert.equal(inteiro.totalNotas, 2);
+    // Dia 31 num mês de 30 dias vale o mês inteiro.
+    const ate31 = calcularFretesDoMes({ lancamentos: lancs, mes: "2026-08", ateDia: 31, empresaDoLancamento: empresaDe });
+    assert.equal(ate31.totalNotas, 2);
+});
+
 test("nota excluída ou cancelada não gera frete", () => {
     const lancs = [
         nota("1", "Aurora", "2026-08-02", "2026-08-02", [{ tipo: "S10", qtd: 1000 }]),

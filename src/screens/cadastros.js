@@ -717,6 +717,9 @@ function migrarEmpresas() {
 migrarEmpresas();
 
 function salvarEmpresa() {
+    // Empresa é de admin e supremo (13/10/2026); o formulário nem aparece
+    // para o operador, e isto cobre quem chegar por outro caminho.
+    if (typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) return;
     const input = document.getElementById("nomeEmpresa");
     const inputMun = document.getElementById("municipioEmpresa");
     const inputTaxa = document.getElementById("taxaFreteEmpresa");
@@ -822,6 +825,7 @@ function salvarBase() {
 // FIX v4: String(i.id) === String(id) para garantir comparação correta
 //         independente de como o ID chegou do Firestore
 async function toggleAtivo(lista, id) {
+    if (lista === "empresas" && typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) return;
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
     const acao = item.ativo !== false ? "inativar" : "reativar";
@@ -1186,7 +1190,8 @@ function atualizarListas() {
 
     // EMPRESAS
     const ulE = document.getElementById("listaEmpresas");
-    // Taxa de frete e % do motorista: só admin e supremo (30/09/2026).
+    // Taxa de frete e % do motorista: só admin e supremo (30/09/2026). Desde
+    // 13/10/2026 editar e desativar empresa também; o operador só consulta.
     const verTaxas = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
     if (ulE) {
         const showInat = document.getElementById("mostrarInativosEmpresas")?.checked;
@@ -1200,11 +1205,11 @@ function atualizarListas() {
                         ${verTaxas && _taxaFreteDaEmpresa(e) > 0 ? `<em class="tag-perda" title="${escapeHtml("Fatia do frete que vai para o motorista que rodou a nota. Vigências:\n" + _vigResumo(e, "pct").split("; ").join("\n"))}">Motorista: ${fmtPct(_percentualMotoristaDaEmpresaNaData(e, _hojeISO()), 2)}${(e.pctHistorico || []).length > 1 ? ' · ' + e.pctHistorico.length + ' vigências' : ''}</em>` : ''}
                         ${e.ativo !== false ? "" : ' <em class="tag-inativo">inativo</em>'}
                     </span>
-                    <div class="acoes-lista">
+                    ${verTaxas ? `<div class="acoes-lista">
                         <button class="btn-icone btn-icone--editar" data-acao="editar" data-lista="empresas" data-id="${e.id}" title="Editar" aria-label="Editar">${_ICONE.editar}</button>
                         <button class="btn-icone btn-icone--inativar" data-acao="toggle" data-lista="empresas" data-id="${e.id}" title="${e.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${e.ativo !== false ? "Inativar" : "Reativar"}">${e.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
                         ${_btnExcluirCadastro("empresas", e.id)}
-                    </div>
+                    </div>` : ""}
                 </li>`).join("");
     }
 

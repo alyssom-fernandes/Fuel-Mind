@@ -345,3 +345,43 @@ test("combustíveis na ordem do cadastro; fora dele, no fim e em ordem alfabéti
         db.combustiveis = antes;
     }
 });
+
+/* ── NÚMERO GRANDE DOS CARTÕES ───────────────────────────────────────── */
+test("kpiNum diminui R$, centavos e L sem mudar o número que se lê", () => {
+    const semTags = html => html.replace(/<[^>]+>/g, "");
+    const reais = kpiNum(fmtR(2058964.8));
+    assert.match(reais, /<span class="kpi-moeda">R\$ <\/span>/);
+    assert.match(reais, /<span class="kpi-centavos">,80<\/span>$/);
+    assert.equal(semTags(reais).replace(/\s/g, " "), fmtR(2058964.8).replace(/\s/g, " "));
+    // Preço por litro: as casas decimais ficam no tamanho grande.
+    const preco = kpiNum(fmtRL(5.767), false);
+    assert.doesNotMatch(preco, /kpi-centavos/);
+    assert.equal(semTags(preco).replace(/\s/g, " "), fmtRL(5.767).replace(/\s/g, " "));
+    const litros = kpiNum(fmtL(376222));
+    assert.match(litros, /<span class="kpi-unidade"> L<\/span>$/);
+    assert.equal(semTags(litros), fmtL(376222));
+    // Texto vindo de fora é escapado.
+    assert.equal(kpiNum("<b>1</b>"), "&lt;b&gt;1&lt;/b&gt;");
+});
+
+test("a linha curta do custo recebido diz o preço e em quantos itens", () => {
+    const m = { custoRecebido: 5.702, precoCompraMedido: 5.688, itensMedidos: 5, itensTotal: 19 };
+    assert.equal(textoCustoRecebidoCurto(m), `Recebido: ${fmtRL(5.702)}/L, em 5 de 19 itens medidos`);
+    assert.equal(textoCustoRecebidoCurto({ custoRecebido: 0 }), "");
+});
+
+/* ── ANEXOS ──────────────────────────────────────────────────────────── */
+test("anexo só vira link com imagem, PDF ou https", () => {
+    assert.equal(urlAnexoSegura("data:image/png;base64,iVBOR"), "data:image/png;base64,iVBOR");
+    assert.equal(urlAnexoSegura("data:image/jpeg;base64,/9j/"), "data:image/jpeg;base64,/9j/");
+    assert.equal(urlAnexoSegura("data:application/pdf;base64,JVBER"), "data:application/pdf;base64,JVBER");
+    assert.equal(urlAnexoSegura("https://firebasestorage.googleapis.com/x.pdf"), "https://firebasestorage.googleapis.com/x.pdf");
+    // O que roda código ou abre página montada fica sem link.
+    assert.equal(urlAnexoSegura("javascript:alert(1)"), "");
+    assert.equal(urlAnexoSegura("  JavaScript:alert(1)"), "");
+    assert.equal(urlAnexoSegura("data:text/html,<script>alert(1)</script>"), "");
+    assert.equal(urlAnexoSegura("data:image/svg+xml,<svg onload=alert(1)>"), "");
+    assert.equal(urlAnexoSegura("http://exemplo.com/x.pdf"), "");
+    assert.equal(urlAnexoSegura(undefined), "");
+    assert.equal(urlAnexoSegura(""), "");
+});

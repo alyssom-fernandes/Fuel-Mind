@@ -74,11 +74,15 @@ function marcarNavAtivo(telaId) {
     const alvoId = "nav-" + (mapa[telaId] || telaId);
     const alvo = document.getElementById(alvoId);
     if (alvo) alvo.classList.add("ativo");
+    // O nome no rodapé também abre Usuários ("Meu perfil" para o operador).
+    document.getElementById("sidebarUsuario")?.classList.toggle("ativo", telaId === "usuarios");
 }
 
 /* ========== TÍTULO DO HEADER ========== */
 function atualizarTituloHeader(telaId) {
-    const titulo = TITULOS_TELAS[telaId] || telaId;
+    let titulo = TITULOS_TELAS[telaId] || telaId;
+    // Para o operador, Usuários é só o próprio cadastro.
+    if (telaId === "usuarios" && typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) titulo = "Meu perfil";
     const el = document.getElementById("headerPageTitle");
     // Na tela de lançamento, o título do cabeçalho carrega o marcador de
     // formulário sujo: é o único título visível da tela.
@@ -196,13 +200,13 @@ function setBase(valor) {
 function injetarIconesKPI() {
     const cards = document.querySelectorAll("#kpiDashboard .kpi-card");
     const icones = [
-        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
-        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
-        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
-        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>`,
+        `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+        `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
+        `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+        `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>`,
         // O caminhão do card de frete (24/09/2026): o quinto card entrou
         // depois e ficou sem ícone, porque a lista parava no quarto.
-        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+        `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
     ];
 
     cards.forEach((card, i) => {
@@ -584,7 +588,7 @@ function abrirAtalhos() {
         <div class="modal modal--rolagem modal--atalhos" onclick="event.stopPropagation()">
             <div class="modal-cabecalho">
                 <h3 class="titulo-com-icone">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-titulo">
+                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-titulo">
                         <rect x="2" y="4" width="20" height="16" rx="2"/>
                         <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
                     </svg>
@@ -733,11 +737,11 @@ function fmAlert({ titulo = 'Atenção', msg = '', tipo = 'info', btnTxt = 'OK' 
         overlay.className = 'modal-overlay modal-overlay--dialogo';
 
         const icones = {
-            info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
-            aviso:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-            erro:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-            sucesso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>',
-            perigo:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+            info:    '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+            aviso:   '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            erro:    '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            sucesso: '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>',
+            perigo:  '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dialogo-icone-svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
         };
         const tom    = ['info', 'aviso', 'erro', 'sucesso'].includes(tipo) ? tipo : 'info';
         const icone  = icones[tipo]  || icones.info;

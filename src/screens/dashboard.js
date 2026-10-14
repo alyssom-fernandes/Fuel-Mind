@@ -109,7 +109,10 @@ function _garantirFiltrosDashboard() {
     dica.innerHTML = '<summary>Como cada número conta as datas</summary><p class="dica dica--pequena mb-0">Notas e litros <strong>descarregados</strong> contam pela <strong>data da descarga</strong>, '
         + 'que é o que entrou nos tanques. Gasto e preço médio contam pela <strong>data de emissão</strong> e sobre os '
         + '<strong>litros faturados</strong> na nota, que é o preço que o fornecedor cobrou. Quando a descarga foi '
-        + 'informada, o custo por litro recebido aparece ao lado, dizendo em quantas notas ele se apoia.</p>';
+        + 'informada, o custo por litro recebido aparece ao lado, dizendo em quantas notas ele se apoia.</p>'
+        + '<p class="dica dica--pequena mb-0">As setas comparam com o trecho equivalente anterior: dentro de um mês, os mesmos dias do mês anterior. '
+        + '<strong>Verde e vermelho só no preço por litro</strong>: verde quando cai, vermelho quando sobe. '
+        + 'Volume e totais ficam em cinza, porque mais litros não é bom nem ruim por si.</p>';
 
     const dashEl = document.getElementById('dashboard');
     const kpiEl  = document.getElementById('kpiDashboard');
@@ -218,34 +221,34 @@ function carregarDashboard() {
     document.getElementById("kpiDashboard").innerHTML = `
         <div class="kpi-card${abreFretes("Abre Fretes, que também conta pela data da descarga.")}">
             <div class="kpi-valor">${totalNotas}</div>
-            <div class="kpi-label">Notas Descarregadas</div>
+            <div class="kpi-label">Notas descarregadas</div>
             <div class="kpi-base">pela data da descarga</div>
             ${htmlVariacao(totalNotas, descAnt.length, rotAnt, false)}
         </div>
         <div class="kpi-card verde${abreFretes("Abre Fretes, que também conta pela data da descarga.")}">
-            <div class="kpi-valor">${fmtL(totalLitros)}</div>
-            <div class="kpi-label">Litros Descarregados</div>
+            <div class="kpi-valor">${kpiNum(fmtL(totalLitros))}</div>
+            <div class="kpi-label">Litros descarregados</div>
             <div class="kpi-base">pela data da descarga</div>
             ${htmlVariacao(totalLitros, litrosAnt, rotAnt, false)}
         </div>
         <div class="kpi-card laranja kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="Abre o Histórico com este mesmo período, que lá também é pela emissão.">
-            <div class="kpi-valor">${fmtR(compra.gasto)}</div>
-            <div class="kpi-label">Gasto em Compras</div>
+            <div class="kpi-valor">${kpiNum(fmtR(compra.gasto))}</div>
+            <div class="kpi-label">Gasto em compras</div>
             <div class="kpi-base">pela data de emissão · ${compra.notas} ${compra.notas === 1 ? 'nota' : 'notas'}</div>
-            ${htmlVariacao(compra.gasto, compraAntK.gasto, rotAnt, true)}
+            ${htmlVariacao(compra.gasto, compraAntK.gasto, rotAnt, false)}
         </div>
         <div class="kpi-card roxo kpi-clicavel" onclick="irParaRelatorioFiltrado({inicio:'${inicio}', fim:'${fim}'})" title="${escapeHtml(explicacaoPrecoCompra(compra.metricas))}">
-            <div class="kpi-valor">${compra.litros > 0 ? fmtRL(compra.custo) : '—'}</div>
-            <div class="kpi-label">Preço Médio de Compra / L</div>
+            <div class="kpi-valor">${compra.litros > 0 ? kpiNum(fmtRL(compra.custo), false) : '—'}</div>
+            <div class="kpi-label">Preço médio de compra por litro</div>
             <div class="kpi-base">pela data de emissão · ${fmtL(compra.litros)} faturados</div>
             ${htmlVariacao(compra.custo, compraAntK.custo, rotAnt, true)}
-            ${compra.custoRecebido > 0 ? `<div class="kpi-base" title="Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebido(compra.metricas))}</div>` : ''}
+            ${compra.custoRecebido > 0 ? `<div class="kpi-base kpi-base--nota" title="${escapeHtml(textoCustoRecebido(compra.metricas))}. Valor das notas com descarga informada ÷ litros medidos na descarga.">${escapeHtml(textoCustoRecebidoCurto(compra.metricas))}</div>` : ''}
         </div>
         <div class="kpi-card violeta${abreFretes("Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga. Detalhe por placa, motorista, empresa e conjunto na tela Fretes.")}"${podeFretes ? "" : ` title="Quantidade das notas descarregadas no período vezes a taxa que valia na data de cada descarga."`}>
-            <div class="kpi-valor">${fmtR(frete.total)}</div>
-            <div class="kpi-label">Frete do Período</div>
+            <div class="kpi-valor">${kpiNum(fmtR(frete.total))}</div>
+            <div class="kpi-label">Frete do período</div>
             <div class="kpi-base">pela data da descarga${frete.porLitro > 0 ? ` · ${fmtFreteL(frete.porLitro)}/L` : ''}</div>
-            ${htmlVariacao(frete.total, freteAnt.total, rotAnt, true)}
+            ${htmlVariacao(frete.total, freteAnt.total, rotAnt, false)}
             ${frete.semTaxa ? `<div class="kpi-base kpi-base--alerta">${plural(frete.semTaxa, "nota")} sem taxa</div>` : ''}
         </div>
     `;
@@ -720,7 +723,7 @@ function renderComparativoMeses() {
 
     container.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--comparativo"><canvas id="graficoComparativoDash"></canvas></div>
-        <p class="dica dica--pequena dica--legenda">* ${nomeMes(mesAtual)} vai só até hoje: a queda no fim da linha é o mês em andamento.</p>
+        <p class="dica dica--pequena dica--legenda">* ${nomeMes(mesAtual)} vai só até hoje: o trecho pontilhado é o mês em andamento, ainda incompleto.</p>
         <p class="dica dica--pequena dica--legenda">Litros descarregados, pela <strong>data da descarga</strong></p>
         <div class="tabela-container mb-5">
             <table class="tabela-numeros">
@@ -744,10 +747,17 @@ function renderComparativoMeses() {
             data: {
                 labels: meses.map(m => m === mesAtual ? nomeMes(m) + "*" : nomeMes(m)),
                 datasets: [
+                    // O último trecho, que chega ao mês em andamento, sai
+                    // pontilhado e o ponto dele vazado (13/10/2026): a queda
+                    // no fim da linha é o mês que ainda não acabou.
                     { label: "Litros descarregados", data: serieLitros, yAxisID: "yL",
-                      borderColor: cores.success, backgroundColor: "transparent", tension: 0.25, pointRadius: 3 },
+                      borderColor: cores.success, backgroundColor: "transparent", tension: 0.25, pointRadius: 3,
+                      segment: { borderDash: c => c.p1DataIndex === meses.length - 1 ? [2, 5] : undefined },
+                      pointBackgroundColor: c => c.dataIndex === meses.length - 1 ? "transparent" : cores.success },
                     { label: "Gasto em compras (R$)", data: serieCompra, yAxisID: "yR",
-                      borderColor: cores.primary, backgroundColor: "transparent", tension: 0.25, pointRadius: 3, borderDash: [5, 4] }
+                      borderColor: cores.primary, backgroundColor: "transparent", tension: 0.25, pointRadius: 3, borderDash: [5, 4],
+                      segment: { borderDash: c => c.p1DataIndex === meses.length - 1 ? [2, 5] : [5, 4] },
+                      pointBackgroundColor: c => c.dataIndex === meses.length - 1 ? "transparent" : cores.primary }
                 ]
             },
             options: {
@@ -819,7 +829,7 @@ function _dashLinkAnalitico(aba, texto, mesesFixos) {
     return `<button type="button" class="dash-ver-completo"
         onclick="_dashVerNoAnalitico('${aba}'${arg})"
         title="Abre o Analítico nesta mesma leitura, com o período que está aqui">${escapeHtml(texto)}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
     </button>`;
 }
 

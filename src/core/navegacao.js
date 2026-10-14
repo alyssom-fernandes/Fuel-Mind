@@ -5,9 +5,14 @@
 
   Parte do antigo app.js, quebrado em 18/09/2026 (programa 6.5).
 =================================================*/
+/* O h2 de cada tela não aparece (o título visível é o h1 do cabeçalho), mas
+   continua na página para o leitor de tela: escondido com `display: none`, a
+   árvore de títulos pulava do h1 para os h3 das seções (revisão de
+   acessibilidade de 13/10/2026). */
 function atualizarTitulosInternos() {
     document.querySelectorAll(".tela h2[id^='titulo']").forEach(h2 => {
-        h2.style.display = "none";
+        h2.style.display = "";
+        h2.classList.add("sr-only");
     });
 }
 

@@ -221,7 +221,7 @@ function carregarCentral() {
                 ${destino ? `<button type="button" class="central-card-abrir"
                      onclick="centralExecutar('${id}')"
                      title="Abre ${destino} no mês escolhido aqui, sem gerar arquivo">Ver em ${destino}
-                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
                 </button>` : ""}
             </div>
         </div>`;

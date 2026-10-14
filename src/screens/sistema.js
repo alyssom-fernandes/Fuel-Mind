@@ -494,6 +494,7 @@ function atualizarInfoSistema() {
     if (!el) return;
     const tamanhoKB = (JSON.stringify(db).length / 1024).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const o = _ocupacaoEspaco();
+    const demo = typeof demoAtivo === "function" && demoAtivo();
     el.innerHTML = _faixaEspaco() + `
         <div class="info-card"><div class="info-card-valor">${db.lancamentos.filter(lancamentoAtivo).length}</div><div class="info-card-label">Lançamentos</div></div>
         <div class="info-card"><div class="info-card-valor">${db.motoristas.length}</div><div class="info-card-label">Motoristas</div></div>
@@ -502,10 +503,17 @@ function atualizarInfoSistema() {
         <div class="info-card"><div class="info-card-valor">${db.combustiveis.length}</div><div class="info-card-label">Combustíveis</div></div>
         <div class="info-card"><div class="info-card-valor">${tamanhoKB} KB</div><div class="info-card-label">Tamanho dos dados</div></div>
         <!-- "do limite de 1 MiB" era sigla técnica (vistoria de 28/09/2026); o
-             limite continua explicado no title, para quem passar o mouse. -->
-        <div class="info-card" title="Na nuvem, as notas de cada empresa ficam num documento com limite de 1 MB. Este é o quanto a empresa mais cheia já usa dele."><div class="info-card-valor">${o.pctFirestore}%</div><div class="info-card-label">Espaço usado na nuvem</div></div>
+             limite continua explicado no title, para quem passar o mouse.
+             Na demonstração não há nuvem: o cartão some (13/10/2026). -->
+        ${demo ? "" : `<div class="info-card" title="Na nuvem, as notas de cada empresa ficam num documento com limite de 1 MB. Este é o quanto a empresa mais cheia já usa dele."><div class="info-card-valor">${o.pctFirestore}%</div><div class="info-card-label">Espaço usado na nuvem</div></div>`}
         <div class="info-card"><div class="info-card-valor">${o.pctNavegador}%</div><div class="info-card-label">Espaço usado no navegador</div></div>
     `;
+    // A tela dizia "Os dados ficam na nuvem" logo abaixo da faixa "Nada aqui
+    // é gravado na nuvem" (avaliação de 11/10/2026).
+    const dicaNuvem = document.getElementById("sistemaDicaNuvem");
+    if (dicaNuvem && demo) {
+        dicaNuvem.textContent = "Na demonstração, os dados ficam só neste navegador e voltam ao original todo dia. O backup baixa um arquivo com tudo o que você enxerga.";
+    }
     renderBackupsAuto();
 
     // ── Últimas falhas registradas neste navegador (17/09/2026) ──

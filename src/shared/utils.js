@@ -30,6 +30,20 @@ function escapeJsAttr(str) {
     return escapeHtml(paraJs);
 }
 
+/**
+ * Endereço de anexo que pode virar link ou imagem; o que não passar volta "".
+ *
+ * `escapeHtml` impede fechar o atributo, mas não impede o esquema: um anexo
+ * gravado com `javascript:...` virava um link que rodava código no clique
+ * (revisão de segurança de 13/10/2026). Os anexos do sistema são imagem ou
+ * PDF em `data:`, ou endereço `https:`; SVG fica de fora porque pode levar
+ * script dentro.
+ */
+function urlAnexoSegura(url) {
+    const u = String(url ?? '').trim();
+    return /^(data:(image\/(png|jpe?g|gif|webp)|application\/pdf)[;,]|https:\/\/)/i.test(u) ? u : '';
+}
+
 // ========== CRITÉRIO ÚNICO DE LITROS ==========
 /**
  * Litros efetivos de um item de lançamento: usa a quantidade descarregada
@@ -149,6 +163,26 @@ function explicacaoPrecoCompra(m) {
 }
 
 /** Frase do custo por litro recebido, ou vazio quando ninguém mediu. */
+/* O número grande dos cartões (13/10/2026): "R$" e centavos menores, e o "L"
+   também. Em Syne, no tamanho grande, o ponto do milhar e a vírgula dos
+   centavos ficavam parecidos ("R$ 1.384.018,95"). Recebe o texto já
+   formatado (`fmtR`, `fmtL`...) e devolve HTML. `comCentavos = false` para
+   preço e taxa por litro, em que as casas decimais são o que importa. */
+function kpiNum(texto, comCentavos = true) {
+    let t = escapeHtml(String(texto ?? ""));
+    t = t.replace(/^R\$\s?/, '<span class="kpi-moeda">R$ </span>');
+    if (comCentavos) t = t.replace(/,(\d{2})$/, '<span class="kpi-centavos">,$1</span>');
+    return t.replace(/\s?L$/, '<span class="kpi-unidade"> L</span>');
+}
+
+/* A linha do custo recebido no cartão do preço médio, curta (13/10/2026).
+   A versão longa (`textoCustoRecebido`) vai no title, para quem passar o
+   mouse: inteira no cartão ela ocupava duas linhas miúdas. */
+function textoCustoRecebidoCurto(m) {
+    if (!(m.custoRecebido > 0)) return "";
+    return `Recebido: ${fmtRL(m.custoRecebido)}/L, em ${Number(m.itensMedidos).toLocaleString("pt-BR")} de ${plural(m.itensTotal, "item", "itens")} medidos`;
+}
+
 function textoCustoRecebido(m) {
     if (!(m.custoRecebido > 0)) return "";
     // Os dois números do MESMO grupo: o que foi faturado e o que chegou.
@@ -824,10 +858,15 @@ function julgarPreco(valor, mediana) {
    - a quantidade é a da NOTA, a carga (08/09/2026);
    - a taxa é a que VALIA na data da descarga (vigência, 17/09/2026), e o
      % do motorista também (23/09/2026);
-   - o conjunto é o que continha a placa NAQUELA data. */
+   - o conjunto é o que continha a placa NAQUELA data.
+   `ateDia` (opcional, 13/10/2026): conta só as descargas até esse dia do
+   mês. Serve para comparar o mês em andamento com o anterior no mesmo
+   intervalo; mês pela metade contra mês inteiro mostrava uma queda que não
+   existia. */
 function calcularFretesDoMes(opts) {
     const o = opts || {};
     const mes = o.mes;
+    const ateDia = Number(o.ateDia) || 0;
     const empresaDe = o.empresaDoLancamento || (() => null);
     const resolver  = o.resolverConjunto || null;
 
@@ -838,7 +877,8 @@ function calcularFretesDoMes(opts) {
         if (!lancamentoAtivo(l)) return false;
         if (o.empresaFiltro && l.empresa !== o.empresaFiltro) return false;
         const d = dataDescargaDe(l);
-        return !!d && d.startsWith(mes);
+        if (!d || !d.startsWith(mes)) return false;
+        return !ateDia || Number(d.slice(8, 10)) <= ateDia;
     });
 
     const porPlaca = {}, porMotorista = {}, porEmpresa = {}, porConjunto = {};
@@ -1008,16 +1048,20 @@ function ordenarPorCombustivel(obj) {
 
 /* ── COMPARAÇÃO COM O PERÍODO ANTERIOR, NO PRÓPRIO NÚMERO ───────────
    "Isso é bom ou ruim?" é a pergunta de quem olha um total, e o Stripe
-   responde no mesmo card: número, seta e variação. `inverter` é para os
-   números em que subir é ruim (gasto, preço, frete): a cor segue o
-   sentido do dinheiro, não da seta. */
-function htmlVariacao(atual, anterior, rotuloAnterior, inverter) {
+   responde no mesmo card: número, seta e variação.
+   Cor (13/10/2026): verde e vermelho só no PREÇO POR LITRO (`ehPreco`),
+   onde subir é pior de verdade: verde quando cai, vermelho quando sobe.
+   Volume e totais ficam em cinza: mais litros, mais notas ou mais gasto
+   porque se comprou mais não é bom nem ruim por si. Antes a cor seguia "o
+   sentido do dinheiro" em tudo, e a mesma seta "▼ 59,6%" saía verde no
+   frete e vermelha nos litros (avaliação de 11/10/2026). */
+function htmlVariacao(atual, anterior, rotuloAnterior, ehPreco) {
     if (!(anterior > 0) || !isFinite(atual)) return "";
     const pct = (atual - anterior) / anterior * 100;
     if (Math.abs(pct) < 0.05) return `<div class="kpi-variacao">= ${escapeHtml(rotuloAnterior)}</div>`;
     const sobe = pct > 0;
-    const ruim = inverter ? sobe : !sobe;
-    return `<div class="kpi-variacao ${ruim ? "kpi-variacao-ruim" : "kpi-variacao-boa"}"
+    const cls = !ehPreco ? "kpi-variacao-neutra" : (sobe ? "kpi-variacao-ruim" : "kpi-variacao-boa");
+    return `<div class="kpi-variacao ${cls}"
         title="Período anterior (${escapeHtml(rotuloAnterior)}): ${escapeHtml(String(anterior.toLocaleString("pt-BR", { maximumFractionDigits: 3 })))}">
         ${sobe ? "▲" : "▼"} ${Math.abs(pct).toFixed(1).replace(".", ",")}% vs ${escapeHtml(rotuloAnterior)}</div>`;
 }
@@ -1041,18 +1085,23 @@ const _BIBLIOTECAS = {
        (a importação e a conferência aceitam .xls) teria "€", aspas curvas e
        travessões lidos como caractere de controle (revisão de 25/09/2026). */
     cpexcel:   { src: "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/cpexcel.js",
+                 sri: "sha384-L5dK9AXFqWjBnAvvNbSPL1qhvfi2DwHH64Wcd7a8rwFPwUQfOd4GnTgIEcNIrhYm",
                  pronta: () => typeof cptable !== "undefined" },
     xlsx:      { src: "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js", antes: "cpexcel",
+                 sri: "sha384-OUW9euuUyxyHcAhTqbhI+Iyb8LMssXt/cpz0yXhs9UWG2/R/uaWdakx/4cfww7Vb",
                  pronta: () => typeof window !== "undefined" && !!window.XLSX },
     jspdf:     { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+                 sri: "sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk",
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF) },
     autotable: { src: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
+                 sri: "sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3",
                  pronta: () => typeof window !== "undefined" && !!(window.jspdf && window.jspdf.jsPDF
                                 && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) },
     // Só para a prévia de PDF em celular e tablet, que não têm leitor de PDF
     // dentro da página (ver _pdfEntregar). A 3.11 é a última versão com
     // script comum; da 4 em diante ela só vem como módulo.
     pdfjs:     { src: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+                 sri: "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e",
                  worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
                  pronta: () => typeof window !== "undefined" && !!window.pdfjsLib }
 };
@@ -1073,6 +1122,12 @@ function garantirBiblioteca(nome) {
     _bibliotecaPromessa[nome] = new Promise((resolve, reject) => {
         const el = document.createElement("script");
         el.src = b.src;
+        // `sri`: o hash do arquivo exato (13/10/2026). Se o CDN entregar outra
+        // coisa, o navegador recusa e a promessa cai no onerror, como numa
+        // falha de rede. Os hashes foram conferidos com os que o cdnjs e o
+        // jsDelivr publicam. O worker da pdf.js é pedido pela própria
+        // biblioteca e fica sem hash.
+        if (b.sri) { el.integrity = b.sri; el.crossOrigin = "anonymous"; }
         el.async = false;
         el.onload = () => { if (nome === "xlsx") _prepararGravacaoPlanilha(); resolve(); };
         el.onerror = () => { delete _bibliotecaPromessa[nome]; reject(new Error("Falha ao carregar " + nome)); };

@@ -256,14 +256,21 @@ function renderFreteResumo() {
     const [ano, mes] = d.mes.split("-").map(Number);
     const ref = new Date(ano, mes - 2, 1);
     const mesAnt = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
+    // Mês em andamento: compara com o anterior até o mesmo dia, como o
+    // Dashboard. Outubro até o dia 11 contra setembro inteiro dava "▼ 59,6%"
+    // de uma queda que não existia (avaliação de 11/10/2026).
+    const hoje = new Date();
+    const emAndamento = d.mes === `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+    const dia = String(hoje.getDate()).padStart(2, "0");
     const ant = calcularFretesDoMes({
         lancamentos: db.lancamentos,
         mes: mesAnt,
+        ateDia: emAndamento ? hoje.getDate() : 0,
         empresaFiltro: empresaFiltroGlobal,
         empresaDoLancamento: _empresaDoLancamentoFrete,
         resolverConjunto: typeof resolverConjuntoEPeriodo === 'function' ? resolverConjuntoEPeriodo : null
     });
-    const rot = nomeMes(mesAnt);
+    const rot = emAndamento ? `01 a ${dia}/${mesAnt.slice(5)}` : nomeMes(mesAnt);
     const porLitro    = d.totalLitros > 0 ? d.totalFrete / d.totalLitros : 0;
     const porLitroAnt = ant.totalLitros > 0 ? ant.totalFrete / ant.totalLitros : 0;
 
@@ -275,13 +282,13 @@ function renderFreteResumo() {
     resumo.innerHTML = `
         <div class="kpi-container kpi-container--fretes">
             <div class="kpi-card">
-                <div class="kpi-valor">${fmtR(d.totalFrete)}</div>
+                <div class="kpi-valor">${kpiNum(fmtR(d.totalFrete))}</div>
                 <div class="kpi-label">Frete de ${escapeHtml(nomeMes(d.mes))}</div>
                 <div class="kpi-base">pela data da descarga, com a taxa de cada data</div>
-                ${htmlVariacao(d.totalFrete, ant.totalFrete, rot, true)}
+                ${htmlVariacao(d.totalFrete, ant.totalFrete, rot, false)}
             </div>
             <div class="kpi-card verde">
-                <div class="kpi-valor">${fmtL(d.totalLitros)}</div>
+                <div class="kpi-valor">${kpiNum(fmtL(d.totalLitros))}</div>
                 <div class="kpi-label">Litros transportados</div>
                 <div class="kpi-base">a carga das notas</div>
                 ${htmlVariacao(d.totalLitros, ant.totalLitros, rot, false)}
@@ -289,11 +296,11 @@ function renderFreteResumo() {
             <div class="kpi-card laranja">
                 <div class="kpi-valor">${d.totalNotas}</div>
                 <div class="kpi-label">Notas descarregadas</div>
-                <div class="kpi-base">no mês</div>
+                <div class="kpi-base">${emAndamento ? `no mês, até ${dia}/${d.mes.slice(5)}` : "no mês"}</div>
                 ${htmlVariacao(d.totalNotas, ant.totalNotas, rot, false)}
             </div>
             <div class="kpi-card roxo">
-                <div class="kpi-valor">${fmtFreteL(porLitro)}</div>
+                <div class="kpi-valor">${kpiNum(fmtFreteL(porLitro), false)}</div>
                 <div class="kpi-label">Frete por litro</div>
                 <div class="kpi-base">frete ÷ litros do mês</div>
                 ${htmlVariacao(porLitro, porLitroAnt, rot, true)}
@@ -530,7 +537,7 @@ function renderFreteHistorico() {
 
     alvo.innerHTML = `
         <div class="grafico-wrapper grafico-wrapper--220"><canvas id="graficoFreteMeses"></canvas></div>
-        ${meses.includes(_hojeISO().slice(0, 7)) ? `<p class="dica dica--pequena dica--legenda">* ${nomeMes(_hojeISO().slice(0, 7))} vai só até hoje.</p>` : ''}
+        ${meses.includes(_hojeISO().slice(0, 7)) ? `<p class="dica dica--pequena dica--legenda">* ${nomeMes(_hojeISO().slice(0, 7))} vai só até hoje: a barra listrada é o mês em andamento, ainda incompleto.</p>` : ''}
         <div class="tabela-container mt-2">
             <table class="tabela-numeros"><thead><tr><th>Mês</th><th>Litros (carga)</th><th>Frete</th><th>R$/L</th></tr></thead>
             <tbody>${serie.map(x => `<tr class="linha-clicavel" onclick="_freteAbrirMes('${x.mes}')" title="Ver o detalhe deste mês">
@@ -543,6 +550,16 @@ function renderFreteHistorico() {
 
     if (typeof Chart === "undefined") return;
     const cores = getChartColors();
+    // A barra do mês em andamento sai listrada (13/10/2026): só o asterisco
+    // no rótulo não bastava, e a barra menor parecia uma queda de verdade.
+    const mesAtual = _hojeISO().slice(0, 7);
+    const listra = (() => {
+        const c = document.createElement("canvas"); c.width = c.height = 8;
+        const g = c.getContext("2d");
+        g.strokeStyle = cores.primary + "99"; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(0, 8); g.lineTo(8, 0); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke();
+        return g.createPattern(c, "repeat");
+    })();
     if (window._chartFreteMeses) window._chartFreteMeses.destroy();
     window._chartFreteMeses = new Chart(document.getElementById("graficoFreteMeses").getContext("2d"), {
         type: "bar",
@@ -553,7 +570,7 @@ function renderFreteHistorico() {
             datasets: [{
                 label: "Frete (R$)",
                 data: serie.map(x => x.frete),
-                backgroundColor: cores.primary + "80",
+                backgroundColor: serie.map(x => x.mes === mesAtual ? listra : cores.primary + "80"),
                 borderColor: cores.primary,
                 borderWidth: 1
             }]

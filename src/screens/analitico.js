@@ -247,16 +247,16 @@ function renderKPIs(dados) {
             <div class="kpi-label">Notas</div>
         </div>
         <div class="kpi-card verde">
-            <div class="kpi-valor">${fmtR(dados.totalGasto)}</div>
+            <div class="kpi-valor">${kpiNum(fmtR(dados.totalGasto))}</div>
             <div class="kpi-label">Gasto no período</div>
         </div>
         <div class="kpi-card laranja">
-            <div class="kpi-valor">${fmtL(dados.totalLitros)}</div>
+            <div class="kpi-valor">${kpiNum(fmtL(dados.totalLitros))}</div>
             <div class="kpi-label">Litros</div>
         </div>
         <div class="kpi-card roxo" title="Preço médio de compra: valor das notas ÷ litros faturados nelas, no período filtrado pela emissão.">
-            <div class="kpi-valor">${dados.custoMedio > 0 ? fmtRL(dados.custoMedio) : "—"}</div>
-            <div class="kpi-label">Preço médio / L</div>
+            <div class="kpi-valor">${dados.custoMedio > 0 ? kpiNum(fmtRL(dados.custoMedio), false) : "—"}</div>
+            <div class="kpi-label">Preço médio por litro</div>
             <div class="kpi-base">sobre ${fmtL(dados.totalLitrosNota || 0)} faturados</div>
         </div>
     `;

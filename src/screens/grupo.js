@@ -112,18 +112,18 @@ function carregarGrupo() {
                 <div class="kpi-base">as que este perfil enxerga</div>
             </div>
             <div class="kpi-card verde">
-                <div class="kpi-valor">${fmtL(soma.litros)}</div>
-                <div class="kpi-label">Litros Descarregados</div>
+                <div class="kpi-valor">${kpiNum(fmtL(soma.litros))}</div>
+                <div class="kpi-label">Litros descarregados</div>
                 <div class="kpi-base">pela data da descarga · ${plural(soma.notasDescarga, "nota")}</div>
             </div>
             <div class="kpi-card laranja">
-                <div class="kpi-valor">${fmtR(soma.gasto)}</div>
-                <div class="kpi-label">Gasto em Compras</div>
+                <div class="kpi-valor">${kpiNum(fmtR(soma.gasto))}</div>
+                <div class="kpi-label">Gasto em compras</div>
                 <div class="kpi-base">pela data de emissão · ${plural(soma.notasEmissao, "nota")}</div>
             </div>
             <div class="kpi-card roxo">
-                <div class="kpi-valor">${fmtR(soma.frete)}</div>
-                <div class="kpi-label">Frete do Grupo</div>
+                <div class="kpi-valor">${kpiNum(fmtR(soma.frete))}</div>
+                <div class="kpi-label">Frete do grupo</div>
                 <div class="kpi-base">pela descarga · ${soma.litrosFrete > 0 ? fmtFreteL(soma.frete / soma.litrosFrete) : "—"}/L</div>
             </div>
         </div>
@@ -132,6 +132,10 @@ function carregarGrupo() {
             ? `<p class="grafico-vazio mb-5">Nenhuma nota no período, em nenhuma das empresas.</p>`
             : `<div class="grafico-wrapper grafico-wrapper--240 mb-5"><canvas id="graficoGrupo"></canvas></div>`}
 
+        <!-- Litros inteiros nesta tabela (13/10/2026): ela resume centenas de
+             milhares de litros por empresa, e "328.835,101 L" parecia descuido
+             ao lado dos cartões. As 3 casas da NF-e continuam onde se confere
+             nota a nota (Histórico, fechamento) e no PDF e na planilha. -->
         <div class="tabela-container">
             <table class="tabela-numeros"><thead><tr>
                 <th>Empresa</th>
@@ -147,7 +151,7 @@ function carregarGrupo() {
                     title="Trocar a empresa ativa e abrir o Dashboard dela">
                     <td><strong>${escapeHtml(x.empresa)}</strong>${x.semTaxa ? ` <em class="tag-perda tag-perda--perigo">${x.semTaxa} sem taxa</em>` : ""}</td>
                     <td>${x.notasDescarga}</td>
-                    <td>${fmtL3Celula(x.litros)}</td>
+                    <td>${fmtL(x.litros)}</td>
                     <td>${fmtR(x.gasto)}</td>
                     <td>${x.precoCompra > 0 ? fmtRL(x.precoCompra) : "—"}</td>
                     <td><strong>${fmtR(x.frete)}</strong></td>
@@ -157,7 +161,7 @@ function carregarGrupo() {
             <tfoot><tr>
                 <td><strong>Total</strong></td>
                 <td><strong>${soma.notasDescarga}</strong></td>
-                <td><strong>${fmtL3Celula(soma.litros)}</strong></td>
+                <td><strong>${fmtL(soma.litros)}</strong></td>
                 <td><strong>${fmtR(soma.gasto)}</strong></td>
                 <td><strong>${soma.litrosFaturados > 0 ? fmtRL(soma.gasto / soma.litrosFaturados) : "—"}</strong></td>
                 <td><strong>${fmtR(soma.frete)}</strong></td>

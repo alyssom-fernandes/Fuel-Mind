@@ -20,10 +20,33 @@
     ],
     "headers": [
       {
-        "//": "O projeto não tem build, então o nome do arquivo nunca muda: app.js é sempre app.js. Com o padrão do Firebase (max-age=3600), depois de publicar o operador podia ficar até uma hora com o index.html novo e um .js velho — ou o contrário. Aconteceu no servidor local em 17/09/2026: a tela chamava função que o arquivo em cache não tinha. `no-cache` não desliga o cache: obriga o navegador a perguntar se mudou, e a resposta é um 304 de poucos bytes quando não mudou.",
+        "//": "O projeto não tem build, então o nome do arquivo nunca muda: app.js é sempre app.js. Com o padrão do Firebase (max-age=3600), depois de publicar o operador podia ficar até uma hora com o index.html novo e um .js velho, ou o contrário. Aconteceu no servidor local em 17/09/2026: a tela chamava função que o arquivo em cache não tinha. `no-cache` não desliga o cache: obriga o navegador a perguntar se mudou, e a resposta é um 304 de poucos bytes quando não mudou. `nosniff`: o navegador usa o tipo que o servidor diz e não adivinha outro.",
         "source": "**/*.@(html|js|css)",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
+          { "key": "Cache-Control", "value": "no-cache" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
+        ]
+      },
+      {
+        "//": "A raiz é o endereço que se abre, e o padrão acima não casa com \"/\": ela saía com max-age=3600, o descompasso que a regra de cima existe para evitar (revisão de 13/10/2026). Os cabeçalhos de segurança vão só nas páginas do sistema, e não em \"**\", para não alcançar as rotas internas do Firebase (/__/auth/...). frame-ancestors e X-Frame-Options: nenhum site embute o sistema num quadro (clickjacking). Permissions-Policy: o sistema não usa câmera, microfone, localização, pagamento nem USB.",
+        "source": "/",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" }
+        ]
+      },
+      {
+        "//": "Os mesmos cabeçalhos de segurança da raiz, para quem abre /index.html ou /404.html pelo nome.",
+        "source": "**/*.html",
+        "headers": [
+          { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" }
         ]
       },
       {

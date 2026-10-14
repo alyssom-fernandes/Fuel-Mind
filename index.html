@@ -14,11 +14,17 @@
     <link rel="stylesheet" href="assets/style.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="favicon.ico">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- `integrity`: o navegador só roda o arquivo se ele for exatamente este;
+         um CDN comprometido não injeta código (13/10/2026). É o chart.umd.js
+         do pacote, já minificado: o .min.js era gerado pelo jsDelivr na hora
+         e o hash dele pode mudar. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" integrity="sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo" crossorigin="anonymous"></script>
     <!-- SheetJS e jsPDF são carregados só quando uma tela que exporta ou lê
          planilha é aberta (garantirBibliotecas, utils.js, 18/09/2026). -->
 </head>
 <body>
+<!-- Para quem usa o teclado: aparece no primeiro Tab e pula o menu (13/10/2026). -->
+<a class="pular-conteudo" href="#conteudoPrincipal">Pular para o conteúdo</a>
 <!-- LOGIN -->
 <!-- Cartão em duas partes: a marca (sempre escura, com a logo de letras
      brancas nos dois temas) e o formulário. No celular a marca vira uma
@@ -30,13 +36,13 @@
             <img src="assets/logo-dark.svg" alt="Fuel Mind" class="login-logo-img" width="1199" height="291">
             <p class="login-marca-frase">Entradas de combustível, fretes e preços conferidos num lugar só.</p>
             <ul class="login-marca-lista">
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Nota a nota, direto do XML da NF-e</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Frete por placa, motorista e transportadora</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Aviso de preço e volume fora do normal</li>
+                <li><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Nota a nota, direto do XML da NF-e</li>
+                <li><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Frete por placa, motorista e transportadora</li>
+                <li><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>Aviso de preço e volume fora do normal</li>
             </ul>
         </section>
         <section class="login-form">
-            <h2 class="login-titulo">Entrar</h2>
+            <h1 class="login-titulo">Entrar</h1>
             <p class="login-subtitulo">Use o e-mail ou o @usuário do seu cadastro.</p>
             <div class="campo mb-4">
                 <label for="loginEmail">E-mail ou usuário</label>
@@ -47,7 +53,7 @@
                 <div class="login-senha">
                     <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" class="largura-total">
                     <button type="button" class="login-ver-senha" onclick="alternarVerSenhaLogin(this)" aria-label="Mostrar senha" title="Mostrar senha">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
             </div>
@@ -58,8 +64,12 @@
               Esqueci minha senha
             </button>
             <div class="login-ou"><span>ou</span></div>
-            <button class="btn-secundario btn-bloco" onclick="abrirModoDemo()">
-              Acessar modo demo
+            <!-- Nasce desabilitado: o botão aparecia antes de o demo.js, o
+                 último script da página, terminar de carregar, e o clique
+                 dava "Algo falhou" (avaliação de 11/10/2026). O demo.js o
+                 habilita no fim. -->
+            <button id="btnDemo" class="btn-secundario btn-bloco" onclick="abrirModoDemo()" disabled aria-busy="true">
+              Carregando a demonstração…
             </button>
             <p class="login-demo-nota">Dados fictícios, sem login. Nada é gravado na nuvem.</p>
 
@@ -99,7 +109,7 @@
        (120 KB somados) para mostrar uma. O `src` é trocado no tema. -->
   <img src="assets/logo-dark.svg" alt="Fuel Mind" class="sidebar-logo-img" id="sidebarLogo">
   <button class="btn-fechar-sidebar" onclick="fecharSidebar()" aria-label="Fechar menu" title="Fechar menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
 </div>
   <nav class="sidebar-nav">
@@ -119,53 +129,55 @@
          lugar do divisor. -->
     <div class="sidebar-section" role="group" aria-label="O dia a dia: lancar, conferir, acompanhar e procurar uma nota">
       <button class="sidebar-item" id="nav-dashboard" onclick="mostrarTela('dashboard')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
         <span class="sidebar-item-label">Dashboard</span>
       </button>
       <button class="sidebar-item" id="nav-lancamentos" onclick="mostrarTela('lancamentos')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
         <span class="sidebar-item-label">Lançamentos</span>
       </button>
       <button class="sidebar-item" id="nav-conferencia" onclick="mostrarTela('conferencia')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
         <span class="sidebar-item-label">Conferências</span>
       </button>
       <button class="sidebar-item" id="nav-relatorios" onclick="mostrarTela('relatorios')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3,21 3,15 9,15"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3,21 3,15 9,15"/></svg></span>
         <span class="sidebar-item-label">Histórico</span>
       </button>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section" role="group" aria-label="O que se tira do sistema: documentos, analise e frete">
       <button class="sidebar-item" id="nav-central" onclick="mostrarTela('central')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
         <span class="sidebar-item-label">Relatórios</span>
       </button>
       <button class="sidebar-item" id="nav-analitico" onclick="mostrarTela('analitico')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
         <span class="sidebar-item-label">Analítico</span>
       </button>
       <button class="sidebar-item" id="nav-fretes" data-papel="admin" onclick="mostrarTela('fretes')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
         <span class="sidebar-item-label">Fretes</span>
       </button>
       <button class="sidebar-item" id="nav-grupo" onclick="mostrarTela('grupo')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><rect x="4" y="10" width="4" height="11"/><rect x="10" y="6" width="4" height="15"/><rect x="16" y="13" width="4" height="8"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><rect x="4" y="10" width="4" height="11"/><rect x="10" y="6" width="4" height="15"/><rect x="16" y="13" width="4" height="8"/></svg></span>
         <span class="sidebar-item-label">Grupo</span>
       </button>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section" role="group" aria-label="Ajustes do sistema">
       <button class="sidebar-item" id="nav-cadastros" onclick="mostrarTela('cadastros')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         <span class="sidebar-item-label">Cadastros</span>
       </button>
-      <button class="sidebar-item" id="nav-usuarios" onclick="mostrarTela('usuarios')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 11s.5 1 .5 2.5S16 17 16 17"/><path d="M18 12l1.5 1.5L22 11"/></svg></span>
+      <!-- Some para o operador (13/10/2026): para ele a tela só tinha "Meu
+           perfil", que agora abre pelo nome dele no rodapé desta barra. -->
+      <button class="sidebar-item" id="nav-usuarios" data-papel="admin" onclick="mostrarTela('usuarios')">
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 11s.5 1 .5 2.5S16 17 16 17"/><path d="M18 12l1.5 1.5L22 11"/></svg></span>
         <span class="sidebar-item-label">Usuários</span>
       </button>
       <button class="sidebar-item" id="nav-sistema" onclick="mostrarTela('sistema')">
-        <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg></span>
+        <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg></span>
         <span class="sidebar-item-label">Sistema</span>
       </button>
     </div>
@@ -192,11 +204,11 @@
       <span class="sidebar-item-label" id="sidebarRotuloTema">Tema</span>
     </button>
     <button class="sidebar-item" onclick="abrirAtalhos()" title="Atalhos de teclado">
-      <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+      <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
       <span class="sidebar-item-label">Atalhos</span>
     </button>
     <button class="sidebar-item" onclick="fazerLogout()" title="Sair do sistema">
-      <span class="sidebar-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+      <span class="sidebar-item-icon"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
       <span class="sidebar-item-label">Sair</span>
     </button>
     <!-- O icone de contorno, e nao um circulo preenchido: ele e a mesma
@@ -207,17 +219,20 @@
          vermelho tambem competia com o item ativo, que usa a mesma cor.
          O nivel do usuario saiu: ele nao muda, quem precisa dele esta na
          tela de Usuarios, e aqui so somava uma linha. (22/09/2026) -->
-    <div class="sidebar-usuario">
-      <span class="sidebar-item-icon sidebar-usuario-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+    <!-- O nome virou botão (13/10/2026): abre "Meu perfil", onde se edita
+         o cadastro e troca a senha. Para o operador é o único caminho até
+         lá, já que Usuários saiu do menu dele. -->
+    <button type="button" class="sidebar-usuario" id="sidebarUsuario" onclick="mostrarTela('usuarios')" title="Meu perfil: editar dados e trocar a senha">
+      <span class="sidebar-item-icon sidebar-usuario-icone"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
       <span class="sidebar-usuario-nome" id="sidebarNomeUsuario"></span>
-    </div>
+    </button>
   </div>
 </aside>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="fecharSidebar()"></div>
 <div class="main-area">
 <header class="app-header">
   <button class="btn-hamburger" id="btnHamburger" onclick="toggleSidebar()" aria-label="Menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
   <h1 class="header-page-title" id="headerPageTitle">Dashboard</h1>
   <div class="header-actions">
@@ -225,18 +240,18 @@
       <span class="header-empresa-rotulo">Empresa:</span>
       <button type="button" id="empresaAtivaHeader" class="empresa-ativa-badge" onclick="abrirTrocarEmpresa()" title="Clique para trocar de empresa">
         <span id="empresaAtivaLabel">—</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-chevron"><polyline points="6,9 12,15 18,9"/></svg>
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-chevron"><polyline points="6,9 12,15 18,9"/></svg>
       </button>
     </div>
     <button class="btn-busca-global" onclick="abrirBuscaGlobal()" title="Busca global (Ctrl+K)" id="btnBuscaGlobal">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-busca"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-busca"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span>Busca global</span>
       <kbd class="busca-kbd">Ctrl K</kbd>
     </button>
     <span class="header-datetime" id="headerDatetime"></span>
   </div>
 </header>
-<main class="content-area">
+<main class="content-area" id="conteudoPrincipal" tabindex="-1">
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="tela">
@@ -253,7 +268,7 @@
     <h3 class="mt-7">Mês a mês <small class="titulo-nota">· últimos 6 meses</small></h3>
     <button type="button" class="dash-ver-completo" onclick="_dashVerNoAnalitico('mensal', 6)"
             title="Abre o Analítico na aba Mensal, com estes mesmos seis meses">Ver no Analítico
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
     </button>
   </div>
   <div id="dashComparativoContainer"></div>
@@ -608,7 +623,7 @@
       <div class="grafico-wrapper"><canvas id="graficoMensal" height="280"></canvas></div>
       <p class="dica dica--pequena dica--legenda">* O mês em andamento vai só até hoje.</p>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('mensal')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
       <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Mês</th><th>Notas</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>Variação</th></tr></thead><tbody id="tabelaMensal"></tbody></table></div>
     </div>
@@ -616,7 +631,7 @@
       <h3>Resumo por motorista</h3>
       <div class="grafico-wrapper"><canvas id="graficoMotoristas" height="280"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('motoristas')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
       <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Motorista</th><th>Viagens</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>% do total</th></tr></thead><tbody id="tabelaMotoristas"></tbody></table></div>
     </div>
@@ -624,7 +639,7 @@
       <h3>Resumo por veículo</h3>
       <div class="grafico-wrapper"><canvas id="graficoVeiculos" height="280"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('veiculos')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
       <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Placa</th><th>Viagens</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>% do total</th></tr></thead><tbody id="tabelaVeiculos"></tbody></table></div>
     </div>
@@ -632,7 +647,7 @@
       <h3>Resumo por combustível</h3>
       <div class="grafico-wrapper"><canvas id="graficoCombustivel" height="280"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('combustivel')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
       <div class="tabela-container mt-4"><table class="tabela-numeros"><thead><tr><th>Combustível</th><th>Notas</th><th>Litros</th><th>Gasto</th><th>Preço médio/L</th><th>Mín / máx (R$/L)</th></tr></thead><tbody id="tabelaCombustivel"></tbody></table></div>
     </div>
@@ -646,7 +661,7 @@
         <ul class="distribuicao-lista"></ul>
       </div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('pizzaCombustivel')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
       <div data-papel="admin">
       <h4 class="mt-5">Por motorista <small class="titulo-nota">· os 5 maiores</small></h4>
@@ -656,7 +671,7 @@
         <ul class="distribuicao-lista"></ul>
       </div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('pizzaMotorista')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
       </div>
     </div>
@@ -673,7 +688,7 @@
       <div id="alertaComparativo" class="alerta-comparativo" style="display:none"></div>
       <div class="grafico-wrapper"><canvas id="graficoEvolucaoPrecos" height="300"></canvas></div>
       <div class="acoes-grafico"><button class="btn-secundario" onclick="baixarGrafico('evolucaoPrecos')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-btn"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar PNG
       </button></div>
     </div>
 </div>
@@ -709,22 +724,22 @@
   <h2 id="tituloSistema">Sistema</h2>
   <div class="analitico-abas" id="sistemaAbas">
     <button class="aba-btn ativa" data-aba="backup" data-papel="admin" onclick="trocarAbaSistema('backup', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Backup
     </button>
     <button class="aba-btn" data-aba="importar" onclick="trocarAbaSistema('importar', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Importar planilha
     </button>
     <button class="aba-btn" data-aba="config" onclick="trocarAbaSistema('config', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
       Configurações
     </button>
   </div>
   <div id="sistemaAba-backup" class="sistema-aba-conteudo" data-papel="admin">
     <div class="sistema-secao">
       <h3>Backup dos dados</h3>
-      <p class="dica">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga. Guarde-o fora do computador de vez em quando.</p>
+      <p class="dica" id="sistemaDicaNuvem">Os dados ficam na nuvem, com uma cópia neste navegador. O backup baixa um arquivo com tudo o que você enxerga. Guarde-o fora do computador de vez em quando.</p>
       <div class="sistema-acoes">
         <button class="btn-primario" onclick="baixarBackup()">Baixar backup (.json)</button>
         <div class="campo campo--restaurar mt-3" data-papel="supremo">
@@ -861,30 +876,33 @@
   <h2 id="tituloCadastros">Cadastros</h2>
   <div class="analitico-abas">
     <button class="aba-btn ativa" onclick="trocarAbaCadastro('empresas', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M12 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/></svg>Empresas
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M12 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/></svg>Empresas
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('motoristas', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Motoristas
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Motoristas
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('veiculos', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Veículos
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Veículos
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('combustiveis', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Combustíveis
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Combustíveis
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('bases', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Bases
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Bases
     </button>
     <button class="aba-btn" onclick="trocarAbaCadastro('conjuntos', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Conjuntos
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Conjuntos
     </button>
     <button class="aba-btn" data-papel="admin" onclick="trocarAbaCadastro('importar', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Importar frota
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icone-aba"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Importar frota
     </button>
   </div>
   <div id="cad-empresas" class="aba-conteudo">
     <h3>Empresas</h3>
-    <div class="form-linha">
+    <!-- Empresa é de admin e supremo (13/10/2026): o operador via o campo
+         e o botão Adicionar, e editar e desativar, sem precisar deles. -->
+    <p class="dica fm-so-operador">As empresas são cadastradas e alteradas pelos administradores.</p>
+    <div class="form-linha" data-papel="admin">
       <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" class="flex-2">
       <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município, UF" title="Ex.: São Paulo, SP" class="flex-1">
       <input id="taxaFreteEmpresa" data-papel="admin" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="Frete R$/L">
@@ -1013,7 +1031,7 @@
 <div id="buscaGlobalModal" class="modal-overlay" style="display:none">
   <div class="modal busca-global-modal">
     <div class="busca-global-header">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="busca-global-icone"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="busca-global-icone"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="buscaGlobalInput" aria-label="Busca global" placeholder="Buscar nota, motorista, empresa, placa..." class="busca-global-input" oninput="executarBuscaGlobal()" autocomplete="off">
       <kbd class="busca-kbd busca-kbd-esc" onclick="fecharBuscaGlobal()">Esc</kbd>
     </div>

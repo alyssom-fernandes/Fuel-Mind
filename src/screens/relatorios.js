@@ -694,10 +694,15 @@ function _buildConteudoDetalhe(l) {
     if (l.anexos && l.anexos.length > 0) {
         anexosHtml = '<ul class="lista-limpa lista-anexos mb-0">';
         l.anexos.forEach(a => {
-            const href = escapeHtml(a.url || a.dados || '');
+            // Só imagem, PDF ou https vira link: ver `urlAnexoSegura`. O
+            // anexo com endereço de outro tipo aparece só pelo nome.
+            const segura = urlAnexoSegura(a.url || a.dados);
+            const href = escapeHtml(segura);
             const nome = escapeHtml(a.nome || 'anexo');
             const isImagem = a.tipo && a.tipo.startsWith('image/');
-            if (isImagem) {
+            if (!segura) {
+                anexosHtml += `<li class="anexo-item"><span class="anexo-arquivo" title="Endereço do anexo não reconhecido: não abre por segurança">${nome}</span></li>`;
+            } else if (isImagem) {
                 anexosHtml += `<li class="anexo-item"><a class="anexo-imagem" href="${href}" target="_blank" rel="noopener" title="${nome}"><img src="${href}" class="preview-nf" alt="${nome}"></a></li>`;
             } else {
                 anexosHtml += `<li class="anexo-item"><a class="anexo-arquivo" href="${href}" target="_blank" rel="noopener" title="${nome}">${nome}</a></li>`;
