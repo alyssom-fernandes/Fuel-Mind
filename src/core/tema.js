@@ -39,9 +39,13 @@ aplicarTemaInicial();
 /* Os gráficos desenham no canvas com a fonte padrão do Chart.js
    (Helvetica/Arial): eixos e legendas saíam fora da letra do sistema
    (vistoria de 28/09/2026). */
-if (typeof Chart !== "undefined") {
-    Chart.defaults.font.family = "'DM Sans', 'Segoe UI', system-ui, sans-serif";
-}
+/* O Chart.js vem com `defer` desde 13/10/2026: quando este arquivo roda ele
+   ainda não existe, e só está pronto no DOMContentLoaded. */
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof Chart !== "undefined") {
+        Chart.defaults.font.family = "'DM Sans', 'Segoe UI', system-ui, sans-serif";
+    }
+});
 
 function toggleModoEscuro() {
     const html = document.documentElement;

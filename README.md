@@ -18,7 +18,7 @@ sees a different set of companies and screens, which is the quickest way
 to see the access rules at work. The demo runs on eight months of
 fictional data, keeps everything in your browser and resets every day.
 
-![Tests](https://img.shields.io/badge/tests-102_passing-success?style=flat-square)
+[![Tests](https://github.com/alyssom-fernandes/Fuel-Mind/actions/workflows/testes.yml/badge.svg?branch=codigo-atual)](https://github.com/alyssom-fernandes/Fuel-Mind/actions/workflows/testes.yml)
 ![JavaScript](https://img.shields.io/badge/JavaScript-no_framework-f7df1e?style=flat-square&logo=javascript&logoColor=black)
 ![No build](https://img.shields.io/badge/build_step-none-success?style=flat-square)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
@@ -141,17 +141,19 @@ generated.
 Some decisions behind it:
 
 - **The database rules are the security boundary.** Which companies a
-  user reads, who manages users and who closes a month are enforced in
-  `firestore.rules`; the screens only avoid offering what the rules would
-  refuse. The one exception is hiding freight details from the Operador
-  profile, which is done in the interface.
+  user reads, who manages users, who closes a month and who changes a
+  company (its freight rate included) or an existing vehicle set are
+  enforced in `firestore.rules`. Two limits live only in the interface:
+  freight details are hidden from the Operador profile, and renaming
+  drivers, plates, bases and fuels is left to Supremo.
 - **Numbers typed the Brazilian way** (1.234,56) go through a small input
   layer instead of `<input type="number">`, which in pt-BR browsers can
   change a value without warning.
 - **The calculations that decide money are tested**: the freight engine,
   rate validity periods, the price reference, the month-closing lock, the
   NF-e base matching, number formatting and the PDF and Excel layout.
-  `node --test tests/*.test.js` runs the 102 tests with no dependencies.
+  `node --test tests/*.test.js` runs the 107 tests with no dependencies,
+  and GitHub Actions runs them on every push.
 
 ## Running your own copy
 

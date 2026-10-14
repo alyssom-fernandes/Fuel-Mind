@@ -918,6 +918,8 @@ function renderizarConjuntos() {
         return;
     }
 
+    // Alterar e desativar conjunto que já existe: admin e supremo (13/10/2026).
+    const podeAlterar = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
     container.innerHTML = exibir.map(c => {
         const placasStr = c.composicaoAtual.map(escapeHtml).join(", ");
         const nomeExib = c.nome ? `<strong>${escapeHtml(c.nome)}</strong>` : `<em class="rotulo-suave">(sem nome)</em>`;
@@ -931,8 +933,8 @@ function renderizarConjuntos() {
                 </div>
             </div>
             <div class="acoes-lista">
-                <button class="btn-icone btn-icone--editar" title="Editar" aria-label="Editar" onclick="abrirEditarConjunto('${escapeJsAttr(c.id)}')">${_ICONE.editar}</button>
-                <button class="btn-icone btn-icone--inativar" title="${c.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${c.ativo !== false ? "Inativar" : "Reativar"}" onclick="toggleAtivoConjunto('${escapeJsAttr(c.id)}')">${c.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>
+                ${podeAlterar ? `<button class="btn-icone btn-icone--editar" title="Editar" aria-label="Editar" onclick="abrirEditarConjunto('${escapeJsAttr(c.id)}')">${_ICONE.editar}</button>
+                <button class="btn-icone btn-icone--inativar" title="${c.ativo !== false ? "Inativar" : "Reativar"}" aria-label="${c.ativo !== false ? "Inativar" : "Reativar"}" onclick="toggleAtivoConjunto('${escapeJsAttr(c.id)}')">${c.ativo !== false ? _ICONE.inativar : _ICONE.reativar}</button>` : ""}
                 ${(typeof ehSupremoAtual === "function" && ehSupremoAtual()) ? `<button class="btn-icone btn-icone--excluir" title="Excluir" aria-label="Excluir" onclick="excluirConjunto('${escapeJsAttr(c.id)}')">${_ICONE.excluir}</button>` : ""}
             </div>
         </li>`;
@@ -940,6 +942,7 @@ function renderizarConjuntos() {
 }
 
 async function toggleAtivoConjunto(id) {
+    if (typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) return;
     const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(id));
     if (!conj) return;
     const acao = conj.ativo !== false ? "inativar" : "reativar";
@@ -1001,6 +1004,7 @@ function _prepararFormConjunto(editando) {
 }
 
 function abrirEditarConjunto(id) {
+    if (typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) return;
     _conjuntoEditandoId = id;
     const conj = db.conjuntosVeiculos.find(c => String(c.id) === String(id));
     if (!conj) return;

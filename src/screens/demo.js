@@ -473,8 +473,9 @@ function _demoEsconderFaixa() {
 }
 
 /* ─── PRONTO PARA USO (13/10/2026) ───
-   Este é o último script da página: daqui em diante `abrirModoDemo` existe,
-   e o botão do login, que nasce desabilitado, pode valer.
+   O botão do login nasce desabilitado e só vale no DOMContentLoaded: aí
+   `abrirModoDemo` existe (este é o último script do corpo) e o Chart.js, que
+   vem com `defer`, já rodou; antes disso o Dashboard abriria sem gráfico.
    O F5 tirava o visitante da demonstração e o mandava de volta ao login,
    embora o perfil escolhido ficasse gravado em DEMO_CHAVE_USER: agora ele
    volta para o mesmo perfil. A conta de verdade guardada no navegador não
@@ -483,13 +484,13 @@ function _demoEsconderFaixa() {
    `?demo=1` no endereço abre direto a escolha de perfil: é o link para quem
    chega pelo portfólio ou pelo GitHub. */
 (function _demoPronto() {
-    const btn = document.getElementById("btnDemo");
-    if (btn) {
-        btn.disabled = false;
-        btn.removeAttribute("aria-busy");
-        btn.textContent = "Acessar modo demo";
-    }
     document.addEventListener("DOMContentLoaded", () => {
+        const btn = document.getElementById("btnDemo");
+        if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute("aria-busy");
+            btn.textContent = "Acessar modo demo";
+        }
         let uid = null;
         try { uid = localStorage.getItem(DEMO_CHAVE_USER); } catch (_) {}
         if (uid && DEMO_USUARIOS.some(u => u.uid === uid)) { entrarModoDemo(uid); return; }

@@ -31,7 +31,7 @@ const POSTO = {
     id: "e1", nome: "Posto", taxaFrete: 0.10,
     taxaHistorico: [{ taxa: 0.10, vigenciaDe: "2000-01-01", vigenciaAte: null }]
 };
-const FAB = { id: "e2", nome: "Fabiandra", taxaFrete: 0.10 };
+const FAB = { id: "e2", nome: "TRR Modelo", taxaFrete: 0.10 };
 
 const nota = (id, empresa, descarga, extra = {}) => ({
     id, empresa, dataNota: descarga, dataDescarga: descarga, placa: "ABC1D23", motorista: "José",
@@ -53,7 +53,7 @@ function estadoBase() {
         lancamentos: [
             nota("n1", "Posto", "2026-07-10"),
             nota("n2", "Posto", "2026-08-05"),
-            nota("n3", "Fabiandra", "2026-07-12")
+            nota("n3", "TRR Modelo", "2026-07-12")
         ],
         empresas: [clone(POSTO), clone(FAB)],
         conjuntosVeiculos: [clone(CONJ)],
@@ -102,7 +102,7 @@ test("nota nova entra em mês aberto e é recusada em mês fechado", () => {
     assert.equal(violacoesMesFechado(antes, emJulho).length, 1);
 });
 
-test("o fechamento é por empresa: julho da Fabiandra continua aberto", () => {
+test("o fechamento é por empresa: julho do TRR continua aberto", () => {
     const antes = estadoBase();
     const depois = clone(antes);
     depois.lancamentos[2].itens[0].qtd = 1;
@@ -192,7 +192,7 @@ test("conjunto de uma placa só: a nota da placa entra nele e não fica fora de 
 
     const r = calcularFretesDoMes({
         mes: "2026-09",
-        lancamentos: [nota("s1", "Fabiandra", "2026-09-29", { placa: "QWE1R23" })],
+        lancamentos: [nota("s1", "TRR Modelo", "2026-09-29", { placa: "QWE1R23" })],
         empresaDoLancamento: () => FAB,
         resolverConjunto: (p, d) => _resolverConjuntoNaLista(lista, p, d)
     });

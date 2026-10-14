@@ -19,7 +19,7 @@ rápido de ver as regras de acesso funcionando. A demonstração tem oito
 meses de dados fictícios, fica toda no seu navegador e volta ao estado
 original todo dia.
 
-![Testes](https://img.shields.io/badge/testes-102_passando-success?style=flat-square)
+[![Testes](https://github.com/alyssom-fernandes/Fuel-Mind/actions/workflows/testes.yml/badge.svg?branch=codigo-atual)](https://github.com/alyssom-fernandes/Fuel-Mind/actions/workflows/testes.yml)
 ![JavaScript](https://img.shields.io/badge/JavaScript-sem_framework-f7df1e?style=flat-square&logo=javascript&logoColor=black)
 ![Sem build](https://img.shields.io/badge/etapa_de_build-nenhuma-success?style=flat-square)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore_%2B_Auth-ff6f00?style=flat-square&logo=firebase&logoColor=white)
@@ -144,18 +144,19 @@ documento é gerado.
 Algumas decisões por trás dele:
 
 - **A regra do banco é a barreira de segurança.** Quais empresas cada
-  usuário lê, quem administra usuários e quem fecha o mês são decididos
-  no `firestore.rules`; as telas só deixam de oferecer o que a regra
-  recusaria. A exceção é esconder os detalhes de frete do perfil
-  Operador, que é feito na interface.
+  usuário lê, quem administra usuários, quem fecha o mês e quem altera
+  uma empresa (a taxa de frete inclusive) ou um conjunto de veículos que
+  já existe são decididos no `firestore.rules`. Dois limites ficam só na
+  interface: esconder os detalhes de frete do perfil Operador e deixar com
+  o Supremo a troca de nome de motorista, placa, base e combustível.
 - **Número digitado do jeito brasileiro** (1.234,56) passa por uma camada
   própria em vez de `<input type="number">`, que nos navegadores em
   português pode mudar o valor sem avisar.
 - **As contas que decidem dinheiro são testadas**: o cálculo de frete, as
   vigências das taxas, a referência de preço, a trava do mês fechado, o
   reconhecimento da base pela NF-e, a formatação dos números e o padrão
-  dos PDFs e das planilhas. `node --test tests/*.test.js` roda os 102
-  testes sem nenhuma dependência.
+  dos PDFs e das planilhas. `node --test tests/*.test.js` roda os 107
+  testes sem nenhuma dependência, e o GitHub Actions os roda a cada envio.
 
 ## Como rodar a sua cópia
 

@@ -145,8 +145,18 @@ service cloud.firestore {
         && listaNaoEncolheu('fechamentosMes');
     }
 
+    // A parte que já existia na lista fica igual: só entra item novo no fim.
+    // É assim que a gravação do sistema acrescenta (`_mesclar`, dados.js:
+    // item que não estava no servidor vai para o fim da lista). O tamanho é
+    // conferido antes, em `listasNaoEncolheram`, e o `&&` para ali se a
+    // lista encolheu: o recorte nunca passa do fim.
+    function soAcrescentou(campo) {
+      return request.resource.data.get(campo, [])[0:resource.data.get(campo, []).size()]
+          == resource.data.get(campo, []);
+    }
+
     // O que o operador pode fazer no documento de cadastros: acrescentar,
-    // nunca remover, e não tocar na configuração do PDF nem na dos alertas —
+    // nunca remover, e não tocar na configuração do PDF nem na dos alertas,
     // que são de todo mundo (a régua do preço vale para o lançamento e o
     // Dashboard de todos; só admin e supremo a alteram, decisão de
     // 16/09/2026). Cobre o "Cadastrar X" do combobox, que é a única razão
@@ -158,6 +168,14 @@ service cloud.firestore {
     // o admin também não a encolhe. A trava das NOTAS de um mês fechado é
     // do sistema, não desta regra: as notas vivem numa lista dentro de um
     // documento, e a regra não percorre lista.
+    //
+    // Empresas e conjuntos (13/10/2026): conferir só o tamanho deixava o
+    // operador trocar, gravando direto pelo navegador, a taxa de frete e o %
+    // do motorista de uma empresa, desativá-la, ou mudar a composição de um
+    // conjunto, e são eles que decidem quanto se paga. Agora a lista de
+    // empresas fica igual, e na de conjuntos ele só acrescenta. Motoristas,
+    // placas e bases continuam como antes: o lançamento do XML liga o CNPJ
+    // do emitente a uma base que já existe (`cnpjsNfe`).
     function cadastroSoCresce() {
       return listasNaoEncolheram()
         && request.resource.data.get('configRelatorio', {})
@@ -165,7 +183,10 @@ service cloud.firestore {
         && request.resource.data.get('configAlertas', {})
         == resource.data.get('configAlertas', {})
         && request.resource.data.get('fechamentosMes', [])
-        == resource.data.get('fechamentosMes', []);
+        == resource.data.get('fechamentosMes', [])
+        && request.resource.data.get('empresas', [])
+        == resource.data.get('empresas', [])
+        && soAcrescentou('conjuntosVeiculos');
     }
 
     // ── Cadastros compartilhados ─────────────────────────────────────────
@@ -179,8 +200,10 @@ service cloud.firestore {
     // as listas: excluir uma empresa que ele não enxerga deixava o documento
     // de lançamentos dela órfão para sempre. Excluir cadastro é do supremo.
     //
-    // O que esta regra ainda NÃO impede: renomear um cadastro existente,
-    // que mantém o tamanho da lista. A tela restringe o rename ao supremo.
+    // O que esta regra ainda NÃO impede: o operador renomear ou editar um
+    // motorista, uma placa, uma base ou um combustível que já existe, o que
+    // mantém o tamanho da lista. A tela restringe o rename ao supremo.
+    // Empresas e conjuntos ele não altera (ver `cadastroSoCresce`).
     match /dados/compartilhado {
       allow read:   if ativo();
       allow create: if gerenciaUsuarios();

@@ -48,7 +48,7 @@ test("o mês sai como 09/2026", () => {
 
 test("o texto da célula vem do valor solto ou do content", () => {
     assert.equal(_pdfTextoCelula("RDE0A10"), "RDE0A10");
-    assert.equal(_pdfTextoCelula({ content: "BENTO", styles: { fontStyle: "bold" } }), "BENTO");
+    assert.equal(_pdfTextoCelula({ content: "DOUGLAS", styles: { fontStyle: "bold" } }), "DOUGLAS");
     assert.equal(_pdfTextoCelula(4), "4");
     assert.equal(_pdfTextoCelula(null), "");
 });
@@ -81,7 +81,7 @@ test("por palavra, o cabeçalho mede a maior palavra, porque pode ir para duas l
 test("cabendo, a letra de sempre, o cabeçalho numa linha e o texto longo com a sobra", () => {
     const doc = docFalso();
     const cab = ["Motorista", "Litros", "Frete"];
-    const linhas = [["BENTO", "60.000 L", "R$ 6.000,00"], ["TOTAL", "60.000 L", "R$ 6.000,00"]];
+    const linhas = [["DOUGLAS", "60.000 L", "R$ 6.000,00"], ["TOTAL", "60.000 L", "R$ 6.000,00"]];
     const r = _pdfEncaixar(doc, ESTILO, cab, linhas, 100, 0);
     assert.equal(r.fonte, 7.5);
     assert.equal(r.quebras, 0);

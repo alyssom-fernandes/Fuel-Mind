@@ -149,14 +149,14 @@ test("mês sem descarga devolve tudo zerado, sem erro", () => {
 });
 
 /* ── PAGAMENTO AO MOTORISTA (22/09/2026) ─────────────────────────────
- *  A regra saiu da planilha do dono: em agosto de 2026 ele pagou
- *  R$ 5.967,00 sobre R$ 596.700,00 de frete, exatamente 1%. A conta dele
- *  era "(litros POSTO + litros TRR) ÷ 1.000", que com taxa de R$ 0,10/L dá
- *  no mesmo. Guardamos como percentual para que o pagamento acompanhe uma
- *  futura mudança de taxa.
+ *  A regra saiu da planilha do dono: o motorista recebe 1% do frete. A
+ *  conta dele era "(litros POSTO + litros TRR) ÷ 1.000", que com taxa de
+ *  R$ 0,10/L dá no mesmo. Guardamos como percentual para que o pagamento
+ *  acompanhe uma futura mudança de taxa. Empresas, motoristas e volumes
+ *  daqui são fictícios (13/10/2026).
  */
-const POSTO = { id: "p1", nome: "Posto Rosario", taxaFrete: 0.10, taxaHistorico: [] };
-const TRR   = { id: "p2", nome: "Fabiandra",     taxaFrete: 0.10, taxaHistorico: [] };
+const POSTO = { id: "p1", nome: "Posto Modelo", taxaFrete: 0.10, taxaHistorico: [] };
+const TRR   = { id: "p2", nome: "TRR Modelo",   taxaFrete: 0.10, taxaHistorico: [] };
 
 function _notaFrete(empresa, litros, dia, motorista) {
     return {
@@ -176,23 +176,23 @@ test("_percentualMotoristaDaEmpresa: padrão 1%, zero é zero, valor próprio ma
     assert.equal(_percentualMotoristaDaEmpresa({ percentualMotorista: -3 }), 1);
 });
 
-test("agosto de 2026: R$ 596.700,00 de frete e R$ 5.967,00 aos motoristas", () => {
+test("um mês com R$ 300.000,00 de frete paga R$ 3.000,00 aos motoristas", () => {
     const empresas = [POSTO, TRR];
     const lancamentos = [
-        _notaFrete("Posto Rosario", 2458000, 10, "ADALBERON"),
-        _notaFrete("Fabiandra",     3509000, 11, "ADALBERON")
+        _notaFrete("Posto Modelo", 1200000, 10, "CLEITON"),
+        _notaFrete("TRR Modelo",   1800000, 11, "CLEITON")
     ];
     const r = calcularFretesDoMes({
         lancamentos, mes: "2026-08",
         empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
     });
-    assert.equal(r.totalLitros, 5967000);
-    assert.equal(+r.totalFrete.toFixed(2), 596700.00);
-    assert.equal(+r.totalPagamento.toFixed(2), 5967.00);
+    assert.equal(r.totalLitros, 3000000);
+    assert.equal(+r.totalFrete.toFixed(2), 300000.00);
+    assert.equal(+r.totalPagamento.toFixed(2), 3000.00);
     // O que o dono confere: R$ 1,00 por mil litros.
     assert.equal(+(r.totalPagamento / (r.totalLitros / 1000)).toFixed(4), 1.0000);
     // E o mesmo número chega no agrupamento por motorista.
-    assert.equal(+r.porMotorista[0].pagamento.toFixed(2), 5967.00);
+    assert.equal(+r.porMotorista[0].pagamento.toFixed(2), 3000.00);
 });
 
 test("cada empresa com o seu percentual, no mesmo motorista", () => {
@@ -201,8 +201,8 @@ test("cada empresa com o seu percentual, no mesmo motorista", () => {
         Object.assign({}, TRR,   { percentualMotorista: 2 })
     ];
     const r = calcularFretesDoMes({
-        lancamentos: [_notaFrete("Posto Rosario", 100000, 5, "BENTO"),
-                      _notaFrete("Fabiandra",     100000, 6, "BENTO")],
+        lancamentos: [_notaFrete("Posto Modelo", 100000, 5, "DOUGLAS"),
+                      _notaFrete("TRR Modelo",   100000, 6, "DOUGLAS")],
         mes: "2026-08",
         empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
     });
@@ -214,7 +214,7 @@ test("cada empresa com o seu percentual, no mesmo motorista", () => {
 test("percentual zerado não paga, e a nota continua gerando frete", () => {
     const empresas = [Object.assign({}, POSTO, { percentualMotorista: 0 })];
     const r = calcularFretesDoMes({
-        lancamentos: [_notaFrete("Posto Rosario", 50000, 7, "ELIS")],
+        lancamentos: [_notaFrete("Posto Modelo", 50000, 7, "GILMAR")],
         mes: "2026-08",
         empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
     });
@@ -226,21 +226,21 @@ test("cada grupo se abre por empresa, como o fechamento do dono entrega", () => 
     const empresas = [POSTO, TRR];
     const r = calcularFretesDoMes({
         lancamentos: [
-            _notaFrete("Posto Rosario", 118000, 10, "ADALBERON"),
-            _notaFrete("Fabiandra",     236000, 11, "ADALBERON")
+            _notaFrete("Posto Modelo", 120000, 10, "CLEITON"),
+            _notaFrete("TRR Modelo",   240000, 11, "CLEITON")
         ],
         mes: "2026-08",
         empresaDoLancamento: l => empresas.find(e => e.nome === l.empresa) || null
     });
     const m = r.porMotorista[0];
-    // É a linha do ADALBERON na planilha de agosto: 118.000 no POSTO,
-    // 236.000 no TRR, 354.000 no total, R$ 354,00 a receber.
-    assert.equal(m.porEmpresa["Posto Rosario"].litros, 118000);
-    assert.equal(m.porEmpresa["Fabiandra"].litros,     236000);
-    assert.equal(+m.porEmpresa["Posto Rosario"].frete.toFixed(2), 11800.00);
-    assert.equal(+m.porEmpresa["Fabiandra"].frete.toFixed(2),     23600.00);
-    assert.equal(+m.pagamento.toFixed(2), 354.00);
-    assert.deepEqual(r.empresasDoMes, ["Fabiandra", "Posto Rosario"]);
+    // Como uma linha da planilha do dono: 120.000 no POSTO, 240.000 no TRR,
+    // 360.000 no total, R$ 360,00 a receber.
+    assert.equal(m.porEmpresa["Posto Modelo"].litros, 120000);
+    assert.equal(m.porEmpresa["TRR Modelo"].litros,   240000);
+    assert.equal(+m.porEmpresa["Posto Modelo"].frete.toFixed(2), 12000.00);
+    assert.equal(+m.porEmpresa["TRR Modelo"].frete.toFixed(2),   24000.00);
+    assert.equal(+m.pagamento.toFixed(2), 360.00);
+    assert.deepEqual(r.empresasDoMes, ["Posto Modelo", "TRR Modelo"]);
 });
 
 test("a placa que rodou para duas empresas com a mesma taxa guarda uma taxa só", () => {

@@ -219,7 +219,7 @@ function violacoesMesFechado(antes, depois) {
     return [...motivos.entries()].map(([k, s]) => Object.assign({}, fechados.get(k), { motivos: [...s] }));
 }
 
-/** "Posto Rosário, julho de 2026 (notas); Fabiandra, agosto de 2026 (taxa de frete)". */
+/** "Posto Modelo, julho de 2026 (notas); TRR Modelo, agosto de 2026 (taxa de frete)". */
 function descreverViolacoesMes(violacoes, empresas) {
     return (violacoes || []).map(v => {
         const nome = ((empresas || []).find(e => e && e.id === v.empresaId) || {}).nome || "empresa sem cadastro";

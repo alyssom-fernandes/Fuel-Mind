@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuel Mind | Gestão de Combustíveis</title>
+    <!-- Prévia do link colado em chat, rede social ou e-mail (13/10/2026):
+         sem isto o link da demonstração aparecia sem descrição e sem imagem.
+         A imagem é o Dashboard do modo demo, com dados fictícios. -->
+    <meta name="description" content="Controle de entradas de combustível, fretes e preços a partir da NF-e. Demonstração com dados fictícios, sem cadastro.">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Fuel Mind">
+    <meta property="og:title" content="Fuel Mind | Gestão de Combustíveis">
+    <meta property="og:description" content="Entradas de combustível, fretes e preços conferidos num lugar só. Demonstração com dados fictícios, sem cadastro.">
+    <meta property="og:url" content="https://controle-entradas-posto.web.app/">
+    <meta property="og:image" content="https://controle-entradas-posto.web.app/assets/og-fuelmind.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Dashboard do Fuel Mind no modo demonstração, com dados fictícios">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:card" content="summary_large_image">
     <!-- Fontes por <link>: no @import dentro do CSS o navegador só
          descobre a fonte depois de baixar o style.css inteiro, o que
          serializa três viagens de rede antes do texto assumir a fonte
@@ -13,12 +29,14 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="assets/style.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
     <!-- `integrity`: o navegador só roda o arquivo se ele for exatamente este;
          um CDN comprometido não injeta código (13/10/2026). É o chart.umd.js
          do pacote, já minificado: o .min.js era gerado pelo jsDelivr na hora
-         e o hash dele pode mudar. -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" integrity="sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo" crossorigin="anonymous"></script>
+         e o hash dele pode mudar. `defer`: o Chart.js não segura mais o desenho
+         da página (69 KB); ele roda depois dos scripts do corpo e antes do
+         DOMContentLoaded, e o primeiro gráfico só nasce depois disso. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" integrity="sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo" crossorigin="anonymous"></script>
     <!-- SheetJS e jsPDF são carregados só quando uma tela que exporta ou lê
          planilha é aberta (garantirBibliotecas, utils.js, 18/09/2026). -->
 </head>
@@ -948,10 +966,14 @@
   </div>
   <div id="cad-conjuntos" class="aba-conteudo" style="display:none">
     <h3>Conjuntos de veículos</h3>
+    <!-- 13/10/2026: o conjunto decide o frete por conjunto do fechamento. O
+         operador cadastra um novo; alterar e desativar os que existem é de
+         admin e supremo, e as regras do servidor também barram. -->
+    <p class="dica fm-so-operador">Você pode cadastrar um conjunto novo. Alterar ou desativar um conjunto que já existe é com os administradores.</p>
     <p class="dica">Agrupe placas que formam um conjunto (cavalo + caçambas). O sistema calcula fretes e viagens por conjunto além de individualmente por placa.</p>
     <div class="linha-acoes mb-4">
       <button class="btn-primario" onclick="abrirNovoConjunto()">+ Novo conjunto</button>
-      <button class="btn-secundario" onclick="converterTodasPlacasMercosul()">Converter placas para Mercosul</button>
+      <button class="btn-secundario" data-papel="supremo" onclick="converterTodasPlacasMercosul()">Converter placas para Mercosul</button>
     </div>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosConjuntos" onchange="renderizarConjuntos()"> Mostrar inativos</label></div>
     <ul id="listaConjuntos" class="lista-limpa mt-3"></ul>
