@@ -218,10 +218,24 @@ async function usuarioSalvar(uid, dados) {
     catch (e) { console.error("[Usuarios] Erro ao salvar:", e); throw e; }
 }
 
-async function usuariosListar() {
+/**
+ * Lista os perfis. Sem `empresaIds`, todos (só o supremo pode). Com eles,
+ * só os perfis que têm ao menos uma dessas empresas: é a consulta do admin,
+ * e a regra recusa a dele sem esse recorte. `array-contains-any` aceita até
+ * 30 valores por consulta, então a lista vai em partes.
+ */
+async function usuariosListar(empresaIds = null) {
     try {
-        const snap = await getDocs(USUARIOS_COL);
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        if (!Array.isArray(empresaIds)) {
+            const snap = await getDocs(USUARIOS_COL);
+            return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        }
+        const porUid = new Map();
+        for (let i = 0; i < empresaIds.length; i += 30) {
+            const q = query(USUARIOS_COL, where("empresaIds", "array-contains-any", empresaIds.slice(i, i + 30)));
+            (await getDocs(q)).docs.forEach(d => porUid.set(d.id, { uid: d.id, ...d.data() }));
+        }
+        return [...porUid.values()];
     } catch (e) { console.error("[Usuarios] Erro ao listar:", e); return []; }
 }
 

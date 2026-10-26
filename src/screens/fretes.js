@@ -137,7 +137,9 @@ function renderFechamentoMes() {
     const mes = document.getElementById("fretesSelectMes")?.value;
     if (!alvo || !mes) return;
     const empresa = _empresaAtivaFrete();
-    const podeMexer = typeof ehAdminOuSupremoAtual === "function" && ehAdminOuSupremoAtual();
+    // Fechar e reabrir: o admin só nas empresas do perfil dele.
+    const podeMexer = typeof ehAdminOuSupremoAtual === "function" && ehAdminOuSupremoAtual()
+        && (!empresa || typeof podeGerirEmpresa !== "function" || podeGerirEmpresa(empresa.id));
     if (!empresa) {
         alvo.innerHTML = podeMexer
             ? `<p class="dica mb-4">Para fechar ou reabrir um mês, escolha uma empresa no topo da tela.</p>` : "";
@@ -217,6 +219,10 @@ async function reabrirMesFrete() {
    linha ao histórico. A regra do banco não deixa o admin encolher a lista
    e não deixa o operador tocar nela. */
 async function _gravarFechamento(empresa, mes, fechar, motivo, rotulo) {
+    if (typeof podeGerirEmpresa === "function" && !podeGerirEmpresa(empresa.id)) {
+        mostrarToast(`Fechar e reabrir os meses da empresa ${empresa.nome} não está no seu perfil.`, "aviso", 6000);
+        return;
+    }
     if (!Array.isArray(db.fechamentosMes)) db.fechamentosMes = [];
     const id = _fechamentoId(empresa.id, mes);
     const idx = db.fechamentosMes.findIndex(f => f && f.id === id);

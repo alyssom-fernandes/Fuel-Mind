@@ -1282,6 +1282,33 @@ function ignorarAlerta(chave) {
     localStorage.setItem("alertasIgnorados", JSON.stringify(ig));
 }
 
+/* ══ FALHA AO GRAVAR NA NUVEM ═══════════════════════════════════════
+   O Firestore responde `invalid-argument` quando recusa o CONTEÚDO do
+   documento. O caso conhecido aqui é o documento de lançamentos de uma
+   empresa passar de 1 MiB (ver o bloco do espaço em sistema.js). Gravar o
+   mesmo conteúdo de novo nunca passa: antes essa falha caía no "tentando de
+   novo", em laço, sem dizer a causa. Sem rede é o contrário: vale esperar e
+   repetir.
+   ═══════════════════════════════════════════════════════════════════ */
+function classificarFalhasDeGravacao(falhas, online = true) {
+    const codigo = f => (f && f.erro && f.erro.code) || "";
+    const recusadas = falhas
+        .filter(f => codigo(f) === "invalid-argument")
+        .map(f => {
+            const mensagem = String((f.erro && f.erro.message) || "");
+            return {
+                nome: f.nome,
+                mensagem,
+                grandeDemais: /maximum allowed size|exceeds the maximum|too large|1[,.]?048[,.]?576/i.test(mensagem)
+            };
+        });
+    const semRede = !online || falhas.some(f =>
+        ["unavailable", "failed-precondition", "deadline-exceeded"].includes(codigo(f)));
+    // Só volta a tentar sozinho se alguma falha puder passar na repetição.
+    const repetir = falhas.some(f => codigo(f) !== "invalid-argument");
+    return { recusadas, semRede, repetir };
+}
+
 // ========== LINKS DIRETOS PARA LANÇAMENTOS ==========
 // irParaLancamento: função canônica definida em ui.js.
 // (removida daqui para evitar conflito de versões: a última declaração no HTML vencia)

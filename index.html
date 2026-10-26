@@ -917,17 +917,18 @@
   </div>
   <div id="cad-empresas" class="aba-conteudo">
     <h3>Empresas</h3>
-    <!-- Empresa é de admin e supremo (13/10/2026): o operador via o campo
-         e o botão Adicionar, e editar e desativar, sem precisar deles. -->
+    <!-- Empresa nova é do supremo; o admin edita e desativa só as empresas
+         do perfil dele, e o operador só consulta. -->
     <p class="dica fm-so-operador">As empresas são cadastradas e alteradas pelos administradores.</p>
-    <div class="form-linha" data-papel="admin">
+    <p class="dica fm-so-admin">Aqui aparecem as empresas do seu perfil. Empresa nova é cadastrada pelo usuário supremo.</p>
+    <div class="form-linha" data-papel="supremo">
       <input id="nomeEmpresa" aria-label="Nome da empresa" placeholder="Nome da empresa" class="flex-2">
       <input id="municipioEmpresa" aria-label="Município e UF da empresa" placeholder="Município, UF" title="Ex.: São Paulo, SP" class="flex-1">
       <input id="taxaFreteEmpresa" data-papel="admin" aria-label="Taxa de frete por litro" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="Frete R$/L">
       <input id="pctMotoristaEmpresa" data-papel="admin" aria-label="Pagamento ao motorista em percentual do frete" type="text" inputmode="decimal" autocomplete="off" class="fm-numero campo-taxa" placeholder="% motorista">
       <button class="btn-primario" onclick="salvarEmpresa()">Adicionar</button>
     </div>
-    <p class="dica dica--colada" data-papel="admin">A taxa de frete é o valor pago por litro transportado para a empresa. O percentual do motorista é a fatia desse frete que vai para quem rodou a nota; em branco, vale 1%. Os dois podem ser ajustados depois em Editar.</p>
+    <p class="dica dica--colada" data-papel="supremo">A taxa de frete é o valor pago por litro transportado para a empresa. O percentual do motorista é a fatia desse frete que vai para quem rodou a nota; em branco, vale 1%. Os dois podem ser ajustados depois em Editar.</p>
     <div class="filtro-lista"><label><input type="checkbox" id="mostrarInativosEmpresas" onchange="atualizarListas()"> Mostrar inativos</label></div>
     <ul id="listaEmpresas"></ul>
   </div>
