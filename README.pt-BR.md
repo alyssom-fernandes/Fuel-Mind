@@ -8,8 +8,9 @@ alertas de preço, o frete devido por placa, motorista, empresa e
 conjunto, e os documentos de fechamento do mês.
 
 Foi feito para uma operação de combustível no Brasil que fazia esse
-controle em planilhas. É JavaScript puro sobre o Firebase, sem framework
-e sem etapa de build.
+controle em planilhas, e está em uso real pelo autor no controle das
+compras de combustível do grupo; por enquanto, com um único usuário. É
+JavaScript puro sobre o Firebase, sem framework e sem etapa de build.
 
 **Demonstração: [controle-entradas-posto.web.app](https://controle-entradas-posto.web.app)** (sem cadastro)
 
@@ -80,11 +81,12 @@ Capturadas da demonstração, com os dados fictícios dela.
 - Frete por placa, motorista, empresa e conjunto, contado pela data da
   descarga. O conjunto é montado com as placas que ele tinha na data de
   cada viagem.
-- Fechamento do mês: um administrador fecha o mês de uma empresa, e até
-  alguém reabrir nenhuma nota descarregada naquele mês pode ser lançada,
-  alterada ou retirada, nem as taxas daqueles dias. Quem pode fechar e
-  reabrir é garantido pela regra do banco; a trava das notas, pelo
-  sistema.
+- Fechamento do mês: o Supremo, ou um Admin nas empresas do perfil
+  dele, fecha o mês de uma empresa, e até alguém reabrir nenhuma nota
+  descarregada naquele mês pode ser lançada, alterada ou retirada, nem as
+  taxas daqueles dias. Quem pode fechar e reabrir, e em quais empresas, é
+  garantido pela regra do banco; a trava das notas, só pelo sistema (ver
+  Limitações conhecidas).
 
 ### Dashboard e analítico
 
@@ -105,7 +107,8 @@ Capturadas da demonstração, com os dados fictícios dela.
 ### Controle de acesso
 
 - Três perfis: Supremo (tudo), Admin (as empresas atribuídas a ele e os
-  usuários delas) e Operador (lança e confere notas). O frete por pessoa
+  usuários delas; empresa nova é cadastrada pelo Supremo) e Operador
+  (lança e confere notas). O frete por pessoa
   e as quantidades por motorista, placa e conjunto aparecem só para
   Admin e Supremo.
 - As notas de cada empresa ficam num documento próprio do Firestore, e
@@ -139,15 +142,19 @@ Capturadas da demonstração, com os dados fictícios dela.
 | Hospedagem | Firebase Hosting |
 
 As bibliotecas de PDF e Excel são carregadas de uma CDN só quando um
-documento é gerado ou uma planilha é importada, e todo arquivo de CDN é
-conferido contra um hash fixo (Subresource Integrity) antes de rodar.
+documento é gerado ou uma planilha é importada. Elas e o Chart.js são
+conferidos contra um hash fixo (Subresource Integrity) antes de rodar.
+Três arquivos de fora vêm sem hash: o worker do pdf.js (usado só na
+prévia de PDF no celular e no tablet), o SDK do Firebase e as fontes do
+Google.
 
 Algumas decisões por trás dele:
 
 - **A regra do banco é a barreira de segurança.** Quais empresas cada
   usuário lê, quem administra usuários, quem fecha o mês e quem altera
   uma empresa (a taxa de frete inclusive) ou um conjunto de veículos que
-  já existe são decididos no `firestore.rules`. Dois limites ficam só na
+  já existe são decididos no `firestore.rules`, e o Admin fica preso às
+  empresas do perfil dele. Dois limites ficam só na
   interface: esconder os detalhes de frete do perfil Operador e deixar com
   o Supremo a troca de nome de motorista, placa, base e combustível.
 - **Número digitado do jeito brasileiro** (1.234,56) passa por uma camada
@@ -156,8 +163,30 @@ Algumas decisões por trás dele:
 - **As contas que decidem dinheiro são testadas**: o cálculo de frete, as
   vigências das taxas, a referência de preço, a trava do mês fechado, o
   reconhecimento da base pela NF-e, a formatação dos números e o padrão
-  dos PDFs e das planilhas. `node --test tests/*.test.js` roda os 107
-  testes sem nenhuma dependência, e o GitHub Actions os roda a cada envio.
+  dos PDFs e das planilhas. `node --test tests/*.test.js` roda os 112
+  testes sem nenhuma dependência. As regras de segurança têm 25 testes
+  próprios em `tests/regras/`, que rodam no emulador do Firestore (Java 21
+  e firebase-tools) com um projeto `demo-` que não existe na nuvem. O
+  GitHub Actions roda os dois a cada envio.
+
+## Limitações conhecidas
+
+- **As notas de cada empresa ficam num documento só do Firestore**, numa
+  lista. Um documento guarda no máximo 1 MiB; a tela Sistema mostra
+  quanto dele está em uso, e a gravação que a nuvem recusar pelo tamanho
+  tem aviso próprio e não é repetida em laço. Dividir o histórico (por
+  mês, ou um documento por nota) é a correção prevista.
+- **O histórico das notas e a trava das notas de um mês fechado são do
+  sistema, não da regra.** A regra não percorre uma lista dentro de um
+  documento, então quem tem acesso a uma empresa poderia, pelo console do
+  navegador, reescrever as notas dela e o histórico delas. Com um
+  documento por nota, a regra poderia recusar alteração em mês fechado e
+  deixar o histórico só crescer.
+- **Empresas e fechamentos de mês também dividem um documento.** A regra
+  compara o antes e o depois de cada gravação e confere cada item que
+  mudou contra as empresas do Admin, até 8 itens por gravação; a gravação
+  do Admin que mudar mais que isso é recusada. Um documento por empresa e
+  por fechamento tiraria esse limite.
 
 ## Como rodar a sua cópia
 
@@ -225,6 +254,7 @@ src/
     cadastros-importar.js, importacao.js,
     sistema.js (backup, configurações, conferência), usuarios.js, demo.js
 tests/                  node --test, sem dependências
+  regras/               regras de segurança, no emulador do Firestore
 ```
 
 ## Licença

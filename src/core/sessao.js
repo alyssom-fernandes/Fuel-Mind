@@ -438,6 +438,14 @@ function ehSupremoAtual() {
 function ehAdminOuSupremoAtual() {
     return papelAtual() === "supremo" || papelAtual() === "admin";
 }
+/* O admin cuida só das empresas do perfil dele: editar, inativar, fechar e
+   reabrir o mês. A regra do banco confere o mesmo no documento
+   compartilhado; aqui a tela só não oferece o que ela vai recusar. */
+function podeGerirEmpresa(empresaId) {
+    if (ehSupremoAtual()) return true;
+    if (papelAtual() !== "admin" || typeof _empresaIdsPermitidos !== "function") return false;
+    return _empresaIdsPermitidos().includes(empresaId);
+}
 function _papelPermite(minimo) {
     if (minimo === "supremo") return ehSupremoAtual();
     if (minimo === "admin")   return ehAdminOuSupremoAtual();
@@ -453,6 +461,9 @@ function aplicarPermissoesDaTela() {
     });
     document.querySelectorAll(".fm-so-nao-supremo").forEach(el => {
         el.classList.toggle("fm-sem-permissao", ehSupremoAtual());
+    });
+    document.querySelectorAll(".fm-so-admin").forEach(el => {
+        el.classList.toggle("fm-sem-permissao", papelAtual() !== "admin");
     });
     // A aba Backup some para o operador: se ela era a aberta, abre a próxima.
     if (!ehAdminOuSupremoAtual() && typeof sistemaAbaAtiva !== 'undefined' && sistemaAbaAtiva === 'backup'

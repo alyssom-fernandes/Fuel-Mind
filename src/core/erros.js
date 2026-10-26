@@ -34,7 +34,8 @@ function errosLimpar() {
     mostrarToast("Registro de erros apagado.", "sucesso", 2500);
 }
 
-function _registrarErro(tipo, msg, detalhe) {
+// `semAviso`: quem registra já mostrou um aviso próprio, com a causa.
+function _registrarErro(tipo, msg, detalhe, semAviso = false) {
     try {
         const lista = errosRegistrados();
         lista.unshift({
@@ -50,7 +51,7 @@ function _registrarErro(tipo, msg, detalhe) {
         if (typeof atualizarInfoSistema === "function") atualizarInfoSistema();
         // Um aviso por sessão: o operador precisa saber que algo falhou,
         // mas um toast por erro em laço deixaria a tela inutilizável.
-        if (!_erroAvisado) {
+        if (!_erroAvisado && !semAviso) {
             _erroAvisado = true;
             mostrarToast("Algo falhou nesta tela e ficou registrado em Sistema › Informações do Sistema. "
                        + "Se um número parecer errado, recarregue a página (F5).", "erro", 9000);

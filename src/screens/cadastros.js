@@ -431,6 +431,7 @@ function confirmarEdicao() {
     }
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
+    if (lista === "empresas" && !_podeGerirEmpresaNaTela(id)) return;
 
     // Placa editada passa pelas mesmas regras de "Novo veículo": formato
     // Mercosul, e duplicidade comparando placas normalizadas.
@@ -717,9 +718,10 @@ function migrarEmpresas() {
 migrarEmpresas();
 
 function salvarEmpresa() {
-    // Empresa é de admin e supremo (13/10/2026); o formulário nem aparece
-    // para o operador, e isto cobre quem chegar por outro caminho.
-    if (typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) return;
+    // Empresa nova é do supremo: a de um admin nasceria fora do perfil dele,
+    // e a regra do banco a recusa. O formulário só aparece para o supremo, e
+    // isto cobre quem chegar por outro caminho.
+    if (typeof ehSupremoAtual === "function" && !ehSupremoAtual()) return;
     const input = document.getElementById("nomeEmpresa");
     const inputMun = document.getElementById("municipioEmpresa");
     const inputTaxa = document.getElementById("taxaFreteEmpresa");
@@ -821,11 +823,18 @@ function salvarBase() {
     _destacarCadastro("bases", db.bases[db.bases.length - 1].id);
 }
 
+/* Empresa: o supremo mexe em todas; o admin, só nas do perfil dele; o
+   operador, em nenhuma. Sem sessão (os testes carregam este arquivo fora do
+   app) não há a quem restringir. */
+function _podeGerirEmpresaNaTela(id) {
+    return typeof podeGerirEmpresa !== "function" || podeGerirEmpresa(id);
+}
+
 // ========== INATIVAR / REATIVAR ==========
 // FIX v4: String(i.id) === String(id) para garantir comparação correta
 //         independente de como o ID chegou do Firestore
 async function toggleAtivo(lista, id) {
-    if (lista === "empresas" && typeof ehAdminOuSupremoAtual === "function" && !ehAdminOuSupremoAtual()) return;
+    if (lista === "empresas" && !_podeGerirEmpresaNaTela(id)) return;
     const item = db[lista].find(i => String(i.id) === String(id));
     if (!item) return;
     const acao = item.ativo !== false ? "inativar" : "reativar";
@@ -1199,7 +1208,11 @@ function atualizarListas() {
     const verTaxas = typeof ehAdminOuSupremoAtual !== "function" || ehAdminOuSupremoAtual();
     if (ulE) {
         const showInat = document.getElementById("mostrarInativosEmpresas")?.checked;
-        const lista = showInat ? db.empresas : db.empresas.filter(e => e.ativo !== false);
+        // O admin vê só as empresas do perfil dele: as outras ele não altera,
+        // e a lista com os botões delas sugeria o contrário.
+        const doPerfil = typeof papelAtual === "function" && papelAtual() === "admin"
+            ? db.empresas.filter(e => _podeGerirEmpresaNaTela(e.id)) : db.empresas;
+        const lista = showInat ? doPerfil : doPerfil.filter(e => e.ativo !== false);
         ulE.innerHTML = lista.length === 0 ? `<li class="vazio">Nenhum cadastro ainda.</li>`
             : lista.map(e => `
                 <li class="${e.ativo !== false ? "" : "inativo"}">
@@ -1380,7 +1393,10 @@ document.addEventListener('click', function(e) {
     } else if (acao === 'editar') {
         if (lista === 'motoristas') abrirModal('Editar motorista',  'Nome',  item.nome, lista, id);
         else if (lista === 'veiculos')    abrirModal('Editar veículo',    'Placa', item.nome, lista, id);
-        else if (lista === 'empresas')    abrirModal('Editar empresa',    'Nome',  item.nome, lista, id, null, item.municipio || '');
+        else if (lista === 'empresas') {
+            if (!_podeGerirEmpresaNaTela(id)) return;
+            abrirModal('Editar empresa', 'Nome', item.nome, lista, id, null, item.municipio || '');
+        }
         else if (lista === 'combustiveis') abrirModal('Editar combustível','Nome',  item.nome, lista, id, item.perda);
         else if (lista === 'bases')       abrirModal('Editar base',       'Nome',  item.nome, lista, id);
     }

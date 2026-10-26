@@ -242,16 +242,29 @@ function _executarSave() {
             mostrarToast("A nuvem recusou a alteração nos cadastros: seu perfil não tem permissão para ela. A alteração foi desfeita.", "erro", 9000);
             _rerenderTelaAtual();
         }
-        const semRede = !navigator.onLine || falhas.some(f =>
-            ['unavailable', 'failed-precondition', 'deadline-exceeded'].includes(f.erro?.code));
+        const { recusadas, semRede, repetir } = classificarFalhasDeGravacao(falhas, navigator.onLine);
         _setStatusConexao(semRede ? "offline" : "erro");
-        if (_falhasSeguidas === 1) {
+        if (recusadas.length) {
+            // Repetir não resolve: o aviso diz a causa, e a gravação só volta
+            // a ser tentada quando houver outra alteração.
+            const quais = recusadas.map(r => r.nome === _NOME_COMPARTILHADO ? "cadastros"
+                : ((db.empresas || []).find(e => e.id === _idDoDocLanc(r.nome))?.nome || r.nome)).join(", ");
+            if (typeof _registrarErro === "function") {
+                recusadas.forEach(r => _registrarErro("gravação recusada", `${r.nome}: ${r.mensagem}`, "", true));
+            }
+            mostrarToast(recusadas.some(r => r.grandeDemais)
+                ? `A nuvem recusou a gravação (${quais}): o documento passou do tamanho máximo que o Firestore aceita, 1 MiB. `
+                  + `O que foi salvo está guardado neste navegador, mas não sobe enquanto o histórico não for dividido. O espaço ocupado aparece em Sistema › Informações do Sistema.`
+                : `A nuvem recusou o conteúdo da gravação (${quais}). O que foi salvo está guardado neste navegador, e tentar de novo não resolve. O erro ficou no registro de falhas, em Sistema › Informações do Sistema.`,
+                "erro", 15000);
+        } else if (_falhasSeguidas === 1) {
             mostrarToast(semRede
                 ? "Sem conexão com a nuvem. O que foi salvo está guardado neste navegador e sobe quando a conexão voltar."
                 : "Erro ao salvar na nuvem. O que foi salvo está guardado neste navegador; tentando de novo.",
                 semRede ? "aviso" : "erro", 7000);
         }
         console.error("[save] Falhas:", falhas.map(f => `${f.nome}: ${f.erro?.code || f.erro?.message}`));
+        if (!repetir) return;
         const espera = Math.min(30000 * Math.pow(2, _falhasSeguidas - 1), 300000);
         _timerRetry = setTimeout(() => { if (_pendentesSincronizacao) _executarSave(); }, espera);
     });

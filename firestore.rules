@@ -34,8 +34,13 @@ rules_version = '2';
 //     e não mexe no próprio perfil por esse caminho;
 //   - quem não é supremo não encolhe a lista de lançamentos de uma empresa
 //     nem as listas de cadastros: excluir de verdade é só do supremo;
+//   - o admin só altera as empresas e os fechamentos de mês das empresas do
+//     perfil dele, e só lista os perfis de quem divide empresa com ele;
 //   - o índice público expõe apenas o e-mail necessário para o login por @,
-//     e ninguém sobrescreve o @ de outra pessoa.
+//     e ninguém sobrescreve o @ de outra pessoa; o admin só troca ou apaga o
+//     @ de operador das empresas dele.
+//
+//  Os cenários acima são conferidos no emulador por tests/regras/.
 //
 //  NOTA SOBRE get(campo, padrão)
 //  Acessar campo inexistente em regra do Firestore gera ERRO de avaliação,
@@ -189,6 +194,50 @@ service cloud.firestore {
         && soAcrescentou('conjuntosVeiculos');
     }
 
+    // ── Admin no documento compartilhado: só nas empresas dele ───────────
+    // Empresas e fechamentos de mês vivem em listas dentro de um documento
+    // só, e a regra não percorre lista. O que ela consegue é comparar o
+    // antes e o depois: `removeAll` deixa só os itens que mudaram (os novos
+    // de um lado, os que eles substituíram do outro), e cada um precisa ser
+    // de uma empresa do perfil. Sem isto, um admin da empresa A mudava pelo
+    // console a taxa de frete da empresa B, a inativava ou fechava e reabria
+    // os meses dela.
+    //
+    // Uma gravação normal muda um ou dois itens (`_mesclar` só aplica o que
+    // este navegador alterou); o teto de 8 por gravação é o que a regra
+    // consegue conferir sem laço. Empresa nova é do supremo: a de um admin
+    // nasceria fora do perfil dele.
+    function itemNaEmpresaDoAdmin(lista, i, chave) {
+      return lista.size() <= i
+        || perfil().get('empresaIds', []).hasAny([lista[i].get(chave, '')]);
+    }
+
+    function todosNasEmpresasDoAdmin(lista, chave) {
+      return lista.size() <= 8
+        && itemNaEmpresaDoAdmin(lista, 0, chave)
+        && itemNaEmpresaDoAdmin(lista, 1, chave)
+        && itemNaEmpresaDoAdmin(lista, 2, chave)
+        && itemNaEmpresaDoAdmin(lista, 3, chave)
+        && itemNaEmpresaDoAdmin(lista, 4, chave)
+        && itemNaEmpresaDoAdmin(lista, 5, chave)
+        && itemNaEmpresaDoAdmin(lista, 6, chave)
+        && itemNaEmpresaDoAdmin(lista, 7, chave);
+    }
+
+    function mudancasNasEmpresasDoAdmin(campo, chave) {
+      let antes = resource.data.get(campo, []);
+      let depois = request.resource.data.get(campo, []);
+      return todosNasEmpresasDoAdmin(depois.removeAll(antes), chave)
+        && todosNasEmpresasDoAdmin(antes.removeAll(depois), chave);
+    }
+
+    function adminNoProprioEscopo() {
+      return request.resource.data.get('empresas', []).size()
+          == resource.data.get('empresas', []).size()
+        && mudancasNasEmpresasDoAdmin('empresas', 'id')
+        && mudancasNasEmpresasDoAdmin('fechamentosMes', 'empresaId');
+    }
+
     // ── Cadastros compartilhados ─────────────────────────────────────────
     // Motoristas, veículos, empresas, combustíveis, bases e conjuntos não
     // têm vínculo com empresa — servem todas.
@@ -212,7 +261,7 @@ service cloud.firestore {
       // campo, e todos os meses voltariam a abrir sem motivo e sem
       // histórico.
       allow update: if (ehSupremo() && listaNaoEncolheu('fechamentosMes'))
-                    || (ehAdmin() && listasNaoEncolheram())
+                    || (ehAdmin() && listasNaoEncolheram() && adminNoProprioEscopo())
                     || (ativo() && cadastroSoCresce());
       allow delete: if ehSupremo();
     }
@@ -258,9 +307,13 @@ service cloud.firestore {
       // próprio perfil durante a sessão.
       allow get: if autenticado() && (request.auth.uid == uid || gerenciaUsuarios());
 
-      // Listagem é da tela de Usuários. O recorte por empresa é feito no
-      // cliente: a regra não consegue filtrar uma listagem pelo conteúdo.
-      allow list: if gerenciaUsuarios();
+      // Listagem é da tela de Usuários. O admin só lista perfis que dividem
+      // empresa com ele: a consulta dele vai com
+      // where('empresaIds', 'array-contains-any', ids do perfil), e a regra
+      // recusa a consulta que não tiver esse recorte.
+      allow list: if ehSupremo()
+                  || (ehAdmin()
+                      && resource.data.empresaIds.hasAny(perfil().get('empresaIds', [])));
 
       // Perfil só nasce pelas mãos de quem gerencia usuários. Não existe
       // mais autocriação: o app nunca a usou, e ela deixava qualquer conta
@@ -307,8 +360,11 @@ service cloud.firestore {
     //
     // Ninguém toma o @ de outra pessoa: a entrada nova tem de ser do próprio
     // autor (com o e-mail da conta dele) ou gravada por quem gerencia
-    // usuários; e uma entrada existente só é trocada pelo dono dela, pelo
-    // supremo, ou por admin quando o dono não é supremo.
+    // usuários; e uma entrada existente só é trocada ou apagada pelo dono
+    // dela, pelo supremo, ou por admin quando o dono é operador de uma
+    // empresa dele. Antes bastava o dono não ser supremo, e um admin da
+    // empresa A apagava ou desviava o @ de qualquer pessoa da empresa B, que
+    // deixava de entrar pelo @.
     match /usernames/{username} {
       function donoDe(dados) {
         return dados.get('uid', '');
@@ -317,6 +373,14 @@ service cloud.firestore {
       function donoNaoEhSupremo(dados) {
         return !exists(/databases/$(database)/documents/usuarios/$(donoDe(dados)))
           || get(/databases/$(database)/documents/usuarios/$(donoDe(dados))).data.get('role', '') != 'supremo';
+      }
+
+      function operadorDoAdmin(dados) {
+        let caminho = /databases/$(database)/documents/usuarios/$(donoDe(dados));
+        return exists(caminho)
+          && get(caminho).data.get('role', '') == 'usuario'
+          && get(caminho).data.get('empresaIds', []).toSet()
+               .intersection(perfil().get('empresaIds', []).toSet()).size() > 0;
       }
 
       function proprioComEmailDaConta() {
@@ -335,12 +399,12 @@ service cloud.firestore {
 
       allow update: if ehSupremo()
                     || (ehAdmin()
-                        && donoNaoEhSupremo(resource.data)
-                        && donoNaoEhSupremo(request.resource.data))
+                        && operadorDoAdmin(resource.data)
+                        && operadorDoAdmin(request.resource.data))
                     || (proprioComEmailDaConta() && donoDe(resource.data) == request.auth.uid);
 
       allow delete: if ehSupremo()
-                    || (ehAdmin() && donoNaoEhSupremo(resource.data))
+                    || (ehAdmin() && operadorDoAdmin(resource.data))
                     || (ativo() && donoDe(resource.data) == request.auth.uid);
     }
 

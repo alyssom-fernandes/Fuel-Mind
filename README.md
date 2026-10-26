@@ -8,8 +8,9 @@ alerts, the freight owed per plate, driver, company and vehicle set, and
 the month-end documents.
 
 It was built for a fuel operation in Brazil that kept this control in
-spreadsheets. It is plain JavaScript on top of Firebase, with no
-framework and no build step.
+spreadsheets, and it is in real use by the author to control the group's
+fuel purchases; for now, with a single user. It is plain JavaScript on
+top of Firebase, with no framework and no build step.
 
 **Live demo: [controle-entradas-posto.web.app](https://controle-entradas-posto.web.app)** (no sign-up)
 
@@ -78,11 +79,12 @@ Taken from the demo, with its fictional data.
 - Freight per plate, driver, company and vehicle set, counted by unload
   date. A vehicle set is resolved by the plates it had on the date of
   each trip.
-- Month closing: an administrator closes a company's month, and until
-  someone reopens it no invoice unloaded in that month can be added,
-  changed or removed, nor can the rates for those days. Who may close and
-  reopen is enforced by the database rules; the lock on the invoices is
-  enforced by the application.
+- Month closing: Supremo, or an Admin for the companies in their
+  profile, closes a company's month, and until someone reopens it no
+  invoice unloaded in that month can be added, changed or removed, nor can
+  the rates for those days. Who may close and reopen, and for which
+  companies, is enforced by the database rules; the lock on the invoices
+  is enforced by the application only (see Known limitations).
 
 ### Dashboard and analytics
 
@@ -102,7 +104,8 @@ Taken from the demo, with its fictional data.
 ### Access control
 
 - Three profiles: Supremo (everything), Admin (the companies assigned to
-  them, plus their users) and Operador (enters and checks invoices).
+  them, plus their users; a new company is created by Supremo) and
+  Operador (enters and checks invoices).
   Freight per person and the quantities per driver, plate and vehicle
   set are shown to Admin and Supremo only.
 - Each company's invoices live in their own Firestore document, and the
@@ -136,15 +139,18 @@ Taken from the demo, with its fictional data.
 | Hosting | Firebase Hosting |
 
 The PDF and Excel libraries are loaded from a CDN only when a document is
-generated or a spreadsheet is imported, and every CDN file is checked
-against a fixed hash (Subresource Integrity) before it runs.
+generated or a spreadsheet is imported. They and Chart.js are checked
+against a fixed hash (Subresource Integrity) before they run. Three
+outside files have no hash: the pdf.js worker (used only for the PDF
+preview on phones and tablets), the Firebase SDK and Google Fonts.
 
 Some decisions behind it:
 
 - **The database rules are the security boundary.** Which companies a
   user reads, who manages users, who closes a month and who changes a
   company (its freight rate included) or an existing vehicle set are
-  enforced in `firestore.rules`. Two limits live only in the interface:
+  enforced in `firestore.rules`, and an Admin is held to the companies in
+  their profile. Two limits live only in the interface:
   freight details are hidden from the Operador profile, and renaming
   drivers, plates, bases and fuels is left to Supremo.
 - **Numbers typed the Brazilian way** (1.234,56) go through a small input
@@ -153,8 +159,30 @@ Some decisions behind it:
 - **The calculations that decide money are tested**: the freight engine,
   rate validity periods, the price reference, the month-closing lock, the
   NF-e base matching, number formatting and the PDF and Excel layout.
-  `node --test tests/*.test.js` runs the 107 tests with no dependencies,
-  and GitHub Actions runs them on every push.
+  `node --test tests/*.test.js` runs the 112 tests with no dependencies.
+  The security rules have 25 tests of their own in `tests/regras/`, which
+  run on the Firestore emulator (Java 21 and firebase-tools) against a
+  `demo-` project that does not exist in the cloud. GitHub Actions runs
+  both on every push.
+
+## Known limitations
+
+- **Each company's invoices live in one Firestore document**, as a list.
+  A document holds at most 1 MiB; the Sistema screen shows how much of it
+  is in use, and a save the cloud refuses for size gets its own warning
+  and is not retried in a loop. Splitting the history (by month, or one
+  document per invoice) is the planned fix.
+- **The invoice history and the closed-month lock on invoices are kept by
+  the application, not by the rules.** The rules cannot walk a list inside
+  a document, so a user with access to a company could, from the browser
+  console, rewrite its invoices and their history. With one document per
+  invoice, the rules could refuse changes in a closed month and keep the
+  history append-only.
+- **Companies and month closings also share one document.** The rules
+  compare it before and after a save and check every item that changed
+  against the Admin's companies, up to 8 items per save; an Admin's save
+  that changes more is refused. One document per company and per closing
+  would remove that limit.
 
 ## Running your own copy
 
@@ -221,6 +249,7 @@ src/
     grupo.js, cadastros.js, cadastros-importar.js, importacao.js,
     sistema.js (backup, settings, reconciliation), usuarios.js, demo.js
 tests/                  node --test, no dependencies
+  regras/               security rules, on the Firestore emulator
 ```
 
 ## License

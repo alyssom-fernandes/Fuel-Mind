@@ -212,9 +212,13 @@ async function _recarregarListaUsuarios() {
         }
         // Em demonstração a lista vem dos perfis fictícios: não há sessão
         // autenticada, e chamar o Firestore aqui só produz permission-denied.
+        // O admin pede ao banco só os perfis das empresas dele (a regra
+        // recusa a listagem inteira); o filtro abaixo continua valendo para a
+        // demonstração, que não passa pelo banco.
         const todos = (typeof demoAtivo === 'function' && demoAtivo())
             ? JSON.parse(JSON.stringify(DEMO_USUARIOS))
-            : await window._firestore.usuariosListar();
+            : await window._firestore.usuariosListar(
+                window._usuarioAtual?.role === "supremo" ? null : _idsDoPerfil(window._usuarioAtual));
         if (window._usuarioAtual?.role === "supremo") {
             _usuariosCache = todos;
         } else {
@@ -650,6 +654,14 @@ async function confirmarEditarUsuario(uid) {
     if (username && username.length < 3) return mostrarToast("O usuário deve ter ao menos 3 caracteres.", "aviso");
     if (role !== "supremo" && empresas.length === 0) return mostrarToast("Selecione ao menos uma empresa.", "aviso");
 
+    // O índice de @ só aceita do admin a troca do @ de um operador das
+    // empresas dele; o perfil seria salvo e o login por @ ficaria para trás.
+    const usernameDeAntes = alvo?.username || null;
+    if (window._usuarioAtual?.role === "admin" && (username || null) !== usernameDeAntes
+        && (alvo?.role !== "usuario" || role !== "usuario")) {
+        return mostrarToast("O @ de um administrador só o usuário supremo altera.", "aviso", 6000);
+    }
+
     if (role !== "supremo") {
         const supremos = _usuariosCache.filter(u => u.uid !== uid && u.role === "supremo" && u.ativo !== false);
         const eraSupremo = _usuariosCache.find(u => u.uid === uid)?.role === "supremo";
@@ -744,8 +756,10 @@ async function excluirUsuario(uid) {
         confirmTxt: "Excluir o perfil", cancelTxt: "Voltar", tipo: "perigo" })) return;
 
     try {
-        await window._firestore.usuarioExcluirFirestore(uid);
+        // O @ sai antes do perfil: a regra confere, pelo perfil, se quem apaga
+        // pode mexer no @ dessa pessoa, e depois de apagado não há o que conferir.
         if (u.username) await window._firestore.usernameMapaRemover(u.username);
+        await window._firestore.usuarioExcluirFirestore(uid);
         mostrarToast(
             `Perfil de "${u.nome}" excluído. A conta de acesso continua no Firebase. `
             + `apague-a pelo Console se a pessoa saiu da empresa.`, "aviso", 9000);

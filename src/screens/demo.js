@@ -403,7 +403,12 @@ function _demoMostrarFaixa() {
             <button onclick="demoResetarDados(false)">Restaurar dados</button>
             <button onclick="sairModoDemo()">Sair da demo</button>
         </span>`;
-    document.body.appendChild(faixa);
+    // A faixa fica fixa no topo, e no teclado ela vem logo depois do "Pular
+    // para o conteúdo". No fim do corpo, os botões dela eram as últimas
+    // paradas do Tab, depois de todo o sistema, e logo em seguida o foco
+    // saía da página.
+    const pular = document.querySelector(".pular-conteudo");
+    if (pular) pular.after(faixa); else document.body.prepend(faixa);
     document.body.classList.add("com-faixa-demo");
 
     _demoMedirFaixa();
