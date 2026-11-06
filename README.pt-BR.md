@@ -163,7 +163,7 @@ Algumas decisões por trás dele:
 - **As contas que decidem dinheiro são testadas**: o cálculo de frete, as
   vigências das taxas, a referência de preço, a trava do mês fechado, o
   reconhecimento da base pela NF-e, a formatação dos números e o padrão
-  dos PDFs e das planilhas. `node --test tests/*.test.js` roda os 112
+  dos PDFs e das planilhas. `node --test tests/*.test.js` roda os 120
   testes sem nenhuma dependência. As regras de segurança têm 25 testes
   próprios em `tests/regras/`, que rodam no emulador do Firestore (Java 21
   e firebase-tools) com um projeto `demo-` que não existe na nuvem. O

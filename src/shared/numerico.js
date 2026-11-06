@@ -24,11 +24,11 @@
 =================================================*/
 
 /** Casas decimais por campo, na DIGITAÇÃO. Litros com três; o preço com
- *  quatro (é como a NF-e traz; arredondar na entrada mudaria o total da
- *  nota); a taxa de frete com duas, porque vem de contrato e os contratos
- *  são redondos (22/09/2026); percentual com dois. A EXIBIÇÃO do preço por
- *  litro é com três (`fmtRL`, 18/09/2026) e a do frete por litro com duas
- *  (`fmtFreteL`): quem mostra arredonda, quem guarda não. */
+ *  quatro, no mínimo (o limite é `FM_CASAS_MAX`); a taxa de frete com duas,
+ *  porque vem de contrato e os contratos são redondos (22/09/2026);
+ *  percentual com dois. A EXIBIÇÃO do preço por litro é com três (`fmtRL`,
+ *  18/09/2026) e a do frete por litro com duas (`fmtFreteL`): quem mostra
+ *  arredonda, quem guarda não. */
 const FM_CASAS = {
     qtd:                  3,
     qtdDescargada:        3,
@@ -43,10 +43,33 @@ const FM_CASAS = {
     _cfgPrecoDif:         2
 };
 
+/** Até quantas casas o campo guarda o que foi digitado, quando pode passar
+ *  das de `FM_CASAS`. O preço vai até dez, o limite do `vUnCom` da NF-e.
+ *
+ *  O texto do campo é o que vira o número gravado. Com o limite em quatro,
+ *  sair do campo trocava R$ 5,8763456789 por 5,8763: o resumo continuava
+ *  certo, porque não era recalculado nessa hora, e a gravação lia o texto já
+ *  cortado, com até R$ 3,00 de diferença numa carga de 60.000 L (06/11/2026).
+ *  O campo mostra o preço inteiro, em vez de esconder os dígitos, para o
+ *  operador conferir com a nota exatamente o que vai ser gravado. */
+const FM_CASAS_MAX = {
+    valor: 10
+};
+
 function _fmCasasDe(el) {
     if (el.id && FM_CASAS[el.id] !== undefined) return FM_CASAS[el.id];
     for (const c of el.classList) if (FM_CASAS[c] !== undefined) return FM_CASAS[c];
     return 3;
+}
+
+function _fmCasasMaxDe(el) {
+    for (const c of el.classList) if (FM_CASAS_MAX[c] !== undefined) return FM_CASAS_MAX[c];
+    return _fmCasasDe(el);
+}
+
+/** O número como fica no campo parado. */
+function _fmTextoParado(el, n) {
+    return fmtNumeroExibicao(n, _fmCasasDe(el), _fmCasasMaxDe(el));
 }
 
 /**
@@ -71,7 +94,7 @@ function fmNumericoPreparar(el) {
     // Guarda o valor já formatado para exibição, se veio preenchido.
     if (el.value !== "") {
         const n = parseNumeroBR(el.value);
-        if (n !== null) el.value = fmtNumeroExibicao(n, _fmCasasDe(el));
+        if (n !== null) el.value = _fmTextoParado(el, n);
     }
 }
 
@@ -86,7 +109,7 @@ function fmNumericoDefinir(el, n) {
     if (!el) return;
     el.value = (n === null || n === undefined || n === "")
         ? ""
-        : fmtNumeroExibicao(Number(n), _fmCasasDe(el));
+        : _fmTextoParado(el, Number(n));
 }
 
 function _fmEhNumerico(alvo) {
@@ -104,7 +127,7 @@ document.addEventListener("focusin", function (e) {
     const el = e.target;
     if (!_fmEhNumerico(el)) return;
     const n = parseNumeroBR(el.value);
-    if (n !== null) el.value = fmtNumeroEdicao(n, _fmCasasDe(el));
+    if (n !== null) el.value = fmtNumeroEdicao(n, _fmCasasMaxDe(el));
     // Seleciona tudo: em digitação repetitiva, o gesto quase sempre é
     // substituir o valor inteiro, não editar um dígito no meio.
     if (el.value) setTimeout(() => { try { el.select(); } catch (_) {} }, 0);
@@ -139,7 +162,7 @@ document.addEventListener("focusout", function (e) {
     _fmPontoDecimalNoPreco(el);
     const n = parseNumeroBR(el.value);
     if (n === null) return;
-    el.value = fmtNumeroExibicao(n, _fmCasasDe(el));
+    el.value = _fmTextoParado(el, n);
 });
 
 /**
@@ -186,7 +209,7 @@ document.addEventListener("paste", function (e) {
     const n = parseNumeroBR(texto);
     if (n === null) return;   // deixa colar cru; a validação acusa depois
     e.preventDefault();
-    el.value = fmtNumeroEdicao(n, _fmCasasDe(el));
+    el.value = fmtNumeroEdicao(n, _fmCasasMaxDe(el));
     el.dispatchEvent(new Event("input",  { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
 });

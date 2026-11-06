@@ -207,6 +207,14 @@ test("parseNumeroBR: vírgula decimal, milhar e texto inválido", () => {
     assert.equal(parseNumeroBR("abc"), null);
 });
 
+test("fmtNumeroExibicao: casas fixas, e `casasMax` não corta o que veio a mais", () => {
+    assert.equal(fmtNumeroExibicao(12345.678, 3), "12.345,678");
+    assert.equal(fmtNumeroExibicao(5.87654, 4), "5,8765");
+    assert.equal(fmtNumeroExibicao(5.89, 4, 10), "5,8900");
+    assert.equal(fmtNumeroExibicao(5.8763456789, 4, 10), "5,8763456789");
+    assert.equal(fmtNumeroExibicao(5.87634567891, 4, 10), "5,8763456789");
+});
+
 /* ── DUAS CASAS NO FRETE, TRÊS NO PREÇO (22/09/2026) ─────────────────── */
 /*  O dono separou os dois números: a taxa vem de contrato e os contratos
  *  dele são redondos (R$ 0,10/L); o preço vem da NF-e, que traz até dez
