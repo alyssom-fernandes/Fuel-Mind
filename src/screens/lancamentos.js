@@ -539,9 +539,8 @@ function atualizarTotalizadorNota() {
     const linhas = document.querySelectorAll(".linha-combustivel");
     let totalLitros = 0, totalValor = 0, temDados = false;
     linhas.forEach(linha => {
-        const qtd   = parseNumeroBR(linha.querySelector(".qtd")?.value)   || 0;
-        const valor = parseNumeroBR(linha.querySelector(".valor")?.value) || 0;
-        if (qtd > 0) { totalLitros += qtd; totalValor += qtd * valor; temDados = true; }
+        const { qtd, total } = _contaDaLinha(linha);
+        if (qtd > 0) { totalLitros += qtd; totalValor += total; temDados = true; }
     });
     const el = document.getElementById("totalizadorNota");
     if (!el) return;
@@ -643,9 +642,9 @@ function _ajustarDescargaPorItens(itens) {
  * `type="number"` o navegador garantia que só houvesse dígitos ali, e
  * essa garantia acabou junto com o tipo nativo.
  */
-function _valorInicialNumero(v, casas) {
+function _valorInicialNumero(v, casas, casasMax = casas) {
     if (v === null || v === undefined || v === "") return "";
-    if (typeof v === "number") return fmtNumeroExibicao(v, casas);
+    if (typeof v === "number") return fmtNumeroExibicao(v, casas, casasMax);
     return String(v);
 }
 
@@ -653,11 +652,11 @@ function adicionarCombustivelNota(dadosIniciais = null) {
     const container = document.getElementById("combustiveisNota");
     const div = document.createElement("div");
     div.className = "linha-combustivel";
-    // Os números exatos que chegaram (XML, edição, clone): o campo mostra
-    // 4 casas no preço e 3 na quantidade, e ler o texto de volta
-    // arredondava em silêncio: a NF-e com R$ 5,8765432100 virava 5,8765 e o
-    // total divergia do documento. Enquanto o campo mostrar o mesmo número,
-    // vale o exato.
+    // Os números exatos que chegaram (XML, edição, clone). O campo mostra 3
+    // casas na quantidade, e a NF-e pode trazer 4; mostra o preço inteiro,
+    // mas uma nota importada pode ter mais que as 10 casas dele. Ler o texto
+    // de volta arredondaria em silêncio e o total divergiria do documento.
+    // Enquanto o campo mostrar o mesmo número, vale o exato.
     if (typeof dadosIniciais?.qtd === "number")   div.dataset.qtdExata   = String(dadosIniciais.qtd);
     if (typeof dadosIniciais?.valor === "number") div.dataset.valorExato = String(dadosIniciais.valor);
     if (typeof dadosIniciais?.totalXml === "number" && dadosIniciais.totalXml > 0) div.dataset.totalXml = String(dadosIniciais.totalXml);
@@ -682,10 +681,11 @@ function adicionarCombustivelNota(dadosIniciais = null) {
                value="${escapeHtml(_valorInicialNumero(dadosIniciais?.qtdDescargada, 3))}"
                oninput="marcarFormularioSujo();"
                onblur="atualizarBadgePerda(this.closest('.linha-combustivel').querySelector('.tipo'))"></label>
-        <label class="campo-item"><span class="campo-item-rotulo">Valor unit. (R$/L)</span>
+        <label class="campo-item campo-item--valor"><span class="campo-item-rotulo">Valor unit. (R$/L)</span>
         <input type="text" inputmode="decimal" autocomplete="off" class="valor fm-numero"
-               value="${escapeHtml(_valorInicialNumero(dadosIniciais?.valor, 4))}"
-               oninput="atualizarTotalizadorNota(); marcarFormularioSujo();"></label>
+               value="${escapeHtml(_valorInicialNumero(dadosIniciais?.valor, FM_CASAS.valor, FM_CASAS_MAX.valor))}"
+               oninput="atualizarTotalizadorNota(); marcarFormularioSujo();"
+               onchange="atualizarTotalizadorNota();"></label>
         <div class="badge-wrapper"></div>
         <button class="btn-icone btn-icone--excluir" title="Tirar este combustível da nota" aria-label="Tirar este combustível da nota" onclick="this.parentElement.remove(); atualizarTotalizadorNota(); marcarFormularioSujo(); if (typeof validarLancamento === 'function') validarLancamento();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>`;
     container.appendChild(div);
@@ -777,6 +777,25 @@ function _numeroDaLinha(linha, seletor, chaveExata, casas) {
     return lido;
 }
 
+/**
+ * Quantidade, preço e total de uma linha, pela mesma conta no resumo em
+ * tempo real e na gravação. Eram duas contas, e o resumo podia dizer um
+ * total e a nota gravar outro.
+ *
+ * `parseNumeroBR` devolve null no que não entendeu, e a validação barra esse
+ * caso antes de gravar; o `?? 0` só cobre campo vazio, que é zero de verdade.
+ */
+function _contaDaLinha(linha) {
+    const qtd   = _numeroDaLinha(linha, ".qtd", "qtdExata", 3) ?? 0;
+    const valor = _numeroDaLinha(linha, ".valor", "valorExato", FM_CASAS_MAX.valor) ?? 0;
+    // Com quantidade e preço intactos do XML, o total é o da NF-e (vProd), e
+    // não a conta refeita, que pode diferir por centavos.
+    const intactos = linha.dataset.totalXml
+        && String(qtd) === linha.dataset.qtdExata && String(valor) === linha.dataset.valorExato;
+    const total = intactos ? Number(linha.dataset.totalXml) : Math.round(qtd * valor * 100) / 100;
+    return { qtd, valor, total };
+}
+
 /*=================================================
   SALVAR / ATUALIZAR LANÇAMENTO
 =================================================*/
@@ -862,18 +881,9 @@ async function _salvarOuAtualizar(modo) {
     let total = 0;
     for (const linha of document.querySelectorAll(".linha-combustivel")) {
         const tipo          = linha.querySelector(".tipo").value;
-        // `parseNumeroBR` devolve null no que não entendeu, e a validação já
-        // barrou esse caso antes de chegar aqui; o `?? 0` só cobre campo
-        // vazio, que é zero de verdade.
-        const qtd           = _numeroDaLinha(linha, ".qtd", "qtdExata", 3) ?? 0;
+        const { qtd, valor, total: itemTotal } = _contaDaLinha(linha);
         const qtdDescargada = parseNumeroBR(linha.querySelector(".qtdDescargada").value) ?? 0;
-        const valor         = _numeroDaLinha(linha, ".valor", "valorExato", 4) ?? 0;
         if (tipo && qtd > 0) {
-            // Com quantidade e preço intactos do XML, o total é o da NF-e
-            // (vProd), e não a conta refeita, que pode diferir por centavos.
-            const intactos = linha.dataset.totalXml
-                && String(qtd) === linha.dataset.qtdExata && String(valor) === linha.dataset.valorExato;
-            const itemTotal = intactos ? Number(linha.dataset.totalXml) : Math.round(qtd * valor * 100) / 100;
             itens.push({ tipo, qtd, qtdDescargada, valor, total: itemTotal });
             total += itemTotal;
         }
@@ -1269,10 +1279,10 @@ function _diffLancamento(antes, depois) {
     // o ponto flutuante devolve 37902.600000000006 para o que estava gravado
     // como 37902.6: sem esta guarda, toda edição registrava no histórico
     // uma alteração de total que ninguém fez. Seis casas cobrem com folga
-    // as três da quantidade e as quatro do preço.
-    const igual = (x, y) => {
+    // as três da quantidade; o preço, que vai até dez, compara em todas elas.
+    const igual = (x, y, casas = 6) => {
         if (typeof x === 'number' && typeof y === 'number') {
-            return Number(x.toFixed(6)) === Number(y.toFixed(6));
+            return Number(x.toFixed(casas)) === Number(y.toFixed(casas));
         }
         return (x ?? '') === (y ?? '');
     };
@@ -1293,7 +1303,7 @@ function _diffLancamento(antes, depois) {
         if (!a[tipo]) { mudou.push({ campo: tipo, de: '—', para: 'acrescentado' }); return; }
         if (!d[tipo]) { mudou.push({ campo: tipo, de: 'existia', para: 'removido' }); return; }
         ['qtd', 'qtdDescargada', 'valor'].forEach(p => {
-            if (!igual(a[tipo][p], d[tipo][p])) {
+            if (!igual(a[tipo][p], d[tipo][p], p === 'valor' ? FM_CASAS_MAX.valor : 6)) {
                 mudou.push({ campo: `${tipo} · ${p}`, de: a[tipo][p] ?? '—', para: d[tipo][p] ?? '—' });
             }
         });

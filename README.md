@@ -159,7 +159,7 @@ Some decisions behind it:
 - **The calculations that decide money are tested**: the freight engine,
   rate validity periods, the price reference, the month-closing lock, the
   NF-e base matching, number formatting and the PDF and Excel layout.
-  `node --test tests/*.test.js` runs the 112 tests with no dependencies.
+  `node --test tests/*.test.js` runs the 120 tests with no dependencies.
   The security rules have 25 tests of their own in `tests/regras/`, which
   run on the Firestore emulator (Java 21 and firebase-tools) against a
   `demo-` project that does not exist in the cloud. GitHub Actions runs

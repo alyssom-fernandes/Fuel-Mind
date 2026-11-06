@@ -546,9 +546,9 @@ function fmtEixoL(v) { return _compacto(v) + " L"; }
 /* Reais por litro do COMBUSTÍVEL: preço da nota, preço médio, régua de
    preço. Três casas, como a bomba mostra (R$ 5,899); valor em reais fica
    com duas (`fmtR`). Era `fmtR4`, com quatro, até 18/09/2026, a pedido do
-   dono: "não precisam de tantos dígitos". A digitação do preço continua
-   aceitando quatro, que é como a NF-e traz: arredondar na entrada mudaria
-   o total da nota. */
+   dono: "não precisam de tantos dígitos". Isto é só leitura: o campo de
+   digitação guarda o preço inteiro, com até dez casas (`FM_CASAS_MAX`, em
+   numerico.js), porque é dele que sai o total da nota. */
 function fmtRL(v) {
     return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:3, maximumFractionDigits:3 });
 }
@@ -683,12 +683,15 @@ function fmtNumeroEdicao(n, casas) {
  * Número como fica depois de editado: com separador de milhar e casas
  * fixas. Sem unidade e sem cifrão: eles ficam no rótulo, nunca dentro
  * do campo, senão o próprio parser teria de removê-los depois.
+ *
+ * `casasMax` é para o campo que não pode perder dígito: 5,89 aparece com as
+ * `casas` de sempre ("5,8900") e 5,8763456789 fica como foi digitado.
  */
-function fmtNumeroExibicao(n, casas) {
+function fmtNumeroExibicao(n, casas, casasMax = casas) {
     if (n === null || n === undefined || !Number.isFinite(Number(n))) return "";
     return Number(n).toLocaleString("pt-BR", {
         minimumFractionDigits: casas,
-        maximumFractionDigits: casas
+        maximumFractionDigits: casasMax
     });
 }
 
